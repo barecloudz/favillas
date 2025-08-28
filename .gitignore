@@ -5,6 +5,17 @@ server/public
 vite.config.ts.*
 *.tar.gz
 
+# Build cache and optimization
+.vite/
+.turbo/
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+coverage/
+.nyc_output
+.npm
+
 # Environment variables
 .env
 .env.local

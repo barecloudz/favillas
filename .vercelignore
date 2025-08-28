@@ -1,0 +1,71 @@
+# Exclude files that don't need to be deployed
+node_modules
+.git
+.env.local
+.env.development
+.env.test
+
+# Exclude development files
+*.md
+README.md
+SUPABASE_SETUP.md
+ADDRESS_AUTOCOMPLETE_SETUP.md
+IPAD_PRINTING_SETUP.md
+PRINTER_SETUP.md
+
+# Exclude development scripts
+debug-printer-config.js
+mock-printer-server.js
+preview-receipts.js
+check-time-tables.js
+add-google-auth.js
+admin-featured-manager.js
+admin-set-featured.js
+
+# Exclude test files
+**/*.test.js
+**/*.test.ts
+**/*.spec.js
+**/*.spec.ts
+
+# Exclude development assets
+attached_assets/
+cookies.txt
+ngrok.zip
+
+# Exclude development database files
+*.db
+*.sqlite
+*.db-journal
+pizzaspinrewards.db
+
+# Exclude editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Exclude unnecessary seed files
+server/seed-*.ts
+
+# Exclude Claude AI files (optional)
+.claude/
+
+# Exclude build artifacts that will be rebuilt
+dist/
+build/
+
+# Exclude package lock if using npm (Vercel will regenerate)
+# package-lock.json  # Uncomment if you want to regenerate lock file
+
+# Exclude unnecessary time tracking files
+employee-time-tracking-schema.sql
+server/time-tracking-*.ts
+
+# Exclude printer-related files for web deployment  
+server/printer.ts
+
+# Exclude development utilities
+_ul
