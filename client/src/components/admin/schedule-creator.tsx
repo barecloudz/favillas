@@ -651,6 +651,8 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
                   })}
                 </tbody>
               </table>
+                </div>
+              </div>
             </div>
 
             {/* Position Legend */}
