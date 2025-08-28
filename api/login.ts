@@ -8,19 +8,27 @@ import { promisify } from 'util';
 
 const scryptAsync = promisify(scrypt);
 
-// Define users table inline
+// Define users table inline - comprehensive schema
 const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   email: text("email").notNull().unique(),
+  googleId: text("google_id").unique(),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
+  phone: text("phone"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  zipCode: text("zip_code"),
   role: text("role").default("customer").notNull(),
   isAdmin: boolean("is_admin").default(false).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
   rewards: integer("rewards").default(0).notNull(),
+  stripeCustomerId: text("stripe_customer_id"),
   marketingOptIn: boolean("marketing_opt_in").default(true).notNull(),
 });
 
@@ -100,6 +108,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .then(rows => rows[0]);
 
     console.log('User found:', !!user);
+    console.log('User object keys:', user ? Object.keys(user) : 'no user');
+    console.log('User data:', user ? JSON.stringify(user, null, 2) : 'no user');
 
     if (!user) {
       return res.status(401).json({ 
@@ -119,12 +129,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log('User authenticated successfully');
     
-    // Return user data (excluding password)
+    // Return user data (excluding password) with safe handling
     const { password: _, ...userWithoutPassword } = user;
+    
+    // Ensure we have required fields with defaults
+    const safeUser = {
+      id: userWithoutPassword.id,
+      username: userWithoutPassword.username || 'unknown',
+      email: userWithoutPassword.email || 'no-email',
+      firstName: userWithoutPassword.firstName || 'Unknown',
+      lastName: userWithoutPassword.lastName || 'User',
+      role: userWithoutPassword.role || 'customer',
+      isAdmin: userWithoutPassword.isAdmin || false,
+      isActive: userWithoutPassword.isActive !== false,
+      rewards: userWithoutPassword.rewards || 0,
+      createdAt: userWithoutPassword.createdAt,
+      marketingOptIn: userWithoutPassword.marketingOptIn !== false
+    };
+    
+    console.log('Safe user object:', JSON.stringify(safeUser, null, 2));
     
     return res.status(200).json({
       message: 'Login successful',
-      user: userWithoutPassword
+      user: safeUser
     });
     
   } catch (error) {
