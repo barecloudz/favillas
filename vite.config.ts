@@ -6,20 +6,13 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(async ({ mode }) => {
   const isDev = mode === 'development';
   const isProd = mode === 'production';
   
   return {
     plugins: [
-      react({
-        // Optimize React plugin for production
-        babel: isProd ? {
-          plugins: [
-            ['@babel/plugin-transform-react-remove-prop-types', { removeImport: true }]
-          ]
-        } : undefined
-      }),
+      react(),
       // Only use development plugins in development
       ...(isDev ? [runtimeErrorOverlay()] : []),
       ...(isDev && process.env.REPL_ID !== undefined
