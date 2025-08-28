@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { db } from './_db';
-import { menuItems } from '../shared/schema';
+import { menuItems } from '@shared/schema';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set CORS headers

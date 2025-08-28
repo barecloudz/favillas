@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { db } from '../_db';
-import { employeeSchedules, users } from '../../shared/schema';
+import { employeeSchedules, users } from '@shared/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
