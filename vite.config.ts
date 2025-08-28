@@ -13,13 +13,12 @@ export default defineConfig(async ({ mode }) => {
   return {
     plugins: [
       react(),
-      // Only use development plugins in development
+      // Only use development plugins in development  
       ...(isDev ? [runtimeErrorOverlay()] : []),
+      // Only load cartographer for Replit environment in development
       ...(isDev && process.env.REPL_ID !== undefined
         ? [
-            await import("@replit/vite-plugin-cartographer").then((m) =>
-              m.cartographer(),
-            ),
+            (await import("@replit/vite-plugin-cartographer")).cartographer(),
           ]
         : []),
     ],
