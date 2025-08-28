@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import postgres from 'postgres';
 import { scrypt, timingSafeEqual } from 'crypto';
 import { promisify } from 'util';
+import jwt from 'jsonwebtoken';
 
 const scryptAsync = promisify(scrypt);
 
@@ -149,10 +150,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     console.log('Safe user object:', JSON.stringify(safeUser, null, 2));
     
-    return res.status(200).json({
-      message: 'Login successful',
-      user: safeUser
-    });
+    // Create JWT token
+    const secret = process.env.SESSION_SECRET;
+    if (!secret) {
+      throw new Error('SESSION_SECRET not configured');
+    }
+    
+    const token = jwt.sign(
+      { 
+        userId: safeUser.id,
+        username: safeUser.username,
+        role: safeUser.role,
+        isAdmin: safeUser.isAdmin 
+      },
+      secret,
+      { expiresIn: '7d' } // Token expires in 7 days
+    );
+    
+    // Set token as HTTP-only cookie
+    res.setHeader('Set-Cookie', `auth-token=${token}; HttpOnly; Secure=${process.env.NODE_ENV === 'production'}; SameSite=Strict; Path=/; Max-Age=${7 * 24 * 60 * 60}`);
+    
+    // Frontend expects just the user object, not nested in a response
+    return res.status(200).json(safeUser);
     
   } catch (error) {
     console.error('Login error:', error);
