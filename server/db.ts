@@ -8,13 +8,13 @@ if (!databaseUrl) {
   throw new Error('DATABASE_URL environment variable is required');
 }
 
-// Use PostgreSQL with postgres-js driver with optimized settings
+// Serverless-friendly PostgreSQL configuration
 const sql = postgres(databaseUrl, {
-  max: 20,          // Increase max connections for better performance
-  idle_timeout: 30, // Keep connections alive longer
-  connect_timeout: 15, // Increase connection timeout
-  prepare: false,   // Disable prepared statements for better compatibility
-  keepalive: true,  // Enable TCP keepalive
+  max: 1,           // Use single connection for serverless
+  idle_timeout: 20, // Shorter timeout for serverless
+  connect_timeout: 10, // Quick connection timeout
+  prepare: false,   // Disable prepared statements for better serverless compatibility
+  keepalive: false, // Disable keepalive for serverless
   types: {
     bigint: postgres.BigInt,
   },
