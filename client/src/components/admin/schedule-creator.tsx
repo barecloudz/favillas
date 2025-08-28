@@ -467,28 +467,113 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
             </div>
           </CardHeader>
           
-          <CardContent>
-            {/* Weekly Grid */}
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse border border-gray-200">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="border border-gray-200 p-3 text-left font-medium text-gray-900 min-w-[120px]">
-                      Employee
-                    </th>
-                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                      <th key={day} className="border border-gray-200 p-3 text-center font-medium text-gray-900 min-w-[140px]">
-                        <div>{day}</div>
-                        <div className="text-xs font-normal text-gray-600">
-                          {new Date(viewDates.startDate).getDate() + ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(day)}
+          <CardContent className="p-0 sm:p-6">
+            {/* Mobile View */}
+            <div className="block lg:hidden">
+              <div className="max-h-[70vh] overflow-y-auto mobile-scroll-container">
+                <div className="divide-y divide-gray-200">
+                  {employees?.map((employee: any) => {
+                    const employeeSchedules = schedules?.filter((s: any) => s.employeeId === employee.id) || [];
+                    const weeklyHours = employeeSchedules.reduce((total: number, schedule: any) => {
+                      return total + parseFloat(calculateShiftHours(schedule.startTime, schedule.endTime));
+                    }, 0);
+
+                    return (
+                      <div key={employee.id} className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-medium text-gray-900">
+                              {employee.firstName} {employee.lastName}
+                            </h4>
+                            <p className="text-sm text-gray-500">{employee.department || 'N/A'}</p>
+                          </div>
+                          <Badge variant="outline">
+                            {weeklyHours.toFixed(1)}h total
+                          </Badge>
                         </div>
-                      </th>
-                    ))}
-                    <th className="border border-gray-200 p-3 text-center font-medium text-gray-900 min-w-[80px]">
-                      Total Hours
-                    </th>
-                  </tr>
-                </thead>
+                        
+                        <div className="grid grid-cols-1 gap-2">
+                          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, dayIndex) => {
+                            const dayDate = new Date(viewDates.startDate);
+                            dayDate.setDate(dayDate.getDate() + dayIndex);
+                            const daySchedules = employeeSchedules.filter((s: any) => {
+                              const scheduleDate = new Date(s.scheduleDate);
+                              return scheduleDate.toDateString() === dayDate.toDateString();
+                            });
+
+                            return (
+                              <div 
+                                key={day} 
+                                className="flex items-center justify-between py-2 border-l-4 border-gray-200 pl-3 cursor-pointer hover:bg-gray-50 active:bg-gray-100 rounded-r-md transition-colors touch-table-cell"
+                                onClick={() => handleDateClick(dayDate)}
+                              >
+                                <div className="flex items-center space-x-3">
+                                  <span className="text-sm font-medium text-gray-900 w-12">
+                                    {day}
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    {dayDate.getDate()}/{dayDate.getMonth() + 1}
+                                  </span>
+                                </div>
+                                <div className="text-right">
+                                  {daySchedules.length > 0 ? (
+                                    <div className="space-y-1">
+                                      {daySchedules.map((schedule: any) => (
+                                        <div
+                                          key={schedule.id}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleScheduleClick(schedule);
+                                          }}
+                                          className="cursor-pointer touch-manipulation"
+                                        >
+                                          <Badge className={getPositionColor(schedule.position)}>
+                                            {schedule.position}
+                                          </Badge>
+                                          <div className="text-xs text-gray-600">
+                                            {schedule.startTime}-{schedule.endTime}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-gray-400">No shifts</span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Desktop/Tablet Grid */}
+            <div className="hidden lg:block">
+              <div className="overflow-x-auto -mx-4 sm:mx-0 touch-pan-x" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <div className="inline-block min-w-full align-middle">
+                  <table className="min-w-full border-collapse border border-gray-200" style={{ minWidth: '1000px' }}>
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="border border-gray-200 p-3 text-left font-medium text-gray-900 sticky left-0 bg-gray-50 z-10 min-w-[150px]">
+                          Employee
+                        </th>
+                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                          <th key={day} className="border border-gray-200 p-3 text-center font-medium text-gray-900 min-w-[120px]">
+                            <div>{day}</div>
+                            <div className="text-xs font-normal text-gray-600">
+                              {new Date(viewDates.startDate).getDate() + ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(day)}
+                            </div>
+                          </th>
+                        ))}
+                        <th className="border border-gray-200 p-3 text-center font-medium text-gray-900 min-w-[100px]">
+                          Total Hours
+                        </th>
+                      </tr>
+                    </thead>
                 <tbody>
                   {employees?.map((employee: any) => {
                     const employeeSchedules = schedules?.filter((s: any) => s.employeeId === employee.id) || [];

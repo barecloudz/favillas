@@ -104,28 +104,30 @@ const PayrollDashboard: React.FC<PayrollDashboardProps> = ({ className }) => {
               {new Date(dateRange.startDate).toLocaleDateString()} - {new Date(dateRange.endDate).toLocaleDateString()}
             </p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">From:</label>
-              <Input
-                type="date"
-                value={dateRange.startDate}
-                onChange={(e) => handleDateRangeChange('startDate', e.target.value)}
-                className="w-auto"
-              />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <label className="text-sm font-medium whitespace-nowrap">From:</label>
+                <Input
+                  type="date"
+                  value={dateRange.startDate}
+                  onChange={(e) => handleDateRangeChange('startDate', e.target.value)}
+                  className="w-full sm:w-auto"
+                />
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <label className="text-sm font-medium whitespace-nowrap">To:</label>
+                <Input
+                  type="date"
+                  value={dateRange.endDate}
+                  onChange={(e) => handleDateRangeChange('endDate', e.target.value)}
+                  className="w-full sm:w-auto"
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">To:</label>
-              <Input
-                type="date"
-                value={dateRange.endDate}
-                onChange={(e) => handleDateRangeChange('endDate', e.target.value)}
-                className="w-auto"
-              />
-            </div>
-            <Button onClick={exportPayrollData} variant="outline" className="flex items-center gap-2">
+            <Button onClick={exportPayrollData} variant="outline" className="flex items-center gap-2 w-full sm:w-auto justify-center">
               <Download className="h-4 w-4" />
-              Export CSV
+              <span>Export CSV</span>
             </Button>
           </div>
         </div>
@@ -219,7 +221,7 @@ const PayrollDashboard: React.FC<PayrollDashboardProps> = ({ className }) => {
             <CardTitle>Employee Payroll Details</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto mobile-scroll-container touch-pan-x">
               <Table>
                 <TableHeader>
                   <TableRow>

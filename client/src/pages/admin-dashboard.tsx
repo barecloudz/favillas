@@ -1568,7 +1568,7 @@ const OrdersManagement = ({ orders, onUpdateStatus }: any) => {
           </div>
 
           {/* Orders Table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto mobile-scroll-container touch-pan-x">
             <table className="w-full">
               <thead>
                 <tr className="border-b">
@@ -4254,7 +4254,7 @@ const PromotionsManagement = () => {
                   </Button>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto mobile-scroll-container touch-pan-x">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b">
@@ -7665,7 +7665,7 @@ const UserManagementTab = () => {
           <CardTitle>Users ({filteredUsers.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto mobile-scroll-container touch-pan-x">
             <table className="w-full">
               <thead>
                 <tr className="border-b">
@@ -8626,7 +8626,7 @@ const TipSettingsTab = () => {
         </CardHeader>
         <CardContent>
           {tipDistributions && tipDistributions.length > 0 ? (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto mobile-scroll-container touch-pan-x">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
@@ -8846,7 +8846,7 @@ const ReportsSection = ({ analytics, orders }: any) => {
             <CardTitle>Recent Orders</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto mobile-scroll-container touch-pan-x">
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
@@ -9181,7 +9181,7 @@ const PricingTab = ({ menuItems }: { menuItems: any[] }) => {
           <CardTitle>Menu Items</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto mobile-scroll-container touch-pan-x">
             <table className="w-full">
               <thead>
                 <tr className="border-b">
@@ -9477,7 +9477,7 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
           <CardTitle>Email Campaigns</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto mobile-scroll-container touch-pan-x">
             <table className="w-full">
               <thead>
                 <tr className="border-b">
@@ -9686,7 +9686,7 @@ const SMSMarketingTab = ({ users }: { users: any[] }) => {
           <CardTitle>SMS Campaigns</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto mobile-scroll-container touch-pan-x">
             <table className="w-full">
               <thead>
                 <tr className="border-b">
@@ -11519,7 +11519,7 @@ const LocalSEOToolsTab = () => {
                     Export
                   </Button>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto mobile-scroll-container touch-pan-x">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b">
