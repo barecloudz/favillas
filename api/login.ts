@@ -1,11 +1,51 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { db } from './_db';
-import { users } from './_schema';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
 import { eq } from 'drizzle-orm';
+import postgres from 'postgres';
 import { scrypt, timingSafeEqual } from 'crypto';
 import { promisify } from 'util';
 
 const scryptAsync = promisify(scrypt);
+
+// Define users table inline
+const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+  email: text("email").notNull().unique(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  role: text("role").default("customer").notNull(),
+  isAdmin: boolean("is_admin").default(false).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  rewards: integer("rewards").default(0).notNull(),
+  marketingOptIn: boolean("marketing_opt_in").default(true).notNull(),
+});
+
+// Database connection - self-contained
+let dbConnection: any = null;
+
+function getDB() {
+  if (dbConnection) return dbConnection;
+  
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL environment variable is required');
+  }
+  
+  const sql = postgres(databaseUrl, {
+    max: 1,
+    idle_timeout: 20,
+    connect_timeout: 10,
+    prepare: false,
+    keepalive: false,
+  });
+  
+  dbConnection = drizzle(sql);
+  return dbConnection;
+}
 
 async function comparePasswords(supplied: string, stored: string) {
   try {
@@ -47,6 +87,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     console.log('Querying user:', username);
+    
+    // Get database connection
+    const db = getDB();
     
     // Find user by username
     const user = await db
