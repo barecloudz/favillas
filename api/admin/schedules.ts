@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Import dependencies dynamically
       const { drizzle } = await import('drizzle-orm/postgres-js');
       const postgres = (await import('postgres')).default;
-      const { employeeSchedules, users } = await import('@shared/schema');
+      const { employeeSchedules, users } = await import('../../shared/schema.js');
       const { eq, and, gte, lte } = await import('drizzle-orm');
       
       // Create database connection
