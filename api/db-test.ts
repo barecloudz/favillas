@@ -20,8 +20,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     if (hasDbUrl) {
       try {
-        // Test database import and connection
-        const { db } = await import('./_db');
+        // Import database dependencies directly
+        const { drizzle } = await import('drizzle-orm/postgres-js');
+        const postgres = (await import('postgres')).default;
+        
+        // Create database connection
+        const sql = postgres(process.env.DATABASE_URL!, {
+          max: 1,
+          idle_timeout: 20,
+          connect_timeout: 10,
+          prepare: false,
+          keepalive: false,
+          types: {
+            bigint: postgres.BigInt,
+          },
+        });
+        
+        const db = drizzle(sql);
         
         // Try a simple query
         const result = await db.execute('SELECT 1 as test');

@@ -1,7 +1,4 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { db } from '../_db';
-import { employeeSchedules, users } from '@shared/schema';
-import { eq, and, gte, lte } from 'drizzle-orm';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set CORS headers
@@ -19,6 +16,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
     try {
       const { startDate, endDate, employeeId } = req.query;
+      
+      // Import dependencies dynamically
+      const { drizzle } = await import('drizzle-orm/postgres-js');
+      const postgres = (await import('postgres')).default;
+      const { employeeSchedules, users } = await import('@shared/schema');
+      const { eq, and, gte, lte } = await import('drizzle-orm');
+      
+      // Create database connection
+      const sql = postgres(process.env.DATABASE_URL!, {
+        max: 1,
+        idle_timeout: 20,
+        connect_timeout: 10,
+        prepare: false,
+        keepalive: false,
+        types: {
+          bigint: postgres.BigInt,
+        },
+      });
+      
+      const db = drizzle(sql);
       
       let query = db
         .select({

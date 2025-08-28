@@ -1,6 +1,4 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { db } from './_db';
-import { menuItems } from '@shared/schema';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set CORS headers
@@ -20,6 +18,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Cache menu for 5 minutes since it doesn't change frequently
     res.setHeader('Cache-Control', 'public, max-age=300');
     
+    // Import dependencies dynamically
+    const { drizzle } = await import('drizzle-orm/postgres-js');
+    const postgres = (await import('postgres')).default;
+    const { menuItems } = await import('@shared/schema');
+    
+    // Create database connection
+    const sql = postgres(process.env.DATABASE_URL!, {
+      max: 1,
+      idle_timeout: 20,
+      connect_timeout: 10,
+      prepare: false,
+      keepalive: false,
+      types: {
+        bigint: postgres.BigInt,
+      },
+    });
+    
+    const db = drizzle(sql);
     const allMenuItems = await db.select().from(menuItems);
     
     // If no menu items exist, return sample items
