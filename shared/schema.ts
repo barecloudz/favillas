@@ -510,6 +510,7 @@ export const insertPauseServiceSchema = createInsertSchema(pauseServices).omit({
 
 // Type definitions
 export type User = typeof users.$inferSelect;
+export type SelectUser = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export type Category = typeof categories.$inferSelect;
