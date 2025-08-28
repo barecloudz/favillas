@@ -1,4 +1,23 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import { db } from './_db';
+import { users } from './_schema';
+import { eq } from 'drizzle-orm';
+import { scrypt, timingSafeEqual } from 'crypto';
+import { promisify } from 'util';
+
+const scryptAsync = promisify(scrypt);
+
+async function comparePasswords(supplied: string, stored: string) {
+  try {
+    const [hashed, salt] = stored.split(".");
+    const hashedBuf = Buffer.from(hashed, "hex");
+    const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+    return timingSafeEqual(hashedBuf, suppliedBuf);
+  } catch (error) {
+    console.error('Password comparison error:', error);
+    return false;
+  }
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set CORS headers
@@ -17,7 +36,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     console.log('Login attempt started');
     console.log('Environment check - DATABASE_URL exists:', !!process.env.DATABASE_URL);
-    console.log('Request body:', req.body);
 
     const { username, password } = req.body;
 
@@ -28,17 +46,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Test database import first
-    console.log('Attempting to import database...');
-    const { db } = await import('../server/db');
-    console.log('Database imported successfully');
-
-    const { users } = await import('@shared/schema');
-    const { eq } = await import('drizzle-orm');
-    console.log('Schema and drizzle imports successful');
-
-    // Find user by username
     console.log('Querying user:', username);
+    
+    // Find user by username
     const user = await db
       .select()
       .from(users)
@@ -54,7 +64,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // For now, let's skip password validation and return success
+    // Check password
+    const isValidPassword = await comparePasswords(password, user.password);
+    console.log('Password valid:', isValidPassword);
+    
+    if (!isValidPassword) {
+      return res.status(401).json({ 
+        message: 'Invalid credentials' 
+      });
+    }
+
     console.log('User authenticated successfully');
     
     // Return user data (excluding password)
@@ -71,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ 
       message: 'Internal server error',
       error: error instanceof Error ? error.message : 'Unknown error',
-      stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
     });
   }
 }

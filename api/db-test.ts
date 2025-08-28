@@ -21,7 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (hasDbUrl) {
       try {
         // Test database import and connection
-        const { db } = await import('../server/db');
+        const { db } = await import('./_db');
         
         // Try a simple query
         const result = await db.execute('SELECT 1 as test');
