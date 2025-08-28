@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(node:*)",
+      "WebSearch",
+      "Bash(nvm:*)",
+      "Bash(where node)",
+      "Bash(npm rebuild:*)",
+      "WebFetch(domain:docs.shipday.com)",
+      "Bash(powershell:*)",
+      "Bash(rm:*)",
+      "Bash(npx tsc:*)",
+      "Bash(taskkill:*)",
+      "Bash(npx drizzle-kit:*)",
+      "Bash(npx better-sqlite3:*)",
+      "Bash(npx tsx:*)",
+      "Bash(curl:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres.tamsxlebouauwiivoyxa:bqUGb3sFkMaFSrXJ@aws-0-us-east-1.pooler.supabase.com:6543/postgres\" npx tsx check-supabase-menu.js)",
+      "Bash(start http://localhost:5000)",
+      "Bash(start http://localhost:5001)",
+      "Bash(npm run check:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
