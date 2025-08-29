@@ -1,11 +1,12 @@
-import { users, type User, type InsertUser, categories, type Category, type InsertCategory, menuItems, type MenuItem, type InsertMenuItem, orders, type Order, type InsertOrder, orderItems, type OrderItem, type InsertOrderItem, rewards, type Reward, type InsertReward, userRewards, type UserReward, type InsertUserReward, promoCodes, type PromoCode, type InsertPromoCode, loyaltyProgram, type LoyaltyProgram, type InsertLoyaltyProgram, userPoints, type UserPoints, type InsertUserPoints, pointsTransactions, type PointsTransaction, type InsertPointsTransaction, pointsRewards, type PointsReward, type InsertPointsReward, userPointsRedemptions, type UserPointsRedemption, type InsertUserPointsRedemption, vacationMode, type VacationMode, type InsertVacationMode, storeHours, type StoreHours, type InsertStoreHours, restaurantSettings, type RestaurantSettings, type InsertRestaurantSettings, choiceGroups, type ChoiceGroup, type InsertChoiceGroup, choiceItems, type ChoiceItem, type InsertChoiceItem, menuItemChoiceGroups, type MenuItemChoiceGroup, type InsertMenuItemChoiceGroup, categoryChoiceGroups, type CategoryChoiceGroup, type InsertCategoryChoiceGroup, taxCategories, type TaxCategory, type InsertTaxCategory, taxSettings, type TaxSettings, type InsertTaxSettings, pauseServices, type PauseService, type InsertPauseService, timeClockEntries, type TimeClockEntry, type InsertTimeClockEntry, employeeSchedules, type EmployeeSchedule, type InsertEmployeeSchedule, scheduleAlerts, type ScheduleAlert, type InsertScheduleAlert, payPeriods, type PayPeriod, type InsertPayPeriod, halfHalfToppings, type HalfHalfTopping, type InsertHalfHalfTopping, halfHalfSettings, type HalfHalfSettings, type InsertHalfHalfSettings, printerConfig, type PrinterConfig, type InsertPrinterConfig } from "@shared/schema";
+import { users, type User, type InsertUser, categories, type Category, type InsertCategory, menuItems, type MenuItem, type InsertMenuItem, orders, type Order, type InsertOrder, orderItems, type OrderItem, type InsertOrderItem, rewards, type Reward, type InsertReward, userRewards, type UserReward, type InsertUserReward, promoCodes, type PromoCode, type InsertPromoCode, loyaltyProgram, type LoyaltyProgram, type InsertLoyaltyProgram, userPoints, type UserPoints, type InsertUserPoints, pointsTransactions, type PointsTransaction, type InsertPointsTransaction, pointsRewards, type PointsReward, type InsertPointsReward, userPointsRedemptions, type UserPointsRedemption, type InsertUserPointsRedemption, vacationMode, type VacationMode, type InsertVacationMode, storeHours, type StoreHours, type InsertStoreHours, restaurantSettings, type RestaurantSettings, type InsertRestaurantSettings, choiceGroups, type ChoiceGroup, type InsertChoiceGroup, choiceItems, type ChoiceItem, type InsertChoiceItem, menuItemChoiceGroups, type MenuItemChoiceGroup, type InsertMenuItemChoiceGroup, categoryChoiceGroups, type CategoryChoiceGroup, type InsertCategoryChoiceGroup, taxCategories, type TaxCategory, type InsertTaxCategory, taxSettings, type TaxSettings, type InsertTaxSettings, pauseServices, type PauseService, type InsertPauseService, timeClockEntries, type TimeClockEntry, type InsertTimeClockEntry, employeeSchedules, type EmployeeSchedule, type InsertEmployeeSchedule, scheduleAlerts, type ScheduleAlert, type InsertScheduleAlert, payPeriods, type PayPeriod, type InsertPayPeriod, printerConfig, type PrinterConfig, type InsertPrinterConfig, sessions } from "@shared/schema";
 import session from "express-session";
-import createMemoryStore from "memorystore";
+import ConnectPgSimple from "connect-pg-simple";
 import { db } from "./db";
 import { eq, and, or, ne, isNull, sql, asc } from "drizzle-orm";
 import { log } from "./vite";
+import postgres from "postgres";
 
-const MemoryStore = createMemoryStore(session);
+const PgSession = ConnectPgSimple(session);
 
 // modify the interface with any CRUD methods
 // you might need
@@ -191,16 +192,6 @@ export interface IStorage {
   getAllSystemSettings(): Promise<any[]>;
   getSystemSettingsByCategory(category: string): Promise<any[]>;
   
-  // Half & Half operations
-  getAllHalfHalfToppings(): Promise<HalfHalfTopping[]>;
-  getHalfHalfTopping(id: number): Promise<HalfHalfTopping | undefined>;
-  createHalfHalfTopping(topping: InsertHalfHalfTopping): Promise<HalfHalfTopping>;
-  updateHalfHalfTopping(id: number, topping: Partial<InsertHalfHalfTopping>): Promise<HalfHalfTopping | undefined>;
-  deleteHalfHalfTopping(id: number): Promise<boolean>;
-  updateHalfHalfToppingsOrder(updates: { id: number; order: number }[]): Promise<boolean>;
-  getHalfHalfSettings(): Promise<HalfHalfSettings | undefined>;
-  updateHalfHalfSettings(settings: Partial<InsertHalfHalfSettings>): Promise<HalfHalfSettings>;
-  createHalfHalfSettings(settings: InsertHalfHalfSettings): Promise<HalfHalfSettings>;
 
   // Printer Configuration operations
   getAllPrinterConfigs(): Promise<PrinterConfig[]>;
@@ -291,8 +282,17 @@ export class MemStorage implements IStorage {
     this.taxCategoryIdCounter = 1;
     this.pauseServiceIdCounter = 1;
     
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000, // prune expired entries every 24h
+    // Create a PostgreSQL connection for session store
+    const sessionSql = postgres(process.env.DATABASE_URL!, {
+      max: 10,
+      idle_timeout: 20,
+      connect_timeout: 10,
+    });
+
+    this.sessionStore = new PgSession({
+      pool: sessionSql,
+      tableName: 'sessions',
+      createTableIfMissing: false, // Table already exists
     });
 
     // Initialize with sample data - COMMENTED OUT TO PREVENT TEST DATA RESET
@@ -1692,50 +1692,23 @@ export class MemStorage implements IStorage {
     return Array.from(this.systemSettings.values()).filter(s => s.category === category);
   }
   
-  // Half & Half operations (stub implementations)
-  async getAllHalfHalfToppings(): Promise<HalfHalfTopping[]> {
-    throw new Error('Half & half operations not implemented in MemStorage');
-  }
-  
-  async getHalfHalfTopping(id: number): Promise<HalfHalfTopping | undefined> {
-    throw new Error('Half & half operations not implemented in MemStorage');
-  }
-  
-  async createHalfHalfTopping(topping: InsertHalfHalfTopping): Promise<HalfHalfTopping> {
-    throw new Error('Half & half operations not implemented in MemStorage');
-  }
-  
-  async updateHalfHalfTopping(id: number, topping: Partial<InsertHalfHalfTopping>): Promise<HalfHalfTopping | undefined> {
-    throw new Error('Half & half operations not implemented in MemStorage');
-  }
-  
-  async deleteHalfHalfTopping(id: number): Promise<boolean> {
-    throw new Error('Half & half operations not implemented in MemStorage');
-  }
-  
-  async updateHalfHalfToppingsOrder(updates: { id: number; order: number }[]): Promise<boolean> {
-    throw new Error('Half & half operations not implemented in MemStorage');
-  }
-  
-  async getHalfHalfSettings(): Promise<HalfHalfSettings | undefined> {
-    throw new Error('Half & half operations not implemented in MemStorage');
-  }
-  
-  async updateHalfHalfSettings(settings: Partial<InsertHalfHalfSettings>): Promise<HalfHalfSettings> {
-    throw new Error('Half & half operations not implemented in MemStorage');
-  }
-  
-  async createHalfHalfSettings(settings: InsertHalfHalfSettings): Promise<HalfHalfSettings> {
-    throw new Error('Half & half operations not implemented in MemStorage');
-  }
 }
 
 export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
   
   constructor() {
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000, // prune expired entries every 24h
+    // Create a PostgreSQL connection for session store
+    const sessionSql = postgres(process.env.DATABASE_URL!, {
+      max: 10,
+      idle_timeout: 20,
+      connect_timeout: 10,
+    });
+
+    this.sessionStore = new PgSession({
+      pool: sessionSql,
+      tableName: 'sessions',
+      createTableIfMissing: false, // Table already exists
     });
   }
 
@@ -3167,132 +3140,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Half & Half operations
-  async getAllHalfHalfToppings(): Promise<HalfHalfTopping[]> {
-    try {
-      const result = await db.select()
-        .from(halfHalfToppings)
-        .orderBy(asc(halfHalfToppings.category), asc(halfHalfToppings.order));
-      return result;
-    } catch (error) {
-      console.error('Error getting all half & half toppings:', error);
-      return [];
-    }
-  }
-
-  async getHalfHalfTopping(id: number): Promise<HalfHalfTopping | undefined> {
-    try {
-      const result = await db.select()
-        .from(halfHalfToppings)
-        .where(eq(halfHalfToppings.id, id))
-        .limit(1);
-      return result[0];
-    } catch (error) {
-      console.error('Error getting half & half topping:', error);
-      return undefined;
-    }
-  }
-
-  async createHalfHalfTopping(topping: InsertHalfHalfTopping): Promise<HalfHalfTopping> {
-    try {
-      const result = await db.insert(halfHalfToppings)
-        .values(topping)
-        .returning();
-      return result[0];
-    } catch (error) {
-      console.error('Error creating half & half topping:', error);
-      throw error;
-    }
-  }
-
-  async updateHalfHalfTopping(id: number, topping: Partial<InsertHalfHalfTopping>): Promise<HalfHalfTopping | undefined> {
-    try {
-      const result = await db.update(halfHalfToppings)
-        .set({ ...topping, updatedAt: new Date() })
-        .where(eq(halfHalfToppings.id, id))
-        .returning();
-      return result[0];
-    } catch (error) {
-      console.error('Error updating half & half topping:', error);
-      return undefined;
-    }
-  }
-
-  async deleteHalfHalfTopping(id: number): Promise<boolean> {
-    try {
-      const result = await db.delete(halfHalfToppings)
-        .where(eq(halfHalfToppings.id, id));
-      return result.rowCount > 0;
-    } catch (error) {
-      console.error('Error deleting half & half topping:', error);
-      return false;
-    }
-  }
-
-  async updateHalfHalfToppingsOrder(updates: { id: number; order: number }[]): Promise<boolean> {
-    try {
-      // Use a transaction to update all orders atomically
-      await db.transaction(async (tx) => {
-        for (const update of updates) {
-          await tx.update(halfHalfToppings)
-            .set({ order: update.order, updatedAt: new Date() })
-            .where(eq(halfHalfToppings.id, update.id));
-        }
-      });
-      return true;
-    } catch (error) {
-      console.error('Error updating half & half toppings order:', error);
-      return false;
-    }
-  }
-
-  async getHalfHalfSettings(): Promise<HalfHalfSettings | undefined> {
-    try {
-      const result = await db.select()
-        .from(halfHalfSettings)
-        .limit(1);
-      return result[0];
-    } catch (error) {
-      console.error('Error getting half & half settings:', error);
-      return undefined;
-    }
-  }
-
-  async updateHalfHalfSettings(settings: Partial<InsertHalfHalfSettings>): Promise<HalfHalfSettings> {
-    try {
-      // First check if settings exist
-      const existing = await this.getHalfHalfSettings();
-      
-      if (existing) {
-        const result = await db.update(halfHalfSettings)
-          .set({ ...settings, updatedAt: new Date() })
-          .where(eq(halfHalfSettings.id, existing.id))
-          .returning();
-        return result[0];
-      } else {
-        // Create new settings if none exist
-        const result = await db.insert(halfHalfSettings)
-          .values(settings as InsertHalfHalfSettings)
-          .returning();
-        return result[0];
-      }
-    } catch (error) {
-      console.error('Error updating half & half settings:', error);
-      throw error;
-    }
-  }
-
-  async createHalfHalfSettings(settings: InsertHalfHalfSettings): Promise<HalfHalfSettings> {
-    try {
-      const result = await db.insert(halfHalfSettings)
-        .values(settings)
-        .returning();
-      return result[0];
-    } catch (error) {
-      console.error('Error creating half & half settings:', error);
-      throw error;
-    }
-  }
 
   // Printer Configuration operations
   async getAllPrinterConfigs(): Promise<PrinterConfig[]> {

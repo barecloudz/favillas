@@ -47,13 +47,24 @@ const OrderSuccessPage = () => {
     const id = params.get('orderId');
     if (id) {
       setOrderId(parseInt(id));
+      
+      // Clear cart immediately for guest users when we have an order ID
+      // This ensures the cart is cleared even if we can't fetch order details
+      if (!user && !cartCleared) {
+        clearCart();
+        setCartCleared(true);
+        toast({
+          title: "Order Placed Successfully!",
+          description: "Your order has been placed. Check your phone for updates.",
+        });
+      }
     } else {
       // If no order ID, redirect to home
       navigate("/");
     }
-  }, [navigate]);
+  }, [navigate, user, cartCleared, clearCart, toast]);
 
-  // Fetch order details
+  // Fetch order details (only for authenticated users)
   const { data: orderData, isLoading: orderLoading } = useQuery({
     queryKey: [`/api/orders/${orderId}`],
     enabled: !!orderId && !!user,
@@ -223,7 +234,9 @@ Thank you for choosing Favilla's NY Pizza!
     );
   }
 
-  if (!order) {
+  // Show order not found only if we're an authenticated user without order data
+  // Guest users should see the success page even without order details
+  if (!order && user) {
     return (
       <>
         <Helmet>
@@ -265,22 +278,29 @@ Thank you for choosing Favilla's NY Pizza!
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
-                    <span>Order #{order.id}</span>
-                    <Badge className={getStatusColor(order.status)}>
-                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                    </Badge>
+                    <span>Order #{orderId}</span>
+                    {order && (
+                      <Badge className={getStatusColor(order.status)}>
+                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                      </Badge>
+                    )}
                   </CardTitle>
                   <CardDescription>
-                    Placed on {new Date(order.createdAt).toLocaleDateString()} at {new Date(order.createdAt).toLocaleTimeString()}
+                    {order ? (
+                      `Placed on ${new Date(order.createdAt).toLocaleDateString()} at ${new Date(order.createdAt).toLocaleTimeString()}`
+                    ) : (
+                      "Your order has been placed successfully"
+                    )}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {/* Order Items */}
-                    <div>
-                      <h3 className="font-semibold mb-3">Your Order</h3>
-                      <div className="space-y-3">
-                        {order.items?.map((item: any, index: number) => (
+                  {order ? (
+                    <div className="space-y-4">
+                      {/* Order Items */}
+                      <div>
+                        <h3 className="font-semibold mb-3">Your Order</h3>
+                        <div className="space-y-3">
+                          {order.items?.map((item: any, index: number) => (
                           <div key={index} className="flex justify-between items-start">
                             <div className="flex-1">
                               <p className="font-medium">{item.name}</p>
@@ -348,15 +368,29 @@ Thank you for choosing Favilla's NY Pizza!
                       </div>
                     </div>
                   </div>
+                  ) : (
+                    // Guest user content
+                    <div className="text-center py-8">
+                      <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">Order Placed Successfully!</h3>
+                      <p className="text-gray-600 mb-4">
+                        Your order has been received and is being prepared.
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        You should receive updates via phone call or SMS at the number you provided.
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
-              {/* Order Status Timeline */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Order Status</CardTitle>
-                </CardHeader>
-                <CardContent>
+              {/* Order Status Timeline - only for authenticated users */}
+              {order && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Order Status</CardTitle>
+                  </CardHeader>
+                  <CardContent>
                   <div className="space-y-4">
                     <div className="flex items-center space-x-3">
                       <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
@@ -423,12 +457,14 @@ Thank you for choosing Favilla's NY Pizza!
                     </div>
                   </div>
                 </CardContent>
-              </Card>
+                </Card>
+              )}
             </div>
 
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Estimated Time */}
+            {/* Sidebar - only for authenticated users */}
+            {order ? (
+              <div className="space-y-6">
+                {/* Estimated Time */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -524,7 +560,45 @@ Thank you for choosing Favilla's NY Pizza!
                   </Button>
                 </CardContent>
               </Card>
-            </div>
+              </div>
+            ) : (
+              // Guest user sidebar
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Phone className="h-5 w-5 mr-2" />
+                      Need Help?
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-600 mb-3">
+                      If you have questions about your order, please call us:
+                    </p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      (555) 123-PIZZA
+                    </p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Order ID: {orderId}
+                    </p>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Continue Shopping</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Button 
+                      className="w-full" 
+                      onClick={() => navigate("/menu")}
+                    >
+                      Order Again
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
         </div>
       </main>

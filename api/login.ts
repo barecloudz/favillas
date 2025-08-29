@@ -69,10 +69,12 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // Set CORS headers - must use specific origin when credentials are included
+  const origin = req.headers.origin || 'http://localhost:5001';
+  res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -168,7 +170,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
     
     // Set token as HTTP-only cookie
-    res.setHeader('Set-Cookie', `auth-token=${token}; HttpOnly; Secure=${process.env.NODE_ENV === 'production'}; SameSite=Strict; Path=/; Max-Age=${7 * 24 * 60 * 60}`);
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.setHeader('Set-Cookie', `auth-token=${token}; HttpOnly; Secure=${isProduction}; SameSite=${isProduction ? 'Strict' : 'Lax'}; Path=/; Max-Age=${7 * 24 * 60 * 60}`);
     
     // Frontend expects just the user object, not nested in a response
     return res.status(200).json(safeUser);

@@ -29,6 +29,13 @@
       "when": 1755899805147,
       "tag": "0003_magical_wild_pack",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1756435652475,
+      "tag": "0004_chemical_silhouette",
+      "breakpoints": true
     }
   ]
 }

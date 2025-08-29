@@ -19,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCart } from "@/hooks/use-cart";
-import HalfHalfPizzaBuilder from "@/components/menu/half-half-pizza-builder";
 
 const MenuPage = () => {
   const [location, navigate] = useLocation();
@@ -30,8 +29,6 @@ const MenuPage = () => {
   const [selectedChoices, setSelectedChoices] = useState<{[key: number]: string[]}>({});
   const [quantity, setQuantity] = useState(1);
   const [animatingItem, setAnimatingItem] = useState<number | null>(null);
-  const [isHalfHalfBuilderOpen, setIsHalfHalfBuilderOpen] = useState(false);
-  const [halfHalfMenuItem, setHalfHalfMenuItem] = useState<any>(null);
   const { addItem, items } = useCart();
 
   const { data: menuItems, isLoading, error } = useQuery({
@@ -174,10 +171,6 @@ const MenuPage = () => {
     setIsChoiceModalOpen(true);
   };
 
-  // Check if item has half & half option (simplified for now - checking if it's a pizza)
-  const hasHalfHalfOption = (item: any) => {
-    return item.category?.toLowerCase().includes('pizza');
-  };
 
   // Get choice groups for a specific item
   const getItemChoiceGroups = (item: any) => {
@@ -303,11 +296,6 @@ const MenuPage = () => {
     }, 800);
   };
 
-  // Handle opening half & half pizza builder
-  const handleHalfHalfCustomize = (item: any) => {
-    setHalfHalfMenuItem(item);
-    setIsHalfHalfBuilderOpen(true);
-  };
 
   const handleAddToCart = (item: any) => {
     const itemChoiceGroups = getItemChoiceGroups(item);
@@ -489,47 +477,18 @@ const MenuPage = () => {
                               <p className="text-gray-600 text-sm mb-4">{item.description}</p>
                             )}
                           </div>
-                          {hasHalfHalfOption(item) ? (
-                            <div className="space-y-2">
-                              <Button 
-                                id={`add-to-cart-${item.id}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleAddToCart(item);
-                                }}
-                                className="w-full relative overflow-hidden"
-                                size="sm"
-                                variant="outline"
-                              >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add to Cart
-                              </Button>
-                              <Button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleHalfHalfCustomize(item);
-                                }}
-                                className="w-full bg-gradient-to-r from-red-500 to-blue-500 hover:from-red-600 hover:to-blue-600 text-white"
-                                size="sm"
-                              >
-                                <span className="text-xs">🍕</span>
-                                <span className="ml-1">Customize Each Half</span>
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button 
-                              id={`add-to-cart-${item.id}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAddToCart(item);
-                              }}
-                              className="w-full relative overflow-hidden"
-                              size="sm"
-                            >
-                              <Plus className="h-4 w-4 mr-2" />
-                              Add to Cart
-                            </Button>
-                          )}
+                          <Button 
+                            id={`add-to-cart-${item.id}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddToCart(item);
+                            }}
+                            className="w-full relative overflow-hidden"
+                            size="sm"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add to Cart
+                          </Button>
                         </CardContent>
                       </Card>
                     ))}
@@ -759,12 +718,6 @@ const MenuPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Half & Half Pizza Builder */}
-      <HalfHalfPizzaBuilder
-        isOpen={isHalfHalfBuilderOpen}
-        onClose={() => setIsHalfHalfBuilderOpen(false)}
-        menuItem={halfHalfMenuItem}
-      />
     </>
   );
 };

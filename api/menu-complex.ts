@@ -21,23 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Import dependencies dynamically
     const { drizzle } = await import('drizzle-orm/postgres-js');
     const postgres = (await import('postgres')).default;
-    const { pgTable, text, serial, integer, boolean, timestamp, decimal, jsonb } = await import("drizzle-orm/pg-core");
-    
-    // Define menuItems table inline to avoid import issues
-    const menuItems = pgTable("menu_items", {
-      id: serial("id").primaryKey(),
-      name: text("name").notNull(),
-      description: text("description").notNull(),
-      imageUrl: text("image_url"),
-      basePrice: decimal("base_price", { precision: 10, scale: 2 }).notNull(),
-      category: text("category").notNull(),
-      isPopular: boolean("is_popular").default(false).notNull(),
-      isNew: boolean("is_new").default(false).notNull(),
-      isBestSeller: boolean("is_best_seller").default(false).notNull(),
-      isAvailable: boolean("is_available").default(true).notNull(),
-      options: jsonb("options"),
-      createdAt: timestamp("created_at").defaultNow().notNull(),
-    });
+    const { menuItems } = await import('../shared/schema.js');
     
     // Create database connection
     const sql = postgres(process.env.DATABASE_URL!, {
@@ -45,7 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       idle_timeout: 20,
       connect_timeout: 10,
       prepare: false,
-      keep_alive: false, // Fixed the property name
+      keepalive: false,
       types: {
         bigint: postgres.BigInt,
       },
@@ -53,9 +37,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     const db = drizzle(sql);
     const allMenuItems = await db.select().from(menuItems);
-    
-    // Close connection
-    await sql.end();
     
     // If no menu items exist, return sample items
     if (!allMenuItems || allMenuItems.length === 0) {

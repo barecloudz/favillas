@@ -8,7 +8,7 @@ import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { setupTimeTrackingRoutes } from "./time-tracking-routes";
 import { db } from "./db";
-import { insertMenuItemSchema, insertOrderSchema, insertOrderItemSchema, insertRewardSchema, insertUserRewardSchema, insertPromoCodeSchema, insertChoiceGroupSchema, insertChoiceItemSchema, insertMenuItemChoiceGroupSchema, insertCategoryChoiceGroupSchema, insertTaxCategorySchema, insertTaxSettingsSchema, insertPauseServiceSchema, insertHalfHalfToppingSchema, insertHalfHalfSettingsSchema, orders, orderItems } from "@shared/schema";
+import { insertMenuItemSchema, insertOrderSchema, insertOrderItemSchema, insertRewardSchema, insertUserRewardSchema, insertPromoCodeSchema, insertChoiceGroupSchema, insertChoiceItemSchema, insertMenuItemChoiceGroupSchema, insertCategoryChoiceGroupSchema, insertTaxCategorySchema, insertTaxSettingsSchema, insertPauseServiceSchema, orders, orderItems } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { log } from "./vite";
@@ -312,168 +312,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Half & Half API Routes
-  app.get("/api/half-half/status", async (req, res) => {
-    try {
-      const settings = await storage.getHalfHalfSettings();
-      res.json({ 
-        isEnabled: settings?.isEnabled ?? false,
-        choiceGroupId: settings?.choiceGroupId ?? null
-      });
-    } catch (error: any) {
-      console.error("Error getting half & half status:", error);
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  app.get("/api/half-half/toppings", async (req, res) => {
-    try {
-      const toppings = await storage.getAllHalfHalfToppings();
-      
-      // Separate into regular and specialty toppings
-      const regularToppings = toppings.filter(t => t.category === 'regular' && t.isActive);
-      const specialtyToppings = toppings.filter(t => t.category === 'specialty' && t.isActive);
-      
-      res.json({
-        regular: regularToppings,
-        specialty: specialtyToppings
-      });
-    } catch (error: any) {
-      console.error("Error getting half & half toppings:", error);
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  app.post("/api/half-half/toppings", async (req, res) => {
-    try {
-      const parsed = insertHalfHalfToppingSchema.parse(req.body);
-      const topping = await storage.createHalfHalfTopping(parsed);
-      res.status(201).json(topping);
-    } catch (error: any) {
-      console.error("Error creating half & half topping:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ message: "Invalid input data", errors: error.errors });
-      } else {
-        res.status(500).json({ message: error.message });
-      }
-    }
-  });
-
-  app.put("/api/half-half/toppings/reorder", async (req, res) => {
-    try {
-      const updates = z.array(z.object({
-        id: z.number(),
-        order: z.number()
-      })).parse(req.body);
-
-      const success = await storage.updateHalfHalfToppingsOrder(updates);
-      
-      if (!success) {
-        return res.status(500).json({ message: "Failed to update topping order" });
-      }
-      
-      res.json({ message: "Topping order updated successfully" });
-    } catch (error: any) {
-      console.error("Error updating half & half toppings order:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ message: "Invalid input data", errors: error.errors });
-      } else {
-        res.status(500).json({ message: error.message });
-      }
-    }
-  });
-
-  app.put("/api/half-half/toppings/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id, 10);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid topping ID" });
-      }
-
-      const parsed = insertHalfHalfToppingSchema.partial().parse(req.body);
-      const topping = await storage.updateHalfHalfTopping(id, parsed);
-      
-      if (!topping) {
-        return res.status(404).json({ message: "Topping not found" });
-      }
-      
-      res.json(topping);
-    } catch (error: any) {
-      console.error("Error updating half & half topping:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ message: "Invalid input data", errors: error.errors });
-      } else {
-        res.status(500).json({ message: error.message });
-      }
-    }
-  });
-
-  app.delete("/api/half-half/toppings/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id, 10);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid topping ID" });
-      }
-
-      const success = await storage.deleteHalfHalfTopping(id);
-      
-      if (!success) {
-        return res.status(404).json({ message: "Topping not found" });
-      }
-      
-      res.json({ message: "Topping deleted successfully" });
-    } catch (error: any) {
-      console.error("Error deleting half & half topping:", error);
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-
-  app.put("/api/half-half/system", async (req, res) => {
-    try {
-      const { isEnabled } = z.object({
-        isEnabled: z.boolean()
-      }).parse(req.body);
-
-      let choiceGroupId = null;
-      
-      if (isEnabled) {
-        // Create or update the half & half choice group when enabling
-        const existingGroups = await storage.getAllChoiceGroups();
-        const halfHalfGroup = existingGroups.find(group => group.name === "Half & Half");
-        
-        if (halfHalfGroup) {
-          choiceGroupId = halfHalfGroup.id;
-        } else {
-          // Create new half & half choice group
-          const newGroup = await storage.createChoiceGroup({
-            name: "Half & Half",
-            description: "Choose toppings for each half of your pizza",
-            order: 100,
-            isActive: true,
-            isRequired: false,
-            maxSelections: null,
-            minSelections: 0
-          });
-          choiceGroupId = newGroup.id;
-        }
-      }
-
-      const settings = await storage.updateHalfHalfSettings({
-        isEnabled,
-        choiceGroupId
-      });
-      
-      res.json(settings);
-    } catch (error: any) {
-      console.error("Error updating half & half system:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ message: "Invalid input data", errors: error.errors });
-      } else {
-        res.status(500).json({ message: error.message });
-      }
-    }
-  });
   
   const httpServer = createServer(app);
   
@@ -1523,8 +1361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             price: parseFloat(item.price),
             modifications: item.modifications || [],
             specialInstructions: item.specialInstructions,
-            options: item.options || {},
-            halfAndHalf: item.halfAndHalf || null
+            options: item.options || {}
           })),
           total: parseFloat(completedOrder.total),
           customerName: req.user ? `${req.user.firstName} ${req.user.lastName}` : 'Guest',

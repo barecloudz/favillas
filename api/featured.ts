@@ -2,9 +2,11 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin || 'http://localhost:5001';
+  res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -15,15 +17,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Cache menu for 5 minutes since it doesn't change frequently
-    res.setHeader('Cache-Control', 'public, max-age=300');
-    
     // Import dependencies dynamically
     const { drizzle } = await import('drizzle-orm/postgres-js');
     const postgres = (await import('postgres')).default;
     const { pgTable, text, serial, integer, boolean, timestamp, decimal, jsonb } = await import("drizzle-orm/pg-core");
     
-    // Define menuItems table inline to avoid import issues
+    // Define menuItems table inline
     const menuItems = pgTable("menu_items", {
       id: serial("id").primaryKey(),
       name: text("name").notNull(),
@@ -45,21 +44,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       idle_timeout: 20,
       connect_timeout: 10,
       prepare: false,
-      keep_alive: false, // Fixed the property name
-      types: {
-        bigint: postgres.BigInt,
-      },
+      keep_alive: false,
     });
     
     const db = drizzle(sql);
-    const allMenuItems = await db.select().from(menuItems);
     
-    // Close connection
+    // Get featured menu items (popular OR best seller items)
+    const { or, eq } = await import('drizzle-orm');
+    const featuredItems = await db
+      .select()
+      .from(menuItems)
+      .where(
+        or(
+          eq(menuItems.isPopular, true),
+          eq(menuItems.isBestSeller, true)
+        )
+      )
+      .limit(6);
+    
     await sql.end();
     
-    // If no menu items exist, return sample items
-    if (!allMenuItems || allMenuItems.length === 0) {
-      const sampleItems = [
+    // If no featured items, return sample ones
+    if (!featuredItems || featuredItems.length === 0) {
+      const sampleFeatured = [
         {
           id: 1,
           name: "Margherita Pizza",
@@ -68,15 +75,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           category: "Traditional Pizza",
           imageUrl: "/images/f1.png",
           isAvailable: true,
-          isPopular: false,
+          isPopular: true,
           isNew: false,
           isBestSeller: false,
-          options: null,
-          createdAt: new Date()
         },
         {
           id: 2,
-          name: "Pepperoni Pizza",
+          name: "Pepperoni Pizza", 
           description: "Classic pepperoni with mozzarella and tomato sauce",
           basePrice: "14.99",
           category: "Traditional Pizza",
@@ -85,19 +90,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           isPopular: true,
           isNew: false,
           isBestSeller: true,
-          options: null,
-          createdAt: new Date()
         }
       ];
-      
-      return res.status(200).json(sampleItems);
+      return res.status(200).json(sampleFeatured);
     }
 
-    res.status(200).json(allMenuItems);
+    res.status(200).json(featuredItems);
   } catch (error) {
-    console.error('Menu API error:', error);
+    console.error('Featured API error:', error);
     res.status(500).json({ 
-      message: 'Failed to fetch menu items',
+      message: 'Failed to fetch featured items',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }

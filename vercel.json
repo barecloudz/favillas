@@ -2,15 +2,12 @@
   "version": 2,
   "buildCommand": "npm run vercel-build",
   "installCommand": "npm ci --prefer-offline --no-audit --no-fund",
+  "devCommand": "npm run dev:client -- --port $PORT --host 0.0.0.0",
   "outputDirectory": "dist/public",
   "rewrites": [
     {
       "source": "/api/(.*)",
       "destination": "/api/$1"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
     }
   ],
   "functions": {

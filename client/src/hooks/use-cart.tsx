@@ -10,9 +10,6 @@ export interface CartItem {
   quantity: number;
   selectedOptions?: {
     size?: string;
-    halfAndHalf?: boolean;
-    leftToppings?: Array<{ name: string; price: number }>;
-    rightToppings?: Array<{ name: string; price: number }>;
     [key: string]: any;
   };
   options?: Array<{

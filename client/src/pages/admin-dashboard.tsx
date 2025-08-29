@@ -107,10 +107,9 @@ import ScheduleCreator from "@/components/admin/schedule-creator";
 import { TemplateEditor } from "@/components/admin/template-editor";
 import { SystemSettings } from "@/components/admin/system-settings";
 import FrontendCustomization from "@/components/admin/frontend-customization";
-import HalfHalfManager from "@/components/admin/half-half-manager";
 
 const AdminDashboard = () => {
-  const { user, logoutMutation } = useAuth();
+  const { user, logoutMutation, isLoading } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -668,7 +667,16 @@ const AdminDashboard = () => {
     }
   };
 
-  // Redirect if not admin
+  // Show loading while authentication is being checked
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Redirect if not admin after authentication is complete
   if (!user?.isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -721,7 +729,6 @@ const AdminDashboard = () => {
       icon: Menu,
       items: [
         { name: "Menu Editor", icon: Menu, href: "menu-editor" },
-        { name: "Half & Half Pizzas", icon: Pizza, href: "half-half" },
         { name: "Menu Images", icon: Image, href: "menu-images" },
         { name: "Pricing", icon: DollarSign, href: "pricing" },
         { name: "Out of Stock", icon: Package, href: "out-of-stock" },
@@ -1010,9 +1017,6 @@ const AdminDashboard = () => {
               <MenuEditor menuItems={menuItems} />
             )}
             
-            {activeTab === "half-half" && (
-              <HalfHalfManager />
-            )}
             
             {activeTab === "frontend" && (
               <FrontendCustomization />

@@ -16,7 +16,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Clear the auth token cookie
-  res.setHeader('Set-Cookie', 'auth-token=; HttpOnly; Secure=false; SameSite=Strict; Path=/; Max-Age=0');
+  const isProduction = process.env.NODE_ENV === 'production';
+  res.setHeader('Set-Cookie', `auth-token=; HttpOnly; Secure=${isProduction}; SameSite=${isProduction ? 'Strict' : 'Lax'}; Path=/; Max-Age=0`);
   
   return res.status(200).json({ message: 'Logged out successfully' });
 }

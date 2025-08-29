@@ -689,40 +689,6 @@ export const insertTipSettingsSchema = createInsertSchema(tipSettings).omit({
   updatedAt: true,
 });
 
-// Half & Half Toppings schema
-export const halfHalfToppings = pgTable("half_half_toppings", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description"),
-  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
-  category: text("category").notNull(), // "regular" or "specialty"
-  order: integer("order").notNull().default(0),
-  isActive: boolean("is_active").default(true).notNull(),
-  isSoldOut: boolean("is_sold_out").default(false).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-export const insertHalfHalfToppingSchema = createInsertSchema(halfHalfToppings).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-// Half & Half System Settings schema
-export const halfHalfSettings = pgTable("half_half_settings", {
-  id: serial("id").primaryKey(),
-  isEnabled: boolean("is_enabled").default(true).notNull(),
-  choiceGroupId: integer("choice_group_id").references(() => choiceGroups.id),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-export const insertHalfHalfSettingsSchema = createInsertSchema(halfHalfSettings).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
 
 // Time tracking type definitions
 export type TimeClockEntry = typeof timeClockEntries.$inferSelect;
@@ -743,12 +709,6 @@ export type InsertTipDistribution = z.infer<typeof insertTipDistributionSchema>;
 export type TipSettings = typeof tipSettings.$inferSelect;
 export type InsertTipSettings = z.infer<typeof insertTipSettingsSchema>;
 
-// Half & Half type definitions
-export type HalfHalfTopping = typeof halfHalfToppings.$inferSelect;
-export type InsertHalfHalfTopping = z.infer<typeof insertHalfHalfToppingSchema>;
-
-export type HalfHalfSettings = typeof halfHalfSettings.$inferSelect;
-export type InsertHalfHalfSettings = z.infer<typeof insertHalfHalfSettingsSchema>;
 
 // Printer Configuration schema
 export const printerConfig = pgTable("printer_config", {
@@ -777,3 +737,12 @@ export const insertPrinterConfigSchema = createInsertSchema(printerConfig).omit(
 // Printer type definition
 export type PrinterConfig = typeof printerConfig.$inferSelect;
 export type InsertPrinterConfig = z.infer<typeof insertPrinterConfigSchema>;
+
+// Sessions schema for persistent session storage
+export const sessions = pgTable("sessions", {
+  sid: text("sid").primaryKey(),
+  sess: jsonb("sess").notNull(),
+  expire: timestamp("expire").notNull(),
+});
+
+export type Session = typeof sessions.$inferSelect;
