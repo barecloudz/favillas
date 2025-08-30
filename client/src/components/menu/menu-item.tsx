@@ -42,6 +42,15 @@ interface MenuItemProps {
 const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
+  
+  const formatPrice = (price: string | number) => {
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+    if (isNaN(numPrice) || numPrice === null || numPrice === undefined) {
+      return "0.00";
+    }
+    return numPrice.toFixed(2);
+  };
+  
   const [selectedSize, setSelectedSize] = useState(
     item.options?.sizes ? item.options.sizes[0].name : ""
   );
@@ -215,7 +224,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
                           <RadioGroupItem value={size.name} id={`size-${size.name}`} />
                           <Label htmlFor={`size-${size.name}`} className="flex justify-between w-full">
                             <span>{size.name}</span>
-                            <span>${parseFloat(size.price).toFixed(2)}</span>
+                            <span>${formatPrice(size.price)}</span>
                           </Label>
                         </div>
                       ))}
@@ -244,7 +253,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
                           />
                           <Label htmlFor={`topping-${topping.name}`} className="flex justify-between w-full">
                             <span>{topping.name}</span>
-                            <span>${parseFloat(topping.price).toFixed(2)}</span>
+                            <span>${formatPrice(topping.price)}</span>
                           </Label>
                         </div>
                       ))}
@@ -273,7 +282,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
                           />
                           <Label htmlFor={`extra-${extra.name}`} className="flex justify-between w-full">
                             <span>{extra.name}</span>
-                            <span>${parseFloat(extra.price).toFixed(2)}</span>
+                            <span>${formatPrice(extra.price)}</span>
                           </Label>
                         </div>
                       ))}
@@ -302,7 +311,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
                           />
                           <Label htmlFor={`addon-${addOn.name}`} className="flex justify-between w-full">
                             <span>{addOn.name}</span>
-                            <span>${parseFloat(addOn.price).toFixed(2)}</span>
+                            <span>${formatPrice(addOn.price)}</span>
                           </Label>
                         </div>
                       ))}
@@ -331,7 +340,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
                           />
                           <Label htmlFor={`custom-${custom.name}`} className="flex justify-between w-full">
                             <span>{custom.name}</span>
-                            <span>${parseFloat(custom.price).toFixed(2)}</span>
+                            <span>${formatPrice(custom.price)}</span>
                           </Label>
                         </div>
                       ))}

@@ -26,6 +26,14 @@ const CartSidebar: React.FC = () => {
   } = useCart();
   const { user } = useAuth();
   const [, navigate] = useLocation();
+  
+  const formatPrice = (price: number) => {
+    if (isNaN(price) || price === null || price === undefined) {
+      return "0.00";
+    }
+    return price.toFixed(2);
+  };
+  
   const [editingItem, setEditingItem] = useState<CartItem | null>(null);
   const [editedOptions, setEditedOptions] = useState<Array<{
     groupName: string;
@@ -191,7 +199,7 @@ const CartSidebar: React.FC = () => {
                                   <ul className="space-y-1">
                                     {item.selectedOptions.leftToppings.map((topping, idx) => (
                                       <li key={idx} className="text-red-600">
-                                        • {topping.name} {topping.price > 0 && `(+$${topping.price.toFixed(2)})`}
+                                        • {topping.name} {topping.price > 0 && `(+$${formatPrice(topping.price)})`}
                                       </li>
                                     ))}
                                   </ul>
@@ -206,7 +214,7 @@ const CartSidebar: React.FC = () => {
                                   <ul className="space-y-1">
                                     {item.selectedOptions.rightToppings.map((topping, idx) => (
                                       <li key={idx} className="text-blue-600">
-                                        • {topping.name} {topping.price > 0 && `(+$${topping.price.toFixed(2)})`}
+                                        • {topping.name} {topping.price > 0 && `(+$${formatPrice(topping.price)})`}
                                       </li>
                                     ))}
                                   </ul>
@@ -225,7 +233,7 @@ const CartSidebar: React.FC = () => {
                               {item.options.map((option, index) => (
                                 <p key={index} className="text-sm text-gray-600">
                                   {option.groupName}: {option.itemName}
-                                  {option.price > 0 && <span className="text-green-600"> (+${option.price.toFixed(2)})</span>}
+                                  {option.price > 0 && <span className="text-green-600"> (+${formatPrice(option.price)})</span>}
                                 </p>
                               ))}
                             </div>
@@ -275,7 +283,7 @@ const CartSidebar: React.FC = () => {
                       </div>
                     </div>
                     <div className="ml-2 text-right">
-                      <p className="font-bold">${(item.price * item.quantity).toFixed(2)}</p>
+                      <p className="font-bold">${formatPrice(item.price * item.quantity)}</p>
                       <Button 
                         variant="ghost" 
                         size="icon" 
@@ -296,16 +304,16 @@ const CartSidebar: React.FC = () => {
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span className="font-bold">${total.toFixed(2)}</span>
+                  <span className="font-bold">${formatPrice(total)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tax</span>
-                  <span className="font-bold">${tax.toFixed(2)}</span>
+                  <span className="font-bold">${formatPrice(tax)}</span>
                 </div>
                 <Separator className="my-2" />
                 <div className="flex justify-between text-lg">
                   <span className="font-bold">Total</span>
-                  <span className="font-bold">${(total + tax).toFixed(2)}</span>
+                  <span className="font-bold">${formatPrice(total + tax)}</span>
                 </div>
               </div>
               
@@ -353,7 +361,7 @@ const CartSidebar: React.FC = () => {
                       <div>
                         <span className="text-sm font-medium">{option.groupName}: {option.itemName}</span>
                         {option.price > 0 && (
-                          <span className="text-sm text-green-600 ml-2">+${option.price.toFixed(2)}</span>
+                          <span className="text-sm text-green-600 ml-2">+${formatPrice(option.price)}</span>
                         )}
                       </div>
                       <Button

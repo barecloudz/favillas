@@ -97,6 +97,14 @@ const CheckoutPage = () => {
   const { items, total, tax, clearCart, showLoginModal } = useCart();
   const [location, navigate] = useLocation();
   const { toast } = useToast();
+  
+  const formatPrice = (price: number) => {
+    if (isNaN(price) || price === null || price === undefined) {
+      return "0.00";
+    }
+    return price.toFixed(2);
+  };
+  
   const [orderType, setOrderType] = useState("pickup");
   const [fulfillmentTime, setFulfillmentTime] = useState("asap");
   const [scheduledTime, setScheduledTime] = useState("");
@@ -476,7 +484,7 @@ const CheckoutPage = () => {
                             <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
                           </div>
                         </div>
-                        <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                        <p className="font-medium">${formatPrice(item.price * item.quantity)}</p>
                       </div>
                     ))}
                   </div>
@@ -535,28 +543,28 @@ const CheckoutPage = () => {
                   <div className="mt-6 space-y-2">
                     <div className="flex justify-between">
                       <span>Subtotal</span>
-                      <span>${totals.subtotal.toFixed(2)}</span>
+                      <span>${formatPrice(totals.subtotal)}</span>
                     </div>
                     {totals.discount > 0 && (
                       <div className="flex justify-between text-green-600">
                         <span>Discount</span>
-                        <span>-${totals.discount.toFixed(2)}</span>
+                        <span>-${formatPrice(totals.discount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between">
                       <span>Tax</span>
-                      <span>${totals.tax.toFixed(2)}</span>
+                      <span>${formatPrice(totals.tax)}</span>
                     </div>
                     {totals.tip > 0 && (
                       <div className="flex justify-between">
                         <span>Tip</span>
-                        <span>${totals.tip.toFixed(2)}</span>
+                        <span>${formatPrice(totals.tip)}</span>
                       </div>
                     )}
                     <Separator className="my-2" />
                     <div className="flex justify-between font-bold text-lg">
                       <span>Total</span>
-                      <span>${totals.finalTotal.toFixed(2)}</span>
+                      <span>${formatPrice(totals.finalTotal)}</span>
                     </div>
                   </div>
                 </CardContent>
