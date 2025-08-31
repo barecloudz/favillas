@@ -5,6 +5,8 @@ import { db } from "./db";
 import { eq, and, or, ne, isNull, sql, asc } from "drizzle-orm";
 import { log } from "./vite";
 import postgres from "postgres";
+import pkg from 'pg';
+const { Pool } = pkg;
 
 const PgSession = ConnectPgSimple(session);
 
@@ -74,8 +76,22 @@ export interface IStorage {
   updateUserPoints(userId: number, points: number, totalEarned?: number, totalRedeemed?: number): Promise<UserPoints | undefined>;
   createPointsTransaction(transaction: InsertPointsTransaction): Promise<PointsTransaction>;
   awardPointsForOrder(userId: number, orderId: number, orderAmount: number): Promise<void>;
+  getPointsTransactions(userId: number, limit?: number): Promise<PointsTransaction[]>;
+  
+  // Points Rewards operations
+  getAllPointsRewards(): Promise<PointsReward[]>;
+  getActivePointsRewards(): Promise<PointsReward[]>;
+  getPointsReward(id: number): Promise<PointsReward | undefined>;
+  createPointsReward(reward: InsertPointsReward): Promise<PointsReward>;
+  updatePointsReward(id: number, reward: Partial<InsertPointsReward>): Promise<PointsReward | undefined>;
+  deletePointsReward(id: number): Promise<boolean>;
   
   // Reward Redemption operations
+  redeemPointsReward(userId: number, rewardId: number, orderId?: number): Promise<UserPointsRedemption>;
+  getUserPointsRedemptions(userId: number): Promise<(UserPointsRedemption & { reward: PointsReward })[]>;
+  validatePointsRedemption(userId: number, rewardId: number): Promise<{ valid: boolean; error?: string }>;
+  
+  // Legacy Reward operations (for backwards compatibility)
   redeemReward(userId: number, rewardId: number): Promise<any>;
   getUserRedemptions(userId: number): Promise<any[]>;
   
@@ -282,18 +298,24 @@ export class MemStorage implements IStorage {
     this.taxCategoryIdCounter = 1;
     this.pauseServiceIdCounter = 1;
     
-    // Create a PostgreSQL connection for session store
-    const sessionSql = postgres(process.env.DATABASE_URL!, {
-      max: 10,
-      idle_timeout: 20,
-      connect_timeout: 10,
-    });
+    // Use memory store for development to avoid session table conflicts
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Using memory session store for development');
+      this.sessionStore = new session.MemoryStore();
+    } else {
+      // Create a PostgreSQL connection for session store (production only)
+      const sessionSql = postgres(process.env.DATABASE_URL!, {
+        max: 10,
+        idle_timeout: 20,
+        connect_timeout: 10,
+      });
 
-    this.sessionStore = new PgSession({
-      pool: sessionSql,
-      tableName: 'sessions',
-      createTableIfMissing: false, // Table already exists
-    });
+      this.sessionStore = new PgSession({
+        pool: sessionSql,
+        tableName: 'sessions',
+        createTableIfMissing: true, // Allow creating table if needed
+      });
+    }
 
     // Initialize with sample data - COMMENTED OUT TO PREVENT TEST DATA RESET
     // this.initializeSampleData();
@@ -1698,18 +1720,25 @@ export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
   
   constructor() {
-    // Create a PostgreSQL connection for session store
-    const sessionSql = postgres(process.env.DATABASE_URL!, {
-      max: 10,
-      idle_timeout: 20,
-      connect_timeout: 10,
-    });
+    // Use memory store for development to avoid session table conflicts
+    if (process.env.NODE_ENV === 'development') {
+      console.log('DatabaseStorage: Using memory session store for development');
+      this.sessionStore = new session.MemoryStore();
+    } else {
+      // Create a PostgreSQL connection pool for session store using pg (production only)
+      const pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        max: 10,
+        idleTimeoutMillis: 20000,
+        connectionTimeoutMillis: 10000,
+      });
 
-    this.sessionStore = new PgSession({
-      pool: sessionSql,
-      tableName: 'sessions',
-      createTableIfMissing: false, // Table already exists
-    });
+      this.sessionStore = new PgSession({
+        pool: pool,
+        tableName: 'sessions',
+        createTableIfMissing: false, // Table should already exist
+      });
+    }
   }
 
   // User operations
@@ -2209,7 +2238,165 @@ export class DatabaseStorage implements IStorage {
     log(`Awarded ${pointsEarned} points to user ${userId} for order ${orderId}`, 'server');
   }
 
-  // Reward Redemption operations
+  async getPointsTransactions(userId: number, limit: number = 20): Promise<PointsTransaction[]> {
+    const transactions = await db
+      .select()
+      .from(pointsTransactions)
+      .where(eq(pointsTransactions.userId, userId))
+      .orderBy(sql`${pointsTransactions.createdAt} DESC`)
+      .limit(limit);
+    return transactions;
+  }
+
+  // Points Rewards operations
+  async getAllPointsRewards(): Promise<PointsReward[]> {
+    return await db
+      .select()
+      .from(pointsRewards)
+      .orderBy(asc(pointsRewards.pointsRequired));
+  }
+
+  async getActivePointsRewards(): Promise<PointsReward[]> {
+    return await db
+      .select()
+      .from(pointsRewards)
+      .where(eq(pointsRewards.isActive, true))
+      .orderBy(asc(pointsRewards.pointsRequired));
+  }
+
+  async getPointsReward(id: number): Promise<PointsReward | undefined> {
+    const [reward] = await db
+      .select()
+      .from(pointsRewards)
+      .where(eq(pointsRewards.id, id));
+    return reward;
+  }
+
+  async createPointsReward(reward: InsertPointsReward): Promise<PointsReward> {
+    const [newReward] = await db
+      .insert(pointsRewards)
+      .values(reward)
+      .returning();
+    return newReward;
+  }
+
+  async updatePointsReward(id: number, reward: Partial<InsertPointsReward>): Promise<PointsReward | undefined> {
+    const [updatedReward] = await db
+      .update(pointsRewards)
+      .set({
+        ...reward,
+        updatedAt: new Date(),
+      })
+      .where(eq(pointsRewards.id, id))
+      .returning();
+    return updatedReward;
+  }
+
+  async deletePointsReward(id: number): Promise<boolean> {
+    const result = await db
+      .delete(pointsRewards)
+      .where(eq(pointsRewards.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  async redeemPointsReward(userId: number, rewardId: number, orderId?: number): Promise<UserPointsRedemption> {
+    // This should be called within a transaction context
+    // Get the reward first
+    const reward = await this.getPointsReward(rewardId);
+    if (!reward) {
+      throw new Error('Reward not found');
+    }
+
+    // Create redemption record
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // Expire in 30 days
+
+    const [redemption] = await db
+      .insert(userPointsRedemptions)
+      .values({
+        userId,
+        pointsRewardId: rewardId,
+        orderId: orderId || null,
+        pointsSpent: reward.pointsRequired,
+        expiresAt,
+      })
+      .returning();
+
+    return redemption;
+  }
+
+  async getUserPointsRedemptions(userId: number): Promise<(UserPointsRedemption & { reward: PointsReward })[]> {
+    const redemptions = await db
+      .select({
+        id: userPointsRedemptions.id,
+        userId: userPointsRedemptions.userId,
+        pointsRewardId: userPointsRedemptions.pointsRewardId,
+        orderId: userPointsRedemptions.orderId,
+        pointsSpent: userPointsRedemptions.pointsSpent,
+        isUsed: userPointsRedemptions.isUsed,
+        usedAt: userPointsRedemptions.usedAt,
+        expiresAt: userPointsRedemptions.expiresAt,
+        createdAt: userPointsRedemptions.createdAt,
+        reward: {
+          id: pointsRewards.id,
+          name: pointsRewards.name,
+          description: pointsRewards.description,
+          pointsRequired: pointsRewards.pointsRequired,
+          rewardType: pointsRewards.rewardType,
+          rewardValue: pointsRewards.rewardValue,
+          rewardDescription: pointsRewards.rewardDescription,
+          isActive: pointsRewards.isActive,
+          maxRedemptions: pointsRewards.maxRedemptions,
+          currentRedemptions: pointsRewards.currentRedemptions,
+          createdAt: pointsRewards.createdAt,
+          updatedAt: pointsRewards.updatedAt,
+        }
+      })
+      .from(userPointsRedemptions)
+      .innerJoin(pointsRewards, eq(userPointsRedemptions.pointsRewardId, pointsRewards.id))
+      .where(eq(userPointsRedemptions.userId, userId))
+      .orderBy(sql`${userPointsRedemptions.createdAt} DESC`);
+
+    return redemptions.map(r => ({
+      ...r,
+      reward: r.reward as PointsReward
+    }));
+  }
+
+  async validatePointsRedemption(userId: number, rewardId: number): Promise<{ valid: boolean; error?: string }> {
+    // Check if reward exists and is active
+    const reward = await this.getPointsReward(rewardId);
+    if (!reward) {
+      return { valid: false, error: 'Reward not found' };
+    }
+
+    if (!reward.isActive) {
+      return { valid: false, error: 'Reward is not active' };
+    }
+
+    // Check redemption limits
+    if (reward.maxRedemptions && reward.currentRedemptions >= reward.maxRedemptions) {
+      return { valid: false, error: 'Reward redemption limit reached' };
+    }
+
+    // Check user's points
+    const userPointsData = await this.getUserPoints(userId);
+    if (!userPointsData) {
+      return { valid: false, error: 'User points record not found' };
+    }
+
+    if (userPointsData.points < reward.pointsRequired) {
+      return { 
+        valid: false, 
+        error: `Insufficient points. Need ${reward.pointsRequired}, have ${userPointsData.points}` 
+      };
+    }
+
+    return { valid: true };
+  }
+
+  // Legacy Reward Redemption operations (for backwards compatibility)
   async redeemReward(userId: number, rewardId: number): Promise<any> {
     // Get the reward
     const reward = await this.getReward(rewardId);
