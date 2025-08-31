@@ -44,7 +44,7 @@ function getDB() {
     idle_timeout: 20,
     connect_timeout: 10,
     prepare: false,
-    keepalive: false,
+    keep_alive: false,
   });
   
   dbConnection = drizzle(sql);
@@ -63,21 +63,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Get token from cookies
-    const cookies = req.headers.cookie;
-    if (!cookies) {
+    // Try to get token from Authorization header first, then cookies
+    let token = null;
+    
+    // Check Authorization header
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else {
+      // Check cookies as fallback
+      const cookies = req.headers.cookie;
+      if (cookies) {
+        const tokenMatch = cookies.match(/auth-token=([^;]+)/);
+        if (tokenMatch) {
+          token = tokenMatch[1];
+        }
+      }
+    }
+    
+    if (!token) {
       return res.status(401).json({ message: 'No authentication token' });
     }
-
-    const tokenMatch = cookies.match(/auth-token=([^;]+)/);
-    if (!tokenMatch) {
-      return res.status(401).json({ message: 'No authentication token' });
-    }
-
-    const token = tokenMatch[1];
-    const secret = process.env.SESSION_SECRET;
+    const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
     if (!secret) {
-      throw new Error('SESSION_SECRET not configured');
+      throw new Error('JWT_SECRET or SESSION_SECRET not configured');
     }
 
     // Verify JWT token
