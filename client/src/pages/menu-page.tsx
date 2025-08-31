@@ -31,6 +31,14 @@ const MenuPage = () => {
   const [animatingItem, setAnimatingItem] = useState<number | null>(null);
   const { addItem, items } = useCart();
 
+  const formatPrice = (price: string | number) => {
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+    if (isNaN(numPrice) || numPrice === null || numPrice === undefined) {
+      return "0.00";
+    }
+    return numPrice.toFixed(2);
+  };
+
   const { data: menuItems, isLoading, error } = useQuery({
     queryKey: ["/api/menu"],
   });
@@ -470,7 +478,7 @@ const MenuPage = () => {
                             <div className="flex justify-between items-start mb-2">
                               <h3 className="font-semibold text-lg">{item.name}</h3>
                               <Badge variant="default">
-                                ${(typeof item.basePrice === 'number' ? item.basePrice : parseFloat(item.basePrice || '0') || 0).toFixed(2)}
+                                ${formatPrice(item.basePrice)}
                               </Badge>
                             </div>
                             {item.description && (
@@ -589,7 +597,7 @@ const MenuPage = () => {
                             </Label>
                           </div>
                           {parseFloat(item.price) > 0 && (
-                            <Badge variant="secondary">+${parseFloat(item.price).toFixed(2)}</Badge>
+                            <Badge variant="secondary">+${formatPrice(item.price)}</Badge>
                           )}
                         </div>
                       ))}
@@ -632,7 +640,7 @@ const MenuPage = () => {
                             </Label>
                           </div>
                           {parseFloat(item.price) > 0 && (
-                            <Badge variant="secondary">+${parseFloat(item.price).toFixed(2)}</Badge>
+                            <Badge variant="secondary">+${formatPrice(item.price)}</Badge>
                           )}
                         </div>
                       ))}
@@ -708,7 +716,7 @@ const MenuPage = () => {
                   Add {quantity > 1 ? `${quantity} ` : ''}to Cart
                   {quantity > 1 && (
                     <Badge variant="secondary" className="ml-2 bg-white text-[#d73a31]">
-                      ${((parseFloat(selectedItem.basePrice) || 0) * quantity).toFixed(2)}
+                      ${formatPrice((parseFloat(selectedItem.basePrice) || 0) * quantity)}
                     </Badge>
                   )}
                 </Button>

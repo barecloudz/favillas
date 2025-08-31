@@ -192,7 +192,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
         <p className="text-neutral mb-4 line-clamp-3">{item.description}</p>
         <div className="flex justify-between items-center">
           <div className="text-lg font-bold">
-            <span>From ${parseFloat(item.basePrice).toFixed(2)}</span>
+            <span>From ${formatPrice(item.basePrice)}</span>
           </div>
           
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

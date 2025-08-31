@@ -17,6 +17,14 @@ const KitchenPage = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("pending");
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const formatPrice = (price: string | number) => {
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+    if (isNaN(numPrice) || numPrice === null || numPrice === undefined) {
+      return "0.00";
+    }
+    return numPrice.toFixed(2);
+  };
   
   // Query for active orders
   const { data: orders, isLoading, error } = useQuery({
@@ -133,16 +141,16 @@ const KitchenPage = () => {
             <div class="divider"></div>
             ${order.items.map((item: any) => `
               <div class="item">
-                <p>${item.quantity}x ${item.menuItem?.name || 'Item'} - $${Number(item.price).toFixed(2)}</p>
+                <p>${item.quantity}x ${item.menuItem?.name || 'Item'} - $${formatPrice(item.price)}</p>
                 ${item.options?.size ? `<p>Size: ${item.options.size}</p>` : ''}
                 ${item.specialInstructions ? `<p>Note: ${item.specialInstructions}</p>` : ''}
               </div>
             `).join('')}
             <div class="divider"></div>
             <div class="total">
-              <p>Subtotal: $${Number(order.total).toFixed(2)}</p>
-              <p>Tax: $${Number(order.tax).toFixed(2)}</p>
-              <p>Total: $${(Number(order.total) + Number(order.tax)).toFixed(2)}</p>
+              <p>Subtotal: $${formatPrice(order.total)}</p>
+              <p>Tax: $${formatPrice(order.tax)}</p>
+              <p>Total: $${formatPrice(Number(order.total) + Number(order.tax))}</p>
             </div>
             <div class="divider"></div>
             <p style="text-align: center;">Thank you for your order!</p>
@@ -271,7 +279,7 @@ const KitchenPage = () => {
                             <div key={item.id} className="border-b pb-2">
                               <div className="flex justify-between font-medium">
                                 <span>{item.quantity}x {item.menuItem?.name || 'Menu Item'}</span>
-                                <span>${Number(item.price).toFixed(2)}</span>
+                                <span>${formatPrice(item.price)}</span>
                               </div>
                               {item.options?.size && (
                                 <p className="text-sm text-gray-600">Size: {item.options.size}</p>
@@ -301,7 +309,7 @@ const KitchenPage = () => {
                         
                         <div className="flex justify-between font-medium">
                           <span>Total:</span>
-                          <span>${(Number(order.total) + Number(order.tax)).toFixed(2)}</span>
+                          <span>${formatPrice(Number(order.total) + Number(order.tax))}</span>
                         </div>
                         
                         <div className="flex space-x-2 mt-4">

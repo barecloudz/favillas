@@ -6,7 +6,7 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig(async ({ mode }) => {
+export default defineConfig(({ mode }) => {
   const isDev = mode === 'development';
   const isProd = mode === 'production';
   
@@ -16,24 +16,16 @@ export default defineConfig(async ({ mode }) => {
       // Only use development plugins in development  
       ...(isDev ? [runtimeErrorOverlay()] : []),
       // Only load cartographer for Replit environment in development
-      ...(isDev && process.env.REPL_ID !== undefined
-        ? [
-            (await import("@replit/vite-plugin-cartographer")).cartographer(),
-          ]
-        : []),
+      // Note: Removed async import to fix vite config type issues
     ],
     server: {
-      port: 5001,
+      port: 3000,
       host: true,
       proxy: {
         '/api': {
-          target: 'http://localhost:5000',
+          target: 'http://localhost:3008',
           changeOrigin: true,
           secure: false,
-        },
-        '/ws': {
-          target: 'ws://localhost:5000',
-          ws: true,
         },
       },
     },
