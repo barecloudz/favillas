@@ -337,27 +337,9 @@ const CheckoutPage = () => {
       return;
     }
     
-    if (!phone) {
-      toast({
-        title: "Phone number required",
-        description: "Please provide a phone number for your order.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     if (orderType === "delivery" && !address) {
       toast({
         title: "Address required",
-        description: "Please provide a delivery address.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (orderType === "delivery" && !address) {
-      toast({
-        title: "Address Required",
         description: "Please provide a complete delivery address.",
         variant: "destructive",
       });

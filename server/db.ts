@@ -8,13 +8,13 @@ if (!databaseUrl) {
   throw new Error('DATABASE_URL environment variable is required');
 }
 
-// Serverless-friendly PostgreSQL configuration
+// PostgreSQL configuration optimized for development
 const sql = postgres(databaseUrl, {
-  max: 1,           // Use single connection for serverless
-  idle_timeout: 20, // Shorter timeout for serverless
-  connect_timeout: 10, // Quick connection timeout
+  max: process.env.NODE_ENV === 'production' ? 1 : 10,
+  idle_timeout: process.env.NODE_ENV === 'production' ? 20 : 300,
+  connect_timeout: process.env.NODE_ENV === 'production' ? 10 : 60,
   prepare: false,   // Disable prepared statements for better serverless compatibility
-  keepalive: false, // Disable keepalive for serverless
+  keep_alive: process.env.NODE_ENV === 'production' ? false : true,
   types: {
     bigint: postgres.BigInt,
   },

@@ -327,12 +327,8 @@ const CartSidebar: React.FC = () => {
                 <Button 
                   className="w-full bg-[#d73a31] hover:bg-[#c73128] text-white"
                   onClick={() => {
-                    if (!user) {
-                      showLoginModal();
-                    } else {
-                      toggleCart();
-                      navigate("/checkout");
-                    }
+                    toggleCart();
+                    navigate("/checkout");
                   }}
                 >
                   Checkout

@@ -1187,10 +1187,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Create Stripe Payment Intent
   app.post("/api/create-payment-intent", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
     try {
       const { amount, orderId } = req.body;
       
@@ -1200,7 +1196,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currency: "usd",
         metadata: {
           orderId: orderId.toString(),
-          userId: req.user.id.toString()
+          userId: req.user?.id?.toString() || "guest"
         }
       });
       
@@ -1356,7 +1352,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const orderData: OrderData = {
           orderNumber: completedOrder.id.toString(),
           items: completedOrder.items.map((item: any) => ({
-            name: item.name || 'Unknown Item',
+            name: menuItemNames.get(item.menuItemId) || item.name || `Menu Item #${item.menuItemId}`,
             quantity: item.quantity,
             price: parseFloat(item.price),
             modifications: item.modifications || [],
