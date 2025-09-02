@@ -162,7 +162,7 @@ const MenuPage = () => {
   });
 
   // Group items by category for display
-  const itemsByCategory = filteredItems.reduce((acc: any, item: any) => {
+  const itemsByCategory = (filteredItems || []).reduce((acc: any, item: any) => {
     const category = item.category || "Other";
     if (!acc[category]) {
       acc[category] = [];

@@ -1965,7 +1965,7 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
       
       return {
         orders: dayOrders.length,
-        revenue: dayOrders.reduce((sum: number, order: any) => sum + parseFloat(order.total || 0), 0),
+        revenue: (dayOrders || []).reduce((sum: number, order: any) => sum + parseFloat(order.total || 0), 0),
         customers: new Set(dayOrders.map((order: any) => order.userId)).size
       };
     });
@@ -2400,7 +2400,7 @@ const MenuEditor = ({ menuItems }: any) => {
   });
 
   // Group menu items by category
-  const menuItemsByCategory = (menuItems as any[])?.reduce((acc: any, item: any) => {
+  const menuItemsByCategory = (menuItems as any[] || []).reduce((acc: any, item: any) => {
     const category = item.category || "Uncategorized";
     if (!acc[category]) {
       acc[category] = [];
@@ -2935,7 +2935,7 @@ const MenuEditor = ({ menuItems }: any) => {
                 <p className="text-sm font-medium text-gray-600">Average Price</p>
                 <p className="text-2xl font-bold text-purple-600">
                   {menuItems?.length > 0 
-                    ? formatCurrency(menuItems.reduce((sum: number, item: any) => sum + (item.basePrice || 0), 0) / menuItems.length)
+                    ? formatCurrency((menuItems || []).reduce((sum: number, item: any) => sum + (item.basePrice || 0), 0) / menuItems.length)
                     : "$0.00"
                   }
                 </p>
@@ -4270,7 +4270,7 @@ const PromotionsManagement = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Usage</p>
                     <p className="text-2xl font-bold text-purple-600">
-                      {promoCodes.reduce((sum: number, p: any) => sum + (p.currentUses || 0), 0)}
+                      {(promoCodes || []).reduce((sum: number, p: any) => sum + (p.currentUses || 0), 0)}
                     </p>
                   </div>
                   <Users className="h-8 w-8 text-purple-600" />
@@ -8125,7 +8125,7 @@ const PromoCodesManagement = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Total Uses</p>
               <p className="text-2xl font-bold text-blue-600">
-                {promoCodes.reduce((sum, promo) => sum + promo.currentUses, 0)}
+                {(promoCodes || []).reduce((sum, promo) => sum + promo.currentUses, 0)}
               </p>
             </div>
             <Users className="h-8 w-8 text-blue-600" />
@@ -8761,19 +8761,19 @@ const ReportsSection = ({ analytics, orders }: any) => {
   }
 
   // Calculate order status breakdown
-  const statusBreakdown = orders.reduce((acc: any, order: any) => {
+  const statusBreakdown = (orders || []).reduce((acc: any, order: any) => {
     acc[order.status] = (acc[order.status] || 0) + 1;
     return acc;
   }, {});
 
   // Calculate order type breakdown
-  const typeBreakdown = orders.reduce((acc: any, order: any) => {
+  const typeBreakdown = (orders || []).reduce((acc: any, order: any) => {
     acc[order.orderType] = (acc[order.orderType] || 0) + 1;
     return acc;
   }, {});
 
   // Calculate revenue by day
-  const revenueByDay = orders.reduce((acc: any, order: any) => {
+  const revenueByDay = (orders || []).reduce((acc: any, order: any) => {
     const date = new Date(order.createdAt).toDateString();
     acc[date] = (acc[date] || 0) + parseFloat(order.total || 0);
     return acc;
@@ -9853,7 +9853,7 @@ const ReviewsTab = () => {
   };
 
   const averageRating = reviews.length > 0 
-    ? (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)
+    ? ((reviews || []).reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)
     : "0.0";
 
   const ratingDistribution = [5, 4, 3, 2, 1].map(rating => ({
@@ -10088,7 +10088,7 @@ const APIManagementTab = () => {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold">
-              {apiKeys.reduce((sum, key) => sum + key.requestsToday, 0).toLocaleString()}
+              {(apiKeys || []).reduce((sum, key) => sum + key.requestsToday, 0).toLocaleString()}
             </div>
             <div className="text-sm text-gray-500">Requests Today</div>
           </CardContent>

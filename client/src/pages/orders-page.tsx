@@ -262,7 +262,7 @@ Thank you for choosing Favilla's NY Pizza!
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Spent</p>
                     <p className="text-2xl font-bold text-green-600">
-                      {formatCurrency(orders.reduce((sum: number, order: any) => 
+                      {formatCurrency((orders || []).reduce((sum: number, order: any) => 
                         sum + (order.total || 0) + (order.tax || 0) + (order.deliveryFee || 0) + (order.tip || 0), 0
                       ))}
                     </p>
