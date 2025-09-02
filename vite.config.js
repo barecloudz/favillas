@@ -1,74 +1,31 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import path from "path";
-import { fileURLToPath } from "url";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { fileURLToPath, URL } from 'node:url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-export default defineConfig(({ mode }) => {
-  const isDev = mode === 'development';
-  const isProd = mode === 'production';
-  
-  return {
-    plugins: [
-      react(),
-      // Only use development plugins in development  
-      ...(isDev ? [runtimeErrorOverlay()] : []),
-    ],
-    server: {
-      port: 3000,
-      host: true,
-      proxy: {
-        '/api': {
-          target: 'http://localhost:5000',
-          changeOrigin: true,
-          secure: false,
-        },
-      },
+export default defineConfig({
+  plugins: [react()],
+  root: "./client",
+  build: {
+    outDir: "../dist/public",
+    emptyOutDir: true,
+    minify: 'esbuild',
+    target: 'es2020',
+    cssMinify: 'esbuild',
+    reportCompressedSize: false,
+    chunkSizeWarningLimit: 2000,
+    sourcemap: false
+  },
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./client/src', import.meta.url)),
+      '@shared': fileURLToPath(new URL('./shared', import.meta.url)),
+      '@assets': fileURLToPath(new URL('./attached_assets', import.meta.url)),
     },
-    resolve: {
-      alias: {
-        "@": path.resolve(__dirname, "client", "src"),
-        "@shared": path.resolve(__dirname, "shared"), 
-        "@assets": path.resolve(__dirname, "attached_assets"),
-      },
-    },
-    root: path.resolve(__dirname, "client"),
-    build: {
-      outDir: path.resolve(__dirname, "dist/public"),
-      emptyOutDir: true,
-      minify: isProd ? 'esbuild' : false,
-      target: 'es2020',
-      cssMinify: 'esbuild',
-      reportCompressedSize: false,
-      chunkSizeWarningLimit: 2000,
-      sourcemap: false,
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom'],
-            ui: ['@tanstack/react-query', 'lucide-react'],
-            utils: ['clsx', 'tailwind-merge']
-          }
-        }
-      }
-    },
-    cacheDir: '.vite-cache',
-    optimizeDeps: {
-      include: ['react', 'react-dom', '@tanstack/react-query', 'clsx', 'tailwind-merge'],
-      exclude: [],
-      force: false
-    },
-    define: {
-      __DEV__: isDev,
-      'process.env.NODE_ENV': JSON.stringify(mode)
-    },
-    esbuild: {
-      legalComments: 'none',
-      minifyIdentifiers: isProd,
-      minifySyntax: isProd,
-      minifyWhitespace: isProd,
-    }
-  };
+  },
+  cacheDir: '.vite-cache',
+  optimizeDeps: {
+    include: ['react', 'react-dom'],
+    exclude: [],
+    force: false
+  }
 });
