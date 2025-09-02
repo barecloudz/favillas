@@ -111,6 +111,12 @@ import FrontendCustomization from "@/components/admin/frontend-customization";
 const AdminDashboard = () => {
   const { user, logoutMutation, isLoading } = useAuth();
   const { toast } = useToast();
+  
+  // Ensure no undefined id variables
+  if (typeof window !== 'undefined') {
+    // @ts-ignore - Emergency fix for production undefined id error
+    window.id = null;
+  }
   const [activeTab, setActiveTab] = useState("dashboard");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     // Start collapsed on mobile, expanded on desktop
