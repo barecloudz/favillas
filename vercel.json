@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "npm run vercel-build",
+  "buildCommand": "npx vite build --mode production --minify esbuild",
   "installCommand": "npm ci --prefer-offline --no-audit --no-fund",
   "devCommand": "echo 'API-only mode - client runs separately'",
   "outputDirectory": "dist/public",
