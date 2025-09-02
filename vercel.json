@@ -1,13 +1,25 @@
 {
   "version": 2,
   "buildCommand": "npm run vercel-build",
-  "installCommand": "npm ci --prefer-offline --no-audit --no-fund",
-  "devCommand": "npm run dev:client -- --port $PORT --host 0.0.0.0",
+  "installCommand": "npm ci --prefer-offline --no-audit --no-fund --silent",
+  "devCommand": "echo 'API-only mode - client runs separately'",
   "outputDirectory": "dist/public",
   "rewrites": [
     {
       "source": "/api/(.*)",
       "destination": "/api/$1"
+    },
+    {
+      "source": "/@vite/(.*)",
+      "destination": "/@vite/$1"
+    },
+    {
+      "source": "/@react-refresh",
+      "destination": "/@react-refresh"
+    },
+    {
+      "source": "/src/(.*)",
+      "destination": "/src/$1"
     },
     {
       "source": "/(.*)",
@@ -22,6 +34,14 @@
   },
   "github": {
     "silent": true
+  },
+  "build": {
+    "env": {
+      "NODE_OPTIONS": "--max-old-space-size=4096 --experimental-worker",
+      "VITE_BUILD_CACHE": "true",
+      "CI": "1",
+      "NODE_ENV": "production"
+    }
   },
   "headers": [
     {

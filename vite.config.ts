@@ -40,27 +40,35 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: path.resolve(__dirname, "dist/public"),
       emptyOutDir: true,
-      // Optimize build performance
-      minify: 'esbuild', // Faster than terser
+      // Optimize build performance aggressively
+      minify: isProd ? 'esbuild' : false, // Skip minification in dev builds
       target: 'es2020', // Modern target for smaller bundles
       cssMinify: 'esbuild',
       reportCompressedSize: false, // Skip gzip size reporting to save time
-      chunkSizeWarningLimit: 1000,
+      chunkSizeWarningLimit: 2000, // Increase to reduce warnings
+      sourcemap: false, // Disable sourcemaps for faster builds
       rollupOptions: {
         output: {
-          // Optimize chunk splitting
+          // Simple manual chunks for better caching
           manualChunks: {
             vendor: ['react', 'react-dom'],
-            ui: ['@radix-ui/react-accordion', '@radix-ui/react-alert-dialog', '@radix-ui/react-avatar'],
-            utils: ['clsx', 'tailwind-merge', 'date-fns']
+            ui: ['@tanstack/react-query', 'lucide-react'],
+            utils: ['clsx', 'tailwind-merge']
           }
         }
       }
     },
-    // Enable build caching
+    // Enable build caching and optimization
+    cacheDir: '.vite-cache',
     optimizeDeps: {
-      include: ['react', 'react-dom', '@tanstack/react-query'],
-      exclude: []
+      include: ['react', 'react-dom', '@tanstack/react-query', 'clsx', 'tailwind-merge'],
+      exclude: [],
+      force: false // Don't force re-optimization unless needed
+    },
+    define: {
+      // Pre-define environment variables to avoid runtime checks
+      __DEV__: isDev,
+      'process.env.NODE_ENV': JSON.stringify(mode)
     },
     esbuild: {
       // Optimize esbuild for production

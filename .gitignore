@@ -7,6 +7,8 @@ vite.config.ts.*
 
 # Build cache and optimization
 .vite/
+.vite-cache/
+client/.vite-cache/
 .turbo/
 .cache/
 .parcel-cache/
@@ -15,6 +17,9 @@ vite.config.ts.*
 coverage/
 .nyc_output
 .npm
+nul
+*.tmp
+*.temp
 
 # Environment variables
 .env

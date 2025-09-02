@@ -1,71 +1,63 @@
-# Exclude files that don't need to be deployed
-node_modules
-.git
+# Development and cache files
+.vite-cache/
+node_modules/.cache/
+.eslintcache
+*.log
+coverage/
+.nyc_output/
+
+# Documentation and media
+*.md
+README*
+docs/
+screenshots/
+*.gif
+*.mov
+*.mp4
+
+# Development configs
+.env.example
 .env.local
 .env.development
-.env.test
+.prettierrc*
+.eslintrc*
+jest.config.*
+cypress/
+playwright/
 
-# Exclude development files
-*.md
-README.md
-SUPABASE_SETUP.md
-ADDRESS_AUTOCOMPLETE_SETUP.md
-IPAD_PRINTING_SETUP.md
-PRINTER_SETUP.md
+# Source maps and debug files
+*.map
+*.tsbuildinfo
 
-# Exclude development scripts
-debug-printer-config.js
-mock-printer-server.js
-preview-receipts.js
-check-time-tables.js
-add-google-auth.js
-admin-featured-manager.js
-admin-set-featured.js
+# Test files
+**/*.test.*
+**/*.spec.*
+__tests__/
+test/
+tests/
 
-# Exclude test files
-**/*.test.js
-**/*.test.ts
-**/*.spec.js
-**/*.spec.ts
+# Git and CI files
+.git/
+.github/
+.gitignore
+.gitattributes
 
-# Exclude development assets
-attached_assets/
-cookies.txt
-ngrok.zip
-
-# Exclude development database files
-*.db
-*.sqlite
-*.db-journal
-pizzaspinrewards.db
-
-# Exclude editor files
+# IDE and editor files
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 .DS_Store
-Thumbs.db
 
-# Exclude unnecessary seed files
-server/seed-*.ts
+# Temporary and backup files
+*.tmp
+*.temp
+*.bak
+*.old
+*.orig
 
-# Exclude Claude AI files (optional)
-.claude/
-
-# Exclude build artifacts that will be rebuilt
-dist/
-build/
-
-# Exclude package lock if using npm (Vercel will regenerate)
-# package-lock.json  # Uncomment if you want to regenerate lock file
-
-# Exclude unnecessary time tracking files
-employee-time-tracking-schema.sql
-server/time-tracking-*.ts
-
-# Exclude printer-related files for web deployment  
-server/printer.ts
-
-# Exclude development utilities
-_ul
+# Large dependency caches that can be rebuilt
+.npm/
+.yarn/
+.pnpm/

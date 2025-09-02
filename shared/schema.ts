@@ -610,7 +610,7 @@ export const employeeSchedules = pgTable("employee_schedules", {
   endTime: time("end_time").notNull(),
   position: text("position").notNull(),
   isMandatory: boolean("is_mandatory").default(true).notNull(),
-  createdBy: integer("created_by").references(() => users.id).notNull(),
+  createdBy: integer("created_by").references(() => users.id),
   notes: text("notes"),
   status: text("status").default("scheduled").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
