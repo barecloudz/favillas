@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "buildCommand": "npx vite build --mode production --minify esbuild",
+  "buildCommand": "npm run build",
   "installCommand": "npm ci --prefer-offline --no-audit --no-fund",
-  "devCommand": "echo 'API-only mode - client runs separately'",
+  "devCommand": "npm run dev:client",
   "outputDirectory": "dist/public",
   "rewrites": [
     {
@@ -38,7 +38,7 @@
   },
   "build": {
     "env": {
-      "NODE_OPTIONS": "--max-old-space-size=4096 --experimental-worker",
+      "NODE_OPTIONS": "--max-old-space-size=4096",
       "VITE_BUILD_CACHE": "true",
       "CI": "1",
       "NODE_ENV": "production"

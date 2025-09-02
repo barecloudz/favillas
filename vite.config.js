@@ -15,8 +15,6 @@ export default defineConfig(({ mode }) => {
       react(),
       // Only use development plugins in development  
       ...(isDev ? [runtimeErrorOverlay()] : []),
-      // Only load cartographer for Replit environment in development
-      // Note: Removed async import to fix vite config type issues
     ],
     server: {
       port: 3000,
@@ -40,16 +38,14 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: path.resolve(__dirname, "dist/public"),
       emptyOutDir: true,
-      // Optimize build performance aggressively
-      minify: isProd ? 'esbuild' : false, // Skip minification in dev builds
-      target: 'es2020', // Modern target for smaller bundles
+      minify: isProd ? 'esbuild' : false,
+      target: 'es2020',
       cssMinify: 'esbuild',
-      reportCompressedSize: false, // Skip gzip size reporting to save time
-      chunkSizeWarningLimit: 2000, // Increase to reduce warnings
-      sourcemap: false, // Disable sourcemaps for faster builds
+      reportCompressedSize: false,
+      chunkSizeWarningLimit: 2000,
+      sourcemap: false,
       rollupOptions: {
         output: {
-          // Simple manual chunks for better caching
           manualChunks: {
             vendor: ['react', 'react-dom'],
             ui: ['@tanstack/react-query', 'lucide-react'],
@@ -58,20 +54,17 @@ export default defineConfig(({ mode }) => {
         }
       }
     },
-    // Enable build caching and optimization
     cacheDir: '.vite-cache',
     optimizeDeps: {
       include: ['react', 'react-dom', '@tanstack/react-query', 'clsx', 'tailwind-merge'],
       exclude: [],
-      force: false // Don't force re-optimization unless needed
+      force: false
     },
     define: {
-      // Pre-define environment variables to avoid runtime checks
       __DEV__: isDev,
       'process.env.NODE_ENV': JSON.stringify(mode)
     },
     esbuild: {
-      // Optimize esbuild for production
       legalComments: 'none',
       minifyIdentifiers: isProd,
       minifySyntax: isProd,

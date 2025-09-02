@@ -44,7 +44,7 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Set CORS headers - must use specific origin when credentials are included
+  // Set CORS headers
   const origin = req.headers.origin || 'http://localhost:5001';
   res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -61,12 +61,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     console.log('Login attempt started');
-    console.log('Environment check - DATABASE_URL exists:', !!process.env.DATABASE_URL);
 
     const { username, password } = req.body;
 
     if (!username || !password) {
-      console.log('Missing username or password');
       return res.status(400).json({ 
         message: 'Username and password are required' 
       });
@@ -77,10 +75,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Get database connection
     const sql = getDB();
     
-    // Query user data - simplified query
+    // Query the actual database structure - handle the messy schema
     const users = await sql`
       SELECT 
-        id,
+        COALESCE(id::integer, (id::text)::integer) as id,
         username,
         password,
         email,
@@ -103,6 +101,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       LIMIT 1
     `;
 
+    console.log('Query executed, found users:', users.length);
+
     if (users.length === 0) {
       return res.status(401).json({ 
         message: 'Invalid credentials' 
@@ -110,7 +110,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const user = users[0];
-
     console.log('User found:', !!user, 'Has password:', !!user.password);
 
     // Check password
@@ -146,7 +145,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       createdAt: user.created_at
     };
     
-    console.log('Safe user object:', JSON.stringify(safeUser, null, 2));
+    console.log('Safe user object created for:', safeUser.username);
     
     // Create JWT token
     const secret = process.env.SESSION_SECRET;
@@ -162,19 +161,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         isAdmin: safeUser.isAdmin 
       },
       secret,
-      { expiresIn: '7d' } // Token expires in 7 days
+      { expiresIn: '7d' }
     );
     
     // Set token as HTTP-only cookie
     const isProduction = process.env.NODE_ENV === 'production';
     res.setHeader('Set-Cookie', `auth-token=${token}; HttpOnly; Secure=${isProduction}; SameSite=${isProduction ? 'Strict' : 'Lax'}; Path=/; Max-Age=${7 * 24 * 60 * 60}`);
     
-    // Frontend expects just the user object, not nested in a response
     return res.status(200).json(safeUser);
     
   } catch (error) {
     console.error('Login error:', error);
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return res.status(500).json({ 
       message: 'Internal server error',
       error: error instanceof Error ? error.message : 'Unknown error',

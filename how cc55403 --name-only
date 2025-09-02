@@ -1,0 +1,10 @@
+[33m2f21b01[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Fix 'vite command not found' error in Vercel build
+[33m5a68cd4[m Fix package-lock.json sync issues after npm audit fix
+[33md3aaea1[m Fix npm install error - removed --silent and optional=false flags
+[33m1c95f46[m Trigger deployment to test build optimizations
+[33mcc55403[m Optimize build time from 15 minutes to under 5 minutes
+[33m76f56de[m Fix admin dashboard React error - j.reduce is not a function
+[33mff6e31e[m Emergency fix for undefined id variable in admin dashboard
+[33m373900e[m Fix API Management section JavaScript error
+[33mb42cd45[m Fix schedule calendar display and add print functionality
+[33m06b55bb[m Fix critical production deployment issues

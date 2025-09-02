@@ -44,7 +44,7 @@ function getDB() {
     idle_timeout: 20,
     connect_timeout: 10,
     prepare: false,
-    keepalive: false,
+    keep_alive: false,
   });
   
   dbConnection = drizzle(sql);

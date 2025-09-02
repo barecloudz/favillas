@@ -129,7 +129,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         isMandatory: scheduleData.isMandatory || false,
         notes: scheduleData.notes || '',
         status: scheduleData.status || 'scheduled',
-        createdBy: 1, // Default admin user ID - should be from auth
+        createdBy: null, // Will be set when auth is implemented
         createdAt: new Date(),
         updatedAt: new Date(),
       }).returning();

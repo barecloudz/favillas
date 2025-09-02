@@ -1,12 +1,8 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { users } from '../shared/schema';
-import { scrypt, randomBytes } from 'crypto';
-import { promisify } from 'util';
+import { menuItems, categories } from '../../shared/schema';
 import jwt from 'jsonwebtoken';
-
-const scryptAsync = promisify(scrypt);
 
 let dbConnection: any = null;
 
@@ -26,7 +22,7 @@ function getDB() {
     keep_alive: false,
   });
   
-  dbConnection = drizzle(sql, { schema: { users } });
+  dbConnection = drizzle(sql, { schema: { menuItems, categories } });
   return dbConnection;
 }
 
@@ -51,12 +47,6 @@ function authenticateToken(req: VercelRequest): { userId: number; username: stri
   }
 }
 
-async function hashPassword(password: string) {
-  const salt = randomBytes(16).toString("hex");
-  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-  return `${buf.toString("hex")}.${salt}`;
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const origin = req.headers.origin || 'http://localhost:3000';
   res.setHeader('Access-Control-Allow-Origin', origin);
@@ -73,64 +63,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
+  // Only admin and manager can manage menu
+  if (authPayload.role !== 'admin' && authPayload.role !== 'manager') {
+    return res.status(403).json({ error: 'Forbidden - Admin or Manager access required' });
+  }
+
   try {
     const db = getDB();
 
     if (req.method === 'GET') {
-      // Only admins can get all users
-      if (authPayload.role !== 'admin') {
-        return res.status(403).json({ error: 'Forbidden - Admin access required' });
-      }
-
-      // Get all users (excluding passwords)
-      const allUsers = await db.select({
-        id: users.id,
-        username: users.username,
-        email: users.email,
-        firstName: users.firstName,
-        lastName: users.lastName,
-        phone: users.phone,
-        role: users.role,
-        isAdmin: users.isAdmin,
-        isActive: users.isActive,
-        rewards: users.rewards,
-        createdAt: users.createdAt,
-        updatedAt: users.updatedAt,
-      }).from(users);
+      // Get all menu items with categories
+      const allMenuItems = await db.select().from(menuItems);
+      const allCategories = await db.select().from(categories);
       
-      return res.status(200).json(allUsers);
+      return res.status(200).json({
+        menuItems: allMenuItems,
+        categories: allCategories
+      });
       
     } else if (req.method === 'POST') {
-      // Only admins can create users directly
-      if (authPayload.role !== 'admin') {
-        return res.status(403).json({ error: 'Forbidden - Admin access required' });
-      }
-
-      const userData = req.body;
+      // Create new menu item
+      const itemData = req.body;
       
-      // Hash password if provided
-      if (userData.password) {
-        userData.password = await hashPassword(userData.password);
-      }
-
-      const [newUser] = await db
-        .insert(users)
+      const [newItem] = await db
+        .insert(menuItems)
         .values({
-          ...userData,
+          ...itemData,
           createdAt: new Date(),
           updatedAt: new Date(),
         })
         .returning();
 
-      // Remove password from response
-      const { password: _, ...userWithoutPassword } = newUser;
-      return res.status(201).json(userWithoutPassword);
+      return res.status(201).json(newItem);
       
     } else {
       return res.status(405).json({ error: 'Method not allowed' });
     }
   } catch (error) {
-    console.error('Users API error:', error);
+    console.error('Admin menu API error:', error);
     return res.status(500).json({ 
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'

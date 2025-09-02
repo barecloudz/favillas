@@ -1,0 +1,129 @@
+{
+  "total": 10,
+  "successes": 3,
+  "errors": 7,
+  "warnings": 0,
+  "passRate": 30,
+  "details": [
+    {
+      "timestamp": "2025-08-31T04:37:10.459Z",
+      "message": "Starting User Management Test Suite...",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.463Z",
+      "message": "=== Testing User Registration ===",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.595Z",
+      "message": "✗ Customer registration failed: \"\"",
+      "type": "error"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.612Z",
+      "message": "✗ Admin registration failed: \"\"",
+      "type": "error"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.612Z",
+      "message": "=== Testing Authentication ===",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.625Z",
+      "message": "✗ Customer login failed: \"\"",
+      "type": "error"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.635Z",
+      "message": "✓ Invalid login correctly rejected",
+      "type": "success"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.636Z",
+      "message": "=== Testing User Profile ===",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.636Z",
+      "message": "✗ No customer token available for profile test",
+      "type": "error"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.637Z",
+      "message": "=== Testing Admin Functions ===",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.637Z",
+      "message": "✗ No admin token available for admin tests",
+      "type": "error"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.637Z",
+      "message": "=== Testing Data Integrity ===",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.650Z",
+      "message": "✗ Should reject duplicate email",
+      "type": "error"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.663Z",
+      "message": "✗ Should reject duplicate username",
+      "type": "error"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.663Z",
+      "message": "=== Testing Basic Security ===",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.675Z",
+      "message": "✓ SQL injection attempt handled safely",
+      "type": "success"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.688Z",
+      "message": "✓ XSS attempt handled safely",
+      "type": "success"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.689Z",
+      "message": "=== TEST REPORT ===",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.689Z",
+      "message": "Total Tests: 10",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.689Z",
+      "message": "Successes: 3",
+      "type": "success"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.689Z",
+      "message": "Errors: 7",
+      "type": "error"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.689Z",
+      "message": "Warnings: 0",
+      "type": "warning"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.689Z",
+      "message": "Pass Rate: 30.0%",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-31T04:37:10.689Z",
+      "message": "🔴 NOT PRODUCTION READY: Significant issues found",
+      "type": "error"
+    }
+  ]
+}

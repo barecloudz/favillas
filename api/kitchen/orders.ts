@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       idle_timeout: 20,
       connect_timeout: 10,
       prepare: false,
-      keepalive: false,
+      keep_alive: false,
     });
     
     const db = drizzle(sql);

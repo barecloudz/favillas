@@ -13,8 +13,6 @@
     "dev:server": "cross-env NODE_ENV=development tsx server/index.ts",
     "dev:vercel-only": "vercel dev --listen 3001",
     "build": "cross-env NODE_ENV=production vite build --mode production",
-    "build:fast": "cross-env NODE_ENV=production vite build --mode production --minify esbuild",
-    "vercel-build": "npx vite build --mode production --minify esbuild",
     "start": "cross-env NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
     "db:push": "drizzle-kit push"

@@ -1,7 +1,8 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { users } from '../shared/schema';
+import { eq, like, or } from 'drizzle-orm';
+import { users } from '../../shared/schema';
 import { scrypt, randomBytes } from 'crypto';
 import { promisify } from 'util';
 import jwt from 'jsonwebtoken';
@@ -60,7 +61,7 @@ async function hashPassword(password: string) {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const origin = req.headers.origin || 'http://localhost:3000';
   res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   
@@ -73,17 +74,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
+  // Only admin can manage all users
+  if (authPayload.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden - Admin access required' });
+  }
+
   try {
     const db = getDB();
 
     if (req.method === 'GET') {
-      // Only admins can get all users
-      if (authPayload.role !== 'admin') {
-        return res.status(403).json({ error: 'Forbidden - Admin access required' });
-      }
-
-      // Get all users (excluding passwords)
-      const allUsers = await db.select({
+      const { search, role, active } = req.query;
+      
+      let query = db.select({
         id: users.id,
         username: users.username,
         email: users.email,
@@ -97,17 +99,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
       }).from(users);
+
+      // Apply filters
+      const conditions = [];
+      
+      if (search) {
+        conditions.push(
+          or(
+            like(users.username, `%${search}%`),
+            like(users.email, `%${search}%`),
+            like(users.firstName, `%${search}%`),
+            like(users.lastName, `%${search}%`)
+          )
+        );
+      }
+      
+      if (role) {
+        conditions.push(eq(users.role, role as string));
+      }
+      
+      if (active !== undefined) {
+        conditions.push(eq(users.isActive, active === 'true'));
+      }
+      
+      if (conditions.length > 0) {
+        query = query.where(conditions.length === 1 ? conditions[0] : conditions.reduce((acc, condition) => acc && condition));
+      }
+      
+      const allUsers = await query;
       
       return res.status(200).json(allUsers);
       
     } else if (req.method === 'POST') {
-      // Only admins can create users directly
-      if (authPayload.role !== 'admin') {
-        return res.status(403).json({ error: 'Forbidden - Admin access required' });
-      }
-
+      // Create new user
       const userData = req.body;
       
+      // Check if username already exists
+      const [existingUser] = await db.select().from(users).where(eq(users.username, userData.username));
+      if (existingUser) {
+        return res.status(400).json({ error: 'Username already exists' });
+      }
+
+      // Check if email already exists
+      const [existingEmail] = await db.select().from(users).where(eq(users.email, userData.email));
+      if (existingEmail) {
+        return res.status(400).json({ error: 'Email already exists' });
+      }
+
       // Hash password if provided
       if (userData.password) {
         userData.password = await hashPassword(userData.password);
@@ -130,7 +168,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
   } catch (error) {
-    console.error('Users API error:', error);
+    console.error('Admin users API error:', error);
     return res.status(500).json({ 
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
