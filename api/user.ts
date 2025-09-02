@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
 import { eq } from 'drizzle-orm';
@@ -51,15 +51,22 @@ function getDB() {
   return dbConnection;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export const handler: Handler = async (event, context) => {
   // Set CORS headers - include credentials for cookie support
-  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  const headers = {
+    'Access-Control-Allow-Origin': event.headers.origin || '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
+    'Content-Type': 'application/json',
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
   try {
@@ -67,12 +74,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let token = null;
     
     // Check Authorization header
-    const authHeader = req.headers.authorization;
+    const authHeader = event.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.split(' ')[1];
     } else {
       // Check cookies as fallback
-      const cookies = req.headers.cookie;
+      const cookies = event.headers.cookie;
       if (cookies) {
         const tokenMatch = cookies.match(/auth-token=([^;]+)/);
         if (tokenMatch) {
@@ -82,8 +89,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     if (!token) {
-      return res.status(401).json({ message: 'No authentication token' });
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ message: 'No authentication token' })
+      };
     }
+    
     const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
     if (!secret) {
       throw new Error('JWT_SECRET or SESSION_SECRET not configured');
@@ -103,7 +115,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .then(rows => rows[0]);
 
     if (!user) {
-      return res.status(401).json({ message: 'User not found' });
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ message: 'User not found' })
+      };
     }
 
     // Return user data (excluding password)
@@ -124,16 +140,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       marketingOptIn: userWithoutPassword.marketingOptIn !== false
     };
 
-    return res.status(200).json(safeUser);
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify(safeUser)
+    };
 
   } catch (error) {
     console.error('Auth verification error:', error);
     if (error instanceof jwt.JsonWebTokenError) {
-      return res.status(401).json({ message: 'Invalid authentication token' });
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ message: 'Invalid authentication token' })
+      };
     }
-    return res.status(500).json({ 
-      message: 'Internal server error',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        message: 'Internal server error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
+    };
   }
-}
+};

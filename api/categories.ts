@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
 
 // Database connection
@@ -23,33 +23,48 @@ function getDB() {
   return dbConnection;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export const handler: Handler = async (event, context) => {
   // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  const headers = {
+    'Access-Control-Allow-Origin': event.headers.origin || '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
+    'Content-Type': 'application/json',
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
   try {
     const sql = getDB();
 
-    if (req.method === 'GET') {
+    if (event.httpMethod === 'GET') {
       const categories = await sql`
         SELECT * FROM categories 
         ORDER BY "order" ASC, name ASC
       `;
       
-      return res.status(200).json({ categories });
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ categories })
+      };
 
-    } else if (req.method === 'POST') {
-      const { name, order, isActive } = req.body;
+    } else if (event.httpMethod === 'POST') {
+      const { name, order, isActive } = JSON.parse(event.body || '{}');
       
       if (!name) {
-        return res.status(400).json({ message: 'Name is required' });
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ message: 'Name is required' })
+        };
       }
       
       const result = await sql`
@@ -58,18 +73,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         RETURNING *
       `;
       
-      return res.status(201).json(result[0]);
+      return {
+        statusCode: 201,
+        headers,
+        body: JSON.stringify(result[0])
+      };
 
-    } else if (req.method === 'PUT') {
+    } else if (event.httpMethod === 'PUT') {
       // Extract ID from URL path
-      const urlParts = req.url?.split('/') || [];
+      const urlParts = event.path?.split('/') || [];
       const categoryId = urlParts[urlParts.length - 1];
       
       if (!categoryId || isNaN(parseInt(categoryId))) {
-        return res.status(400).json({ message: 'Invalid category ID' });
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ message: 'Invalid category ID' })
+        };
       }
       
-      const { name, order, isActive } = req.body;
+      const { name, order, isActive } = JSON.parse(event.body || '{}');
       
       const result = await sql`
         UPDATE categories 
@@ -79,18 +102,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
       
       if (result.length === 0) {
-        return res.status(404).json({ message: 'Category not found' });
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ message: 'Category not found' })
+        };
       }
       
-      return res.status(200).json(result[0]);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(result[0])
+      };
 
-    } else if (req.method === 'DELETE') {
+    } else if (event.httpMethod === 'DELETE') {
       // Extract ID from URL path
-      const urlParts = req.url?.split('/') || [];
+      const urlParts = event.path?.split('/') || [];
       const categoryId = urlParts[urlParts.length - 1];
       
       if (!categoryId || isNaN(parseInt(categoryId))) {
-        return res.status(400).json({ message: 'Invalid category ID' });
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ message: 'Invalid category ID' })
+        };
       }
       
       const result = await sql`
@@ -100,20 +135,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
       
       if (result.length === 0) {
-        return res.status(404).json({ message: 'Category not found' });
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ message: 'Category not found' })
+        };
       }
       
-      return res.status(200).json({ message: 'Category deleted successfully' });
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ message: 'Category deleted successfully' })
+      };
 
     } else {
-      return res.status(405).json({ message: 'Method not allowed' });
+      return {
+        statusCode: 405,
+        headers,
+        body: JSON.stringify({ message: 'Method not allowed' })
+      };
     }
 
   } catch (error: any) {
     console.error('Categories API error:', error);
-    return res.status(500).json({ 
-      message: 'Internal server error',
-      error: error.message 
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        message: 'Internal server error',
+        error: error.message 
+      })
+    };
   }
-}
+};

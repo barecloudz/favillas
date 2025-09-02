@@ -1,17 +1,28 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export const handler: Handler = async (event, context) => {
   // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Content-Type': 'application/json',
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
+  if (event.httpMethod !== 'GET') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ message: 'Method not allowed' })
+    };
   }
 
   try {
@@ -48,16 +59,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // If no orders, return empty array
     if (!kitchenOrders || kitchenOrders.length === 0) {
-      return res.status(200).json([]);
+      await sql.end();
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify([])
+      };
     }
 
-    res.status(200).json(kitchenOrders);
     await sql.end();
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify(kitchenOrders)
+    };
   } catch (error) {
     console.error('Kitchen Orders API error:', error);
-    res.status(500).json({ 
-      message: 'Failed to fetch kitchen orders',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        message: 'Failed to fetch kitchen orders',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
+    };
   }
-}
+};

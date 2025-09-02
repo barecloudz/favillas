@@ -602,7 +602,7 @@ const AdminDashboard = () => {
   });
 
   const { data: analytics, isLoading: analyticsLoading, error: analyticsError } = useQuery({
-    queryKey: ["/api/orders/analytics"],
+    queryKey: ["/api/orders-analytics"],
     enabled: user?.isAdmin,
     retry: 3,
     onError: (error) => {

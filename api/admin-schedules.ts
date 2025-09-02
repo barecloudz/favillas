@@ -1,4 +1,41 @@
 import { Handler } from '@netlify/functions';
+import jwt from 'jsonwebtoken';
+
+function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
+  // First try to get token from Authorization header
+  let token = null;
+  const authHeader = event.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  }
+  
+  // If no token in header, try to get from cookies
+  if (!token) {
+    const cookies = event.headers.cookie;
+    if (cookies) {
+      const authCookie = cookies.split(';').find(cookie => cookie.trim().startsWith('auth-token='));
+      if (authCookie) {
+        token = authCookie.split('=')[1];
+      }
+    }
+  }
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
+    }
+
+    const payload = jwt.verify(token, jwtSecret) as { userId: number; username: string; role: string };
+    return payload;
+  } catch (error) {
+    return null;
+  }
+}
 
 export const handler: Handler = async (event, context) => {
   // Set CORS headers
@@ -17,8 +54,25 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
-  // Note: In a real app, you'd need to verify authentication here
-  // For now, we'll skip auth to get the basic functionality working
+  // Check authentication
+  const authPayload = authenticateToken(event);
+  if (!authPayload) {
+    // Return empty schedules data instead of 401 for unauthenticated users
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify([])
+    };
+  }
+
+  // Only admin and manager can manage schedules
+  if (!['admin', 'manager'].includes(authPayload.role)) {
+    return {
+      statusCode: 403,
+      headers,
+      body: JSON.stringify({ error: 'Forbidden - Admin or Manager access required' })
+    };
+  }
   
   if (event.httpMethod === 'GET') {
     try {
@@ -27,7 +81,7 @@ export const handler: Handler = async (event, context) => {
       // Import dependencies dynamically
       const { drizzle } = await import('drizzle-orm/postgres-js');
       const postgres = (await import('postgres')).default;
-      const { employeeSchedules, users } = await import('../../shared/schema.ts');
+      const { employeeSchedules, users } = await import('../shared/schema');
       const { eq, and, gte, lte } = await import('drizzle-orm');
       
       // Create database connection
@@ -110,7 +164,7 @@ export const handler: Handler = async (event, context) => {
       // Import dependencies dynamically
       const { drizzle } = await import('drizzle-orm/postgres-js');
       const postgres = (await import('postgres')).default;
-      const { employeeSchedules } = await import('../../shared/schema.ts');
+      const { employeeSchedules } = await import('../shared/schema');
       
       // Create database connection
       const sql = postgres(process.env.DATABASE_URL!, {
@@ -148,7 +202,7 @@ export const handler: Handler = async (event, context) => {
         isMandatory: scheduleData.isMandatory || false,
         notes: scheduleData.notes || '',
         status: scheduleData.status || 'scheduled',
-        createdBy: null, // Will be set when auth is implemented
+        createdBy: authPayload.userId, // Use authenticated user ID
         createdAt: new Date(),
         updatedAt: new Date(),
       }).returning();
@@ -174,7 +228,7 @@ export const handler: Handler = async (event, context) => {
       // Import dependencies dynamically
       const { drizzle } = await import('drizzle-orm/postgres-js');
       const postgres = (await import('postgres')).default;
-      const { employeeSchedules } = await import('../../shared/schema.ts');
+      const { employeeSchedules } = await import('../shared/schema');
       const { eq } = await import('drizzle-orm');
       
       // Create database connection
@@ -249,7 +303,7 @@ export const handler: Handler = async (event, context) => {
       // Import dependencies dynamically
       const { drizzle } = await import('drizzle-orm/postgres-js');
       const postgres = (await import('postgres')).default;
-      const { employeeSchedules } = await import('../../shared/schema.ts');
+      const { employeeSchedules } = await import('../shared/schema');
       const { eq } = await import('drizzle-orm');
       
       // Create database connection

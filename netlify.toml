@@ -1,0 +1,32 @@
+[build]
+  command = "npm run build"
+  publish = "dist/public"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[redirects]]
+  from = "/api/menu/*"
+  to = "/.netlify/functions/menu-item"
+  status = 200
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[functions]
+  directory = "api"
+  node_bundler = "esbuild"
+
+[dev]
+  command = "npm run dev:client"
+  port = 3000
+  targetPort = 3000
+  publish = "dist/public"
+  functionsPort = 8888

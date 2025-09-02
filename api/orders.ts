@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
 import jwt from 'jsonwebtoken';
 
@@ -23,8 +23,8 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(req: VercelRequest): { userId: number; username: string; role: string } | null {
-  const authHeader = req.headers.authorization;
+function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
+  const authHeader = event.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
   if (!token) {
@@ -44,26 +44,37 @@ function authenticateToken(req: VercelRequest): { userId: number; username: stri
   }
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const origin = req.headers.origin || 'http://localhost:3000';
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+export const handler: Handler = async (event, context) => {
+  const origin = event.headers.origin || 'http://localhost:3000';
+  const headers = {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
+    'Content-Type': 'application/json',
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
-  const authPayload = authenticateToken(req);
+  const authPayload = authenticateToken(event);
 
   try {
     const sql = getDB();
 
-    if (req.method === 'GET') {
+    if (event.httpMethod === 'GET') {
       // GET requests require authentication
       if (!authPayload) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        return {
+          statusCode: 401,
+          headers,
+          body: JSON.stringify({ error: 'Unauthorized' })
+        };
       }
       
       let allOrders;
@@ -84,17 +95,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })
       );
 
-      return res.status(200).json(ordersWithItems);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(ordersWithItems)
+      };
       
-    } else if (req.method === 'POST') {
+    } else if (event.httpMethod === 'POST') {
       // Create new order - support both authenticated users and guests
-      const { items, ...orderData } = req.body;
+      const { items, ...orderData } = JSON.parse(event.body || '{}');
       
       // Validate required fields
       if (!orderData.total || !orderData.tax || !orderData.orderType || !orderData.phone) {
-        return res.status(400).json({ 
-          error: 'Missing required fields: total, tax, orderType, phone' 
-        });
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ 
+            error: 'Missing required fields: total, tax, orderType, phone' 
+          })
+        };
       }
       
       // Set the userId: use authenticated user ID or null for guests
@@ -136,9 +155,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const orderItemsInserts = [];
         for (const item of items) {
           if (!item.menuItemId || !item.quantity || !item.price) {
-            return res.status(400).json({ 
-              error: 'Invalid order item: missing menuItemId, quantity, or price' 
-            });
+            return {
+              statusCode: 400,
+              headers,
+              body: JSON.stringify({ 
+                error: 'Invalid order item: missing menuItemId, quantity, or price' 
+              })
+            };
           }
           
           const insertResult = await sql`
@@ -161,16 +184,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Fetch the complete order with items
       const orderItems = await sql`SELECT * FROM order_items WHERE order_id = ${newOrder.id}`;
       
-      return res.status(201).json({ ...newOrder, items: orderItems });
+      return {
+        statusCode: 201,
+        headers,
+        body: JSON.stringify({ ...newOrder, items: orderItems })
+      };
       
     } else {
-      return res.status(405).json({ error: 'Method not allowed' });
+      return {
+        statusCode: 405,
+        headers,
+        body: JSON.stringify({ error: 'Method not allowed' })
+      };
     }
   } catch (error) {
     console.error('Orders API error:', error);
-    return res.status(500).json({ 
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      })
+    };
   }
-}
+};

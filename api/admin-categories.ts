@@ -2,7 +2,7 @@ import { Handler } from '@netlify/functions';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { eq } from 'drizzle-orm';
-import { categories } from '../../shared/schema';
+import { categories } from '../shared/schema';
 import jwt from 'jsonwebtoken';
 
 let dbConnection: any = null;

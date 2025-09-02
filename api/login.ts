@@ -1,4 +1,7 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { eq } from 'drizzle-orm';
 import postgres from 'postgres';
 import { scrypt, timingSafeEqual } from 'crypto';
 import { promisify } from 'util';
@@ -43,33 +46,47 @@ async function comparePasswords(supplied: string, stored: string) {
   }
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Set CORS headers - must use specific origin when credentials are included
-  const origin = req.headers.origin || 'http://localhost:5001';
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+export const handler: Handler = async (event, context) => {
+  // Set CORS headers
+  const headers = {
+    'Access-Control-Allow-Origin': event.headers.origin || 'http://localhost:3000',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
+    'Content-Type': 'application/json',
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ message: 'Method not allowed' })
+    };
   }
 
   try {
     console.log('Login attempt started');
     console.log('Environment check - DATABASE_URL exists:', !!process.env.DATABASE_URL);
 
-    const { username, password } = req.body;
+    const { username, password } = JSON.parse(event.body || '{}');
 
     if (!username || !password) {
       console.log('Missing username or password');
-      return res.status(400).json({ 
-        message: 'Username and password are required' 
-      });
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ 
+          message: 'Username and password are required' 
+        })
+      };
     }
 
     console.log('Attempting login for username:', username);
@@ -103,13 +120,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       LIMIT 1
     `;
 
-    if (users.length === 0) {
-      return res.status(401).json({ 
-        message: 'Invalid credentials' 
-      });
-    }
-
     const user = users[0];
+
+    console.log('User found:', !!user, 'Has password:', !!user.password);
+
+    if (!user) {
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ 
+          message: 'Invalid credentials' 
+        })
+      };
+    }
 
     console.log('User found:', !!user, 'Has password:', !!user.password);
 
@@ -118,9 +141,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('Password validation result:', isValidPassword);
     
     if (!isValidPassword) {
-      return res.status(401).json({ 
-        message: 'Invalid credentials' 
-      });
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ 
+          message: 'Invalid credentials' 
+        })
+      };
     }
 
     console.log('Login successful for user:', user.username);
@@ -167,18 +194,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // Set token as HTTP-only cookie
     const isProduction = process.env.NODE_ENV === 'production';
-    res.setHeader('Set-Cookie', `auth-token=${token}; HttpOnly; Secure=${isProduction}; SameSite=${isProduction ? 'Strict' : 'Lax'}; Path=/; Max-Age=${7 * 24 * 60 * 60}`);
+    const cookieHeader = `auth-token=${token}; HttpOnly; Secure=${isProduction}; SameSite=${isProduction ? 'Strict' : 'Lax'}; Path=/; Max-Age=${7 * 24 * 60 * 60}`;
     
-    // Frontend expects just the user object, not nested in a response
-    return res.status(200).json(safeUser);
+    return {
+      statusCode: 200,
+      headers: {
+        ...headers,
+        'Set-Cookie': cookieHeader
+      },
+      body: JSON.stringify(safeUser)
+    };
     
   } catch (error) {
     console.error('Login error:', error);
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-    return res.status(500).json({ 
-      message: 'Internal server error',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        message: 'Internal server error',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
+      })
+    };
   }
-}
+};

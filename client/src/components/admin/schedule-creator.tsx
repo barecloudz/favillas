@@ -59,10 +59,10 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
 
   // Get schedules for the current view period
   const { data: schedules, isLoading } = useQuery({
-    queryKey: ["/api/admin/schedules", viewDates],
+          queryKey: ["/api/admin-schedules", viewDates],
     queryFn: async () => {
       const response = await fetch(
-        `/api/admin/schedules?startDate=${viewDates.startDate}&endDate=${viewDates.endDate}`,
+        `/api/admin-schedules?startDate=${viewDates.startDate}&endDate=${viewDates.endDate}`,
         { credentials: 'include' }
       );
       return response.json();
@@ -71,15 +71,15 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
 
   // Create schedule mutation
   const createScheduleMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/admin/schedules", data),
+          mutationFn: (data: any) => apiRequest("POST", "/api/admin-schedules", data),
     onSuccess: async () => {
       toast({
         title: "Schedule Created",
         description: "Employee schedule has been created successfully.",
       });
       // Invalidate all schedule queries to refresh the grid immediately
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/schedules"] });
-      queryClient.refetchQueries({ queryKey: ["/api/admin/schedules", viewDates] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin-schedules"] });
+      queryClient.refetchQueries({ queryKey: ["/api/admin-schedules", viewDates] });
       setIsDialogOpen(false);
       resetForm();
     },
@@ -95,14 +95,14 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
 
   // Update schedule mutation
   const updateScheduleMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("PUT", `/api/admin/schedules/${editingScheduleId}`, data),
+    mutationFn: (data: any) => apiRequest("PUT", `/api/admin-schedules/${editingScheduleId}`, data),
     onSuccess: async () => {
       toast({
         title: "Schedule Updated",
         description: "Employee schedule has been updated successfully.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/schedules"] });
-      queryClient.refetchQueries({ queryKey: ["/api/admin/schedules", viewDates] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin-schedules"] });
+      queryClient.refetchQueries({ queryKey: ["/api/admin-schedules", viewDates] });
       setIsDialogOpen(false);
       setEditingScheduleId(null);
       resetForm();
@@ -119,14 +119,14 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
 
   // Delete schedule mutation
   const deleteScheduleMutation = useMutation({
-    mutationFn: (scheduleId: number) => apiRequest("DELETE", `/api/admin/schedules/${scheduleId}`),
+    mutationFn: (scheduleId: number) => apiRequest("DELETE", `/api/admin-schedules/${scheduleId}`),
     onSuccess: async () => {
       toast({
         title: "Schedule Deleted",
         description: "Employee schedule has been deleted successfully.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/schedules"] });
-      queryClient.refetchQueries({ queryKey: ["/api/admin/schedules", viewDates] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin-schedules"] });
+      queryClient.refetchQueries({ queryKey: ["/api/admin-schedules", viewDates] });
       setIsDialogOpen(false);
       setEditingScheduleId(null);
       resetForm();

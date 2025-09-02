@@ -15,12 +15,17 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  // Use relative URL - Vite proxy will handle routing to backend
+  // Use the original URL - Netlify will handle the redirect automatically
   const fullUrl = url.startsWith('http') ? url : url;
+  
+  const headers: Record<string, string> = {};
+  if (data) {
+    headers["Content-Type"] = "application/json";
+  }
   
   const res = await fetch(fullUrl, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -35,7 +40,7 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const url = queryKey[0] as string;
-    // Use relative URL - Vite proxy will handle routing to backend
+    // Use the original URL - Netlify will handle the redirect automatically
     const fullUrl = url.startsWith('http') ? url : url;
     
     const res = await fetch(fullUrl, {

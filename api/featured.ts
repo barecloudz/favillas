@@ -1,19 +1,29 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export const handler: Handler = async (event, context) => {
   // Set CORS headers
-  const origin = req.headers.origin || 'http://localhost:5001';
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  const headers = {
+    'Access-Control-Allow-Origin': event.headers.origin || 'http://localhost:3000',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
+    'Content-Type': 'application/json',
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
+  if (event.httpMethod !== 'GET') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ message: 'Method not allowed' })
+    };
   }
 
   try {
@@ -92,15 +102,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           isBestSeller: true,
         }
       ];
-      return res.status(200).json(sampleFeatured);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(sampleFeatured)
+      };
     }
 
-    res.status(200).json(featuredItems);
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify(featuredItems)
+    };
   } catch (error) {
     console.error('Featured API error:', error);
-    res.status(500).json({ 
-      message: 'Failed to fetch featured items',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        message: 'Failed to fetch featured items',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
+    };
   }
-}
+};

@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
 import { scrypt, randomBytes } from 'crypto';
 import { promisify } from 'util';
@@ -28,28 +28,43 @@ function getDB() {
   return dbConnection;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export const handler: Handler = async (event, context) => {
   // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  const headers = {
+    'Access-Control-Allow-Origin': event.headers.origin || '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
+    'Content-Type': 'application/json',
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ message: 'Method not allowed' })
+    };
   }
 
   try {
-    const { firstName, lastName, email, phone, address, password } = req.body;
+    const { firstName, lastName, email, phone, address, password } = JSON.parse(event.body || '{}');
     
     if (!firstName || !lastName || !email || !password) {
-      return res.status(400).json({ 
-        message: 'Missing required fields: firstName, lastName, email, password' 
-      });
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ 
+          message: 'Missing required fields: firstName, lastName, email, password' 
+        })
+      };
     }
 
     const sql = getDB();
@@ -60,7 +75,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     `;
     
     if (existingUser.length > 0) {
-      return res.status(400).json({ message: 'User already exists with this email' });
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ message: 'User already exists with this email' })
+      };
     }
     
     // Hash password
@@ -108,12 +127,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       token
     };
     
-    res.json(safeUser);
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify(safeUser)
+    };
   } catch (error: any) {
     console.error('Registration error:', error);
-    res.status(500).json({ 
-      message: 'Internal server error',
-      error: error.message 
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        message: 'Internal server error',
+        error: error.message 
+      })
+    };
   }
-}
+};
