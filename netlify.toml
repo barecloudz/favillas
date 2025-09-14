@@ -1,9 +1,11 @@
 [build]
-  command = "npm run build"
+  command = "npm ci --prefer-offline --no-audit && npm run build"
   publish = "dist/public"
 
 [build.environment]
   NODE_VERSION = "20"
+  NPM_CONFIG_FUND = "false"
+  NPM_CONFIG_AUDIT = "false"
 
 [[redirects]]
   from = "/api/menu/*"
