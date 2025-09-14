@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
 
 // Database connection
@@ -23,21 +23,28 @@ function getDB() {
   return dbConnection;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export const handler: Handler = async (event, context) => {
   // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  const headers = {
+    'Access-Control-Allow-Origin': event.headers.origin || '*',
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
+    'Content-Type': 'application/json',
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
   try {
     const sql = getDB();
 
-    if (req.method === 'GET') {
+    if (event.httpMethod === 'GET') {
       const menuItemChoiceGroups = await sql`
         SELECT micg.*, mi.name as menu_item_name, cg.name as choice_group_name
         FROM menu_item_choice_groups micg
@@ -46,13 +53,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ORDER BY micg.menu_item_id ASC, micg.order ASC
       `;
       
-      return res.status(200).json(menuItemChoiceGroups);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(menuItemChoiceGroups)
+      };
 
-    } else if (req.method === 'POST') {
-      const { menuItemId, choiceGroupId, order = 0, isRequired = false } = req.body;
+    } else if (event.httpMethod === 'POST') {
+      const requestBody = JSON.parse(event.body || '{}');
+      const { menuItemId, choiceGroupId, order = 0, isRequired = false } = requestBody;
       
       if (!menuItemId || !choiceGroupId) {
-        return res.status(400).json({ message: 'Menu item ID and choice group ID are required' });
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ message: 'Menu item ID and choice group ID are required' })
+        };
       }
       
       // Check if association already exists
@@ -62,7 +78,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
       
       if (existing.length > 0) {
-        return res.status(400).json({ message: 'Association already exists' });
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ message: 'Association already exists' })
+        };
       }
       
       const result = await sql`
@@ -71,15 +91,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         RETURNING *
       `;
       
-      return res.status(201).json(result[0]);
+      return {
+        statusCode: 201,
+        headers,
+        body: JSON.stringify(result[0])
+      };
 
-    } else if (req.method === 'DELETE') {
+    } else if (event.httpMethod === 'DELETE') {
       // Extract ID from URL path
-      const urlParts = req.url?.split('/') || [];
+      const urlParts = event.path?.split('/') || [];
       const associationId = urlParts[urlParts.length - 1];
       
       if (!associationId || isNaN(parseInt(associationId))) {
-        return res.status(400).json({ message: 'Invalid association ID' });
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ message: 'Invalid association ID' })
+        };
       }
       
       const result = await sql`
@@ -89,20 +117,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
       
       if (result.length === 0) {
-        return res.status(404).json({ message: 'Association not found' });
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ message: 'Association not found' })
+        };
       }
       
-      return res.status(200).json({ message: 'Association deleted successfully' });
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ message: 'Association deleted successfully' })
+      };
 
     } else {
-      return res.status(405).json({ message: 'Method not allowed' });
+      return {
+        statusCode: 405,
+        headers,
+        body: JSON.stringify({ message: 'Method not allowed' })
+      };
     }
 
   } catch (error: any) {
     console.error('Menu Item Choice Groups API error:', error);
-    return res.status(500).json({ 
-      message: 'Internal server error',
-      error: error.message 
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        message: 'Internal server error',
+        error: error.message 
+      })
+    };
   }
-}
+};

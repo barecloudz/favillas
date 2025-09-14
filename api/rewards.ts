@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
 
 // Database connection
@@ -23,21 +23,28 @@ function getDB() {
   return dbConnection;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export const handler: Handler = async (event, context) => {
   // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  const headers = {
+    'Access-Control-Allow-Origin': event.headers.origin || '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
+    'Content-Type': 'application/json',
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
   try {
     const sql = getDB();
 
-    if (req.method === 'GET') {
+    if (event.httpMethod === 'GET') {
       // Get all active rewards
       const rewards = await sql`
         SELECT * FROM rewards 
@@ -45,7 +52,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ORDER BY points_cost ASC
       `;
       
-      return res.status(200).json(rewards);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(rewards)
+      };
 
     } else if (req.method === 'POST') {
       const { name, description, pointsCost, isActive = true } = req.body;
@@ -138,14 +149,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ message: 'Reward deleted successfully' });
 
     } else {
-      return res.status(405).json({ message: 'Method not allowed' });
+      return {
+        statusCode: 405,
+        headers,
+        body: JSON.stringify({ message: 'Method not allowed' })
+      };
     }
 
   } catch (error: any) {
     console.error('Rewards API error:', error);
-    return res.status(500).json({ 
-      message: 'Internal server error',
-      error: error.message 
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        message: 'Internal server error',
+        error: error.message 
+      })
+    };
   }
-}
+};

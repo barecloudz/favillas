@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
 import Stripe from 'stripe';
 
@@ -29,28 +29,44 @@ function getDB() {
   return dbConnection;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export const handler: Handler = async (event, context) => {
   // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  const headers = {
+    'Access-Control-Allow-Origin': event.headers.origin || '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
+    'Content-Type': 'application/json',
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ message: 'Method not allowed' })
+    };
   }
 
   try {
-    const { amount, orderId } = req.body;
+    const requestBody = JSON.parse(event.body || '{}');
+    const { amount, orderId } = requestBody;
     
     if (!amount || !orderId) {
-      return res.status(400).json({ 
-        message: 'Missing required fields: amount and orderId' 
-      });
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ 
+          message: 'Missing required fields: amount and orderId' 
+        })
+      };
     }
 
     // Create a PaymentIntent with the order amount and currency
@@ -78,14 +94,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
     
-    res.json({
-      clientSecret: paymentIntent.client_secret
-    });
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        clientSecret: paymentIntent.client_secret
+      })
+    };
   } catch (error: any) {
     console.error('Payment intent creation error:', error);
-    res.status(500).json({ 
-      message: 'Internal server error',
-      error: error.message 
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        message: 'Internal server error',
+        error: error.message 
+      })
+    };
   }
-}
+};
