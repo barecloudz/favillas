@@ -42,6 +42,23 @@ interface MenuItemProps {
 const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
+
+  // EMERGENCY: Simplified add to cart without complex options
+  const handleSimpleAddToCart = () => {
+    try {
+      addItem({
+        id: item.id,
+        name: item.name || 'Unknown Item',
+        price: parseFloat(item.basePrice) || 0,
+        quantity,
+        selectedOptions: {},
+        specialInstructions: ''
+      });
+      console.log('Item added to cart successfully:', item.name);
+    } catch (error) {
+      console.error('Error adding item to cart:', error);
+    }
+  };
   
   const formatPrice = (price: string | number) => {
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
@@ -195,22 +212,14 @@ const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
             <span>From ${formatPrice(item.basePrice)}</span>
           </div>
           
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-[#d73a31] hover:bg-[#c73128] text-white">
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                Add to Cart
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>{item.name}</DialogTitle>
-                <DialogDescription>
-                  Customize your order before adding to cart
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="py-4 space-y-4 max-h-96 overflow-y-auto">
+          {/* EMERGENCY: Simplified direct add to cart */}
+          <Button
+            className="bg-[#d73a31] hover:bg-[#c73128] text-white"
+            onClick={handleSimpleAddToCart}
+          >
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            Add to Cart - ${formatPrice(item.basePrice)}
+          </Button>
                 {item.options?.sizes && (
                   <div className="space-y-2">
                     <h4 className="font-medium">Select Size:</h4>

@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCart } from "@/hooks/use-cart";
+import MenuItemSimple from "@/components/menu/menu-item-simple";
 
 const MenuPage = () => {
   const [location, navigate] = useLocation();
@@ -43,50 +44,11 @@ const MenuPage = () => {
     queryKey: ["/api/menu"],
   });
 
-  // Fetch choice groups and related data
-  const { data: choiceGroups = [] } = useQuery({
-    queryKey: ['choice-groups'],
-    queryFn: async () => {
-      const response = await fetch('/api/choice-groups');
-      if (response.ok) {
-        return await response.json();
-      }
-      return [];
-    }
-  });
-
-  const { data: choiceItems = [] } = useQuery({
-    queryKey: ['choice-items'],
-    queryFn: async () => {
-      const response = await fetch('/api/choice-items');
-      if (response.ok) {
-        return await response.json();
-      }
-      return [];
-    }
-  });
-
-  const { data: categoryChoiceGroups = [] } = useQuery({
-    queryKey: ['category-choice-groups'],
-    queryFn: async () => {
-      const response = await fetch('/api/category-choice-groups');
-      if (response.ok) {
-        return await response.json();
-      }
-      return [];
-    }
-  });
-
-  const { data: menuItemChoiceGroups = [] } = useQuery({
-    queryKey: ['menu-item-choice-groups'],
-    queryFn: async () => {
-      const response = await fetch('/api/menu-item-choice-groups');
-      if (response.ok) {
-        return await response.json();
-      }
-      return [];
-    }
-  });
+  // DISABLED: Choice groups system temporarily disabled due to API issues
+  const choiceGroups = [];
+  const choiceItems = [];
+  const categoryChoiceGroups = [];
+  const menuItemChoiceGroups = [];
 
   // Fetch categories from backend (or use default if not available)
   const { data: categoriesData } = useQuery({
@@ -453,52 +415,7 @@ const MenuPage = () => {
                   <h2 className="text-xl font-bold text-gray-900 mb-4">{categoryName}</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
                     {items.map((item: any) => (
-                      <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-                        <div 
-                          onClick={() => handleItemClick(item)}
-                          className="aspect-video bg-gray-200 flex items-center justify-center"
-                        >
-                          {item.imageUrl ? (
-                            <img 
-                              src={item.imageUrl} 
-                              alt={item?.name || 'Menu Item'} 
-                              className="w-full h-full object-cover" 
-                            />
-                          ) : (
-                            <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center">
-                              <span className="text-gray-500 text-2xl">🍕</span>
-                            </div>
-                          )}
-                        </div>
-                        <CardContent className="p-4">
-                          <div 
-                            onClick={() => handleItemClick(item)}
-                            className="cursor-pointer"
-                          >
-                            <div className="flex justify-between items-start mb-2">
-                              <h3 className="font-semibold text-lg">{item?.name || 'Unknown Item'}</h3>
-                              <Badge variant="default">
-                                ${formatPrice(item.basePrice)}
-                              </Badge>
-                            </div>
-                            {item.description && (
-                              <p className="text-gray-600 text-sm mb-4">{item.description}</p>
-                            )}
-                          </div>
-                          <Button 
-                            id={`add-to-cart-${item.id}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAddToCart(item);
-                            }}
-                            className="w-full relative overflow-hidden"
-                            size="sm"
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add to Cart
-                          </Button>
-                        </CardContent>
-                      </Card>
+                      <MenuItemSimple key={item.id} item={item} />
                     ))}
                   </div>
                 </div>
