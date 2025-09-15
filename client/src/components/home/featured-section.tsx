@@ -38,7 +38,7 @@ const FeaturedSection: React.FC<FeaturedSectionProps> = ({ menuItems }) => {
                   {item.imageUrl ? (
                     <img 
                       src={item.imageUrl} 
-                      alt={item.name} 
+                      alt={item?.name || 'Menu Item'} 
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -48,7 +48,7 @@ const FeaturedSection: React.FC<FeaturedSectionProps> = ({ menuItems }) => {
                   )}
                 </div>
                 <div className="p-6">
-                  <h3 className="text-2xl font-bold mb-2">{item.name}</h3>
+                  <h3 className="text-2xl font-bold mb-2">{item?.name || 'Unknown Item'}</h3>
                   <p className="text-gray-600 mb-2">{item.description}</p>
                   <p className="text-lg font-bold text-[#d73a31] mb-4">${item.basePrice}</p>
                   <Link href="/menu">
