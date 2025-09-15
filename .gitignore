@@ -54,3 +54,10 @@ Desktop.ini
 
 # Local Netlify folder
 .netlify
+
+# Test and debug files with potential secrets
+test-*.js
+debug-*.js
+fix-*.js
+check-*.js
+mock-*.js
