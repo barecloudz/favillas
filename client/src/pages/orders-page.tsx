@@ -83,7 +83,7 @@ const OrdersPage = () => {
     const matchesSearch = 
       order.id.toString().includes(searchTerm) ||
       order.items?.some((item: any) => 
-        item.name.toLowerCase().includes(searchTerm.toLowerCase())
+        item?.name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     const matchesStatus = statusFilter === "all" || order.status === statusFilter;
     return matchesSearch && matchesStatus;

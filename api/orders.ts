@@ -99,11 +99,36 @@ export const handler: Handler = async (event, context) => {
         allOrders = await sql`SELECT * FROM orders WHERE user_id = ${authPayload.userId} ORDER BY created_at DESC`;
       }
       
-      // Get order items for each order
+      // Get order items for each order with menu item details
       const ordersWithItems = await Promise.all(
         allOrders.map(async (order) => {
-          const items = await sql`SELECT * FROM order_items WHERE order_id = ${order.id}`;
-          return { ...order, items };
+          const items = await sql`
+            SELECT 
+              oi.*,
+              mi.name as menu_item_name,
+              mi.description as menu_item_description,
+              mi.price as menu_item_price,
+              mi.image_url as menu_item_image_url,
+              mi.category as menu_item_category
+            FROM order_items oi
+            LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+            WHERE oi.order_id = ${order.id}
+          `;
+          
+          // Transform the data to match expected frontend structure
+          const transformedItems = items.map(item => ({
+            ...item,
+            name: item.menu_item_name || 'Unknown Item', // Add name property for backward compatibility
+            menuItem: item.menu_item_name ? {
+              name: item.menu_item_name,
+              description: item.menu_item_description,
+              price: item.menu_item_price,
+              imageUrl: item.menu_item_image_url,
+              category: item.menu_item_category
+            } : null
+          }));
+          
+          return { ...order, items: transformedItems };
         })
       );
 
@@ -193,13 +218,37 @@ export const handler: Handler = async (event, context) => {
         }
       }
 
-      // Fetch the complete order with items
-      const orderItems = await sql`SELECT * FROM order_items WHERE order_id = ${newOrder.id}`;
+      // Fetch the complete order with items and menu item details
+      const orderItems = await sql`
+        SELECT 
+          oi.*,
+          mi.name as menu_item_name,
+          mi.description as menu_item_description,
+          mi.price as menu_item_price,
+          mi.image_url as menu_item_image_url,
+          mi.category as menu_item_category
+        FROM order_items oi
+        LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+        WHERE oi.order_id = ${newOrder.id}
+      `;
       
+      // Transform the data to match expected frontend structure
+      const transformedItems = orderItems.map(item => ({
+        ...item,
+        name: item.menu_item_name || 'Unknown Item', // Add name property for backward compatibility
+        menuItem: item.menu_item_name ? {
+          name: item.menu_item_name,
+          description: item.menu_item_description,
+          price: item.menu_item_price,
+          imageUrl: item.menu_item_image_url,
+          category: item.menu_item_category
+        } : null
+      }));
+
       return {
         statusCode: 201,
         headers,
-        body: JSON.stringify({ ...newOrder, items: orderItems })
+        body: JSON.stringify({ ...newOrder, items: transformedItems })
       };
       
     } else {

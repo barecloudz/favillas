@@ -1398,7 +1398,7 @@ const OrdersManagement = ({ orders, onUpdateStatus }: any) => {
     const matchesStatus = statusFilter === "all" || order.status === statusFilter;
     const matchesSearch = order.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          order.id?.toString().includes(searchTerm) ||
-                         order.items?.some((item: any) => item.name?.toLowerCase().includes(searchTerm.toLowerCase()));
+                         order.items?.some((item: any) => item?.name?.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesStatus && matchesSearch;
   }) || [];
 
@@ -1652,7 +1652,7 @@ const OrdersManagement = ({ orders, onUpdateStatus }: any) => {
                     <td className="py-3 px-4">
                       <div className="max-w-xs">
                         <p className="text-sm">
-                          {order.items?.slice(0, 2).map((item: any) => item.name).join(", ")}
+                          {order.items?.slice(0, 2).map((item: any) => item?.name || 'Unknown Item').join(", ")}
                           {order.items?.length > 2 && ` +${order.items.length - 2} more`}
                         </p>
                       </div>
@@ -1776,7 +1776,7 @@ const OrdersManagement = ({ orders, onUpdateStatus }: any) => {
                   {selectedOrder.items?.map((item: any, index: number) => (
                     <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
                       <div>
-                        <p className="font-medium">{item.name}</p>
+                        <p className="font-medium">{item?.name || 'Unknown Item'}</p>
                         {item.notes && <p className="text-sm text-gray-600">{item.notes}</p>}
                       </div>
                       <div className="text-right">
