@@ -3,6 +3,23 @@ import { log } from "./utils";
 let socket: WebSocket | null = null;
 
 export const setupWebSocket = (): WebSocket => {
+  // Skip WebSocket connections in production (Netlify doesn't support WebSockets)
+  const isNetlifyProduction = typeof window !== 'undefined' && 
+    (window.location.hostname.includes('netlify.app') || 
+     process.env.NODE_ENV === 'production');
+  
+  if (isNetlifyProduction) {
+    log('WebSocket disabled in production (Netlify deployment)', 'websocket');
+    // Return a dummy WebSocket object to prevent errors
+    return {
+      readyState: WebSocket.CLOSED,
+      send: () => {},
+      close: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    } as any;
+  }
+
   if (socket && socket.readyState === WebSocket.OPEN) {
     // If the socket is already open, return the existing socket
     return socket;
@@ -17,10 +34,7 @@ export const setupWebSocket = (): WebSocket => {
     // Create a new WebSocket connection
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     // In development, use the proxy which will route to the correct backend
-    // In production, use the same host as the current page
-    const wsUrl = process.env.NODE_ENV === "development" 
-      ? `${protocol}//${window.location.host}/ws`
-      : `${protocol}//${window.location.host}/ws`;
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
     
     socket = new WebSocket(wsUrl);
   } catch (error) {
@@ -31,6 +45,7 @@ export const setupWebSocket = (): WebSocket => {
       send: () => {},
       close: () => {},
       addEventListener: () => {},
+      removeEventListener: () => {},
     } as any;
   }
   
@@ -56,6 +71,16 @@ export const setupWebSocket = (): WebSocket => {
 };
 
 export const sendMessage = (message: any) => {
+  // Skip in production (Netlify deployment)
+  const isNetlifyProduction = typeof window !== 'undefined' && 
+    (window.location.hostname.includes('netlify.app') || 
+     process.env.NODE_ENV === 'production');
+  
+  if (isNetlifyProduction) {
+    log('WebSocket message sending disabled in production', 'websocket');
+    return;
+  }
+
   if (!socket || socket.readyState !== WebSocket.OPEN) {
     log('WebSocket not connected, trying to reconnect...', 'websocket');
     socket = setupWebSocket();
