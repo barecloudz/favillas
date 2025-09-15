@@ -1,6 +1,6 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export const handler: Handler = async (event, context) => {
   const googleClientId = process.env.GOOGLE_CLIENT_ID;
   const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const vercelUrl = process.env.VERCEL_URL;
@@ -9,16 +9,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let baseUrl;
   if (vercelUrl) {
     baseUrl = `https://${vercelUrl}`;
-  } else if (req.headers.host) {
-    const protocol = req.headers['x-forwarded-proto'] || 'https';
-    baseUrl = `${protocol}://${req.headers.host}`;
+  } else if (event.headers.host) {
+    const protocol = event.headers['x-forwarded-proto'] || 'https';
+    baseUrl = `${protocol}://${event.headers.host}`;
   } else {
     baseUrl = 'Unable to determine';
   }
   
   const callbackUrl = `${baseUrl}/api/auth/google/callback`;
 
-  return res.status(200).json({
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
     message: 'Google OAuth Configuration Debug',
     timestamp: new Date().toISOString(),
     configuration: {
@@ -35,9 +37,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       vercelUrl: vercelUrl || 'not set'
     },
     headers: {
-      host: req.headers.host,
-      protocol: req.headers['x-forwarded-proto'],
-      userAgent: req.headers['user-agent']?.substring(0, 50)
+      host: event.headers.host,
+      protocol: event.headers['x-forwarded-proto'],
+      userAgent: event.headers['user-agent']?.substring(0, 50)
     },
     instructions: {
       step1: 'Set GOOGLE_CLIENT_ID in Vercel environment variables',
@@ -52,5 +54,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       consentScreen: 'OAuth consent screen not properly configured',
       environment: 'Environment variables not set in Vercel'
     }
-  });
+    })
+  };
 }

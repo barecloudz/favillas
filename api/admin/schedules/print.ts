@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { eq, and, gte, lte } from 'drizzle-orm';
@@ -27,8 +27,8 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(req: VercelRequest): { userId: number; username: string; role: string } | null {
-  const authHeader = req.headers.authorization;
+function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
+  const authHeader = event.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
   if (!token) {
@@ -82,31 +82,48 @@ function getPositionColor(position: string) {
   return colors[position as keyof typeof colors] || '#6B7280';
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export const handler: Handler = async (event, context) => {
   // CORS headers
-  const origin = req.headers.origin || 'http://localhost:3000';
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  const origin = event.headers.origin || 'http://localhost:3000';
+  const headers = {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true'
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (event.httpMethod !== 'GET') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ error: 'Method not allowed' })
+    };
   }
 
   // Authentication not required for print view to support direct links
   // But we'll check if provided
-  const authPayload = authenticateToken(req);
+  const authPayload = authenticateToken(event);
 
   try {
-    const { startDate, endDate, format = 'html' } = req.query;
+    const urlParams = new URLSearchParams(event.rawQuery || '');
+    const startDate = urlParams.get('startDate');
+    const endDate = urlParams.get('endDate');
+    const format = urlParams.get('format') || 'html';
     
     if (!startDate || !endDate) {
-      return res.status(400).json({ error: 'startDate and endDate are required' });
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'startDate and endDate are required' })
+      };
     }
 
     const db = getDB();
@@ -167,12 +184,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (format === 'json') {
-      return res.status(200).json({
-        dateRange: { startDate, endDate },
-        weekDays,
-        employeeSchedules: employeeScheduleMap,
-        totalSchedules: scheduleData.length,
-      });
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          dateRange: { startDate, endDate },
+          weekDays,
+          employeeSchedules: employeeScheduleMap,
+          totalSchedules: scheduleData.length,
+        })
+      };
     }
 
     // Generate HTML for printing
@@ -561,14 +582,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 </body>
 </html>`;
 
-    res.setHeader('Content-Type', 'text/html');
-    return res.status(200).send(html);
+    return {
+      statusCode: 200,
+      headers: { ...headers, 'Content-Type': 'text/html' },
+      body: html
+    };
     
   } catch (error) {
     console.error('Print schedules error:', error);
-    return res.status(500).json({ 
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      })
+    };
   }
 }

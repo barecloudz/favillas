@@ -1,15 +1,17 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export const handler: Handler = async (event, context) => {
   const googleClientId = process.env.GOOGLE_CLIENT_ID;
   const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const vercelUrl = process.env.VERCEL_URL;
   
   const baseUrl = vercelUrl 
     ? `https://${vercelUrl}` 
-    : `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}`;
+    : `${event.headers['x-forwarded-proto'] || 'https'}://${event.headers.host}`;
 
-  return res.status(200).json({
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
     message: 'Google OAuth Configuration Test',
     config: {
       hasClientId: !!googleClientId,
@@ -25,5 +27,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       'Configure OAuth callback URL in Google Console',
       'Test by visiting /api/auth/google'
     ]
-  });
+    })
+  };
 }

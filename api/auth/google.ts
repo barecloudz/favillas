@@ -1,8 +1,19 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
+export const handler: Handler = async (event, context) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+
+  if (event.httpMethod !== 'GET') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ message: 'Method not allowed' })
+    };
   }
 
   const googleClientId = process.env.GOOGLE_CLIENT_ID;
@@ -12,36 +23,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log('GOOGLE_CLIENT_ID exists:', !!googleClientId);
   console.log('GOOGLE_CLIENT_ID length:', googleClientId?.length || 0);
   console.log('VERCEL_URL:', vercelUrl);
-  console.log('Request headers host:', req.headers.host);
-  console.log('Request headers x-forwarded-proto:', req.headers['x-forwarded-proto']);
+  console.log('Request headers host:', event.headers.host);
+  console.log('Request headers x-forwarded-proto:', event.headers['x-forwarded-proto']);
   
   if (!googleClientId) {
-    return res.status(500).json({ 
-      message: 'Google OAuth not configured - GOOGLE_CLIENT_ID missing',
-      debug: {
-        hasClientId: !!googleClientId,
-        vercelUrl,
-        host: req.headers.host
-      }
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        message: 'Google OAuth not configured - GOOGLE_CLIENT_ID missing',
+        debug: {
+          hasClientId: !!googleClientId,
+          vercelUrl,
+          host: event.headers.host
+        }
+      })
+    };
   }
 
   // Build the callback URL more reliably
   let baseUrl;
   if (vercelUrl) {
     baseUrl = `https://${vercelUrl}`;
-  } else if (req.headers.host) {
-    const protocol = req.headers['x-forwarded-proto'] || 'https';
-    baseUrl = `${protocol}://${req.headers.host}`;
+  } else if (event.headers.host) {
+    const protocol = event.headers['x-forwarded-proto'] || 'https';
+    baseUrl = `${protocol}://${event.headers.host}`;
   } else {
-    return res.status(500).json({
-      message: 'Unable to determine base URL for OAuth callback',
-      debug: {
-        vercelUrl,
-        host: req.headers.host,
-        protocol: req.headers['x-forwarded-proto']
-      }
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        message: 'Unable to determine base URL for OAuth callback',
+        debug: {
+          vercelUrl,
+          host: event.headers.host,
+          protocol: event.headers['x-forwarded-proto']
+        }
+      })
+    };
   }
   
   const callbackUrl = `${baseUrl}/api/auth/google/callback`;
@@ -63,5 +82,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log('=== END DEBUG ===');
 
   // Redirect to Google OAuth
-  res.redirect(302, googleAuthUrl.toString());
+  return {
+    statusCode: 302,
+    headers: {
+      ...headers,
+      'Location': googleAuthUrl.toString()
+    },
+    body: ''
+  };
 }

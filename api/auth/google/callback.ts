@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
 import { eq } from 'drizzle-orm';
@@ -51,20 +51,45 @@ function getDB() {
   return dbConnection;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
+export const handler: Handler = async (event, context) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+
+  if (event.httpMethod !== 'GET') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ message: 'Method not allowed' })
+    };
   }
 
-  const { code, error } = req.query;
+  const { code, error } = event.queryStringParameters || {};
 
   if (error) {
     console.error('Google OAuth error:', error);
-    return res.redirect(302, '/auth?error=oauth_error');
+    return {
+      statusCode: 302,
+      headers: {
+        ...headers,
+        'Location': '/auth?error=oauth_error'
+      },
+      body: ''
+    };
   }
 
   if (!code) {
-    return res.redirect(302, '/auth?error=missing_code');
+    return {
+      statusCode: 302,
+      headers: {
+        ...headers,
+        'Location': '/auth?error=missing_code'
+      },
+      body: ''
+    };
   }
 
   try {
@@ -79,7 +104,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Build the callback URL
     const baseUrl = vercelUrl 
       ? `https://${vercelUrl}` 
-      : `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}`;
+      : `${event.headers['x-forwarded-proto'] || 'https'}://${event.headers.host}`;
     
     const callbackUrl = `${baseUrl}/api/auth/google/callback`;
 
@@ -198,14 +223,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       { expiresIn: '7d' }
     );
 
-    // Set token as HTTP-only cookie
-    res.setHeader('Set-Cookie', `auth-token=${token}; HttpOnly; Secure=${process.env.NODE_ENV === 'production'}; SameSite=Strict; Path=/; Max-Age=${7 * 24 * 60 * 60}`);
-
-    // Redirect to success page
-    res.redirect(302, '/?login=success');
+    // Set token as HTTP-only cookie and redirect to success page
+    return {
+      statusCode: 302,
+      headers: {
+        ...headers,
+        'Set-Cookie': `auth-token=${token}; HttpOnly; Secure=${process.env.NODE_ENV === 'production'}; SameSite=Strict; Path=/; Max-Age=${7 * 24 * 60 * 60}`,
+        'Location': '/?login=success'
+      },
+      body: ''
+    };
 
   } catch (error) {
     console.error('Google OAuth callback error:', error);
-    res.redirect(302, '/auth?error=oauth_failed');
+    return {
+      statusCode: 302,
+      headers: {
+        ...headers,
+        'Location': '/auth?error=oauth_failed'
+      },
+      body: ''
+    };
   }
 }

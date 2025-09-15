@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
 import jwt from 'jsonwebtoken';
 
@@ -24,8 +24,8 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(req: VercelRequest): { userId: number; username: string; role: string } | null {
-  const authHeader = req.headers.authorization;
+function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
+  const authHeader = event.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
   if (!token) {
@@ -45,24 +45,38 @@ function authenticateToken(req: VercelRequest): { userId: number; username: stri
   }
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export const handler: Handler = async (event, context) => {
   // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  const headers = {
+    'Access-Control-Allow-Origin': event.headers.origin || '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true'
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ message: 'Method not allowed' })
+    };
   }
 
-  const authPayload = authenticateToken(req);
+  const authPayload = authenticateToken(event);
   if (!authPayload) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return {
+      statusCode: 401,
+      headers,
+      body: JSON.stringify({ error: 'Unauthorized' })
+    };
   }
 
   try {
@@ -77,9 +91,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     `;
 
     if (clockInEntry.length === 0) {
-      return res.status(400).json({ 
-        message: 'No active clock in entry found. Please clock in first.'
-      });
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ 
+          message: 'No active clock in entry found. Please clock in first.'
+        })
+      };
     }
 
     const entry = clockInEntry[0];
@@ -99,19 +117,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const clockOut = new Date(updatedEntry.clock_out_time);
     const hoursWorked = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60);
 
-    return res.status(200).json({
-      message: 'Clocked out successfully',
-      clockInTime: updatedEntry.clock_in_time,
-      clockOutTime: updatedEntry.clock_out_time,
-      hoursWorked: Math.round(hoursWorked * 100) / 100, // Round to 2 decimal places
-      entryId: updatedEntry.id
-    });
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        message: 'Clocked out successfully',
+        clockInTime: updatedEntry.clock_in_time,
+        clockOutTime: updatedEntry.clock_out_time,
+        hoursWorked: Math.round(hoursWorked * 100) / 100, // Round to 2 decimal places
+        entryId: updatedEntry.id
+      })
+    };
 
   } catch (error: any) {
     console.error('Clock out error:', error);
-    return res.status(500).json({ 
-      message: 'Internal server error',
-      error: error.message 
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        message: 'Internal server error',
+        error: error.message 
+      })
+    };
   }
 }

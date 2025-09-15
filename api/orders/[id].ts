@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { eq } from 'drizzle-orm';
@@ -28,8 +28,8 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(req: VercelRequest): { userId: number; username: string; role: string } | null {
-  const authHeader = req.headers.authorization;
+function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
+  const authHeader = event.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
   if (!token) {
@@ -49,59 +49,90 @@ function authenticateToken(req: VercelRequest): { userId: number; username: stri
   }
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export const handler: Handler = async (event, context) => {
   // CORS headers
-  const origin = req.headers.origin || 'http://localhost:3000';
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, PATCH, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  const origin = event.headers.origin || 'http://localhost:3000';
+  const headers = {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'GET, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true'
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
-  const authPayload = authenticateToken(req);
+  const authPayload = authenticateToken(event);
   if (!authPayload) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return {
+      statusCode: 401,
+      headers,
+      body: JSON.stringify({ error: 'Unauthorized' })
+    };
   }
 
-  const { id } = req.query;
-  const orderId = parseInt(id as string, 10);
+  const pathParts = event.path.split('/');
+  const id = pathParts[pathParts.length - 1];
+  const orderId = parseInt(id, 10);
 
   if (isNaN(orderId)) {
-    return res.status(400).json({ error: 'Invalid order ID' });
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'Invalid order ID' })
+    };
   }
 
   try {
     const db = getDB();
 
-    switch (req.method) {
+    switch (event.httpMethod) {
       case 'GET':
         // Get single order with items
         const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
         if (!order) {
-          return res.status(404).json({ error: 'Order not found' });
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({ error: 'Order not found' })
+          };
         }
 
         // Check if user can access this order
         if (authPayload.role !== 'admin' && authPayload.role !== 'kitchen' && authPayload.role !== 'manager' && order.userId !== authPayload.userId) {
-          return res.status(403).json({ error: 'Forbidden' });
+          return {
+            statusCode: 403,
+            headers,
+            body: JSON.stringify({ error: 'Forbidden' })
+          };
         }
 
         // Get order items
         const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
         
-        return res.status(200).json({ ...order, items });
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ ...order, items })
+        };
 
       case 'PATCH':
         // Update order (typically status changes)
         // Only staff can update orders
         if (authPayload.role !== 'admin' && authPayload.role !== 'kitchen' && authPayload.role !== 'manager') {
-          return res.status(403).json({ error: 'Forbidden - Staff access required' });
+          return {
+            statusCode: 403,
+            headers,
+            body: JSON.stringify({ error: 'Forbidden - Staff access required' })
+          };
         }
 
-        const patchData = req.body;
+        const patchData = JSON.parse(event.body || '{}');
         const [updatedOrder] = await db
           .update(orders)
           .set({
@@ -112,14 +143,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .returning();
           
         if (!updatedOrder) {
-          return res.status(404).json({ error: 'Order not found' });
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({ error: 'Order not found' })
+          };
         }
-        return res.status(200).json(updatedOrder);
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify(updatedOrder)
+        };
 
       case 'DELETE':
         // Delete order (admin only)
         if (authPayload.role !== 'admin') {
-          return res.status(403).json({ error: 'Forbidden - Admin access required' });
+          return {
+            statusCode: 403,
+            headers,
+            body: JSON.stringify({ error: 'Forbidden - Admin access required' })
+          };
         }
 
         const [deletedOrder] = await db
@@ -128,19 +171,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .returning();
           
         if (!deletedOrder) {
-          return res.status(404).json({ error: 'Order not found' });
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({ error: 'Order not found' })
+          };
         }
-        return res.status(200).json({ message: 'Order deleted', id: orderId });
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ message: 'Order deleted', id: orderId })
+        };
 
       default:
-        res.setHeader('Allow', ['GET', 'PATCH', 'DELETE']);
-        return res.status(405).json({ error: `Method ${req.method} not allowed` });
+        return {
+          statusCode: 405,
+          headers: { ...headers, 'Allow': 'GET, PATCH, DELETE' },
+          body: JSON.stringify({ error: `Method ${event.httpMethod} not allowed` })
+        };
     }
   } catch (error) {
     console.error('Order API error:', error);
-    return res.status(500).json({ 
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      })
+    };
   }
 }

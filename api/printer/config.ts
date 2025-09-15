@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
 
 // Database connection
@@ -23,46 +23,60 @@ function getDB() {
   return dbConnection;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+export const handler: Handler = async (event, context) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': event.headers.origin || '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
   try {
     const sql = getDB();
 
-    if (req.method === 'GET') {
+    if (event.httpMethod === 'GET') {
       // Get printer configurations
       const printers = await sql`
         SELECT * FROM printer_config 
         ORDER BY created_at DESC
       `;
       
-      return res.status(200).json(printers.map(printer => ({
-        id: printer.id,
-        name: printer.name,
-        ipAddress: printer.ip_address,
-        port: printer.port,
-        printerType: printer.printer_type,
-        isActive: printer.is_active,
-        createdAt: printer.created_at,
-        updatedAt: printer.updated_at
-      })));
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(printers.map(printer => ({
+          id: printer.id,
+          name: printer.name,
+          ipAddress: printer.ip_address,
+          port: printer.port,
+          printerType: printer.printer_type,
+          isActive: printer.is_active,
+          createdAt: printer.created_at,
+          updatedAt: printer.updated_at
+        })))
+      };
 
-    } else if (req.method === 'POST') {
+    } else if (event.httpMethod === 'POST') {
       // Create new printer configuration
-      const { name, ipAddress, port, printerType, isActive } = req.body;
+      const { name, ipAddress, port, printerType, isActive } = JSON.parse(event.body || '{}');
 
       if (!name || !ipAddress || !port || !printerType) {
-        return res.status(400).json({ 
-          message: 'Missing required fields: name, ipAddress, port, printerType' 
-        });
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ 
+            message: 'Missing required fields: name, ipAddress, port, printerType' 
+          })
+        };
       }
 
       const result = await sql`
@@ -72,23 +86,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
 
       const printer = result[0];
-      return res.status(201).json({
-        id: printer.id,
-        name: printer.name,
-        ipAddress: printer.ip_address,
-        port: printer.port,
-        printerType: printer.printer_type,
-        isActive: printer.is_active,
-        createdAt: printer.created_at,
-        updatedAt: printer.updated_at
-      });
+      return {
+        statusCode: 201,
+        headers,
+        body: JSON.stringify({
+          id: printer.id,
+          name: printer.name,
+          ipAddress: printer.ip_address,
+          port: printer.port,
+          printerType: printer.printer_type,
+          isActive: printer.is_active,
+          createdAt: printer.created_at,
+          updatedAt: printer.updated_at
+        })
+      };
 
-    } else if (req.method === 'PUT') {
+    } else if (event.httpMethod === 'PUT') {
       // Update printer configuration
-      const { id, name, ipAddress, port, printerType, isActive } = req.body;
+      const { id, name, ipAddress, port, printerType, isActive } = JSON.parse(event.body || '{}');
 
       if (!id) {
-        return res.status(400).json({ message: 'Printer ID is required' });
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ message: 'Printer ID is required' })
+        };
       }
 
       const result = await sql`
@@ -105,27 +127,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
 
       if (result.length === 0) {
-        return res.status(404).json({ message: 'Printer configuration not found' });
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ message: 'Printer configuration not found' })
+        };
       }
 
       const printer = result[0];
-      return res.status(200).json({
-        id: printer.id,
-        name: printer.name,
-        ipAddress: printer.ip_address,
-        port: printer.port,
-        printerType: printer.printer_type,
-        isActive: printer.is_active,
-        createdAt: printer.created_at,
-        updatedAt: printer.updated_at
-      });
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          id: printer.id,
+          name: printer.name,
+          ipAddress: printer.ip_address,
+          port: printer.port,
+          printerType: printer.printer_type,
+          isActive: printer.is_active,
+          createdAt: printer.created_at,
+          updatedAt: printer.updated_at
+        })
+      };
 
-    } else if (req.method === 'DELETE') {
+    } else if (event.httpMethod === 'DELETE') {
       // Delete printer configuration
-      const { id } = req.body;
+      const { id } = JSON.parse(event.body || '{}');
 
       if (!id) {
-        return res.status(400).json({ message: 'Printer ID is required' });
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ message: 'Printer ID is required' })
+        };
       }
 
       const result = await sql`
@@ -135,21 +169,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
 
       if (result.length === 0) {
-        return res.status(404).json({ message: 'Printer configuration not found' });
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ message: 'Printer configuration not found' })
+        };
       }
 
-      return res.status(200).json({ message: 'Printer configuration deleted successfully' });
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ message: 'Printer configuration deleted successfully' })
+      };
 
     } else {
-      return res.status(405).json({ message: 'Method not allowed' });
+      return {
+        statusCode: 405,
+        headers,
+        body: JSON.stringify({ message: 'Method not allowed' })
+      };
     }
 
   } catch (error) {
     console.error('Printer Config API error:', error);
-    return res.status(500).json({ 
-      message: 'Internal server error',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        message: 'Internal server error',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
+      })
+    };
   }
 }

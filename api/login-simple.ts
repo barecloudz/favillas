@@ -1,45 +1,67 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+export const handler: Handler = async (event, context) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ message: 'Method not allowed' })
+    };
   }
 
   try {
-    const { username, password } = req.body;
+    const { username, password } = JSON.parse(event.body || '{}');
 
     // Simple hardcoded test login
     if (username === 'admin' && password === 'password') {
-      return res.status(200).json({
-        message: 'Login successful',
-        user: {
-          id: 1,
-          username: 'admin',
-          email: 'admin@favillas.com',
-          role: 'admin'
-        }
-      });
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          message: 'Login successful',
+          user: {
+            id: 1,
+            username: 'admin',
+            email: 'admin@favillas.com',
+            role: 'admin'
+          }
+        })
+      };
     }
 
-    return res.status(401).json({ 
-      message: 'Invalid credentials - use admin/password for testing' 
-    });
+    return {
+      statusCode: 401,
+      headers,
+      body: JSON.stringify({ 
+        message: 'Invalid credentials - use admin/password for testing' 
+      })
+    };
     
   } catch (error) {
     console.error('Login error:', error);
-    return res.status(500).json({ 
-      message: 'Internal server error',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        message: 'Internal server error',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      })
+    };
   }
 }

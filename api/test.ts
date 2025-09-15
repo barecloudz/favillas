@@ -1,19 +1,29 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
+export const handler: Handler = async (event, context) => {
   // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
-  return res.status(200).json({ 
-    message: 'API is working!', 
-    timestamp: new Date().toISOString(),
-    method: req.method,
-    url: req.url
-  });
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ 
+      message: 'API is working!', 
+      timestamp: new Date().toISOString(),
+      method: event.httpMethod,
+      url: event.path
+    })
+  };
 }

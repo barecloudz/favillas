@@ -1,13 +1,19 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export const handler: Handler = async (event, context) => {
   // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
   try {
@@ -48,27 +54,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    return res.status(200).json({
-      message: 'Database test complete',
-      timestamp: new Date().toISOString(),
-      environment: {
-        hasDbUrl,
-        hasSessionSecret,
-        nodeEnv: process.env.NODE_ENV,
-        vercelEnv: process.env.VERCEL_ENV
-      },
-      database: {
-        testResult: dbTestResult,
-        error: dbError
-      }
-    });
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        message: 'Database test complete',
+        timestamp: new Date().toISOString(),
+        environment: {
+          hasDbUrl,
+          hasSessionSecret,
+          nodeEnv: process.env.NODE_ENV,
+          vercelEnv: process.env.VERCEL_ENV
+        },
+        database: {
+          testResult: dbTestResult,
+          error: dbError
+        }
+      })
+    };
     
   } catch (error) {
     console.error('DB test error:', error);
-    return res.status(500).json({ 
-      message: 'Database test failed',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        message: 'Database test failed',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      })
+    };
   }
 }

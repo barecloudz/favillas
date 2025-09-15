@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { eq } from 'drizzle-orm';
@@ -31,8 +31,8 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(req: VercelRequest): { userId: number; username: string; role: string } | null {
-  const authHeader = req.headers.authorization;
+function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
+  const authHeader = event.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
   if (!token) {
@@ -58,52 +58,79 @@ async function hashPassword(password: string) {
   return `${buf.toString("hex")}.${salt}`;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const origin = req.headers.origin || 'http://localhost:3000';
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, PATCH, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+export const handler: Handler = async (event, context) => {
+  const origin = event.headers.origin || 'http://localhost:3000';
+  const headers = {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'GET, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true'
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
-  const authPayload = authenticateToken(req);
+  const authPayload = authenticateToken(event);
   if (!authPayload) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return {
+      statusCode: 401,
+      headers,
+      body: JSON.stringify({ error: 'Unauthorized' })
+    };
   }
 
-  const { id } = req.query;
-  const userId = parseInt(id as string, 10);
+  const pathParts = event.path.split('/');
+  const id = pathParts[pathParts.length - 1];
+  const userId = parseInt(id, 10);
 
   if (isNaN(userId)) {
-    return res.status(400).json({ error: 'Invalid user ID' });
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'Invalid user ID' })
+    };
   }
 
   // Users can only access their own data unless they're admin
   if (authPayload.userId !== userId && authPayload.role !== 'admin') {
-    return res.status(403).json({ error: 'Forbidden' });
+    return {
+      statusCode: 403,
+      headers,
+      body: JSON.stringify({ error: 'Forbidden' })
+    };
   }
 
   try {
     const db = getDB();
 
-    switch (req.method) {
+    switch (event.httpMethod) {
       case 'GET':
         // Get single user
         const [user] = await db.select().from(users).where(eq(users.id, userId));
         if (!user) {
-          return res.status(404).json({ error: 'User not found' });
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({ error: 'User not found' })
+          };
         }
         
         const { password: _, ...userWithoutPassword } = user;
-        return res.status(200).json(userWithoutPassword);
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify(userWithoutPassword)
+        };
 
       case 'PUT':
       case 'PATCH':
         // Update user
-        const updateData = req.body;
+        const updateData = JSON.parse(event.body || '{}');
         
         // Hash password if it's being updated
         if (updateData.password) {
@@ -120,16 +147,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .returning();
           
         if (!updatedUser) {
-          return res.status(404).json({ error: 'User not found' });
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({ error: 'User not found' })
+          };
         }
 
         const { password: __, ...updatedUserWithoutPassword } = updatedUser;
-        return res.status(200).json(updatedUserWithoutPassword);
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify(updatedUserWithoutPassword)
+        };
 
       case 'DELETE':
         // Delete user (admin only or self-deletion)
         if (authPayload.role !== 'admin' && authPayload.userId !== userId) {
-          return res.status(403).json({ error: 'Forbidden' });
+          return {
+            statusCode: 403,
+            headers,
+            body: JSON.stringify({ error: 'Forbidden' })
+          };
         }
 
         const [deletedUser] = await db
@@ -138,20 +177,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .returning();
           
         if (!deletedUser) {
-          return res.status(404).json({ error: 'User not found' });
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({ error: 'User not found' })
+          };
         }
 
-        return res.status(200).json({ message: 'User deleted', id: userId });
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ message: 'User deleted', id: userId })
+        };
 
       default:
-        res.setHeader('Allow', ['GET', 'PUT', 'PATCH', 'DELETE']);
-        return res.status(405).json({ error: `Method ${req.method} not allowed` });
+        return {
+          statusCode: 405,
+          headers: { ...headers, 'Allow': 'GET, PUT, PATCH, DELETE' },
+          body: JSON.stringify({ error: `Method ${event.httpMethod} not allowed` })
+        };
     }
   } catch (error) {
     console.error('User API error:', error);
-    return res.status(500).json({ 
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      })
+    };
   }
 }

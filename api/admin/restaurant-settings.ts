@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { eq } from 'drizzle-orm';
@@ -27,8 +27,8 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(req: VercelRequest): { userId: number; username: string; role: string } | null {
-  const authHeader = req.headers.authorization;
+function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
+  const authHeader = event.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
   if (!token) {
@@ -48,31 +48,45 @@ function authenticateToken(req: VercelRequest): { userId: number; username: stri
   }
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const origin = req.headers.origin || 'http://localhost:3000';
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+export const handler: Handler = async (event, context) => {
+  const origin = event.headers.origin || 'http://localhost:3000';
+  const headers = {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true'
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
-  const authPayload = authenticateToken(req);
+  const authPayload = authenticateToken(event);
   if (!authPayload) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return {
+      statusCode: 401,
+      headers,
+      body: JSON.stringify({ error: 'Unauthorized' })
+    };
   }
 
   // Only admin can manage restaurant settings
   if (authPayload.role !== 'admin') {
-    return res.status(403).json({ error: 'Forbidden - Admin access required' });
+    return {
+      statusCode: 403,
+      headers,
+      body: JSON.stringify({ error: 'Forbidden - Admin access required' })
+    };
   }
 
   try {
     const db = getDB();
 
-    if (req.method === 'GET') {
+    if (event.httpMethod === 'GET') {
       // Get restaurant settings (return first record or default)
       const [settings] = await db.select().from(restaurantSettings).limit(1);
       
@@ -107,14 +121,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .values(defaultSettings)
           .returning();
           
-        return res.status(200).json(newSettings);
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify(newSettings)
+        };
       }
       
-      return res.status(200).json(settings);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(settings)
+      };
       
-    } else if (req.method === 'PUT' || req.method === 'PATCH') {
+    } else if (event.httpMethod === 'PUT' || event.httpMethod === 'PATCH') {
       // Update restaurant settings
-      const settingsData = req.body;
+      const settingsData = JSON.parse(event.body || '{}');
       
       // Check if settings exist
       const [existingSettings] = await db.select().from(restaurantSettings).limit(1);
@@ -130,7 +152,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           })
           .returning();
           
-        return res.status(201).json(newSettings);
+        return {
+          statusCode: 201,
+          headers,
+          body: JSON.stringify(newSettings)
+        };
       } else {
         // Update existing settings
         const [updatedSettings] = await db
@@ -142,17 +168,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .where(eq(restaurantSettings.id, existingSettings.id))
           .returning();
           
-        return res.status(200).json(updatedSettings);
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify(updatedSettings)
+        };
       }
       
     } else {
-      return res.status(405).json({ error: 'Method not allowed' });
+      return {
+        statusCode: 405,
+        headers,
+        body: JSON.stringify({ error: 'Method not allowed' })
+      };
     }
   } catch (error) {
     console.error('Restaurant settings API error:', error);
-    return res.status(500).json({ 
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      })
+    };
   }
 }

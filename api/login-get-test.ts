@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
 import { eq } from 'drizzle-orm';
@@ -42,23 +42,35 @@ function getDB() {
   return dbConnection;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+export const handler: Handler = async (event, context) => {
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+  };
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
   try {
-    const { username, password } = req.query;
+    const urlParams = new URLSearchParams(event.rawQuery || '');
+    const username = urlParams.get('username');
+    const password = urlParams.get('password');
 
     if (!username || !password) {
-      return res.status(400).json({ 
-        message: 'Username and password query parameters required',
-        example: '/api/login-get-test?username=superadmin&password=password'
-      });
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ 
+          message: 'Username and password query parameters required',
+          example: '/api/login-get-test?username=superadmin&password=password'
+        })
+      };
     }
 
     console.log('GET Login attempt:', username);
@@ -68,34 +80,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const user = await db
       .select()
       .from(users)
-      .where(eq(users.username, username as string))
+      .where(eq(users.username, username))
       .limit(1)
       .then(rows => rows[0]);
 
     if (!user) {
-      return res.status(401).json({ 
-        message: 'Invalid credentials - user not found' 
-      });
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ 
+          message: 'Invalid credentials - user not found' 
+        })
+      };
     }
 
     // For testing, let's see what we get without password validation first
     const { password: _, ...userWithoutPassword } = user;
     
-    return res.status(200).json({
-      message: 'User found (password check skipped for GET test)',
-      user: userWithoutPassword,
-      debug: {
-        isAdmin: user.isAdmin,
-        role: user.role,
-        hasPassword: !!user.password
-      }
-    });
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        message: 'User found (password check skipped for GET test)',
+        user: userWithoutPassword,
+        debug: {
+          isAdmin: user.isAdmin,
+          role: user.role,
+          hasPassword: !!user.password
+        }
+      })
+    };
     
   } catch (error) {
     console.error('GET Login error:', error);
-    return res.status(500).json({ 
-      message: 'Internal server error',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        message: 'Internal server error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
+    };
   }
 }
