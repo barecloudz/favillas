@@ -48,6 +48,13 @@ const TAX_RATE = 0.0825;
 // Local storage key
 const CART_STORAGE_KEY = "favillasCart";
 
+// Global function to clear cart data (useful for debugging)
+(window as any).clearFavillasCart = () => {
+  localStorage.removeItem(CART_STORAGE_KEY);
+  console.log("Favilla's cart data cleared from localStorage");
+  window.location.reload();
+};
+
 // Provider component
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -70,19 +77,45 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (savedCart) {
       try {
         const parsedCart = JSON.parse(savedCart);
-        // Filter out corrupted items and ensure prices are numbers
+        // More aggressive validation - check if parsedCart is an array
+        if (!Array.isArray(parsedCart)) {
+          console.warn("Cart data is not an array, clearing cart");
+          localStorage.removeItem(CART_STORAGE_KEY);
+          setItems([]);
+          return;
+        }
+
+        // Filter out corrupted items with strict validation
         const normalizedCart = parsedCart
-          .filter((item: any) => item && typeof item === 'object' && item.id && item.name && item.price !== undefined && item.quantity)
+          .filter((item: any) => {
+            return item &&
+                   typeof item === 'object' &&
+                   typeof item.id === 'number' &&
+                   typeof item.name === 'string' &&
+                   item.name.trim() !== '' &&
+                   (typeof item.price === 'number' || typeof item.price === 'string') &&
+                   (typeof item.quantity === 'number' || typeof item.quantity === 'string') &&
+                   !isNaN(parseFloat(String(item.price))) &&
+                   !isNaN(parseInt(String(item.quantity))) &&
+                   parseInt(String(item.quantity)) > 0;
+          })
           .map((item: any) => ({
             ...item,
             price: typeof item.price === 'string' ? parseFloat(item.price) : item.price,
             quantity: typeof item.quantity === 'string' ? parseInt(item.quantity) : item.quantity
           }));
+
+        // If we filtered out items, log it and update localStorage
+        if (normalizedCart.length !== parsedCart.length) {
+          console.warn(`Filtered out ${parsedCart.length - normalizedCart.length} corrupted cart items`);
+        }
+
         setItems(normalizedCart);
       } catch (error) {
         console.error("Failed to parse cart data from localStorage", error);
         // Clear corrupted cart data
         localStorage.removeItem(CART_STORAGE_KEY);
+        setItems([]);
       }
     }
   }, []);

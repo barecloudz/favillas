@@ -144,21 +144,44 @@ const CheckoutPage = () => {
     return false;
   };
 
-  // Check if cart is empty
+  // Check if cart is empty or has corrupted items
   useEffect(() => {
     // Add a small delay to allow cart to load from localStorage
     const timer = setTimeout(() => {
-      if (items.length === 0) {
+      // Filter out any items that might have slipped through with missing required fields
+      const validItems = items.filter(item =>
+        item &&
+        typeof item === 'object' &&
+        item.id &&
+        item.name &&
+        typeof item.name === 'string' &&
+        item.name.trim() !== '' &&
+        item.price !== undefined &&
+        item.quantity !== undefined &&
+        !isNaN(parseFloat(String(item.price))) &&
+        parseInt(String(item.quantity)) > 0
+      );
+
+      if (validItems.length === 0) {
         navigate("/menu");
         toast({
-          title: "Cart is empty",
+          title: "Cart is empty or contains invalid items",
           description: "Please add items to your cart before checkout.",
+        });
+      } else if (validItems.length !== items.length) {
+        // Some items were invalid, clear cart and redirect
+        clearCart();
+        navigate("/menu");
+        toast({
+          title: "Cart contained invalid items",
+          description: "Your cart has been cleared. Please add items again.",
+          variant: "destructive"
         });
       }
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [items, navigate, toast]);
+  }, [items, navigate, toast, clearCart]);
 
   // Query user rewards
   const { data: rewards } = useQuery({
