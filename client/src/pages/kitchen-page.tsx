@@ -141,7 +141,7 @@ const KitchenPage = () => {
             <div class="divider"></div>
             ${order.items.map((item: any) => `
               <div class="item">
-                <p>${item.quantity}x ${item.menuItem?.name || 'Item'} - $${formatPrice(item.price)}</p>
+                <p>${item.quantity}x ${item.menuItem?.name || 'Unknown Item'} - $${formatPrice(item.price)}</p>
                 ${item.options?.size ? `<p>Size: ${item.options.size}</p>` : ''}
                 ${item.specialInstructions ? `<p>Note: ${item.specialInstructions}</p>` : ''}
               </div>
@@ -278,7 +278,7 @@ const KitchenPage = () => {
                           {order.items.map((item: any) => (
                             <div key={item.id} className="border-b pb-2">
                               <div className="flex justify-between font-medium">
-                                <span>{item.quantity}x {item.menuItem?.name || 'Menu Item'}</span>
+                                <span>{item.quantity}x {item.menuItem?.name || 'Unknown Item'}</span>
                                 <span>${formatPrice(item.price)}</span>
                               </div>
                               {item.options?.size && (
