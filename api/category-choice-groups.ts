@@ -46,11 +46,10 @@ export const handler: Handler = async (event, context) => {
 
     if (event.httpMethod === 'GET') {
       const categoryChoiceGroups = await sql`
-        SELECT ccg.*, c.name as category_name, cg.name as choice_group_name
+        SELECT ccg.*, cg.name as choice_group_name
         FROM category_choice_groups ccg
-        LEFT JOIN categories c ON ccg.category_id = c.id
         LEFT JOIN choice_groups cg ON ccg.choice_group_id = cg.id
-        ORDER BY ccg.category_id ASC, ccg.choice_group_id ASC
+        ORDER BY ccg.category_name ASC, ccg.choice_group_id ASC
       `;
       
       return {
@@ -61,20 +60,20 @@ export const handler: Handler = async (event, context) => {
 
     } else if (event.httpMethod === 'POST') {
       const requestBody = JSON.parse(event.body || '{}');
-      const { categoryId, choiceGroupId } = requestBody;
+      const { categoryName, choiceGroupId } = requestBody;
       
-      if (!categoryId || !choiceGroupId) {
+      if (!categoryName || !choiceGroupId) {
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ message: 'Category ID and choice group ID are required' })
+          body: JSON.stringify({ message: 'Category name and choice group ID are required' })
         };
       }
       
       // Check if association already exists
       const existing = await sql`
         SELECT * FROM category_choice_groups 
-        WHERE category_id = ${categoryId} AND choice_group_id = ${choiceGroupId}
+        WHERE category_name = ${categoryName} AND choice_group_id = ${choiceGroupId}
       `;
       
       if (existing.length > 0) {
@@ -86,8 +85,8 @@ export const handler: Handler = async (event, context) => {
       }
       
       const result = await sql`
-        INSERT INTO category_choice_groups (category_id, choice_group_id, created_at)
-        VALUES (${categoryId}, ${choiceGroupId}, NOW())
+        INSERT INTO category_choice_groups (category_name, choice_group_id, created_at)
+        VALUES (${categoryName}, ${choiceGroupId}, NOW())
         RETURNING *
       `;
       
