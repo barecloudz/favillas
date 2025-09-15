@@ -18,6 +18,16 @@ export const useWebSocket = () => {
   const connect = useCallback(() => {
     if (!user?.id) return;
 
+    // Skip WebSocket connections in production (Netlify doesn't support WebSockets)
+    const isNetlifyProduction = typeof window !== 'undefined' && 
+      (window.location.hostname.includes('netlify.app') || 
+       process.env.NODE_ENV === 'production');
+    
+    if (isNetlifyProduction) {
+      console.log('WebSocket disabled in production (Netlify deployment)');
+      return;
+    }
+
     try {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${window.location.host}/ws`;
@@ -42,9 +52,12 @@ export const useWebSocket = () => {
           
           if (message.type === 'orderStatusChanged') {
             // Show toast notification
+            const statusText = message.status ? 
+              message.status.charAt(0).toUpperCase() + message.status.slice(1) : 
+              'Unknown';
             toast({
               title: `Order #${message.orderId} Updated`,
-              description: `Your order status has been updated to: ${message.status?.charAt(0).toUpperCase() + message.status?.slice(1)}`,
+              description: `Your order status has been updated to: ${statusText}`,
             });
             
             // Trigger a page refresh or cache invalidation
@@ -67,9 +80,16 @@ export const useWebSocket = () => {
 
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        // Close the connection on error to prevent further issues
+        ws.close();
       };
     } catch (error) {
       console.error('Failed to connect WebSocket:', error);
+      // Clear any existing reconnect timeout
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
     }
   }, [user?.id, toast]);
 
