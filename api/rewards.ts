@@ -45,11 +45,11 @@ export const handler: Handler = async (event, context) => {
     const sql = getDB();
 
     if (event.httpMethod === 'GET') {
-      // Get all active rewards
+      // Get all active rewards (non-expired)
       const rewards = await sql`
         SELECT * FROM rewards 
-        WHERE is_active = true
-        ORDER BY points_cost ASC
+        WHERE expires_at IS NULL OR expires_at > NOW()
+        ORDER BY discount ASC
       `;
       
       return {
@@ -59,21 +59,21 @@ export const handler: Handler = async (event, context) => {
       };
 
     } else if (event.httpMethod === 'POST') {
-      const { name, description, pointsCost, isActive = true } = JSON.parse(event.body || '{}');
+      const { name, description, discount, discountType, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
       
-      if (!name || !description || !pointsCost) {
+      if (!name || !description) {
         return {
           statusCode: 400,
           headers,
           body: JSON.stringify({ 
-            message: 'Name, description, and points cost are required' 
+            message: 'Name and description are required' 
           })
         };
       }
       
       const result = await sql`
-        INSERT INTO rewards (name, description, points_cost, is_active, created_at, updated_at)
-        VALUES (${name}, ${description}, ${pointsCost}, ${isActive}, NOW(), NOW())
+        INSERT INTO rewards (name, description, discount, discount_type, min_order_amount, expires_at, created_at)
+        VALUES (${name}, ${description}, ${discount || null}, ${discountType || null}, ${minOrderAmount || null}, ${expiresAt || null}, NOW())
         RETURNING *
       `;
       
@@ -96,15 +96,16 @@ export const handler: Handler = async (event, context) => {
         };
       }
       
-      const { name, description, pointsCost, isActive } = JSON.parse(event.body || '{}');
+      const { name, description, discount, discountType, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
       
       const result = await sql`
         UPDATE rewards 
         SET name = ${name || null}, 
             description = ${description || null}, 
-            points_cost = ${pointsCost || null}, 
-            is_active = ${isActive !== undefined ? isActive : null},
-            updated_at = NOW()
+            discount = ${discount || null}, 
+            discount_type = ${discountType || null},
+            min_order_amount = ${minOrderAmount || null},
+            expires_at = ${expiresAt || null}
         WHERE id = ${parseInt(rewardId)}
         RETURNING *
       `;
