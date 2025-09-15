@@ -28,8 +28,20 @@ function getDB() {
 }
 
 function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
+  // Check for JWT token in Authorization header first
   const authHeader = event.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  // If no Authorization header, check for auth-token cookie
+  if (!token) {
+    const cookies = event.headers.cookie;
+    if (cookies) {
+      const authCookie = cookies.split(';').find((c: string) => c.trim().startsWith('auth-token='));
+      if (authCookie) {
+        token = authCookie.split('=')[1];
+      }
+    }
+  }
 
   if (!token) {
     return null;
