@@ -123,7 +123,7 @@ const OrdersPage = () => {
     order.items?.forEach((item: any) => {
       addToCart({
         id: item.menuItemId,
-        name: item.name,
+        name: item?.name || 'Unknown Item',
         price: item.price,
         quantity: item.quantity,
         options: item.options,
@@ -153,7 +153,7 @@ ${user?.phone ? `Phone: ${user.phone}` : ''}
 
 Items:
 ${order.items?.map((item: any) => 
-  `${item.name} x${item.quantity} - ${formatCurrency(item.price * item.quantity)}`
+  `${item?.name || 'Unknown Item'} x${item.quantity} - ${formatCurrency(item.price * item.quantity)}`
 ).join('\n')}
 
 Subtotal: ${formatCurrency(order.total)}
@@ -412,7 +412,7 @@ Thank you for choosing Favilla's NY Pizza!
                           {order.items?.slice(0, 3).map((item: any, index: number) => (
                             <div key={index} className="flex justify-between items-start text-sm">
                               <div className="flex-1">
-                                <p className="font-medium">{item.name}</p>
+                                <p className="font-medium">{item?.name || 'Unknown Item'}</p>
                                 {item.specialInstructions && (
                                   <p className="text-gray-500 text-xs">Note: {item.specialInstructions}</p>
                                 )}

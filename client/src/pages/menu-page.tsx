@@ -156,7 +156,7 @@ const MenuPage = () => {
 
   const filteredItems = (menuItems || []).filter((item: any) => {
     const matchesCategory = !selectedCategory || item.category === selectedCategory;
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch = item?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesCategory && matchesSearch && item.isAvailable !== false;
   });
@@ -333,7 +333,7 @@ const MenuPage = () => {
     
     addItem({
       id: item.id,
-      name: item.name,
+      name: item?.name || 'Unknown Item',
       price: price,
       quantity: 1
     });
@@ -461,7 +461,7 @@ const MenuPage = () => {
                           {item.imageUrl ? (
                             <img 
                               src={item.imageUrl} 
-                              alt={item.name} 
+                              alt={item?.name || 'Menu Item'} 
                               className="w-full h-full object-cover" 
                             />
                           ) : (
@@ -476,7 +476,7 @@ const MenuPage = () => {
                             className="cursor-pointer"
                           >
                             <div className="flex justify-between items-start mb-2">
-                              <h3 className="font-semibold text-lg">{item.name}</h3>
+                              <h3 className="font-semibold text-lg">{item?.name || 'Unknown Item'}</h3>
                               <Badge variant="default">
                                 ${formatPrice(item.basePrice)}
                               </Badge>
@@ -700,7 +700,7 @@ const MenuPage = () => {
                     // Add to cart with selections and quantity
                     addItem({
                       id: selectedItem.id,
-                      name: selectedItem.name,
+                      name: selectedItem?.name || 'Unknown Item',
                       price: totalPrice,
                       quantity: quantity,
                       options: selectedOptions

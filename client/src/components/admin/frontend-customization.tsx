@@ -325,7 +325,7 @@ const FrontendCustomization: React.FC = () => {
                       {item.imageUrl ? (
                         <img 
                           src={item.imageUrl} 
-                          alt={item.name}
+                          alt={item?.name || 'Menu Item'}
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -335,7 +335,7 @@ const FrontendCustomization: React.FC = () => {
                       )}
                     </div>
                     <div>
-                      <h4 className="font-medium">{item.name}</h4>
+                      <h4 className="font-medium">{item?.name || 'Unknown Item'}</h4>
                       <p className="text-sm text-gray-600">${item.basePrice} • {item.category}</p>
                       <p className="text-xs text-gray-500 line-clamp-1">{item.description}</p>
                     </div>
