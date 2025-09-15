@@ -10,13 +10,13 @@
   SECRETS_SCAN_ENABLED = "false"
 
 [[redirects]]
-  from = "/api/menu/:id"
-  to = "/.netlify/functions/menu-item"
+  from = "/api/kitchen/orders"
+  to = "/.netlify/functions/kitchen-orders"
   status = 200
 
 [[redirects]]
-  from = "/api/kitchen/orders"
-  to = "/.netlify/functions/kitchen-orders"
+  from = "/api/menu/:id"
+  to = "/.netlify/functions/menu-item"
   status = 200
 
 [[redirects]]

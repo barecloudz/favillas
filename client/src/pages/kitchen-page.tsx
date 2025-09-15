@@ -262,12 +262,12 @@ const KitchenPage = () => {
                           <div className="flex justify-between">
                             <span>{new Date(order.createdAt).toLocaleTimeString()}</span>
                             <Badge variant={order.paymentStatus === 'paid' ? 'default' : 'outline'}>
-                              {order.paymentStatus.toUpperCase()}
+                              {order.paymentStatus?.toUpperCase() || 'UNKNOWN'}
                             </Badge>
                           </div>
                           <div className="mt-1">
                             <Badge variant="outline" className="mr-2">
-                              {order.orderType.toUpperCase()}
+                              {order.orderType?.toUpperCase() || 'UNKNOWN'}
                             </Badge>
                             <span>{order.phone}</span>
                           </div>
