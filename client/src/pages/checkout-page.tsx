@@ -97,6 +97,28 @@ const CheckoutPage = () => {
   const { items, total, tax, clearCart, showLoginModal } = useCart();
   const [location, navigate] = useLocation();
   const { toast } = useToast();
+
+  // EMERGENCY: Circuit breaker for corrupted items
+  useEffect(() => {
+    try {
+      // Test if we can safely access all item names
+      items.forEach((item, index) => {
+        if (!item || !item.name) {
+          console.error(`EMERGENCY: Item at index ${index} is corrupted:`, item);
+          // Nuclear option: clear everything and reload
+          localStorage.clear();
+          sessionStorage.clear();
+          window.location.href = '/';
+          return;
+        }
+      });
+    } catch (error) {
+      console.error('EMERGENCY: Error accessing cart items', error);
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = '/';
+    }
+  }, [items]);
   
   const formatPrice = (price: number) => {
     if (isNaN(price) || price === null || price === undefined) {
