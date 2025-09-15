@@ -378,14 +378,16 @@ const CheckoutPage = () => {
       return;
     }
     
-    // Create order
-    const orderItems = items.map(item => ({
-      menuItemId: item.id,
-      quantity: item.quantity,
-      price: (item.price * item.quantity).toString(),
-      options: item.selectedOptions || {},
-      specialInstructions: item.specialInstructions || "",
-    }));
+    // Create order - filter out any corrupted items
+    const orderItems = items
+      .filter(item => item && item.id && item.name && item.price && item.quantity)
+      .map(item => ({
+        menuItemId: item.id,
+        quantity: item.quantity,
+        price: (item.price * item.quantity).toString(),
+        options: item.selectedOptions || {},
+        specialInstructions: item.specialInstructions || "",
+      }));
     
     // Parse address for ShipDay if delivery order
     let parsedAddressData = null;
@@ -452,7 +454,7 @@ const CheckoutPage = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {items.map((item) => (
+                    {items.filter(item => item && item.id && item.name).map((item) => (
                       <div key={`${item.id}-${JSON.stringify(item.selectedOptions)}`} className="flex justify-between items-center py-2 border-b">
                         <div className="flex items-center">
                           <div className="ml-4">

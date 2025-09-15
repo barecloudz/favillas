@@ -70,14 +70,19 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (savedCart) {
       try {
         const parsedCart = JSON.parse(savedCart);
-        // Ensure prices are numbers
-        const normalizedCart = parsedCart.map((item: any) => ({
-          ...item,
-          price: typeof item.price === 'string' ? parseFloat(item.price) : item.price
-        }));
+        // Filter out corrupted items and ensure prices are numbers
+        const normalizedCart = parsedCart
+          .filter((item: any) => item && typeof item === 'object' && item.id && item.name && item.price !== undefined && item.quantity)
+          .map((item: any) => ({
+            ...item,
+            price: typeof item.price === 'string' ? parseFloat(item.price) : item.price,
+            quantity: typeof item.quantity === 'string' ? parseInt(item.quantity) : item.quantity
+          }));
         setItems(normalizedCart);
       } catch (error) {
         console.error("Failed to parse cart data from localStorage", error);
+        // Clear corrupted cart data
+        localStorage.removeItem(CART_STORAGE_KEY);
       }
     }
   }, []);
