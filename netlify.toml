@@ -10,7 +10,7 @@
   SECRETS_SCAN_ENABLED = "false"
 
 [[redirects]]
-  from = "/api/menu/*"
+  from = "/api/menu/:id"
   to = "/.netlify/functions/menu-item"
   status = 200
 
