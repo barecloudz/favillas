@@ -58,13 +58,17 @@ export const handler: Handler = async (event, context) => {
         body: JSON.stringify(rewards)
       };
 
-    } else if (req.method === 'POST') {
-      const { name, description, pointsCost, isActive = true } = req.body;
+    } else if (event.httpMethod === 'POST') {
+      const { name, description, pointsCost, isActive = true } = JSON.parse(event.body || '{}');
       
       if (!name || !description || !pointsCost) {
-        return res.status(400).json({ 
-          message: 'Name, description, and points cost are required' 
-        });
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ 
+            message: 'Name, description, and points cost are required' 
+          })
+        };
       }
       
       const result = await sql`
@@ -73,67 +77,63 @@ export const handler: Handler = async (event, context) => {
         RETURNING *
       `;
       
-      return res.status(201).json(result[0]);
+      return {
+        statusCode: 201,
+        headers,
+        body: JSON.stringify(result[0])
+      };
 
-    } else if (req.method === 'PUT') {
+    } else if (event.httpMethod === 'PUT') {
       // Extract ID from URL path
-      const urlParts = req.url?.split('/') || [];
-      const rewardId = urlParts[urlParts.length - 1];
+      const pathParts = event.path.split('/');
+      const rewardId = pathParts[pathParts.length - 1];
       
       if (!rewardId || isNaN(parseInt(rewardId))) {
-        return res.status(400).json({ message: 'Invalid reward ID' });
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ message: 'Invalid reward ID' })
+        };
       }
       
-      const { name, description, pointsCost, isActive } = req.body;
-      
-      // Build dynamic update query
-      const updates = [];
-      const values = [];
-      
-      if (name !== undefined) {
-        updates.push('name = $' + (values.length + 1));
-        values.push(name);
-      }
-      if (description !== undefined) {
-        updates.push('description = $' + (values.length + 1));
-        values.push(description);
-      }
-      if (pointsCost !== undefined) {
-        updates.push('points_cost = $' + (values.length + 1));
-        values.push(pointsCost);
-      }
-      if (isActive !== undefined) {
-        updates.push('is_active = $' + (values.length + 1));
-        values.push(isActive);
-      }
-      
-      if (updates.length === 0) {
-        return res.status(400).json({ message: 'No valid fields to update' });
-      }
-      
-      updates.push('updated_at = NOW()');
-      values.push(parseInt(rewardId));
+      const { name, description, pointsCost, isActive } = JSON.parse(event.body || '{}');
       
       const result = await sql`
         UPDATE rewards 
-        SET ${sql(updates.join(', '))}
+        SET name = ${name || null}, 
+            description = ${description || null}, 
+            points_cost = ${pointsCost || null}, 
+            is_active = ${isActive !== undefined ? isActive : null},
+            updated_at = NOW()
         WHERE id = ${parseInt(rewardId)}
         RETURNING *
       `;
       
       if (result.length === 0) {
-        return res.status(404).json({ message: 'Reward not found' });
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ message: 'Reward not found' })
+        };
       }
       
-      return res.status(200).json(result[0]);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(result[0])
+      };
 
-    } else if (req.method === 'DELETE') {
+    } else if (event.httpMethod === 'DELETE') {
       // Extract ID from URL path
-      const urlParts = req.url?.split('/') || [];
-      const rewardId = urlParts[urlParts.length - 1];
+      const pathParts = event.path.split('/');
+      const rewardId = pathParts[pathParts.length - 1];
       
       if (!rewardId || isNaN(parseInt(rewardId))) {
-        return res.status(400).json({ message: 'Invalid reward ID' });
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ message: 'Invalid reward ID' })
+        };
       }
       
       const result = await sql`
@@ -143,10 +143,18 @@ export const handler: Handler = async (event, context) => {
       `;
       
       if (result.length === 0) {
-        return res.status(404).json({ message: 'Reward not found' });
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ message: 'Reward not found' })
+        };
       }
       
-      return res.status(200).json({ message: 'Reward deleted successfully' });
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ message: 'Reward deleted successfully' })
+      };
 
     } else {
       return {
