@@ -15,6 +15,36 @@
   status = 200
 
 [[redirects]]
+  from = "/api/tax-settings"
+  to = "/.netlify/functions/tax-settings"
+  status = 200
+
+[[redirects]]
+  from = "/api/tax-categories"
+  to = "/.netlify/functions/tax-categories"
+  status = 200
+
+[[redirects]]
+  from = "/api/pause-services"
+  to = "/.netlify/functions/pause-services"
+  status = 200
+
+[[redirects]]
+  from = "/api/user/rewards"
+  to = "/.netlify/functions/user-rewards"
+  status = 200
+
+[[redirects]]
+  from = "/api/menu-items"
+  to = "/.netlify/functions/menu-items"
+  status = 200
+
+[[redirects]]
+  from = "/api/menu-items/*"
+  to = "/.netlify/functions/menu-items"
+  status = 200
+
+[[redirects]]
   from = "/api/menu/:id"
   to = "/.netlify/functions/menu-item"
   status = 200
