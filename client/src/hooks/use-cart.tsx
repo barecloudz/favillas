@@ -64,8 +64,22 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const { toast } = useToast();
   const { user } = useAuth();
   
-  // Calculate totals
-  const total = items.reduce((sum, item) => {
+  // Filter out any corrupted items before calculations
+  const validItems = items.filter(item =>
+    item &&
+    typeof item === 'object' &&
+    typeof item.id === 'number' &&
+    typeof item.name === 'string' &&
+    item.name.trim() !== '' &&
+    (typeof item.price === 'number' || typeof item.price === 'string') &&
+    (typeof item.quantity === 'number' || typeof item.quantity === 'string') &&
+    !isNaN(parseFloat(String(item.price))) &&
+    !isNaN(parseInt(String(item.quantity))) &&
+    parseInt(String(item.quantity)) > 0
+  );
+
+  // Calculate totals only with valid items
+  const total = validItems.reduce((sum, item) => {
     const itemTotal = (typeof item.price === 'number' ? item.price : parseFloat(item.price)) * item.quantity;
     return sum + itemTotal;
   }, 0);
@@ -271,12 +285,20 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   };
   
+  // Clean up corrupted items automatically
+  useEffect(() => {
+    if (validItems.length !== items.length && items.length > 0) {
+      console.warn(`Detected ${items.length - validItems.length} corrupted cart items, cleaning up...`);
+      setItems(validItems);
+    }
+  }, [items, validItems]);
+
   return (
     <CartContext.Provider
       value={{
         isOpen,
         toggleCart,
-        items,
+        items: validItems, // Always provide clean items
         total,
         tax,
         addItem,

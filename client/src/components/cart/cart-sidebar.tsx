@@ -12,18 +12,42 @@ import { ShoppingCart, X, Trash2, Plus, Minus, Pizza, Edit } from "lucide-react"
 import { Link } from "wouter";
 
 const CartSidebar: React.FC = () => {
-  const { 
-    isOpen, 
-    toggleCart, 
-    items, 
-    total, 
-    tax, 
-    updateItemQuantity, 
-    removeItem, 
+  const {
+    isOpen,
+    toggleCart,
+    items,
+    total,
+    tax,
+    updateItemQuantity,
+    removeItem,
     clearCart,
     showLoginModal,
     addItem
   } = useCart();
+
+  // Clean up corrupted items when cart opens
+  useEffect(() => {
+    if (isOpen) {
+      const validItems = items.filter(item =>
+        item &&
+        typeof item === 'object' &&
+        item.id &&
+        item.name &&
+        typeof item.name === 'string' &&
+        item.name.trim() !== '' &&
+        item.price !== undefined &&
+        item.quantity !== undefined &&
+        !isNaN(parseFloat(String(item.price))) &&
+        parseInt(String(item.quantity)) > 0
+      );
+
+      if (validItems.length !== items.length) {
+        console.warn(`Cart had ${items.length - validItems.length} corrupted items, cleaning up...`);
+        // Clear cart if there are corrupted items
+        clearCart();
+      }
+    }
+  }, [isOpen, items, clearCart]);
   const { user } = useAuth();
   const [, navigate] = useLocation();
   
@@ -175,7 +199,7 @@ const CartSidebar: React.FC = () => {
               </div>
             ) : (
               <div className="p-4 space-y-4">
-                {items.map((item) => (
+                {items.filter(item => item && item.id && item.name && typeof item.name === 'string').map((item) => (
                   <div 
                     key={`${item?.id || 'unknown'}-${JSON.stringify(item?.selectedOptions || item?.options)}`} 
                     className="flex items-start p-3 border border-gray-200 rounded-lg"
