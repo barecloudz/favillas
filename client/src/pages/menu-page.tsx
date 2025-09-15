@@ -669,7 +669,7 @@ const MenuPage = () => {
                     );
 
                     if (missingRequired.length > 0) {
-                      alert(`Please select ${missingRequired.map((g: any) => g.name).join(', ')}`);
+                      alert(`Please select ${missingRequired.map((g: any) => g?.name || 'Unknown').join(', ')}`);
                       return;
                     }
 

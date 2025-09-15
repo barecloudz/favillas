@@ -177,14 +177,14 @@ const CartSidebar: React.FC = () => {
               <div className="p-4 space-y-4">
                 {items.map((item) => (
                   <div 
-                    key={`${item.id}-${JSON.stringify(item.selectedOptions || item.options)}`} 
+                    key={`${item?.id || 'unknown'}-${JSON.stringify(item?.selectedOptions || item?.options)}`} 
                     className="flex items-start p-3 border border-gray-200 rounded-lg"
                   >
                     <div className="flex-grow ml-3">
-                      <h4 className="font-bold">{item.name}</h4>
+                      <h4 className="font-bold">{item?.name || 'Unknown Item'}</h4>
                       
                       {/* Half & Half Pizza Special Display */}
-                      {item.selectedOptions?.halfAndHalf ? (
+                      {item?.selectedOptions?.halfAndHalf ? (
                         <div className="mt-2 space-y-2">
                           <div className="bg-gradient-to-r from-red-50 to-blue-50 p-2 rounded-lg border">
                             <div className="flex items-center gap-2 mb-2">
@@ -195,7 +195,7 @@ const CartSidebar: React.FC = () => {
                             <div className="grid grid-cols-2 gap-2 text-xs">
                               <div className="bg-red-100 p-2 rounded border-l-2 border-red-400">
                                 <div className="font-medium text-red-700 mb-1">Left Half:</div>
-                                {item.selectedOptions.leftToppings && item.selectedOptions.leftToppings.length > 0 ? (
+                                {item?.selectedOptions?.leftToppings && item.selectedOptions.leftToppings.length > 0 ? (
                                   <ul className="space-y-1">
                                     {item.selectedOptions.leftToppings.map((topping, idx) => (
                                       <li key={idx} className="text-red-600">
@@ -210,7 +210,7 @@ const CartSidebar: React.FC = () => {
                               
                               <div className="bg-blue-100 p-2 rounded border-l-2 border-blue-400">
                                 <div className="font-medium text-blue-700 mb-1">Right Half:</div>
-                                {item.selectedOptions.rightToppings && item.selectedOptions.rightToppings.length > 0 ? (
+                                {item?.selectedOptions?.rightToppings && item.selectedOptions.rightToppings.length > 0 ? (
                                   <ul className="space-y-1">
                                     {item.selectedOptions.rightToppings.map((topping, idx) => (
                                       <li key={idx} className="text-blue-600">
@@ -228,7 +228,7 @@ const CartSidebar: React.FC = () => {
                       ) : (
                         <>
                           {/* Show addon options */}
-                          {item.options && item.options.length > 0 && (
+                          {item?.options && item.options.length > 0 && (
                             <div className="mt-1 space-y-1">
                               {item.options.map((option, index) => (
                                 <p key={index} className="text-sm text-gray-600">
@@ -240,13 +240,13 @@ const CartSidebar: React.FC = () => {
                           )}
                           
                           {/* Legacy selectedOptions support */}
-                          {item.selectedOptions?.size && (
+                          {item?.selectedOptions?.size && (
                             <p className="text-sm text-gray-500">Size: {item.selectedOptions.size}</p>
                           )}
                         </>
                       )}
                       
-                      {item.specialInstructions && (
+                      {item?.specialInstructions && (
                         <p className="text-sm text-gray-500 italic mt-1">"{item.specialInstructions}"</p>
                       )}
                       
@@ -256,16 +256,16 @@ const CartSidebar: React.FC = () => {
                             size="icon" 
                             variant="outline" 
                             className="h-6 w-6 rounded-full"
-                            onClick={() => updateItemQuantity(item, Math.max(1, item.quantity - 1))}
+                            onClick={() => updateItemQuantity(item, Math.max(1, (item?.quantity || 1) - 1))}
                           >
                             <Minus className="h-3 w-3" />
                           </Button>
-                          <span className="mx-2 text-sm">{item.quantity}</span>
+                          <span className="mx-2 text-sm">{item?.quantity || 1}</span>
                           <Button 
                             size="icon" 
                             variant="outline" 
                             className="h-6 w-6 rounded-full"
-                            onClick={() => updateItemQuantity(item, item.quantity + 1)}
+                            onClick={() => updateItemQuantity(item, (item?.quantity || 1) + 1)}
                           >
                             <Plus className="h-3 w-3" />
                           </Button>
@@ -283,7 +283,7 @@ const CartSidebar: React.FC = () => {
                       </div>
                     </div>
                     <div className="ml-2 text-right">
-                      <p className="font-bold">${formatPrice(item.price * item.quantity)}</p>
+                      <p className="font-bold">${formatPrice((item?.price || 0) * (item?.quantity || 1))}</p>
                       <Button 
                         variant="ghost" 
                         size="icon" 
