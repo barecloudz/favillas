@@ -1,5 +1,6 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
+import jwt from 'jsonwebtoken';
 
 let dbConnection: any = null;
 
