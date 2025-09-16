@@ -11928,7 +11928,10 @@ const RewardsManagement = () => {
       rewardData: {
         name: data.name,
         description: data.description,
-        discount: data.type === 'discount' ? parseInt(data.discount) || null : null,
+        pointsRequired: parseInt(data.pointsRequired) || 100,
+        rewardType: data.rewardType || 'discount',
+        discount: data.rewardType === 'discount' ? parseFloat(data.discount) : null,
+        freeItem: data.rewardType === 'free_item' ? data.freeItem : null,
         minOrderAmount: data.minOrderAmount ? parseFloat(data.minOrderAmount) : null,
         expiresAt: data.expiresAt || null,
       },
@@ -12053,6 +12056,7 @@ const RewardsManagement = () => {
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-3 px-4 font-medium">Reward</th>
+                    <th className="text-left py-3 px-4 font-medium">Points Required</th>
                     <th className="text-left py-3 px-4 font-medium">Discount</th>
                     <th className="text-left py-3 px-4 font-medium">Min Order</th>
                     <th className="text-left py-3 px-4 font-medium">Expires</th>
@@ -12067,6 +12071,11 @@ const RewardsManagement = () => {
                           <div className="font-medium">{reward.name}</div>
                           <div className="text-sm text-gray-500">{reward.description}</div>
                         </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                          {reward.points_required || 100} points
+                        </span>
                       </td>
                       <td className="py-3 px-4">
                         {reward.discount ? `${reward.discount}% off` : 'No discount'}
@@ -12160,8 +12169,10 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    type: "discount",
+    pointsRequired: "",
+    rewardType: "discount",
     discount: "",
+    freeItem: "",
     minOrderAmount: "",
     expiresAt: "",
   });
@@ -12171,8 +12182,10 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
       setFormData({
         name: reward.name || "",
         description: reward.description || "",
-        type: "discount",
+        pointsRequired: reward.points_required?.toString() || "100",
+        rewardType: reward.reward_type || "discount",
         discount: reward.discount?.toString() || "",
+        freeItem: reward.free_item || "",
         minOrderAmount: reward.min_order_amount?.toString() || "",
         expiresAt: reward.expires_at ? new Date(reward.expires_at).toISOString().split('T')[0] : "",
       });
@@ -12180,8 +12193,10 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
       setFormData({
         name: "",
         description: "",
-        type: "discount",
+        pointsRequired: "100",
+        rewardType: "discount",
         discount: "",
+        freeItem: "",
         minOrderAmount: "",
         expiresAt: "",
       });
@@ -12225,9 +12240,36 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
             />
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="pointsRequired">Points Required</Label>
+            <Input
+              id="pointsRequired"
+              type="number"
+              value={formData.pointsRequired}
+              onChange={(e) => setFormData({ ...formData, pointsRequired: e.target.value })}
+              placeholder="e.g., 100"
+              min="1"
+              required
+            />
+            <p className="text-xs text-gray-500">Number of points customers need to redeem this reward</p>
+          </div>
 
           <div className="space-y-2">
-            <Label htmlFor="discount">Discount Percentage</Label>
+            <Label htmlFor="rewardType">Reward Type</Label>
+            <select
+              id="rewardType"
+              value={formData.rewardType}
+              onChange={(e) => setFormData({ ...formData, rewardType: e.target.value })}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="discount">Discount</option>
+              <option value="free_item">Free Item</option>
+            </select>
+          </div>
+
+          {formData.rewardType === 'discount' && (
+            <div className="space-y-2">
+              <Label htmlFor="discount">Discount Percentage</Label>
             <Input
               id="discount"
               type="number"
@@ -12237,7 +12279,21 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
               min="0"
               max="100"
             />
-          </div>
+            </div>
+          )}
+
+          {formData.rewardType === 'free_item' && (
+            <div className="space-y-2">
+              <Label htmlFor="freeItem">Free Item</Label>
+              <Input
+                id="freeItem"
+                value={formData.freeItem}
+                onChange={(e) => setFormData({ ...formData, freeItem: e.target.value })}
+                placeholder="e.g., Free Garlic Bread"
+                required
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="minOrderAmount">Minimum Order Amount (Optional)</Label>
