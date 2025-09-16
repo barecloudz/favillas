@@ -37,7 +37,10 @@ function authenticateToken(event: any): { userId: number; username: string; role
     }
   }
 
-  if (!token) return null;
+  if (!token) {
+    console.log('❌ No token found in request');
+    return null;
+  }
 
   try {
     // First try to decode as Supabase JWT token
@@ -46,13 +49,11 @@ function authenticateToken(event: any): { userId: number; username: string; role
       console.log('🔍 Supabase token payload:', payload);
       
       if (payload.iss && payload.iss.includes('supabase')) {
-        // This is a Supabase token, extract user ID
         const supabaseUserId = payload.sub;
         console.log('✅ Supabase user ID:', supabaseUserId);
         
-        // Return the Supabase user ID as the userId for now
         return {
-          userId: parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16) || 1, // Convert to number
+          userId: parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16) || 1,
           username: payload.email || 'supabase_user',
           role: 'customer'
         };
@@ -64,17 +65,19 @@ function authenticateToken(event: any): { userId: number; username: string; role
     // Fallback to our JWT verification
     const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
     if (!jwtSecret) {
-      throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
+      console.error('❌ JWT_SECRET or SESSION_SECRET environment variable is required');
+      return null;
     }
 
     const decoded = jwt.verify(token, jwtSecret) as any;
+    console.log('✅ JWT token verified for user:', decoded.userId);
     return {
       userId: decoded.userId,
       username: decoded.username,
       role: decoded.role || 'customer'
     };
   } catch (error) {
-    console.error('Token authentication failed:', error);
+    console.error('❌ Token authentication failed:', error);
     return null;
   }
 }

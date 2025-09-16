@@ -82,6 +82,7 @@ export const handler: Handler = async (event, context) => {
     if (event.httpMethod === 'GET') {
       // GET requests require authentication
       if (!authPayload) {
+        console.log('❌ Orders API: No authentication payload');
         return {
           statusCode: 401,
           headers,
@@ -89,49 +90,62 @@ export const handler: Handler = async (event, context) => {
         };
       }
       
+      console.log('🔍 Orders API: Getting orders for user:', authPayload.userId, 'role:', authPayload.role);
+      
       let allOrders;
       
       if (authPayload.role === 'admin' || authPayload.role === 'kitchen' || authPayload.role === 'manager') {
         // Staff can see all orders
+        console.log('📋 Orders API: Getting all orders (staff access)');
         allOrders = await sql`SELECT * FROM orders ORDER BY created_at DESC`;
       } else {
         // Customers can only see their own orders
+        console.log('📋 Orders API: Getting orders for user:', authPayload.userId);
         allOrders = await sql`SELECT * FROM orders WHERE user_id = ${authPayload.userId} ORDER BY created_at DESC`;
       }
+      
+      console.log('📋 Orders API: Found', allOrders.length, 'orders');
       
       // Get order items for each order with menu item details
       const ordersWithItems = await Promise.all(
         allOrders.map(async (order) => {
-          const items = await sql`
-            SELECT 
-              oi.*,
-              mi.name as menu_item_name,
-              mi.description as menu_item_description,
-              mi.price as menu_item_price,
-              mi.image_url as menu_item_image_url,
-              mi.category as menu_item_category
-            FROM order_items oi
-            LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
-            WHERE oi.order_id = ${order.id}
-          `;
-          
-          // Transform the data to match expected frontend structure
-          const transformedItems = items.map(item => ({
-            ...item,
-            name: item.menu_item_name || 'Unknown Item', // Add name property for backward compatibility
-            menuItem: item.menu_item_name ? {
-              name: item.menu_item_name,
-              description: item.menu_item_description,
-              price: item.menu_item_price,
-              imageUrl: item.menu_item_image_url,
-              category: item.menu_item_category
-            } : null
-          }));
-          
-          return { ...order, items: transformedItems };
+          try {
+            const items = await sql`
+              SELECT 
+                oi.*,
+                mi.name as menu_item_name,
+                mi.description as menu_item_description,
+                mi.price as menu_item_price,
+                mi.image_url as menu_item_image_url,
+                mi.category as menu_item_category
+              FROM order_items oi
+              LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+              WHERE oi.order_id = ${order.id}
+            `;
+            
+            // Transform the data to match expected frontend structure
+            const transformedItems = items.map(item => ({
+              ...item,
+              name: item.menu_item_name || 'Unknown Item',
+              menuItem: item.menu_item_name ? {
+                name: item.menu_item_name,
+                description: item.menu_item_description,
+                price: item.menu_item_price,
+                imageUrl: item.menu_item_image_url,
+                category: item.menu_item_category
+              } : null
+            }));
+            
+            return { ...order, items: transformedItems };
+          } catch (itemError) {
+            console.error('❌ Error getting items for order', order.id, ':', itemError);
+            return { ...order, items: [] };
+          }
         })
       );
 
+      console.log('✅ Orders API: Successfully retrieved orders with items');
+      
       return {
         statusCode: 200,
         headers,
@@ -140,116 +154,153 @@ export const handler: Handler = async (event, context) => {
       
     } else if (event.httpMethod === 'POST') {
       // Create new order - support both authenticated users and guests
-      const { items, ...orderData } = JSON.parse(event.body || '{}');
+      console.log('🛒 Orders API: Creating new order');
       
-      // Validate required fields
-      if (!orderData.total || !orderData.tax || !orderData.orderType || !orderData.phone) {
+      try {
+        const { items, ...orderData } = JSON.parse(event.body || '{}');
+        
+        console.log('🛒 Orders API: Order data received:', {
+          hasItems: !!items,
+          itemsCount: items?.length || 0,
+          hasAuthPayload: !!authPayload,
+          userId: authPayload?.userId,
+          orderData: {
+            total: orderData.total,
+            tax: orderData.tax,
+            orderType: orderData.orderType,
+            phone: orderData.phone
+          }
+        });
+        
+        // Validate required fields
+        if (!orderData.total || !orderData.tax || !orderData.orderType || !orderData.phone) {
+          console.log('❌ Orders API: Missing required fields');
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ 
+              error: 'Missing required fields: total, tax, orderType, phone' 
+            })
+          };
+        }
+      
+        // Set the userId: use authenticated user ID or null for guests
+        const userId = authPayload ? authPayload.userId : orderData.userId || null;
+        
+        console.log('🛒 Orders API: Creating order with userId:', userId);
+        
+        // Create the order
+        const newOrders = await sql`
+          INSERT INTO orders (
+            user_id, status, total, tax, delivery_fee, tip, order_type, payment_status, 
+            special_instructions, address, address_data, fulfillment_time, scheduled_time, 
+            phone, created_at, updated_at
+          ) VALUES (
+            ${userId}, 
+            ${orderData.status || 'pending'}, 
+            ${orderData.total}, 
+            ${orderData.tax}, 
+            ${orderData.deliveryFee || '0'}, 
+            ${orderData.tip || '0'}, 
+            ${orderData.orderType}, 
+            ${orderData.paymentStatus || 'pending'},
+            ${orderData.specialInstructions || ''}, 
+            ${orderData.address || ''}, 
+            ${orderData.addressData ? JSON.stringify(orderData.addressData) : null}, 
+            ${orderData.fulfillmentTime || 'asap'}, 
+            ${orderData.scheduledTime || null}, 
+            ${orderData.phone}, 
+            NOW(), 
+            NOW()
+          ) RETURNING *
+        `;
+
+        const newOrder = newOrders[0];
+        if (!newOrder) {
+          throw new Error('Failed to create order');
+        }
+        
+        console.log('✅ Orders API: Order created with ID:', newOrder.id);
+
+        // Insert order items if provided
+        if (items && items.length > 0) {
+          console.log('🛒 Orders API: Creating order items:', items.length);
+          const orderItemsInserts = [];
+          for (const item of items) {
+            if (!item.menuItemId || !item.quantity || !item.price) {
+              console.log('❌ Orders API: Invalid order item:', item);
+              return {
+                statusCode: 400,
+                headers,
+                body: JSON.stringify({ 
+                  error: 'Invalid order item: missing menuItemId, quantity, or price' 
+                })
+              };
+            }
+            
+            const insertResult = await sql`
+              INSERT INTO order_items (
+                order_id, menu_item_id, quantity, price, options, special_instructions, created_at
+              ) VALUES (
+                ${newOrder.id}, 
+                ${item.menuItemId}, 
+                ${item.quantity}, 
+                ${item.price}, 
+                ${item.options ? JSON.stringify(item.options) : null}, 
+                ${item.specialInstructions || ''}, 
+                NOW()
+              ) RETURNING *
+            `;
+            orderItemsInserts.push(insertResult[0]);
+          }
+          console.log('✅ Orders API: Order items created:', orderItemsInserts.length);
+        }
+
+        // Fetch the complete order with items and menu item details
+        const orderItems = await sql`
+          SELECT 
+            oi.*,
+            mi.name as menu_item_name,
+            mi.description as menu_item_description,
+            mi.price as menu_item_price,
+            mi.image_url as menu_item_image_url,
+            mi.category as menu_item_category
+          FROM order_items oi
+          LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+          WHERE oi.order_id = ${newOrder.id}
+        `;
+        
+        // Transform the data to match expected frontend structure
+        const transformedItems = orderItems.map(item => ({
+          ...item,
+          name: item.menu_item_name || 'Unknown Item',
+          menuItem: item.menu_item_name ? {
+            name: item.menu_item_name,
+            description: item.menu_item_description,
+            price: item.menu_item_price,
+            imageUrl: item.menu_item_image_url,
+            category: item.menu_item_category
+          } : null
+        }));
+
+        console.log('✅ Orders API: Order creation completed successfully');
+
         return {
-          statusCode: 400,
+          statusCode: 201,
+          headers,
+          body: JSON.stringify({ ...newOrder, items: transformedItems })
+        };
+      } catch (orderError) {
+        console.error('❌ Orders API: Error creating order:', orderError);
+        return {
+          statusCode: 500,
           headers,
           body: JSON.stringify({ 
-            error: 'Missing required fields: total, tax, orderType, phone' 
+            error: 'Failed to create order',
+            details: orderError instanceof Error ? orderError.message : 'Unknown error'
           })
         };
       }
-      
-      // Set the userId: use authenticated user ID or null for guests
-      const userId = authPayload ? authPayload.userId : orderData.userId || null;
-      
-      // Create the order
-      const newOrders = await sql`
-        INSERT INTO orders (
-          user_id, status, total, tax, delivery_fee, tip, order_type, payment_status, 
-          special_instructions, address, address_data, fulfillment_time, scheduled_time, 
-          phone, created_at, updated_at
-        ) VALUES (
-          ${userId}, 
-          ${orderData.status || 'pending'}, 
-          ${orderData.total}, 
-          ${orderData.tax}, 
-          ${orderData.deliveryFee || '0'}, 
-          ${orderData.tip || '0'}, 
-          ${orderData.orderType}, 
-          ${orderData.paymentStatus || 'pending'},
-          ${orderData.specialInstructions || ''}, 
-          ${orderData.address || ''}, 
-          ${orderData.addressData ? JSON.stringify(orderData.addressData) : null}, 
-          ${orderData.fulfillmentTime || 'asap'}, 
-          ${orderData.scheduledTime || null}, 
-          ${orderData.phone}, 
-          NOW(), 
-          NOW()
-        ) RETURNING *
-      `;
-
-      const newOrder = newOrders[0];
-      if (!newOrder) {
-        throw new Error('Failed to create order');
-      }
-
-      // Insert order items if provided
-      if (items && items.length > 0) {
-        const orderItemsInserts = [];
-        for (const item of items) {
-          if (!item.menuItemId || !item.quantity || !item.price) {
-            return {
-              statusCode: 400,
-              headers,
-              body: JSON.stringify({ 
-                error: 'Invalid order item: missing menuItemId, quantity, or price' 
-              })
-            };
-          }
-          
-          const insertResult = await sql`
-            INSERT INTO order_items (
-              order_id, menu_item_id, quantity, price, options, special_instructions, created_at
-            ) VALUES (
-              ${newOrder.id}, 
-              ${item.menuItemId}, 
-              ${item.quantity}, 
-              ${item.price}, 
-              ${item.options ? JSON.stringify(item.options) : null}, 
-              ${item.specialInstructions || ''}, 
-              NOW()
-            ) RETURNING *
-          `;
-          orderItemsInserts.push(insertResult[0]);
-        }
-      }
-
-      // Fetch the complete order with items and menu item details
-      const orderItems = await sql`
-        SELECT 
-          oi.*,
-          mi.name as menu_item_name,
-          mi.description as menu_item_description,
-          mi.price as menu_item_price,
-          mi.image_url as menu_item_image_url,
-          mi.category as menu_item_category
-        FROM order_items oi
-        LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
-        WHERE oi.order_id = ${newOrder.id}
-      `;
-      
-      // Transform the data to match expected frontend structure
-      const transformedItems = orderItems.map(item => ({
-        ...item,
-        name: item.menu_item_name || 'Unknown Item', // Add name property for backward compatibility
-        menuItem: item.menu_item_name ? {
-          name: item.menu_item_name,
-          description: item.menu_item_description,
-          price: item.menu_item_price,
-          imageUrl: item.menu_item_image_url,
-          category: item.menu_item_category
-        } : null
-      }));
-
-      return {
-        statusCode: 201,
-        headers,
-        body: JSON.stringify({ ...newOrder, items: transformedItems })
-      };
       
     } else {
       return {
