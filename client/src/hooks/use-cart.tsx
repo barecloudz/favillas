@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { useToast } from "./use-toast";
-import { useAuth } from "./use-auth";
+import { useAuth } from "./use-supabase-auth";
 
 // Cart item type
 export interface CartItem {

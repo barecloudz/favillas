@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useStripe, useElements, Elements, PaymentElement } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-supabase-auth";
 import { useCart } from "@/hooks/use-cart";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";

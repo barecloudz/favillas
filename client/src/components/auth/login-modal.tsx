@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

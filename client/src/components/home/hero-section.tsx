@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-supabase-auth";
 
 const HeroSection: React.FC = () => {
   const { user } = useAuth();

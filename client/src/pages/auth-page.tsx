@@ -36,7 +36,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const AuthPage = () => {
   const [location, navigate] = useLocation();
-  const { user, loading, signInWithGoogle, signOut } = useAuth();
+  const { user, loading, signInWithGoogle, signOut, loginMutation, registerMutation } = useAuth();
   const { toast } = useToast();
   
   // Get the tab from URL parameters

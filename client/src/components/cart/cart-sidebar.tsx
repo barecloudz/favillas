@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useCart, CartItem } from "@/hooks/use-cart";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-supabase-auth";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
