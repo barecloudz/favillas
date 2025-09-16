@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { ImageUpload } from "@/components/ui/image-upload";
 import {
   DropdownMenu,
@@ -100,7 +100,8 @@ import {
   Pause,
   ImageIcon,
   ExternalLink,
-  AlertTriangle
+  AlertTriangle,
+  Percent as PercentIcon
 } from "lucide-react";
 import PayrollDashboard from "@/components/admin/payroll-dashboard";
 import ScheduleCreator from "@/components/admin/schedule-creator";
@@ -594,7 +595,8 @@ const AdminDashboard = () => {
   // Queries for different data
   const { data: orders, isLoading: ordersLoading } = useQuery({
     queryKey: ["/api/kitchen/orders"],
-    refetchInterval: 30000,
+    refetchInterval: false,
+    enabled: false,
   });
 
   const { data: menuItems, isLoading: menuLoading } = useQuery({
@@ -603,7 +605,7 @@ const AdminDashboard = () => {
 
   const { data: analytics, isLoading: analyticsLoading, error: analyticsError } = useQuery({
     queryKey: ["/api/orders-analytics"],
-    enabled: user?.isAdmin,
+    enabled: false,
     retry: 3,
     onError: (error) => {
       console.error('Analytics query failed:', error);
@@ -612,13 +614,13 @@ const AdminDashboard = () => {
 
   const { data: users, isLoading: usersLoading } = useQuery({
     queryKey: ["/api/users"],
-    enabled: user?.isAdmin,
+    enabled: false,
   });
 
   const { data: printerStatus, isLoading: printerLoading } = useQuery({
     queryKey: ["/api/printer/status"],
-    enabled: user?.isAdmin,
-    refetchInterval: false, // Disabled polling to prevent backend refresh
+    enabled: false,
+    refetchInterval: false,
   });
 
   // Scroll to top when activeTab changes
@@ -635,7 +637,7 @@ const AdminDashboard = () => {
       "menu-editor", "menu-images", "pricing", "out-of-stock", "multi-location",
       "frontend", "qr-codes", "widget", "smart-links", "printer", "receipt-templates", "scheduling", "reservations", 
       "vacation-mode", "delivery", "taxation",
-      "promotions", "coupons", "promo-codes", "kickstarter", "email-campaigns", "sms-marketing", "local-seo",
+      "promotions", "coupons", "promo-codes", "rewards", "kickstarter", "email-campaigns", "sms-marketing", "local-seo",
       "customers", "users", "reviews",
       "employee-schedules", "payroll", "tip-settings",
       "api", "pos-integration", "integrations", "webhooks",
@@ -764,6 +766,7 @@ const AdminDashboard = () => {
         { name: "Promotions", icon: Gift, href: "promotions" },
         { name: "Coupons", icon: Tag, href: "coupons" },
         { name: "Promo Codes", icon: Tag, href: "promo-codes" },
+        { name: "Rewards System", icon: Star, href: "rewards" },
         { name: "Kickstarter Marketing", icon: Target, href: "kickstarter" },
         { name: "Email Campaigns", icon: Mail, href: "email-campaigns" },
         { name: "SMS Marketing", icon: MessageSquare, href: "sms-marketing" },
@@ -1075,7 +1078,11 @@ const AdminDashboard = () => {
             {activeTab === "promo-codes" && (
               <PromoCodesManagement />
             )}
-            
+
+            {activeTab === "rewards" && (
+              <RewardsManagement />
+            )}
+
             {activeTab === "kickstarter" && (
               <KickstarterMarketing />
             )}
@@ -11798,6 +11805,548 @@ const LocalSEOToolsTab = () => {
         </TabsContent>
       </Tabs>
     </div>
+  );
+};
+
+// Rewards Management Component
+const RewardsManagement = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [editingReward, setEditingReward] = useState<any>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [rewardToDelete, setRewardToDelete] = useState<any>(null);
+
+  // Fetch rewards from API
+  const { data: rewards = [], isLoading } = useQuery({
+    queryKey: ["/api/rewards"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/rewards");
+      return response.json();
+    },
+  });
+
+  // Create reward mutation
+  const createRewardMutation = useMutation({
+    mutationFn: async (rewardData: any) => {
+      const response = await apiRequest("POST", "/api/rewards", rewardData);
+      if (!response.ok) {
+        throw new Error("Failed to create reward");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
+      setIsCreateDialogOpen(false);
+      toast({
+        title: "Reward Created",
+        description: "New reward has been created successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create reward",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update reward mutation
+  const updateRewardMutation = useMutation({
+    mutationFn: async ({ id, rewardData }: { id: number; rewardData: any }) => {
+      const response = await apiRequest("PUT", `/api/rewards/${id}`, rewardData);
+      if (!response.ok) {
+        throw new Error("Failed to update reward");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
+      setEditingReward(null);
+      toast({
+        title: "Reward Updated",
+        description: "Reward has been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update reward",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete reward mutation
+  const deleteRewardMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest("DELETE", `/api/rewards/${id}`);
+      if (!response.ok) {
+        throw new Error("Failed to delete reward");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
+      setIsDeleteDialogOpen(false);
+      setRewardToDelete(null);
+      toast({
+        title: "Reward Deleted",
+        description: "Reward has been deleted successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete reward",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateReward = (data: any) => {
+    createRewardMutation.mutate({
+      name: data.name,
+      description: data.description,
+      type: data.type,
+      pointsRequired: parseInt(data.pointsRequired) || 0,
+      discount: data.type === 'discount' ? parseInt(data.discount) || null : null,
+      freeItem: data.type === 'free_item' ? data.freeItem : null,
+      minOrderAmount: data.minOrderAmount ? parseFloat(data.minOrderAmount) : null,
+      expiresAt: data.expiresAt || null,
+    });
+  };
+
+  const handleUpdateReward = (data: any) => {
+    updateRewardMutation.mutate({
+      id: editingReward.id,
+      rewardData: {
+        name: data.name,
+        description: data.description,
+        type: data.type,
+        pointsRequired: parseInt(data.pointsRequired) || 0,
+        discount: data.type === 'discount' ? parseInt(data.discount) || null : null,
+        freeItem: data.type === 'free_item' ? data.freeItem : null,
+        minOrderAmount: data.minOrderAmount ? parseFloat(data.minOrderAmount) : null,
+        expiresAt: data.expiresAt || null,
+      },
+    });
+  };
+
+  const getRewardTypeColor = (type: string) => {
+    switch (type) {
+      case 'discount': return 'bg-green-100 text-green-800';
+      case 'free_item': return 'bg-blue-100 text-blue-800';
+      case 'free_delivery': return 'bg-purple-100 text-purple-800';
+      case 'priority': return 'bg-orange-100 text-orange-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getRewardTypeIcon = (type: string) => {
+    switch (type) {
+      case 'discount': return <PercentIcon className="h-4 w-4" />;
+      case 'free_item': return <Gift className="h-4 w-4" />;
+      case 'free_delivery': return <Truck className="h-4 w-4" />;
+      case 'priority': return <Zap className="h-4 w-4" />;
+      default: return <Star className="h-4 w-4" />;
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Rewards System</h2>
+          <p className="text-gray-600">Manage customer rewards and loyalty points</p>
+        </div>
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Reward
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Rewards</p>
+                <p className="text-2xl font-bold text-gray-900">{rewards.length}</p>
+              </div>
+              <Star className="h-8 w-8 text-yellow-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Active Rewards</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {rewards.filter((r: any) => r.is_active !== false).length}
+                </p>
+              </div>
+              <CheckCircle className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Redemptions</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {rewards.reduce((acc: number, r: any) => acc + (r.times_used || 0), 0)}
+                </p>
+              </div>
+              <Gift className="h-8 w-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Avg Points Required</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {rewards.length > 0
+                    ? Math.round(rewards.reduce((acc: number, r: any) => acc + (r.points_required || 0), 0) / rewards.length)
+                    : 0
+                  }
+                </p>
+              </div>
+              <Target className="h-8 w-8 text-purple-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Rewards Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Customer Rewards</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="text-center py-4">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+              <p>Loading rewards...</p>
+            </div>
+          ) : rewards.length === 0 ? (
+            <div className="text-center py-8">
+              <Star className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No rewards yet</h3>
+              <p className="text-gray-600 mb-4">Create your first reward to get started</p>
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Reward
+              </Button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-medium">Reward</th>
+                    <th className="text-left py-3 px-4 font-medium">Type</th>
+                    <th className="text-left py-3 px-4 font-medium">Points Required</th>
+                    <th className="text-left py-3 px-4 font-medium">Value</th>
+                    <th className="text-left py-3 px-4 font-medium">Usage</th>
+                    <th className="text-left py-3 px-4 font-medium">Status</th>
+                    <th className="text-left py-3 px-4 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rewards.map((reward: any) => (
+                    <tr key={reward.id} className="border-b hover:bg-gray-50">
+                      <td className="py-3 px-4">
+                        <div>
+                          <div className="font-medium">{reward.name}</div>
+                          <div className="text-sm text-gray-500">{reward.description}</div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge className={getRewardTypeColor(reward.type || 'default')}>
+                          <div className="flex items-center">
+                            {getRewardTypeIcon(reward.type || 'default')}
+                            <span className="ml-1">{(reward.type || 'default').replace('_', ' ')}</span>
+                          </div>
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="font-medium">{reward.points_required || 0}</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        {reward.discount && `${reward.discount}% off`}
+                        {reward.free_item && `Free ${reward.free_item}`}
+                        {reward.type === 'free_delivery' && 'Free Delivery'}
+                        {reward.type === 'priority' && 'Priority Service'}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="text-sm">
+                          <div>{reward.times_used || 0} used</div>
+                          {reward.max_uses && (
+                            <div className="text-gray-500">of {reward.max_uses} max</div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge variant={reward.is_active !== false ? "default" : "secondary"}>
+                          {reward.is_active !== false ? "Active" : "Inactive"}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEditingReward(reward)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setRewardToDelete(reward);
+                              setIsDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Create/Edit Reward Dialog */}
+      <RewardDialog
+        open={isCreateDialogOpen || !!editingReward}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsCreateDialogOpen(false);
+            setEditingReward(null);
+          }
+        }}
+        reward={editingReward}
+        onSubmit={editingReward ? handleUpdateReward : handleCreateReward}
+        isLoading={createRewardMutation.isPending || updateRewardMutation.isPending}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Reward</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{rewardToDelete?.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteRewardMutation.mutate(rewardToDelete?.id)}
+              disabled={deleteRewardMutation.isPending}
+            >
+              {deleteRewardMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+// Reward Dialog Component
+const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) => {
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    type: "discount",
+    pointsRequired: "",
+    discount: "",
+    freeItem: "",
+    minOrderAmount: "",
+    expiresAt: "",
+  });
+
+  useEffect(() => {
+    if (reward) {
+      setFormData({
+        name: reward.name || "",
+        description: reward.description || "",
+        type: reward.type || "discount",
+        pointsRequired: reward.points_required?.toString() || "",
+        discount: reward.discount?.toString() || "",
+        freeItem: reward.free_item || "",
+        minOrderAmount: reward.min_order_amount?.toString() || "",
+        expiresAt: reward.expires_at ? new Date(reward.expires_at).toISOString().split('T')[0] : "",
+      });
+    } else {
+      setFormData({
+        name: "",
+        description: "",
+        type: "discount",
+        pointsRequired: "",
+        discount: "",
+        freeItem: "",
+        minOrderAmount: "",
+        expiresAt: "",
+      });
+    }
+  }, [reward, open]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{reward ? "Edit Reward" : "Create New Reward"}</DialogTitle>
+          <DialogDescription>
+            {reward ? "Update the reward details below." : "Fill in the details to create a new customer reward."}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Reward Name</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="e.g., 10% Off Your Order"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Describe what this reward offers"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="type">Reward Type</Label>
+            <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="discount">Percentage Discount</SelectItem>
+                <SelectItem value="free_item">Free Item</SelectItem>
+                <SelectItem value="free_delivery">Free Delivery</SelectItem>
+                <SelectItem value="priority">Priority Service</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="pointsRequired">Points Required</Label>
+            <Input
+              id="pointsRequired"
+              type="number"
+              value={formData.pointsRequired}
+              onChange={(e) => setFormData({ ...formData, pointsRequired: e.target.value })}
+              placeholder="e.g., 100"
+              required
+            />
+          </div>
+
+          {formData.type === 'discount' && (
+            <div className="space-y-2">
+              <Label htmlFor="discount">Discount Percentage</Label>
+              <Input
+                id="discount"
+                type="number"
+                value={formData.discount}
+                onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
+                placeholder="e.g., 10"
+                min="1"
+                max="100"
+              />
+            </div>
+          )}
+
+          {formData.type === 'free_item' && (
+            <div className="space-y-2">
+              <Label htmlFor="freeItem">Free Item</Label>
+              <Input
+                id="freeItem"
+                value={formData.freeItem}
+                onChange={(e) => setFormData({ ...formData, freeItem: e.target.value })}
+                placeholder="e.g., Garlic Bread"
+              />
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="minOrderAmount">Minimum Order Amount (Optional)</Label>
+            <Input
+              id="minOrderAmount"
+              type="number"
+              step="0.01"
+              value={formData.minOrderAmount}
+              onChange={(e) => setFormData({ ...formData, minOrderAmount: e.target.value })}
+              placeholder="e.g., 25.00"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="expiresAt">Expiration Date (Optional)</Label>
+            <Input
+              id="expiresAt"
+              type="date"
+              value={formData.expiresAt}
+              onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {reward ? "Updating..." : "Creating..."}
+                </>
+              ) : (
+                reward ? "Update Reward" : "Create Reward"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };
 

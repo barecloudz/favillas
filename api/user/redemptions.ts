@@ -6,12 +6,12 @@ let dbConnection: any = null;
 
 function getDB() {
   if (dbConnection) return dbConnection;
-  
+
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     throw new Error('DATABASE_URL environment variable is required');
   }
-  
+
   dbConnection = postgres(databaseUrl, {
     max: 1,
     idle_timeout: 20,
@@ -19,16 +19,14 @@ function getDB() {
     prepare: false,
     keep_alive: false,
   });
-  
+
   return dbConnection;
 }
 
 function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
-  // Check for JWT token in Authorization header first
   const authHeader = event.headers.authorization;
-  let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  let token = authHeader && authHeader.split(' ')[1];
 
-  // If no Authorization header, check for auth-token cookie
   if (!token) {
     const cookies = event.headers.cookie;
     if (cookies) {
@@ -39,16 +37,14 @@ function authenticateToken(event: any): { userId: number; username: string; role
     }
   }
 
-  if (!token) {
-    return null;
-  }
+  if (!token) return null;
 
   try {
     const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
     if (!jwtSecret) {
       throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
     }
-    
+
     const decoded = jwt.verify(token, jwtSecret) as any;
     return {
       userId: decoded.userId,
@@ -62,12 +58,13 @@ function authenticateToken(event: any): { userId: number; username: string; role
 
 export const handler: Handler = async (event, context) => {
   const headers = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': event.headers.origin || '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json',
   };
-  
+
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
@@ -84,7 +81,6 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
-  // Check authentication
   const authPayload = authenticateToken(event);
   if (!authPayload) {
     return {
@@ -96,45 +92,54 @@ export const handler: Handler = async (event, context) => {
 
   try {
     const sql = getDB();
-    
-    // Get user's rewards data
-    const userRewards = await sql`
+
+    // Get user's redemption history
+    const redemptions = await sql`
       SELECT
-        COALESCE(SUM(CASE WHEN transaction_type = 'earned' THEN points_earned ELSE 0 END), 0) as total_points_earned,
-        COALESCE(SUM(CASE WHEN transaction_type = 'redeemed' THEN points_redeemed ELSE 0 END), 0) as total_points_redeemed,
-        COALESCE(SUM(CASE WHEN transaction_type = 'earned' THEN points_earned ELSE 0 END), 0) -
-        COALESCE(SUM(CASE WHEN transaction_type = 'redeemed' THEN points_redeemed ELSE 0 END), 0) as current_points,
-        MAX(created_at) as last_earned_at
-      FROM user_points
-      WHERE user_id = ${authPayload.userId}
+        rr.*,
+        r.name as reward_name,
+        r.description as reward_description,
+        r.type as reward_type,
+        r.discount,
+        r.free_item
+      FROM reward_redemptions rr
+      JOIN rewards r ON rr.reward_id = r.id
+      WHERE rr.user_id = ${authPayload.userId}
+      ORDER BY rr.redeemed_at DESC
     `;
 
-    const rewardsData = userRewards[0] || {
-      total_points_earned: 0,
-      total_points_redeemed: 0,
-      current_points: 0,
-      last_earned_at: null
-    };
+    // Format the response
+    const formattedRedemptions = redemptions.map(redemption => ({
+      id: redemption.id,
+      pointsSpent: redemption.points_spent,
+      isUsed: redemption.is_used,
+      redeemedAt: redemption.redeemed_at,
+      usedAt: redemption.used_at,
+      expiresAt: redemption.expires_at,
+      reward: {
+        id: redemption.reward_id,
+        name: redemption.reward_name,
+        description: redemption.reward_description,
+        type: redemption.reward_type,
+        discount: redemption.discount,
+        freeItem: redemption.free_item
+      }
+    }));
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({
-        points: rewardsData.current_points,
-        totalPointsEarned: rewardsData.total_points_earned,
-        totalPointsRedeemed: rewardsData.total_points_redeemed,
-        lastEarnedAt: rewardsData.last_earned_at
-      })
+      body: JSON.stringify(formattedRedemptions)
     };
 
-  } catch (error) {
-    console.error('User Rewards API error:', error);
+  } catch (error: any) {
+    console.error('User redemptions API error:', error);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
-        message: 'Failed to fetch user rewards',
-        error: error instanceof Error ? error.message : 'Unknown error'
+      body: JSON.stringify({
+        message: 'Failed to fetch redemption history',
+        error: error.message
       })
     };
   }

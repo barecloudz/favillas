@@ -74,10 +74,10 @@ const RewardsPage = () => {
         name: reward.name || 'Unknown Reward',
         description: reward.description || 'No description available',
         type: reward.type || 'default',
-        pointsRequired: reward.pointsRequired || 0,
+        pointsRequired: reward.points_required || 0,
         discount: reward.discount,
-        freeItem: reward.freeItem,
-        isActive: reward.isActive !== false
+        freeItem: reward.free_item,
+        isActive: reward.is_active !== false
       })) : [];
     },
     enabled: !!user,
