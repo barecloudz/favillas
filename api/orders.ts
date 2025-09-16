@@ -24,11 +24,9 @@ function getDB() {
 }
 
 function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
-  // Check for JWT token in Authorization header first
   const authHeader = event.headers.authorization;
-  let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  let token = authHeader && authHeader.split(' ')[1];
 
-  // If no Authorization header, check for auth-token cookie
   if (!token) {
     const cookies = event.headers.cookie;
     if (cookies) {
@@ -39,19 +37,42 @@ function authenticateToken(event: any): { userId: number; username: string; role
     }
   }
 
-  if (!token) {
-    return null;
-  }
+  if (!token) return null;
 
   try {
+    // First try to decode as Supabase JWT token
+    try {
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+      console.log('🔍 Supabase token payload:', payload);
+
+      if (payload.iss && payload.iss.includes('supabase')) {
+        const supabaseUserId = payload.sub;
+        console.log('✅ Supabase user ID:', supabaseUserId);
+
+        return {
+          userId: parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16) || 1,
+          username: payload.email || 'supabase_user',
+          role: 'customer'
+        };
+      }
+    } catch (supabaseError) {
+      console.log('Not a Supabase token, trying JWT verification');
+    }
+
+    // Fallback to our JWT verification
     const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
     if (!jwtSecret) {
       throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
     }
 
-    const payload = jwt.verify(token, jwtSecret) as { userId: number; username: string; role: string };
-    return payload;
+    const decoded = jwt.verify(token, jwtSecret) as any;
+    return {
+      userId: decoded.userId,
+      username: decoded.username,
+      role: decoded.role || 'customer'
+    };
   } catch (error) {
+    console.error('Token authentication failed:', error);
     return null;
   }
 }
@@ -353,9 +374,28 @@ export const handler: Handler = async (event, context) => {
             const pointsToAward = Math.floor(parseFloat(newOrder.total));
             console.log('🎁 Orders API: Awarding points to user:', userId, 'Points:', pointsToAward);
 
+            // Record points transaction in audit table
             await sql`
-              INSERT INTO user_points (user_id, points_earned, points_redeemed, transaction_type, reference_id, description, created_at)
-              VALUES (${userId}, ${pointsToAward}, 0, 'earned', ${newOrder.id}, ${'Order #' + newOrder.id + ' - $' + newOrder.total}, NOW())
+              INSERT INTO points_transactions (user_id, order_id, type, points, description, order_amount, created_at)
+              VALUES (${userId}, ${newOrder.id}, 'earned', ${pointsToAward}, ${'Order #' + newOrder.id}, ${newOrder.total}, NOW())
+            `;
+
+            // Update user_points table with correct schema
+            await sql`
+              INSERT INTO user_points (user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
+              VALUES (${userId}, ${pointsToAward}, ${pointsToAward}, 0, NOW(), NOW(), NOW())
+              ON CONFLICT (user_id) DO UPDATE SET
+                points = user_points.points + ${pointsToAward},
+                total_earned = user_points.total_earned + ${pointsToAward},
+                last_earned_at = NOW(),
+                updated_at = NOW()
+            `;
+
+            // Also update legacy rewards column for backward compatibility
+            await sql`
+              UPDATE users
+              SET rewards = (SELECT points FROM user_points WHERE user_id = ${userId}), updated_at = NOW()
+              WHERE id = ${userId}
             `;
 
             console.log('✅ Orders API: Points awarded successfully');
