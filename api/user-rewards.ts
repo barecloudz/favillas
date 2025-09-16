@@ -54,10 +54,10 @@ function authenticateToken(event: any): { userId: number; username: string; role
         const supabaseUserId = payload.sub;
         console.log('✅ Supabase user ID:', supabaseUserId);
         
-        // For now, return a mock user ID - we'll need to look up the actual user ID from database
-        // This is a temporary solution until we can properly map Supabase users to our database
+        // Return the Supabase user ID as the userId for now
+        // We'll need to create a proper mapping later
         return {
-          userId: 1, // Temporary - should look up actual user ID
+          userId: parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16) || 1, // Convert to number
           username: payload.email || 'supabase_user',
           role: 'customer'
         };
@@ -121,6 +121,24 @@ export const handler: Handler = async (event, context) => {
   try {
     const sql = getDB();
     
+    console.log('🔍 Getting rewards for user ID:', authPayload.userId);
+    
+    // First, ensure the user exists in the users table
+    const userExists = await sql`
+      SELECT id FROM users WHERE id = ${authPayload.userId}
+    `;
+    
+    if (userExists.length === 0) {
+      console.log('👤 User not found, creating new user');
+      // Create a new user for this Supabase user
+      const newUser = await sql`
+        INSERT INTO users (id, username, email, first_name, last_name, password, role, is_admin, is_active, marketing_opt_in, created_at)
+        VALUES (${authPayload.userId}, ${authPayload.username}, ${authPayload.username}, 'User', 'Name', '', 'customer', false, true, false, NOW())
+        RETURNING id
+      `;
+      console.log('✅ Created new user:', newUser[0].id);
+    }
+    
     // Get user's rewards data
     const userRewards = await sql`
       SELECT
@@ -140,6 +158,8 @@ export const handler: Handler = async (event, context) => {
       last_earned_at: null
     };
 
+    console.log('✅ Rewards data:', rewardsData);
+
     return {
       statusCode: 200,
       headers,
@@ -152,7 +172,7 @@ export const handler: Handler = async (event, context) => {
     };
 
   } catch (error) {
-    console.error('User Rewards API error:', error);
+    console.error('❌ User Rewards API error:', error);
     return {
       statusCode: 500,
       headers,

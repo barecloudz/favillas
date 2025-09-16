@@ -50,9 +50,9 @@ function authenticateToken(event: any): { userId: number; username: string; role
         const supabaseUserId = payload.sub;
         console.log('✅ Supabase user ID:', supabaseUserId);
         
-        // For now, return a mock user ID - we'll need to look up the actual user ID from database
+        // Return the Supabase user ID as the userId for now
         return {
-          userId: 1, // Temporary - should look up actual user ID
+          userId: parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16) || 1, // Convert to number
           username: payload.email || 'supabase_user',
           role: 'customer'
         };
