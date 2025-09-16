@@ -35,6 +35,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/user/profile"
+  to = "/.netlify/functions/user-profile"
+  status = 200
+
+[[redirects]]
   from = "/api/user/rewards"
   to = "/.netlify/functions/user-rewards"
   status = 200
