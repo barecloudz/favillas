@@ -194,7 +194,7 @@ export const handler: Handler = async (event, context) => {
           INSERT INTO orders (
             user_id, status, total, tax, delivery_fee, tip, order_type, payment_status, 
             special_instructions, address, address_data, fulfillment_time, scheduled_time, 
-            phone, created_at, updated_at
+            phone, created_at
           ) VALUES (
             ${userId}, 
             ${orderData.status || 'pending'}, 
@@ -210,7 +210,6 @@ export const handler: Handler = async (event, context) => {
             ${orderData.fulfillmentTime || 'asap'}, 
             ${orderData.scheduledTime || null}, 
             ${orderData.phone}, 
-            NOW(), 
             NOW()
           ) RETURNING *
         `;
