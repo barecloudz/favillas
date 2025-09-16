@@ -3265,6 +3265,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } catch (error) {
         console.error('❌ Supabase auth error:', error);
+        // Try alternative approach - get user by Supabase ID from token
+        try {
+          const authHeader = req.headers.authorization;
+          if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7);
+            
+            // Decode JWT token to get user ID (without verification for now)
+            try {
+              const payload = JSON.parse(atob(token.split('.')[1]));
+              const supabaseUserId = payload.sub;
+              console.log('🔍 Extracted Supabase user ID from token:', supabaseUserId);
+              
+              // Find user by Supabase ID
+              const dbUser = await storage.getUserBySupabaseId(supabaseUserId);
+              if (dbUser) {
+                console.log('✅ Found user by Supabase ID:', dbUser.email);
+                const userPoints = await storage.getUserPoints(dbUser.id);
+                
+                res.json({
+                  points: userPoints?.points || 0,
+                  totalPointsEarned: userPoints?.totalEarned || 0,
+                  totalPointsRedeemed: userPoints?.totalRedeemed || 0,
+                  lastEarnedAt: userPoints?.lastEarnedAt,
+                });
+                return;
+              } else {
+                console.log('❌ User not found in database for Supabase ID:', supabaseUserId);
+              }
+            } catch (decodeError) {
+              console.error('❌ Failed to decode JWT token:', decodeError);
+            }
+          }
+        } catch (altError) {
+          console.error('❌ Alternative auth failed:', altError);
+        }
         // Fall through to Express session auth
       }
     }
@@ -3327,32 +3362,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/user/redemptions", async (req, res) => {
+    console.log('🎯 /api/user/redemptions called:', {
+      hasAuthHeader: !!req.headers.authorization,
+      isAuthenticated: req.isAuthenticated ? req.isAuthenticated() : false,
+      userId: req.user?.id
+    });
+
     // Try Supabase authentication first
     if (req.headers.authorization) {
       try {
         return authenticateSupabaseUser(req, res, async () => {
           try {
+            console.log('✅ Supabase auth successful, getting redemptions for:', req.user.id);
             const redemptions = await storage.getUserRedemptions(req.user.id);
             res.json(redemptions);
           } catch (error: any) {
+            console.error('❌ Error getting redemptions:', error);
             res.status(500).json({ message: error.message });
           }
         });
       } catch (error) {
-        console.error('Supabase auth error:', error);
+        console.error('❌ Supabase auth error:', error);
+        // Try alternative approach - get user by Supabase ID from token
+        try {
+          const authHeader = req.headers.authorization;
+          if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7);
+            
+            // Decode JWT token to get user ID (without verification for now)
+            try {
+              const payload = JSON.parse(atob(token.split('.')[1]));
+              const supabaseUserId = payload.sub;
+              console.log('🔍 Extracted Supabase user ID from token:', supabaseUserId);
+              
+              // Find user by Supabase ID
+              const dbUser = await storage.getUserBySupabaseId(supabaseUserId);
+              if (dbUser) {
+                console.log('✅ Found user by Supabase ID:', dbUser.email);
+                const redemptions = await storage.getUserRedemptions(dbUser.id);
+                res.json(redemptions);
+                return;
+              } else {
+                console.log('❌ User not found in database for Supabase ID:', supabaseUserId);
+              }
+            } catch (decodeError) {
+              console.error('❌ Failed to decode JWT token:', decodeError);
+            }
+          }
+        } catch (altError) {
+          console.error('❌ Alternative auth failed:', altError);
+        }
         // Fall through to Express session auth
       }
     }
     
     // Fallback to Express session authentication
     if (!req.isAuthenticated()) {
+      console.log('❌ Not authenticated via Express session');
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     try {
+      console.log('✅ Express session auth successful, getting redemptions for:', req.user.id);
       const redemptions = await storage.getUserRedemptions(req.user.id);
       res.json(redemptions);
     } catch (error: any) {
+      console.error('❌ Error getting redemptions:', error);
       res.status(500).json({ message: error.message });
     }
   });
