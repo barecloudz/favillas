@@ -9,17 +9,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { 
-  User, 
-  MapPin, 
-  CreditCard, 
-  Star, 
-  ShoppingBag, 
-  Lock, 
-  Eye, 
+import {
+  User,
+  MapPin,
+  CreditCard,
+  Star,
+  ShoppingBag,
+  Lock,
+  Eye,
   EyeOff,
   Save,
-  LogOut
+  LogOut,
+  Home
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -168,7 +169,16 @@ const ProfilePage: React.FC = () => {
             {/* Mobile App Style Quick Actions */}
             <div className="mb-8">
               <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">Quick Actions</h2>
-              <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <Link href="/">
+                  <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                    <CardContent className="p-6 text-center">
+                      <Home className="h-8 w-8 mx-auto mb-3" />
+                      <h3 className="font-bold text-lg">Return Home</h3>
+                      <p className="text-green-100 text-sm">Back to menu</p>
+                    </CardContent>
+                  </Card>
+                </Link>
                 <Link href="/orders">
                   <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
                     <CardContent className="p-6 text-center">
