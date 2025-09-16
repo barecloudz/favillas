@@ -111,11 +111,11 @@ export const handler: Handler = async (event, context) => {
         allOrders.map(async (order) => {
           try {
             const items = await sql`
-              SELECT 
+              SELECT
                 oi.*,
                 mi.name as menu_item_name,
                 mi.description as menu_item_description,
-                mi.price as menu_item_price,
+                mi.base_price as menu_item_price,
                 mi.image_url as menu_item_image_url,
                 mi.category as menu_item_category
               FROM order_items oi
@@ -279,11 +279,11 @@ export const handler: Handler = async (event, context) => {
 
         // Fetch the complete order with items and menu item details
         const orderItems = await sql`
-          SELECT 
+          SELECT
             oi.*,
             mi.name as menu_item_name,
             mi.description as menu_item_description,
-            mi.price as menu_item_price,
+            mi.base_price as menu_item_price,
             mi.image_url as menu_item_image_url,
             mi.category as menu_item_category
           FROM order_items oi
