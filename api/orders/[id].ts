@@ -85,7 +85,8 @@ export const handler: Handler = async (event, context) => {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET, PUT, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Credentials': 'true'
+    'Access-Control-Allow-Credentials': 'true',
+    'Content-Type': 'application/json',
   };
   
   if (event.httpMethod === 'OPTIONS') {
@@ -188,26 +189,53 @@ export const handler: Handler = async (event, context) => {
         }
 
         const patchData = JSON.parse(event.body || '{}');
-        const [updatedOrder] = await db
-          .update(orders)
-          .set({
-            ...patchData,
-            updatedAt: new Date(),
-          })
-          .where(eq(orders.id, orderId))
-          .returning();
-          
-        if (!updatedOrder) {
+
+        // Build the UPDATE query dynamically
+        const updateFields = [];
+        const updateValues = [];
+
+        if (patchData.status !== undefined) {
+          updateFields.push('status = $' + (updateValues.length + 1));
+          updateValues.push(patchData.status);
+        }
+        if (patchData.paymentStatus !== undefined) {
+          updateFields.push('payment_status = $' + (updateValues.length + 1));
+          updateValues.push(patchData.paymentStatus);
+        }
+
+        // Always update the processed_at timestamp for status updates
+        updateFields.push('processed_at = NOW()');
+
+        if (updateFields.length === 1) { // Only the timestamp update
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'No valid fields to update' })
+          };
+        }
+
+        const updateQuery = `
+          UPDATE orders
+          SET ${updateFields.join(', ')}
+          WHERE id = $${updateValues.length + 1}
+          RETURNING *
+        `;
+        updateValues.push(orderId);
+
+        const updatedOrders = await sql.unsafe(updateQuery, updateValues);
+
+        if (updatedOrders.length === 0) {
           return {
             statusCode: 404,
             headers,
             body: JSON.stringify({ error: 'Order not found' })
           };
         }
+
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify(updatedOrder)
+          body: JSON.stringify(updatedOrders[0])
         };
 
       case 'DELETE':
@@ -220,18 +248,20 @@ export const handler: Handler = async (event, context) => {
           };
         }
 
-        const [deletedOrder] = await db
-          .delete(orders)
-          .where(eq(orders.id, orderId))
-          .returning();
-          
-        if (!deletedOrder) {
+        const deletedOrders = await sql`
+          DELETE FROM orders
+          WHERE id = ${orderId}
+          RETURNING *
+        `;
+
+        if (deletedOrders.length === 0) {
           return {
             statusCode: 404,
             headers,
             body: JSON.stringify({ error: 'Order not found' })
           };
         }
+
         return {
           statusCode: 200,
           headers,
