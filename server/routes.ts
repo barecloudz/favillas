@@ -3236,6 +3236,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test endpoint to verify server is working
+  app.get("/api/test", async (req, res) => {
+    console.log('🧪 Test endpoint called');
+    res.json({ message: 'Server is working!', timestamp: new Date().toISOString() });
+  });
+
   // Rewards & Loyalty API
   app.get("/api/user/rewards", async (req, res) => {
     console.log('🎯 /api/user/rewards called:', {

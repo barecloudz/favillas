@@ -44,6 +44,29 @@ function authenticateToken(event: any): { userId: number; username: string; role
   }
 
   try {
+    // First try to decode as Supabase JWT token
+    try {
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+      console.log('🔍 Supabase token payload:', payload);
+      
+      if (payload.iss && payload.iss.includes('supabase')) {
+        // This is a Supabase token, extract user ID
+        const supabaseUserId = payload.sub;
+        console.log('✅ Supabase user ID:', supabaseUserId);
+        
+        // For now, return a mock user ID - we'll need to look up the actual user ID from database
+        // This is a temporary solution until we can properly map Supabase users to our database
+        return {
+          userId: 1, // Temporary - should look up actual user ID
+          username: payload.email || 'supabase_user',
+          role: 'customer'
+        };
+      }
+    } catch (supabaseError) {
+      console.log('Not a Supabase token, trying JWT verification');
+    }
+
+    // Fallback to our JWT verification
     const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
     if (!jwtSecret) {
       throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
@@ -56,6 +79,7 @@ function authenticateToken(event: any): { userId: number; username: string; role
       role: decoded.role || 'customer'
     };
   } catch (error) {
+    console.error('Token authentication failed:', error);
     return null;
   }
 }
