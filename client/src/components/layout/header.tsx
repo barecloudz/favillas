@@ -139,60 +139,8 @@ const Header = () => {
                 </Button>
                 
                 {user ? (
-                  // Check if user is admin or employee for dropdown, otherwise direct navigation
-                  (user.isAdmin || user.role === "employee") ? (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="hover:bg-gray-100">
-                          <Avatar className="h-6 w-6 mr-2">
-                            <AvatarFallback className="text-xs">
-                              {user.firstName?.[0]}{user.lastName?.[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="hidden sm:inline">{user.firstName}</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuItem onClick={() => window.location.href = "/profile"}>
-                          <User className="mr-2 h-4 w-4" />
-                          <span>My Profile</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => window.location.href = "/orders"}>
-                          <ShoppingBag className="mr-2 h-4 w-4" />
-                          <span>My Orders</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => window.location.href = "/rewards"}>
-                          <Star className="mr-2 h-4 w-4" />
-                          <span>Rewards</span>
-                        </DropdownMenuItem>
-                        {(user.role === "employee" || user.isAdmin) && (
-                          <DropdownMenuItem onClick={() => window.location.href = "/employee/clock"}>
-                            <Clock className="mr-2 h-4 w-4" />
-                            <span>Clock In/Out</span>
-                          </DropdownMenuItem>
-                        )}
-                        {user.isAdmin && (
-                          <>
-                            <DropdownMenuItem onClick={() => window.location.href = "/admin"}>
-                              <BarChart3 className="mr-2 h-4 w-4" />
-                              <span>Admin Dashboard</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => window.location.href = "/kitchen"}>
-                              <ChefHat className="mr-2 h-4 w-4" />
-                              <span>Kitchen Display</span>
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleLogout}>
-                          <LogOut className="mr-2 h-4 w-4" />
-                          <span>Log out</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  ) : (
-                    // Regular customers get direct navigation to profile page
-                    <Link href="/profile">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="hover:bg-gray-100">
                         <Avatar className="h-6 w-6 mr-2">
                           <AvatarFallback className="text-xs">
@@ -201,8 +149,46 @@ const Header = () => {
                         </Avatar>
                         <span className="hidden sm:inline">{user.firstName}</span>
                       </Button>
-                    </Link>
-                  )
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuItem onClick={() => window.location.href = "/profile"}>
+                        <User className="mr-2 h-4 w-4" />
+                        <span>My Profile</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => window.location.href = "/orders"}>
+                        <ShoppingBag className="mr-2 h-4 w-4" />
+                        <span>My Orders</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => window.location.href = "/rewards"}>
+                        <Star className="mr-2 h-4 w-4" />
+                        <span>Rewards</span>
+                      </DropdownMenuItem>
+                      {(user.role === "employee" || user.isAdmin) && (
+                        <DropdownMenuItem onClick={() => window.location.href = "/employee/clock"}>
+                          <Clock className="mr-2 h-4 w-4" />
+                          <span>Clock In/Out</span>
+                        </DropdownMenuItem>
+                      )}
+                      {user.isAdmin && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => window.location.href = "/admin"}>
+                            <BarChart3 className="mr-2 h-4 w-4" />
+                            <span>Admin Dashboard</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => window.location.href = "/kitchen"}>
+                            <ChefHat className="mr-2 h-4 w-4" />
+                            <span>Kitchen Display</span>
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleLogout}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Log out</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 ) : (
                   <Link href="/auth">
                     <Button className="bg-[#d73a31] hover:bg-[#c73128] text-white font-medium">
@@ -230,59 +216,8 @@ const Header = () => {
             </Link>
             <div className="flex items-center space-x-2 w-20 justify-end">
               {user ? (
-                // Check if user is admin or employee for dropdown, otherwise direct navigation
-                (user.isAdmin || user.role === "employee") ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <Avatar className="h-6 w-6">
-                          <AvatarFallback className="text-xs">
-                            {user.firstName?.[0]}{user.lastName?.[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuItem onClick={() => window.location.href = "/profile"}>
-                        <User className="mr-2 h-4 w-4" />
-                        <span>My Profile</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => window.location.href = "/orders"}>
-                        <ShoppingBag className="mr-2 h-4 w-4" />
-                        <span>My Orders</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => window.location.href = "/rewards"}>
-                        <Star className="mr-2 h-4 w-4" />
-                        <span>Rewards</span>
-                      </DropdownMenuItem>
-                      {(user.role === "employee" || user.isAdmin) && (
-                        <DropdownMenuItem onClick={() => window.location.href = "/employee/clock"}>
-                          <Clock className="mr-2 h-4 w-4" />
-                          <span>Clock In/Out</span>
-                        </DropdownMenuItem>
-                      )}
-                      {user.isAdmin && (
-                        <>
-                          <DropdownMenuItem onClick={() => window.location.href = "/admin"}>
-                            <BarChart3 className="mr-2 h-4 w-4" />
-                            <span>Admin Dashboard</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => window.location.href = "/kitchen"}>
-                            <ChefHat className="mr-2 h-4 w-4" />
-                            <span>Kitchen Display</span>
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleLogout}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        <span>Log out</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : (
-                  // Regular customers get direct navigation to profile page
-                  <Link href="/profile">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm">
                       <Avatar className="h-6 w-6">
                         <AvatarFallback className="text-xs">
@@ -290,8 +225,46 @@ const Header = () => {
                         </AvatarFallback>
                       </Avatar>
                     </Button>
-                  </Link>
-                )
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => window.location.href = "/profile"}>
+                      <User className="mr-2 h-4 w-4" />
+                      <span>My Profile</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => window.location.href = "/orders"}>
+                      <ShoppingBag className="mr-2 h-4 w-4" />
+                      <span>My Orders</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => window.location.href = "/rewards"}>
+                      <Star className="mr-2 h-4 w-4" />
+                      <span>Rewards</span>
+                    </DropdownMenuItem>
+                    {(user.role === "employee" || user.isAdmin) && (
+                      <DropdownMenuItem onClick={() => window.location.href = "/employee/clock"}>
+                        <Clock className="mr-2 h-4 w-4" />
+                        <span>Clock In/Out</span>
+                      </DropdownMenuItem>
+                    )}
+                    {user.isAdmin && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => window.location.href = "/admin"}>
+                          <BarChart3 className="mr-2 h-4 w-4" />
+                          <span>Admin Dashboard</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => window.location.href = "/kitchen"}>
+                          <ChefHat className="mr-2 h-4 w-4" />
+                          <span>Kitchen Display</span>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : (
                 <Link href="/auth">
                   <Button size="sm" className="bg-[#d73a31] hover:bg-[#c73128] text-white">
@@ -343,66 +316,54 @@ const Header = () => {
             
             <div className="flex flex-col items-center space-y-1">
               {user ? (
-                // Check if user is admin or employee for dropdown, otherwise direct navigation
-                (user.isAdmin || user.role === "employee") ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <div className={`flex flex-col items-center space-y-1 cursor-pointer transition-colors ${
-                        location === "/profile" ? "text-[#d73a31]" : "text-gray-600 hover:text-[#d73a31]"
-                      }`}>
-                        <User className="h-6 w-6" />
-                        <span className="text-xs font-semibold">Profile</span>
-                      </div>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuItem onClick={() => window.location.href = "/profile"}>
-                        <User className="mr-2 h-4 w-4" />
-                        <span>My Profile</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => window.location.href = "/orders"}>
-                        <ShoppingBag className="mr-2 h-4 w-4" />
-                        <span>My Orders</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => window.location.href = "/rewards"}>
-                        <Star className="mr-2 h-4 w-4" />
-                        <span>Rewards</span>
-                      </DropdownMenuItem>
-                      {(user.role === "employee" || user.isAdmin) && (
-                        <DropdownMenuItem onClick={() => window.location.href = "/employee/clock"}>
-                          <Clock className="mr-2 h-4 w-4" />
-                          <span>Clock In/Out</span>
-                        </DropdownMenuItem>
-                      )}
-                      {user.isAdmin && (
-                        <>
-                          <DropdownMenuItem onClick={() => window.location.href = "/admin"}>
-                            <BarChart3 className="mr-2 h-4 w-4" />
-                            <span>Admin Dashboard</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => window.location.href = "/kitchen"}>
-                            <ChefHat className="mr-2 h-4 w-4" />
-                            <span>Kitchen Display</span>
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleLogout}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        <span>Log out</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : (
-                  // Regular customers get direct navigation to profile page
-                  <Link href="/profile">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <div className={`flex flex-col items-center space-y-1 cursor-pointer transition-colors ${
                       location === "/profile" ? "text-[#d73a31]" : "text-gray-600 hover:text-[#d73a31]"
                     }`}>
                       <User className="h-6 w-6" />
                       <span className="text-xs font-semibold">Profile</span>
                     </div>
-                  </Link>
-                )
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onClick={() => window.location.href = "/profile"}>
+                      <User className="mr-2 h-4 w-4" />
+                      <span>My Profile</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => window.location.href = "/orders"}>
+                      <ShoppingBag className="mr-2 h-4 w-4" />
+                      <span>My Orders</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => window.location.href = "/rewards"}>
+                      <Star className="mr-2 h-4 w-4" />
+                      <span>Rewards</span>
+                    </DropdownMenuItem>
+                    {(user.role === "employee" || user.isAdmin) && (
+                      <DropdownMenuItem onClick={() => window.location.href = "/employee/clock"}>
+                        <Clock className="mr-2 h-4 w-4" />
+                        <span>Clock In/Out</span>
+                      </DropdownMenuItem>
+                    )}
+                    {user.isAdmin && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => window.location.href = "/admin"}>
+                          <BarChart3 className="mr-2 h-4 w-4" />
+                          <span>Admin Dashboard</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => window.location.href = "/kitchen"}>
+                          <ChefHat className="mr-2 h-4 w-4" />
+                          <span>Kitchen Display</span>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : (
                 <Link href="/auth">
                   <div className="flex flex-col items-center space-y-1 text-gray-600 hover:text-[#d73a31] transition-colors">
