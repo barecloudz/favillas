@@ -3243,7 +3243,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { authenticateSupabaseUser } = await import('./supabase-auth');
         return authenticateSupabaseUser(req, res, async () => {
           try {
-            const user = await storage.getUser(req.user.id);
             const userPoints = await storage.getUserPoints(req.user.id);
             
             res.json({
@@ -3267,7 +3266,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const user = await storage.getUser(req.user.id);
       const userPoints = await storage.getUserPoints(req.user.id);
       
       res.json({

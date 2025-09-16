@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { createClient } from '@supabase/supabase-js';
+import { storage } from './storage';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -44,7 +45,6 @@ export async function authenticateSupabaseUser(req: Request, res: Response, next
     }
 
     // Get user data from our database using the Supabase user ID
-    const { storage } = await import('./storage');
     const dbUser = await storage.getUserBySupabaseId(user.id);
 
     if (!dbUser) {
@@ -60,6 +60,9 @@ export async function authenticateSupabaseUser(req: Request, res: Response, next
         isActive: true,
         marketingOptIn: false,
       });
+
+      // Initialize user points to 0
+      await storage.updateUserPoints(newUser.id, 0, 0, 0);
 
       req.user = {
         id: newUser.id,

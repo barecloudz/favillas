@@ -21,6 +21,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByGoogleId(googleId: string): Promise<User | undefined>;
+  getUserBySupabaseId(supabaseId: string): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined>;
@@ -614,6 +615,12 @@ export class MemStorage implements IStorage {
   async getUserByGoogleId(googleId: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(
       (user) => user.googleId === googleId,
+    );
+  }
+
+  async getUserBySupabaseId(supabaseId: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.supabaseUserId === supabaseId,
     );
   }
 
@@ -1759,6 +1766,11 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByGoogleId(googleId: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.googleId, googleId));
+    return user;
+  }
+
+  async getUserBySupabaseId(supabaseId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.supabaseUserId, supabaseId));
     return user;
   }
 
