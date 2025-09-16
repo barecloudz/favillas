@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-supabase-auth";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -15,13 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
 import { Helmet } from "react-helmet";
-
-// Declare global function for Google Sign-In callback
-declare global {
-  interface Window {
-    onGoogleSignIn: (googleUser: any) => void;
-  }
-}
+import { useToast } from "@/hooks/use-toast";
 
 // Login schema
 const loginSchema = z.object({
@@ -42,124 +36,28 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const AuthPage = () => {
   const [location, navigate] = useLocation();
-  const { user, loginMutation, registerMutation } = useAuth();
+  const { user, loading, signInWithGoogle, signOut } = useAuth();
+  const { toast } = useToast();
   
   // Get the tab from URL parameters
   const urlParams = new URLSearchParams(window.location.search);
   const tabFromUrl = urlParams.get('tab');
   const [activeTab, setActiveTab] = useState<string>(tabFromUrl === 'register' ? 'register' : 'login');
 
-  // Google Sign-In callback handler
-  useEffect(() => {
-    window.onGoogleSignIn = async (googleUser: any) => {
-      try {
-        const idToken = googleUser.getAuthResponse().id_token;
-        const profile = googleUser.getBasicProfile();
-        
-        console.log('Google Sign-In successful:', {
-          id: profile.getId(),
-          name: profile.getName(),
-          email: profile.getEmail(),
-          imageUrl: profile.getImageUrl()
-        });
-
-        // Send the ID token to your backend for verification
-        const response = await fetch('/api/auth/google/callback', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            idToken: idToken,
-            profile: {
-              id: profile.getId(),
-              name: profile.getName(),
-              email: profile.getEmail(),
-              imageUrl: profile.getImageUrl()
-            }
-          }),
-        });
-
-        if (response.ok) {
-          const userData = await response.json();
-          console.log('Google authentication successful:', userData);
-          
-          // Store the token in localStorage as a backup
-          if (userData.token) {
-            localStorage.setItem('auth-token', userData.token);
-            console.log('Token stored in localStorage');
-          }
-          
-          // Handle successful authentication
-          // Instead of reloading, we can update the auth state directly
-          // But for now, let's reload to ensure everything is synced
-          window.location.reload(); // Refresh to update auth state
-        } else {
-          const errorData = await response.json();
-          console.error('Google authentication failed:', errorData);
-        }
-      } catch (error) {
-        console.error('Google Sign-In error:', error);
-      }
-    };
-
-    return () => {
-      // Cleanup
-      window.onGoogleSignIn = undefined as any;
-    };
-  }, []);
-
-  // Re-initialize Google Sign-In buttons when tab changes
-  useEffect(() => {
-    const initializeGoogleButtons = () => {
-      // Wait for Google Platform Library and Auth2 to load
-      if (typeof gapi !== 'undefined' && gapi.auth2 && gapi.signin2) {
-        console.log('Re-initializing Google Sign-In buttons for tab:', activeTab);
-        
-        // Find all Google Sign-In buttons
-        const googleButtons = document.querySelectorAll('.g-signin2');
-        console.log('Found Google buttons:', googleButtons.length);
-        
-        if (googleButtons.length === 0) {
-          console.log('No Google buttons found, retrying...');
-          setTimeout(initializeGoogleButtons, 500);
-          return;
-        }
-        
-        googleButtons.forEach((button, index) => {
-          try {
-            // Clear any existing content
-            button.innerHTML = '';
-            
-            // Re-render the button
-            gapi.signin2.render(button as HTMLElement, {
-              'scope': 'profile email',
-              'width': '100%',
-              'height': '40',
-              'longtitle': true,
-              'theme': 'light',
-              'onsuccess': window.onGoogleSignIn,
-              'onfailure': (error: any) => {
-                console.error('Google Sign-In failed:', error);
-              }
-            });
-            console.log(`Button ${index + 1} rendered successfully`);
-          } catch (error) {
-            console.error(`Error rendering button ${index + 1}:`, error);
-          }
-        });
-      } else {
-        console.log('Google Platform Library or Auth2 not ready, retrying...');
-        // If Google Platform Library isn't ready, try again in 500ms
-        setTimeout(initializeGoogleButtons, 500);
-      }
-    };
-
-    // Initialize buttons after a short delay to ensure DOM is updated
-    const timeoutId = setTimeout(initializeGoogleButtons, 500);
-    
-    return () => clearTimeout(timeoutId);
-  }, [activeTab]);
+  // Handle Google Sign-In
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithGoogle();
+      // User will be redirected to Google OAuth, then back to /auth/callback
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+      toast({
+        title: "Sign-in failed",
+        description: "There was an error signing in with Google. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Forms
   const loginForm = useForm<LoginFormValues>({
@@ -289,12 +187,33 @@ const AuthPage = () => {
                           </div>
                         </div>
                         
-                        <div 
-                          className="g-signin2 w-full mt-4" 
-                          data-onsuccess="onGoogleSignIn"
-                          data-theme="light"
-                          data-width="100%"
-                        ></div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full mt-4"
+                          onClick={handleGoogleSignIn}
+                          disabled={loading}
+                        >
+                          <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+                            <path
+                              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                              fill="#4285F4"
+                            />
+                            <path
+                              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                              fill="#34A853"
+                            />
+                            <path
+                              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                              fill="#FBBC05"
+                            />
+                            <path
+                              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                              fill="#EA4335"
+                            />
+                          </svg>
+                          {loading ? "Signing in..." : "Continue with Google"}
+                        </Button>
                       </div>
                     </TabsContent>
 
@@ -489,12 +408,33 @@ const AuthPage = () => {
                           </div>
                         </div>
                         
-                        <div 
-                          className="g-signin2 w-full mt-4" 
-                          data-onsuccess="onGoogleSignIn"
-                          data-theme="light"
-                          data-width="100%"
-                        ></div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full mt-4"
+                          onClick={handleGoogleSignIn}
+                          disabled={loading}
+                        >
+                          <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+                            <path
+                              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                              fill="#4285F4"
+                            />
+                            <path
+                              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                              fill="#34A853"
+                            />
+                            <path
+                              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                              fill="#FBBC05"
+                            />
+                            <path
+                              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                              fill="#EA4335"
+                            />
+                          </svg>
+                          {loading ? "Signing in..." : "Continue with Google"}
+                        </Button>
                       </div>
                     </TabsContent>
                   </Tabs>

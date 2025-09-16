@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
+import AuthCallback from "@/pages/auth-callback";
 import MenuPage from "@/pages/menu-page";
 import CheckoutPage from "@/pages/checkout-page";
 import OrderSuccessPage from "@/pages/order-success";
@@ -17,7 +18,7 @@ import KitchenPage from "@/pages/kitchen-page";
 import AdminDashboard from "@/pages/admin-dashboard";
 import TestPage from "@/pages/test-page";
 import EmployeeClockPage from "@/pages/employee-clock";
-import { AuthProvider } from "@/hooks/use-auth";
+import { AuthProvider } from "@/hooks/use-supabase-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { CartProvider } from "@/hooks/use-cart";
 import CartSidebar from "@/components/cart/cart-sidebar";
@@ -41,6 +42,7 @@ function Router() {
       <Switch>
         <Route path="/" component={HomePage} />
         <Route path="/auth" component={AuthPage} />
+        <Route path="/auth/callback" component={AuthCallback} />
         <Route path="/menu" component={MenuPage} />
         <Route path="/test" component={TestPage} />
         <Route path="/checkout" component={CheckoutPage} />
