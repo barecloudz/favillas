@@ -45,9 +45,7 @@ const RewardsPage = () => {
   const { data: userData, isLoading: userLoading, error: userError } = useQuery({
     queryKey: ["/api/user/rewards"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/user/rewards", null, {
-        credentials: "include"
-      });
+      const response = await apiRequest("GET", "/api/user/rewards");
       const data = await response.json();
       // Ensure we have valid user data with defaults
       return {
@@ -64,9 +62,7 @@ const RewardsPage = () => {
   const { data: rewards = [], isLoading: rewardsLoading, error: rewardsError } = useQuery({
     queryKey: ["/api/rewards"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/rewards", null, {
-        credentials: "include"
-      });
+      const response = await apiRequest("GET", "/api/rewards");
       const data = await response.json();
       // Ensure we have an array and each reward has required properties
       return Array.isArray(data) ? data.map(reward => ({
@@ -87,9 +83,7 @@ const RewardsPage = () => {
   const { data: redemptions = [], isLoading: redemptionsLoading } = useQuery({
     queryKey: ["/api/user/redemptions"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/user/redemptions", null, {
-        credentials: "include"
-      });
+      const response = await apiRequest("GET", "/api/user/redemptions");
       return response.json();
     },
     enabled: !!user,
@@ -98,9 +92,7 @@ const RewardsPage = () => {
   // Redeem reward mutation
   const redeemRewardMutation = useMutation({
     mutationFn: async (rewardId: number) => {
-      const response = await apiRequest("POST", `/api/rewards/${rewardId}/redeem`, {}, {
-        credentials: "include"
-      });
+      const response = await apiRequest("POST", `/api/rewards/${rewardId}/redeem`);
       return response.json();
     },
     onSuccess: (data) => {
