@@ -205,11 +205,12 @@ const CheckoutPage = () => {
     return () => clearTimeout(timer);
   }, [items, navigate, toast, clearCart]);
 
-  // Query user rewards
-  const { data: rewards } = useQuery({
-    queryKey: ["/api/rewards"],
-    enabled: !!user,
-  });
+  // DISABLED: Query user rewards (API returns 404)
+  // const { data: rewards } = useQuery({
+  //   queryKey: ["/api/rewards"],
+  //   enabled: !!user,
+  // });
+  const rewards = null; // Temporary fix for superadmin checkout crash
 
   // Create order mutation
   const createOrderMutation = useMutation({
