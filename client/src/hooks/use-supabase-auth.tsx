@@ -79,7 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Error signing out:', error.message);
-        throw error;
+        // Don't throw error for session missing - user might already be logged out
+        if (error.message.includes('Auth session missing')) {
+          console.log('User already logged out, continuing...');
+        } else {
+          throw error;
+        }
       }
       
       // Also call the API logout to clear any server-side sessions
@@ -99,7 +104,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     } catch (error) {
       setLoading(false);
-      throw error;
+      // Don't throw error for logout - just log it and continue
+      console.warn('Logout error (continuing anyway):', error);
+      // Still clear cache and navigate
+      queryClient.clear();
+      navigate('/');
     }
   };
 

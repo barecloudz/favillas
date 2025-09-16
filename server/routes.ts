@@ -6,6 +6,7 @@ import WebSocket from "ws";
 import Stripe from "stripe";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
+import { authenticateSupabaseUser, requireAuth } from "./supabase-auth";
 import { setupTimeTrackingRoutes } from "./time-tracking-routes";
 import { db } from "./db";
 import { insertMenuItemSchema, insertOrderSchema, insertOrderItemSchema, insertRewardSchema, insertUserRewardSchema, insertPromoCodeSchema, insertChoiceGroupSchema, insertChoiceItemSchema, insertMenuItemChoiceGroupSchema, insertCategoryChoiceGroupSchema, insertTaxCategorySchema, insertTaxSettingsSchema, insertPauseServiceSchema, orders, orderItems } from "@shared/schema";
@@ -3239,25 +3240,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/user/rewards", async (req, res) => {
     // Try Supabase authentication first
     if (req.headers.authorization) {
-      try {
-        const { authenticateSupabaseUser } = await import('./supabase-auth');
-        return authenticateSupabaseUser(req, res, async () => {
-          try {
-            const userPoints = await storage.getUserPoints(req.user.id);
-            
-            res.json({
-              points: userPoints?.points || 0,
-              totalPointsEarned: userPoints?.totalEarned || 0,
-              totalPointsRedeemed: userPoints?.totalRedeemed || 0,
-              lastEarnedAt: userPoints?.lastEarnedAt,
-            });
-          } catch (error: any) {
-            res.status(500).json({ message: error.message });
-          }
-        });
-      } catch (error) {
-        console.error('Supabase auth error:', error);
-      }
+      return authenticateSupabaseUser(req, res, async () => {
+        try {
+          const userPoints = await storage.getUserPoints(req.user.id);
+          
+          res.json({
+            points: userPoints?.points || 0,
+            totalPointsEarned: userPoints?.totalEarned || 0,
+            totalPointsRedeemed: userPoints?.totalRedeemed || 0,
+            lastEarnedAt: userPoints?.lastEarnedAt,
+          });
+        } catch (error: any) {
+          res.status(500).json({ message: error.message });
+        }
+      });
     }
     
     // Fallback to Express session authentication
@@ -3317,19 +3313,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/user/redemptions", async (req, res) => {
     // Try Supabase authentication first
     if (req.headers.authorization) {
-      try {
-        const { authenticateSupabaseUser } = await import('./supabase-auth');
-        return authenticateSupabaseUser(req, res, async () => {
-          try {
-            const redemptions = await storage.getUserRedemptions(req.user.id);
-            res.json(redemptions);
-          } catch (error: any) {
-            res.status(500).json({ message: error.message });
-          }
-        });
-      } catch (error) {
-        console.error('Supabase auth error:', error);
-      }
+      return authenticateSupabaseUser(req, res, async () => {
+        try {
+          const redemptions = await storage.getUserRedemptions(req.user.id);
+          res.json(redemptions);
+        } catch (error: any) {
+          res.status(500).json({ message: error.message });
+        }
+      });
     }
     
     // Fallback to Express session authentication
