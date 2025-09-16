@@ -6,6 +6,7 @@ import { insertUserSchema, User as SelectUser, InsertUser } from '@shared/schema
 import { apiRequest, queryClient } from '../lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { mapSupabaseUser, MappedUser } from '@/lib/user-mapping';
+import { useLocation } from 'wouter';
 
 type LoginData = Pick<InsertUser, "username" | "password">;
 
@@ -28,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const [, navigate] = useLocation();
 
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
@@ -88,6 +90,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn('API logout failed:', apiError);
       }
       
+      // Clear any cached data
+      queryClient.clear();
+      
+      // Navigate to home page
+      navigate('/');
+      
       setLoading(false);
     } catch (error) {
       setLoading(false);
@@ -146,6 +154,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
+      queryClient.clear();
+      navigate('/');
       toast({
         title: "Logout successful",
         description: "You have been logged out",
