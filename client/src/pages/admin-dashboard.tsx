@@ -11913,7 +11913,10 @@ const RewardsManagement = () => {
     createRewardMutation.mutate({
       name: data.name,
       description: data.description,
-      discount: data.type === 'discount' ? parseInt(data.discount) || null : null,
+      pointsRequired: parseInt(data.pointsRequired) || 100,
+      rewardType: data.rewardType || 'discount',
+      discount: data.rewardType === 'discount' ? parseFloat(data.discount) : null,
+      freeItem: data.rewardType === 'free_item' ? data.freeItem : null,
       minOrderAmount: data.minOrderAmount ? parseFloat(data.minOrderAmount) : null,
       expiresAt: data.expiresAt || null,
     });
