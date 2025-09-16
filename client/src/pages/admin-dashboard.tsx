@@ -11817,24 +11817,16 @@ const RewardsManagement = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [rewardToDelete, setRewardToDelete] = useState<any>(null);
 
-  // Debug effect to track rewards changes
-  useEffect(() => {
-    console.log('🎯 Rewards data updated:', rewards);
-  }, [rewards]);
-
   // Fetch rewards from API
   const { data: rewards = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/rewards"],
     queryFn: async () => {
-      console.log('🔄 Fetching rewards from API...');
       const response = await apiRequest("GET", "/api/rewards");
       const data = await response.json();
-      console.log('📦 Rewards API response:', data);
       return data;
     },
     staleTime: 0,
     cacheTime: 0,
-    refetchOnWindowFocus: true,
   });
 
   // Create reward mutation
@@ -11847,7 +11839,6 @@ const RewardsManagement = () => {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
       refetch();
       setIsCreateDialogOpen(false);
       toast({
@@ -11874,9 +11865,8 @@ const RewardsManagement = () => {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
-      queryClient.refetchQueries({ queryKey: ["/api/rewards"] });
-      setTimeout(() => refetch(), 100);
+      // Force immediate refresh
+      refetch();
       setEditingReward(null);
       toast({
         title: "Reward Updated",
@@ -11902,7 +11892,6 @@ const RewardsManagement = () => {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
       refetch();
       setIsDeleteDialogOpen(false);
       setRewardToDelete(null);
