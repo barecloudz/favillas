@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { useCart } from "@/hooks/use-cart";
 import MenuItemSimple from "@/components/menu/menu-item-simple";
+import MenuItemWithChoices from "@/components/menu/menu-item-with-choices";
 
 const MenuPage = () => {
   const [location, navigate] = useLocation();
@@ -44,11 +45,50 @@ const MenuPage = () => {
     queryKey: ["/api/menu"],
   });
 
-  // DISABLED: Choice groups system temporarily disabled due to API issues
-  const choiceGroups = [];
-  const choiceItems = [];
-  const categoryChoiceGroups = [];
-  const menuItemChoiceGroups = [];
+  // Re-enabled: Choice groups system
+  const { data: choiceGroups = [] } = useQuery({
+    queryKey: ['choice-groups'],
+    queryFn: async () => {
+      const response = await fetch('/api/choice-groups');
+      if (response.ok) {
+        return await response.json();
+      }
+      return [];
+    }
+  });
+
+  const { data: choiceItems = [] } = useQuery({
+    queryKey: ['choice-items'],
+    queryFn: async () => {
+      const response = await fetch('/api/choice-items');
+      if (response.ok) {
+        return await response.json();
+      }
+      return [];
+    }
+  });
+
+  const { data: categoryChoiceGroups = [] } = useQuery({
+    queryKey: ['category-choice-groups'],
+    queryFn: async () => {
+      const response = await fetch('/api/category-choice-groups');
+      if (response.ok) {
+        return await response.json();
+      }
+      return [];
+    }
+  });
+
+  const { data: menuItemChoiceGroups = [] } = useQuery({
+    queryKey: ['menu-item-choice-groups'],
+    queryFn: async () => {
+      const response = await fetch('/api/menu-item-choice-groups');
+      if (response.ok) {
+        return await response.json();
+      }
+      return [];
+    }
+  });
 
   // Fetch categories from backend (or use default if not available)
   const { data: categoriesData } = useQuery({
@@ -415,7 +455,13 @@ const MenuPage = () => {
                   <h2 className="text-xl font-bold text-gray-900 mb-4">{categoryName}</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
                     {items.map((item: any) => (
-                      <MenuItemSimple key={item.id} item={item} />
+                      <MenuItemWithChoices
+                        key={item.id}
+                        item={item}
+                        choiceGroups={choiceGroups}
+                        choiceItems={choiceItems}
+                        menuItemChoiceGroups={menuItemChoiceGroups}
+                      />
                     ))}
                   </div>
                 </div>
