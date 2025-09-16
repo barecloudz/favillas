@@ -112,13 +112,19 @@ const AuthPage = () => {
   // Re-initialize Google Sign-In buttons when tab changes
   useEffect(() => {
     const initializeGoogleButtons = () => {
-      // Wait for Google Platform Library to load
-      if (typeof gapi !== 'undefined' && gapi.signin2) {
+      // Wait for Google Platform Library and Auth2 to load
+      if (typeof gapi !== 'undefined' && gapi.auth2 && gapi.signin2) {
         console.log('Re-initializing Google Sign-In buttons for tab:', activeTab);
         
         // Find all Google Sign-In buttons
         const googleButtons = document.querySelectorAll('.g-signin2');
         console.log('Found Google buttons:', googleButtons.length);
+        
+        if (googleButtons.length === 0) {
+          console.log('No Google buttons found, retrying...');
+          setTimeout(initializeGoogleButtons, 500);
+          return;
+        }
         
         googleButtons.forEach((button, index) => {
           try {
@@ -143,14 +149,14 @@ const AuthPage = () => {
           }
         });
       } else {
-        console.log('Google Platform Library not ready, retrying...');
+        console.log('Google Platform Library or Auth2 not ready, retrying...');
         // If Google Platform Library isn't ready, try again in 500ms
         setTimeout(initializeGoogleButtons, 500);
       }
     };
 
     // Initialize buttons after a short delay to ensure DOM is updated
-    const timeoutId = setTimeout(initializeGoogleButtons, 200);
+    const timeoutId = setTimeout(initializeGoogleButtons, 500);
     
     return () => clearTimeout(timeoutId);
   }, [activeTab]);
