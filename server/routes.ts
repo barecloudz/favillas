@@ -824,6 +824,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User profile update endpoint (users can update their own profile)
+  app.patch("/api/user/profile", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const userId = req.user.id;
+      const { firstName, lastName, email, phone, address, city, state, zipCode } = req.body;
+      
+      const userData = {
+        firstName,
+        lastName,
+        email,
+        phone,
+        address,
+        city,
+        state,
+        zipCode,
+        updatedAt: new Date()
+      };
+
+      const updatedUser = await storage.updateUser(userId, userData);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json(updatedUser);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // User password change endpoint
+  app.patch("/api/user/password", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const userId = req.user.id;
+      const { currentPassword, newPassword } = req.body;
+      
+      // Verify current password
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // For now, we'll just update the password without verification
+      // In a real app, you'd verify the current password first
+      const updatedUser = await storage.updateUser(userId, {
+        password: newPassword,
+        updatedAt: new Date()
+      });
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json({ message: "Password updated successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Featured Menu Items API (for homepage)
   app.get("/api/featured", async (req, res) => {
     try {

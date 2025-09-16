@@ -30,7 +30,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const Header = () => {
   const [location] = useLocation();
-  const { user, logoutMutation } = useAuth();
+  const { user, signOut } = useAuth();
   const { items, toggleCart } = useCart();
   const { companyName, logoUrl } = useBranding();
   
@@ -47,9 +47,13 @@ const Header = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const handleLogout = () => {
-    logoutMutation.mutate();
-    setMobileMenuOpen(false);
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setMobileMenuOpen(false);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
 
   // Don't show header on auth pages

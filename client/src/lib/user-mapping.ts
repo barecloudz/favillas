@@ -14,6 +14,7 @@ export interface MappedUser {
   isAdmin: boolean;
   role: string;
   avatarUrl?: string;
+  isGoogleUser: boolean; // New field to identify Google users
 }
 
 export function mapSupabaseUser(supabaseUser: User | null): MappedUser | null {
@@ -29,6 +30,11 @@ export function mapSupabaseUser(supabaseUser: User | null): MappedUser | null {
   const firstName = nameParts[0] || '';
   const lastName = nameParts.slice(1).join(' ') || '';
 
+  // Check if this is a Google user based on provider info
+  const isGoogleUser = appMetadata.provider === 'google' || 
+                      userMetadata.provider === 'google' ||
+                      userMetadata.iss === 'https://accounts.google.com';
+
   return {
     id: supabaseUser.id,
     email: supabaseUser.email || '',
@@ -43,5 +49,6 @@ export function mapSupabaseUser(supabaseUser: User | null): MappedUser | null {
     isAdmin: appMetadata.isAdmin || false,
     role: appMetadata.role || 'customer',
     avatarUrl: userMetadata.avatar_url || userMetadata.picture || '',
+    isGoogleUser,
   };
 }

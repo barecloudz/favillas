@@ -1,0 +1,107 @@
+import { Request, Response, NextFunction } from 'express';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error('Supabase URL and Service Role Key are required for server-side authentication');
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+declare global {
+  namespace Express {
+    interface User {
+      id: number;
+      email: string;
+      firstName: string;
+      lastName: string;
+      username: string;
+      role: string;
+      isAdmin: boolean;
+      supabaseUserId: string;
+    }
+  }
+}
+
+export async function authenticateSupabaseUser(req: Request, res: Response, next: NextFunction) {
+  try {
+    // Get the authorization header
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'No authorization token provided' });
+    }
+
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+    // Verify the JWT token with Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
+      return res.status(401).json({ message: 'Invalid or expired token' });
+    }
+
+    // Get user data from our database using the Supabase user ID
+    const { storage } = await import('./storage');
+    const dbUser = await storage.getUserBySupabaseId(user.id);
+
+    if (!dbUser) {
+      // If user doesn't exist in our database, create them
+      const newUser = await storage.createUser({
+        username: user.email?.split('@')[0] || `supabase_${user.id}`,
+        email: user.email || '',
+        firstName: user.user_metadata?.full_name?.split(' ')[0] || '',
+        lastName: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
+        password: '', // No password for Supabase users
+        supabaseUserId: user.id,
+        role: 'customer',
+        isActive: true,
+        marketingOptIn: false,
+      });
+
+      req.user = {
+        id: newUser.id,
+        email: newUser.email,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        username: newUser.username,
+        role: newUser.role,
+        isAdmin: newUser.isAdmin,
+        supabaseUserId: user.id,
+      };
+    } else {
+      req.user = {
+        id: dbUser.id,
+        email: dbUser.email,
+        firstName: dbUser.firstName,
+        lastName: dbUser.lastName,
+        username: dbUser.username,
+        role: dbUser.role,
+        isAdmin: dbUser.isAdmin,
+        supabaseUserId: user.id,
+      };
+    }
+
+    next();
+  } catch (error) {
+    console.error('Supabase authentication error:', error);
+    return res.status(500).json({ message: 'Authentication error' });
+  }
+}
+
+// Middleware to check if user is authenticated (works with both Express sessions and Supabase)
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  // First try Supabase authentication
+  if (req.headers.authorization) {
+    return authenticateSupabaseUser(req, res, next);
+  }
+  
+  // Fallback to Express session authentication
+  if (req.isAuthenticated && req.isAuthenticated()) {
+    return next();
+  }
+  
+  return res.status(401).json({ message: 'Unauthorized' });
+}

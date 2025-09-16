@@ -72,13 +72,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setLoading(true);
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Error signing out:', error.message);
+    try {
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Error signing out:', error.message);
+        throw error;
+      }
+      
+      // Also call the API logout to clear any server-side sessions
+      try {
+        await apiRequest("POST", "/api/logout");
+      } catch (apiError) {
+        // Don't fail if API logout fails, Supabase logout is the important one
+        console.warn('API logout failed:', apiError);
+      }
+      
+      setLoading(false);
+    } catch (error) {
       setLoading(false);
       throw error;
     }
-    setLoading(false);
   };
 
   // Email/password login mutation (using existing API)
