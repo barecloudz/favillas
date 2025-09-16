@@ -188,8 +188,24 @@ export const handler: Handler = async (event, context) => {
         }
       
         // Set the userId: use authenticated user ID or null for guests
-        const userId = authPayload ? authPayload.userId : orderData.userId || null;
-        
+        let userId = authPayload ? authPayload.userId : orderData.userId || null;
+
+        // If we have a user ID from auth, verify the user exists in the database
+        if (userId && authPayload) {
+          try {
+            const existingUser = await sql`SELECT id FROM users WHERE id = ${userId}`;
+            if (existingUser.length === 0) {
+              console.log('⚠️ Orders API: Authenticated user not found in database, setting to guest order');
+              userId = null; // Fall back to guest order
+            } else {
+              console.log('✅ Orders API: User exists in database:', userId);
+            }
+          } catch (userCheckError) {
+            console.error('❌ Orders API: Error checking user existence:', userCheckError);
+            userId = null; // Fall back to guest order on error
+          }
+        }
+
         // Handle scheduled time formatting
         let formattedScheduledTime = null;
         if (orderData.fulfillmentTime === 'scheduled' && orderData.scheduledTime) {
