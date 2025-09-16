@@ -77,6 +77,7 @@ export const handler: Handler = async (event, context) => {
     const authHeader = event.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.split(' ')[1];
+      console.log('Token found in Authorization header');
     } else {
       // Check cookies as fallback
       const cookies = event.headers.cookie;
@@ -84,9 +85,12 @@ export const handler: Handler = async (event, context) => {
         const tokenMatch = cookies.match(/auth-token=([^;]+)/);
         if (tokenMatch) {
           token = tokenMatch[1];
+          console.log('Token found in cookies');
         }
       }
     }
+    
+    console.log('Token found:', !!token);
     
     if (!token) {
       return {

@@ -84,6 +84,12 @@ const AuthPage = () => {
           const userData = await response.json();
           console.log('Google authentication successful:', userData);
           
+          // Store the token in localStorage as a backup
+          if (userData.token) {
+            localStorage.setItem('auth-token', userData.token);
+            console.log('Token stored in localStorage');
+          }
+          
           // Handle successful authentication
           // Instead of reloading, we can update the auth state directly
           // But for now, let's reload to ensure everything is synced
@@ -112,31 +118,39 @@ const AuthPage = () => {
         
         // Find all Google Sign-In buttons
         const googleButtons = document.querySelectorAll('.g-signin2');
+        console.log('Found Google buttons:', googleButtons.length);
+        
         googleButtons.forEach((button, index) => {
-          // Clear any existing content
-          button.innerHTML = '';
-          
-          // Re-render the button
-          gapi.signin2.render(button as HTMLElement, {
-            'scope': 'profile email',
-            'width': '100%',
-            'height': '40',
-            'longtitle': true,
-            'theme': 'light',
-            'onsuccess': window.onGoogleSignIn,
-            'onfailure': (error: any) => {
-              console.error('Google Sign-In failed:', error);
-            }
-          });
+          try {
+            // Clear any existing content
+            button.innerHTML = '';
+            
+            // Re-render the button
+            gapi.signin2.render(button as HTMLElement, {
+              'scope': 'profile email',
+              'width': '100%',
+              'height': '40',
+              'longtitle': true,
+              'theme': 'light',
+              'onsuccess': window.onGoogleSignIn,
+              'onfailure': (error: any) => {
+                console.error('Google Sign-In failed:', error);
+              }
+            });
+            console.log(`Button ${index + 1} rendered successfully`);
+          } catch (error) {
+            console.error(`Error rendering button ${index + 1}:`, error);
+          }
         });
       } else {
-        // If Google Platform Library isn't ready, try again in 100ms
-        setTimeout(initializeGoogleButtons, 100);
+        console.log('Google Platform Library not ready, retrying...');
+        // If Google Platform Library isn't ready, try again in 500ms
+        setTimeout(initializeGoogleButtons, 500);
       }
     };
 
     // Initialize buttons after a short delay to ensure DOM is updated
-    const timeoutId = setTimeout(initializeGoogleButtons, 100);
+    const timeoutId = setTimeout(initializeGoogleButtons, 200);
     
     return () => clearTimeout(timeoutId);
   }, [activeTab]);

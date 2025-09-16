@@ -136,11 +136,17 @@ export const handler: Handler = async (event, context) => {
       console.log('Created JWT token for user:', user.id);
       console.log('Token length:', token.length);
 
+      // Set cookies with proper attributes for Netlify
+      const cookies = [
+        `session=${sessionId}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 60 * 60}`,
+        `auth-token=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 60 * 60}`
+      ].join(', ');
+
       return {
         statusCode: 200,
         headers: {
           ...headers,
-          'Set-Cookie': `session=${sessionId}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${7 * 24 * 60 * 60}, auth-token=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${7 * 24 * 60 * 60}`
+          'Set-Cookie': cookies
         },
         body: JSON.stringify({ 
           success: true, 
