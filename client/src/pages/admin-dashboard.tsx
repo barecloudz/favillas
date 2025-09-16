@@ -11996,12 +11996,15 @@ const RewardsManagement = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Redemptions</p>
+                <p className="text-sm font-medium text-gray-600">Avg Discount</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {rewards.reduce((acc: number, r: any) => acc + (r.times_used || 0), 0)}
+                  {rewards.length > 0
+                    ? Math.round(rewards.reduce((acc: number, r: any) => acc + (parseFloat(r.discount) || 0), 0) / rewards.length)
+                    : 0
+                  }%
                 </p>
               </div>
-              <Gift className="h-8 w-8 text-blue-600" />
+              <PercentIcon className="h-8 w-8 text-blue-600" />
             </div>
           </CardContent>
         </Card>
@@ -12009,15 +12012,12 @@ const RewardsManagement = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Avg Points Required</p>
+                <p className="text-sm font-medium text-gray-600">With Min Order</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {rewards.length > 0
-                    ? Math.round(rewards.reduce((acc: number, r: any) => acc + (r.points_required || 0), 0) / rewards.length)
-                    : 0
-                  }
+                  {rewards.filter((r: any) => r.min_order_amount).length}
                 </p>
               </div>
-              <Target className="h-8 w-8 text-purple-600" />
+              <DollarSign className="h-8 w-8 text-green-600" />
             </div>
           </CardContent>
         </Card>
@@ -12050,11 +12050,9 @@ const RewardsManagement = () => {
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-3 px-4 font-medium">Reward</th>
-                    <th className="text-left py-3 px-4 font-medium">Type</th>
-                    <th className="text-left py-3 px-4 font-medium">Points Required</th>
-                    <th className="text-left py-3 px-4 font-medium">Value</th>
-                    <th className="text-left py-3 px-4 font-medium">Usage</th>
-                    <th className="text-left py-3 px-4 font-medium">Status</th>
+                    <th className="text-left py-3 px-4 font-medium">Discount</th>
+                    <th className="text-left py-3 px-4 font-medium">Min Order</th>
+                    <th className="text-left py-3 px-4 font-medium">Expires</th>
                     <th className="text-left py-3 px-4 font-medium">Actions</th>
                   </tr>
                 </thead>
@@ -12068,32 +12066,13 @@ const RewardsManagement = () => {
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <Badge className={getRewardTypeColor(reward.type || 'default')}>
-                          <div className="flex items-center">
-                            {getRewardTypeIcon(reward.type || 'default')}
-                            <span className="ml-1">{(reward.type || 'default').replace('_', ' ')}</span>
-                          </div>
-                        </Badge>
+                        {reward.discount ? `${reward.discount}% off` : 'No discount'}
                       </td>
                       <td className="py-3 px-4">
-                        <span className="font-medium">{reward.points_required || 0}</span>
+                        {reward.min_order_amount ? `$${reward.min_order_amount}` : 'No minimum'}
                       </td>
                       <td className="py-3 px-4">
-                        {reward.discount && `${reward.discount}% off`}
-                        {!reward.discount && 'Custom Reward'}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="text-sm">
-                          <div>{reward.times_used || 0} used</div>
-                          {reward.max_uses && (
-                            <div className="text-gray-500">of {reward.max_uses} max</div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <Badge variant={reward.is_active !== false ? "default" : "secondary"}>
-                          {reward.is_active !== false ? "Active" : "Inactive"}
-                        </Badge>
+                        {reward.expires_at ? new Date(reward.expires_at).toLocaleDateString() : 'Never'}
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex space-x-2">
@@ -12243,59 +12222,19 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="type">Reward Type</Label>
-            <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="discount">Percentage Discount</SelectItem>
-                <SelectItem value="free_item">Free Item</SelectItem>
-                <SelectItem value="free_delivery">Free Delivery</SelectItem>
-                <SelectItem value="priority">Priority Service</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
 
           <div className="space-y-2">
-            <Label htmlFor="pointsRequired">Points Required</Label>
+            <Label htmlFor="discount">Discount Percentage</Label>
             <Input
-              id="pointsRequired"
+              id="discount"
               type="number"
-              value={formData.pointsRequired}
-              onChange={(e) => setFormData({ ...formData, pointsRequired: e.target.value })}
-              placeholder="e.g., 100"
-              required
+              value={formData.discount}
+              onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
+              placeholder="e.g., 10"
+              min="0"
+              max="100"
             />
           </div>
-
-          {formData.type === 'discount' && (
-            <div className="space-y-2">
-              <Label htmlFor="discount">Discount Percentage</Label>
-              <Input
-                id="discount"
-                type="number"
-                value={formData.discount}
-                onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
-                placeholder="e.g., 10"
-                min="1"
-                max="100"
-              />
-            </div>
-          )}
-
-          {formData.type === 'free_item' && (
-            <div className="space-y-2">
-              <Label htmlFor="freeItem">Free Item</Label>
-              <Input
-                id="freeItem"
-                value={formData.freeItem}
-                onChange={(e) => setFormData({ ...formData, freeItem: e.target.value })}
-                placeholder="e.g., Garlic Bread"
-              />
-            </div>
-          )}
 
           <div className="space-y-2">
             <Label htmlFor="minOrderAmount">Minimum Order Amount (Optional)</Label>
