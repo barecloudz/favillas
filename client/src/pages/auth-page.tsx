@@ -82,10 +82,15 @@ const AuthPage = () => {
 
         if (response.ok) {
           const userData = await response.json();
+          console.log('Google authentication successful:', userData);
+          
           // Handle successful authentication
+          // Instead of reloading, we can update the auth state directly
+          // But for now, let's reload to ensure everything is synced
           window.location.reload(); // Refresh to update auth state
         } else {
-          console.error('Google authentication failed');
+          const errorData = await response.json();
+          console.error('Google authentication failed:', errorData);
         }
       } catch (error) {
         console.error('Google Sign-In error:', error);
@@ -97,6 +102,44 @@ const AuthPage = () => {
       window.onGoogleSignIn = undefined as any;
     };
   }, []);
+
+  // Re-initialize Google Sign-In buttons when tab changes
+  useEffect(() => {
+    const initializeGoogleButtons = () => {
+      // Wait for Google Platform Library to load
+      if (typeof gapi !== 'undefined' && gapi.signin2) {
+        console.log('Re-initializing Google Sign-In buttons for tab:', activeTab);
+        
+        // Find all Google Sign-In buttons
+        const googleButtons = document.querySelectorAll('.g-signin2');
+        googleButtons.forEach((button, index) => {
+          // Clear any existing content
+          button.innerHTML = '';
+          
+          // Re-render the button
+          gapi.signin2.render(button as HTMLElement, {
+            'scope': 'profile email',
+            'width': '100%',
+            'height': '40',
+            'longtitle': true,
+            'theme': 'light',
+            'onsuccess': window.onGoogleSignIn,
+            'onfailure': (error: any) => {
+              console.error('Google Sign-In failed:', error);
+            }
+          });
+        });
+      } else {
+        // If Google Platform Library isn't ready, try again in 100ms
+        setTimeout(initializeGoogleButtons, 100);
+      }
+    };
+
+    // Initialize buttons after a short delay to ensure DOM is updated
+    const timeoutId = setTimeout(initializeGoogleButtons, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [activeTab]);
 
   // Forms
   const loginForm = useForm<LoginFormValues>({

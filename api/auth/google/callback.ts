@@ -133,6 +133,9 @@ export const handler: Handler = async (event, context) => {
         { expiresIn: '7d' }
       );
 
+      console.log('Created JWT token for user:', user.id);
+      console.log('Token length:', token.length);
+
       return {
         statusCode: 200,
         headers: {
@@ -147,7 +150,8 @@ export const handler: Handler = async (event, context) => {
             firstName: user.firstName,
             lastName: user.lastName,
             role: user.role
-          }
+          },
+          token: token // Include token in response for debugging
         })
       };
     } catch (error) {
