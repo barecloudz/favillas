@@ -123,24 +123,92 @@ export const handler: Handler = async (event, context) => {
     
     console.log('🔍 Getting rewards for user ID:', authPayload.userId);
     
-    // For now, just return default values to get the page working
-    // We'll implement proper user creation and points tracking later
-    const rewardsData = {
-      total_points_earned: 0,
-      total_points_redeemed: 0,
-      current_points: 0,
-      last_earned_at: null
+    // First, ensure the user exists in the users table
+    const userExists = await sql`
+      SELECT id FROM users WHERE id = ${authPayload.userId}
+    `;
+    
+    if (userExists.length === 0) {
+      console.log('👤 User not found, creating new user');
+      // Create a new user for this Supabase user
+      const newUser = await sql`
+        INSERT INTO users (id, username, email, first_name, last_name, password, role, is_admin, is_active, marketing_opt_in, rewards, created_at, updated_at)
+        VALUES (${authPayload.userId}, ${authPayload.username}, ${authPayload.username}, 'User', 'Name', '', 'customer', false, true, false, 0, NOW(), NOW())
+        RETURNING id
+      `;
+      console.log('✅ Created new user:', newUser[0].id);
+      
+      // Initialize user_points record with 0 points using proper schema
+      await sql`
+        INSERT INTO user_points (user_id, points, total_earned, total_redeemed, created_at, updated_at)
+        VALUES (${authPayload.userId}, 0, 0, 0, NOW(), NOW())
+      `;
+      
+      // Create initial transaction record for audit trail
+      await sql`
+        INSERT INTO points_transactions (user_id, type, points, description, created_at)
+        VALUES (${authPayload.userId}, 'signup', 0, 'User account created with 0 points', NOW())
+      `;
+      
+      console.log('✅ Initialized user points');
+    }
+    
+    // Get user's current points from the proper user_points table
+    const userPointsRecord = await sql`
+      SELECT 
+        points,
+        total_earned,
+        total_redeemed,
+        last_earned_at,
+        updated_at
+      FROM user_points
+      WHERE user_id = ${authPayload.userId}
+    `;
+
+    // If no user_points record exists, create one
+    if (userPointsRecord.length === 0) {
+      console.log('📊 No user_points record found, creating one');
+      await sql`
+        INSERT INTO user_points (user_id, points, total_earned, total_redeemed, created_at, updated_at)
+        VALUES (${authPayload.userId}, 0, 0, 0, NOW(), NOW())
+      `;
+      
+      // Also create initial transaction
+      await sql`
+        INSERT INTO points_transactions (user_id, type, points, description, created_at)
+        VALUES (${authPayload.userId}, 'signup', 0, 'User account created with 0 points', NOW())
+      `;
+    }
+
+    // Get the current points data
+    const currentPointsData = await sql`
+      SELECT 
+        points,
+        total_earned,
+        total_redeemed,
+        last_earned_at,
+        updated_at
+      FROM user_points
+      WHERE user_id = ${authPayload.userId}
+    `;
+
+    const rewardsData = currentPointsData[0] || {
+      points: 0,
+      total_earned: 0,
+      total_redeemed: 0,
+      last_earned_at: null,
+      updated_at: null
     };
 
-    console.log('✅ Returning default rewards data:', rewardsData);
+    console.log('✅ Rewards data retrieved:', rewardsData);
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        points: rewardsData.current_points,
-        totalPointsEarned: rewardsData.total_points_earned,
-        totalPointsRedeemed: rewardsData.total_points_redeemed,
+        points: rewardsData.points,
+        totalPointsEarned: rewardsData.total_earned,
+        totalPointsRedeemed: rewardsData.total_redeemed,
         lastEarnedAt: rewardsData.last_earned_at
       })
     };

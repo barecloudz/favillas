@@ -87,14 +87,33 @@ export const handler: Handler = async (event, context) => {
     const hashedPassword = (await scryptAsync(password, salt, 64)) as Buffer;
     const passwordHash = `${hashedPassword.toString('hex')}.${salt}`;
     
-    // Create user
-    const result = await sql`
-      INSERT INTO users (first_name, last_name, email, phone, address, password_hash, role, is_active)
-      VALUES (${firstName}, ${lastName}, ${email}, ${phone || ''}, ${address || ''}, ${passwordHash}, 'customer', true)
-      RETURNING id, first_name, last_name, email, phone, address, role, is_active, created_at
-    `;
+    // Create user with proper points initialization
+    const result = await sql.begin(async (sql: any) => {
+      // Create user
+      const userResult = await sql`
+        INSERT INTO users (first_name, last_name, email, phone, address, password_hash, role, is_active, rewards, created_at, updated_at)
+        VALUES (${firstName}, ${lastName}, ${email}, ${phone || ''}, ${address || ''}, ${passwordHash}, 'customer', true, 0, NOW(), NOW())
+        RETURNING id, first_name, last_name, email, phone, address, role, is_active, created_at
+      `;
+      
+      const user = userResult[0];
+      
+      // Initialize user_points record with 0 points
+      await sql`
+        INSERT INTO user_points (user_id, points, total_earned, total_redeemed, created_at, updated_at)
+        VALUES (${user.id}, 0, 0, 0, NOW(), NOW())
+      `;
+      
+      // Create initial transaction record for audit trail
+      await sql`
+        INSERT INTO points_transactions (user_id, type, points, description, created_at)
+        VALUES (${user.id}, 'signup', 0, 'User account created with 0 points', NOW())
+      `;
+      
+      return user;
+    });
     
-    const user = result[0];
+    const user = result;
     
     // Generate JWT token
     const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
