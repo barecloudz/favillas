@@ -168,7 +168,10 @@ export const handler: Handler = async (event, context) => {
             total: orderData.total,
             tax: orderData.tax,
             orderType: orderData.orderType,
-            phone: orderData.phone
+            phone: orderData.phone,
+            fulfillmentTime: orderData.fulfillmentTime,
+            scheduledTime: orderData.scheduledTime,
+            scheduledTimeType: typeof orderData.scheduledTime
           }
         });
         
@@ -187,7 +190,26 @@ export const handler: Handler = async (event, context) => {
         // Set the userId: use authenticated user ID or null for guests
         const userId = authPayload ? authPayload.userId : orderData.userId || null;
         
-        console.log('🛒 Orders API: Creating order with userId:', userId);
+        // Handle scheduled time formatting
+        let formattedScheduledTime = null;
+        if (orderData.fulfillmentTime === 'scheduled' && orderData.scheduledTime) {
+          try {
+            // Convert string to proper timestamp format
+            formattedScheduledTime = new Date(orderData.scheduledTime).toISOString();
+            console.log('🛒 Orders API: Formatted scheduled time:', formattedScheduledTime);
+          } catch (error) {
+            console.error('❌ Orders API: Error formatting scheduled time:', error);
+            return {
+              statusCode: 400,
+              headers,
+              body: JSON.stringify({ 
+                error: 'Invalid scheduled time format' 
+              })
+            };
+          }
+        }
+        
+        console.log('🛒 Orders API: Creating order with userId:', userId, 'scheduledTime:', formattedScheduledTime);
         
         // Create the order
         const newOrders = await sql`
@@ -208,7 +230,7 @@ export const handler: Handler = async (event, context) => {
             ${orderData.address || ''}, 
             ${orderData.addressData ? JSON.stringify(orderData.addressData) : null}, 
             ${orderData.fulfillmentTime || 'asap'}, 
-            ${orderData.scheduledTime || null}, 
+            ${formattedScheduledTime}, 
             ${orderData.phone}, 
             NOW()
           ) RETURNING *
