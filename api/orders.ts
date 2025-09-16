@@ -159,7 +159,7 @@ export const handler: Handler = async (event, context) => {
       try {
         const { items, ...orderData } = JSON.parse(event.body || '{}');
         
-        console.log('🛒 Orders API: Order data received:', {
+        console.log('🛒 Orders API: Order data received (v2):', {
           hasItems: !!items,
           itemsCount: items?.length || 0,
           hasAuthPayload: !!authPayload,
@@ -191,12 +191,39 @@ export const handler: Handler = async (event, context) => {
         let userId = authPayload ? authPayload.userId : orderData.userId || null;
 
         // If we have a user ID from auth, verify the user exists in the database
+        // If not, create the user record so they can earn points
         if (userId && authPayload) {
           try {
             const existingUser = await sql`SELECT id FROM users WHERE id = ${userId}`;
             if (existingUser.length === 0) {
-              console.log('⚠️ Orders API: Authenticated user not found in database, setting to guest order');
-              userId = null; // Fall back to guest order
+              console.log('⚠️ Orders API: Authenticated user not found in database, creating user record');
+
+              // Create user record so they can earn points
+              try {
+                const newUser = await sql`
+                  INSERT INTO users (id, username, email, role, phone, created_at)
+                  VALUES (${userId}, ${authPayload.username || 'google_user'}, ${authPayload.username || 'user@example.com'}, 'customer', ${orderData.phone || ''}, NOW())
+                  ON CONFLICT (id) DO NOTHING
+                  RETURNING id
+                `;
+
+                if (newUser.length > 0) {
+                  console.log('✅ Orders API: Created new user record for Google login:', userId);
+
+                  // Initialize user points record
+                  await sql`
+                    INSERT INTO user_points (user_id, points_earned, points_redeemed, transaction_type, description, created_at)
+                    VALUES (${userId}, 0, 0, 'earned', 'Account created', NOW())
+                    ON CONFLICT DO NOTHING
+                  `;
+                } else {
+                  console.log('✅ Orders API: User record already exists (race condition)');
+                }
+              } catch (createUserError) {
+                console.error('❌ Orders API: Error creating user record:', createUserError);
+                // Still fall back to guest if user creation fails
+                userId = null;
+              }
             } else {
               console.log('✅ Orders API: User exists in database:', userId);
             }
@@ -319,6 +346,24 @@ export const handler: Handler = async (event, context) => {
             category: item.menu_item_category
           } : null
         }));
+
+        // Award points for authenticated users (1 point per $1 spent)
+        if (userId) {
+          try {
+            const pointsToAward = Math.floor(parseFloat(newOrder.total));
+            console.log('🎁 Orders API: Awarding points to user:', userId, 'Points:', pointsToAward);
+
+            await sql`
+              INSERT INTO user_points (user_id, points_earned, points_redeemed, transaction_type, reference_id, description, created_at)
+              VALUES (${userId}, ${pointsToAward}, 0, 'earned', ${newOrder.id}, ${'Order #' + newOrder.id + ' - $' + newOrder.total}, NOW())
+            `;
+
+            console.log('✅ Orders API: Points awarded successfully');
+          } catch (pointsError) {
+            console.error('❌ Orders API: Error awarding points:', pointsError);
+            // Don't fail the order if points fail
+          }
+        }
 
         console.log('✅ Orders API: Order creation completed successfully');
 
