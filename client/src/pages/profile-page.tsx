@@ -151,58 +151,68 @@ const ProfilePage: React.FC = () => {
         <meta name="description" content="Manage your account information, saved addresses, and preferences." />
       </Helmet>
 
-      <div className="min-h-screen bg-gray-50 pt-20 pb-20">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-pink-50 pt-20 pb-20">
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto">
             {/* Header */}
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">My Profile</h1>
-              <p className="text-gray-600">Manage your account information and preferences</p>
+            <div className="mb-8 text-center">
+              <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-[#d73a31] to-[#ff6b6b] rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-3xl font-bold text-white">
+                  {user.firstName?.[0]}{user.lastName?.[0]}
+                </span>
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back, {user.firstName}!</h1>
+              <p className="text-gray-600">Manage your account and explore your rewards</p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Quick Actions Sidebar */}
-              <div className="lg:col-span-1">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Quick Actions</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Link href="/orders">
-                      <Button variant="outline" className="w-full justify-start">
-                        <ShoppingBag className="mr-2 h-4 w-4" />
-                        My Orders
-                      </Button>
-                    </Link>
-                    <Link href="/rewards">
-                      <Button variant="outline" className="w-full justify-start">
-                        <Star className="mr-2 h-4 w-4" />
-                        My Rewards
-                      </Button>
-                    </Link>
-                    <Separator />
-                    <Button 
-                      variant="outline" 
-                      className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => logoutMutation.mutate()}
-                    >
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Sign Out
-                    </Button>
-                  </CardContent>
-                </Card>
+            {/* Mobile App Style Quick Actions */}
+            <div className="mb-8">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">Quick Actions</h2>
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <Link href="/orders">
+                  <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                    <CardContent className="p-6 text-center">
+                      <ShoppingBag className="h-8 w-8 mx-auto mb-3" />
+                      <h3 className="font-bold text-lg">My Orders</h3>
+                      <p className="text-blue-100 text-sm">View order history</p>
+                    </CardContent>
+                  </Card>
+                </Link>
+                <Link href="/rewards">
+                  <Card className="bg-gradient-to-br from-yellow-500 to-orange-500 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                    <CardContent className="p-6 text-center">
+                      <Star className="h-8 w-8 mx-auto mb-3" />
+                      <h3 className="font-bold text-lg">My Rewards</h3>
+                      <p className="text-yellow-100 text-sm">Earn & redeem points</p>
+                    </CardContent>
+                  </Card>
+                </Link>
               </div>
+              
+              <div className="text-center">
+                <Button 
+                  variant="outline" 
+                  className="w-full max-w-xs bg-white border-red-200 text-red-600 hover:text-red-700 hover:bg-red-50 shadow-lg"
+                  onClick={() => logoutMutation.mutate()}
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-1 gap-8">
 
               {/* Main Content */}
-              <div className="lg:col-span-2 space-y-8">
+              <div className="space-y-6">
                 {/* Personal Information */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <User className="h-5 w-5" />
+                <Card className="bg-white shadow-lg border-0">
+                  <CardHeader className="bg-gradient-to-r from-[#d73a31] to-[#ff6b6b] text-white rounded-t-lg">
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                      <User className="h-6 w-6" />
                       Personal Information
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-red-100">
                       Update your basic account information
                     </CardDescription>
                   </CardHeader>
@@ -264,13 +274,13 @@ const ProfilePage: React.FC = () => {
                 </Card>
 
                 {/* Address Information */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <MapPin className="h-5 w-5" />
+                <Card className="bg-white shadow-lg border-0">
+                  <CardHeader className="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-t-lg">
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                      <MapPin className="h-6 w-6" />
                       Delivery Address
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-green-100">
                       Manage your default delivery address
                     </CardDescription>
                   </CardHeader>
@@ -316,13 +326,13 @@ const ProfilePage: React.FC = () => {
 
                 {/* Change Password - Only for non-Google users */}
                 {!isGoogleUser ? (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Lock className="h-5 w-5" />
+                  <Card className="bg-white shadow-lg border-0">
+                    <CardHeader className="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-t-lg">
+                      <CardTitle className="flex items-center gap-2 text-xl">
+                        <Lock className="h-6 w-6" />
                         Change Password
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription className="text-purple-100">
                         Update your account password
                       </CardDescription>
                     </CardHeader>
@@ -408,13 +418,13 @@ const ProfilePage: React.FC = () => {
                     </CardContent>
                   </Card>
                 ) : (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Lock className="h-5 w-5" />
+                  <Card className="bg-white shadow-lg border-0">
+                    <CardHeader className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-t-lg">
+                      <CardTitle className="flex items-center gap-2 text-xl">
+                        <Lock className="h-6 w-6" />
                         Password Management
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription className="text-blue-100">
                         Password management for Google accounts
                       </CardDescription>
                     </CardHeader>
