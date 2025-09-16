@@ -1,7 +1,23 @@
 import { QueryClient, type QueryFunction } from "@tanstack/react-query";
 import { SelectUser } from "@shared/schema";
+import { supabase } from './supabase';
 
 type UnauthorizedBehavior = "throw" | "returnNull";
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {};
+  
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+  } catch (error) {
+    console.warn('Failed to get Supabase session:', error);
+  }
+  
+  return headers;
+}
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -18,7 +34,7 @@ export async function apiRequest(
   // Use the original URL - Netlify will handle the redirect automatically
   const fullUrl = url.startsWith('http') ? url : url;
   
-  const headers: Record<string, string> = {};
+  const headers = await getAuthHeaders();
   if (data) {
     headers["Content-Type"] = "application/json";
   }
@@ -43,7 +59,10 @@ export const getQueryFn: <T>(options: {
     // Use the original URL - Netlify will handle the redirect automatically
     const fullUrl = url.startsWith('http') ? url : url;
     
+    const headers = await getAuthHeaders();
+    
     const res = await fetch(fullUrl, {
+      headers,
       credentials: "include",
     });
 

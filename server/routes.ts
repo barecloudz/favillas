@@ -3237,6 +3237,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Rewards & Loyalty API
   app.get("/api/user/rewards", async (req, res) => {
+    // Try Supabase authentication first
+    if (req.headers.authorization) {
+      try {
+        const { authenticateSupabaseUser } = await import('./supabase-auth');
+        return authenticateSupabaseUser(req, res, async () => {
+          try {
+            const user = await storage.getUser(req.user.id);
+            const userPoints = await storage.getUserPoints(req.user.id);
+            
+            res.json({
+              points: userPoints?.points || 0,
+              totalPointsEarned: userPoints?.totalEarned || 0,
+              totalPointsRedeemed: userPoints?.totalRedeemed || 0,
+              lastEarnedAt: userPoints?.lastEarnedAt,
+            });
+          } catch (error: any) {
+            res.status(500).json({ message: error.message });
+          }
+        });
+      } catch (error) {
+        console.error('Supabase auth error:', error);
+      }
+    }
+    
+    // Fallback to Express session authentication
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -3292,6 +3317,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/user/redemptions", async (req, res) => {
+    // Try Supabase authentication first
+    if (req.headers.authorization) {
+      try {
+        const { authenticateSupabaseUser } = await import('./supabase-auth');
+        return authenticateSupabaseUser(req, res, async () => {
+          try {
+            const redemptions = await storage.getUserRedemptions(req.user.id);
+            res.json(redemptions);
+          } catch (error: any) {
+            res.status(500).json({ message: error.message });
+          }
+        });
+      } catch (error) {
+        console.error('Supabase auth error:', error);
+      }
+    }
+    
+    // Fallback to Express session authentication
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
     }
