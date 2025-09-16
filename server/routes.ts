@@ -3238,11 +3238,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Rewards & Loyalty API
   app.get("/api/user/rewards", async (req, res) => {
+    console.log('🎯 /api/user/rewards called:', {
+      hasAuthHeader: !!req.headers.authorization,
+      isAuthenticated: req.isAuthenticated ? req.isAuthenticated() : false,
+      userId: req.user?.id
+    });
+
     // Try Supabase authentication first
     if (req.headers.authorization) {
       try {
         return authenticateSupabaseUser(req, res, async () => {
           try {
+            console.log('✅ Supabase auth successful, getting user points for:', req.user.id);
             const userPoints = await storage.getUserPoints(req.user.id);
             
             res.json({
@@ -3252,21 +3259,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
               lastEarnedAt: userPoints?.lastEarnedAt,
             });
           } catch (error: any) {
+            console.error('❌ Error getting user points:', error);
             res.status(500).json({ message: error.message });
           }
         });
       } catch (error) {
-        console.error('Supabase auth error:', error);
+        console.error('❌ Supabase auth error:', error);
         // Fall through to Express session auth
       }
     }
     
     // Fallback to Express session authentication
     if (!req.isAuthenticated()) {
+      console.log('❌ Not authenticated via Express session');
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     try {
+      console.log('✅ Express session auth successful, getting user points for:', req.user.id);
       const userPoints = await storage.getUserPoints(req.user.id);
       
       res.json({
@@ -3276,6 +3286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastEarnedAt: userPoints?.lastEarnedAt,
       });
     } catch (error: any) {
+      console.error('❌ Error getting user points:', error);
       res.status(500).json({ message: error.message });
     }
   });

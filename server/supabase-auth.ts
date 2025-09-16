@@ -30,6 +30,13 @@ declare global {
 
 export async function authenticateSupabaseUser(req: Request, res: Response, next: NextFunction) {
   try {
+    console.log('🔍 Supabase auth attempt:', {
+      hasAuthHeader: !!req.headers.authorization,
+      authHeader: req.headers.authorization?.substring(0, 20) + '...',
+      supabaseUrl: supabaseUrl ? 'SET' : 'NOT SET',
+      supabaseKey: supabaseServiceKey ? 'SET' : 'NOT SET'
+    });
+
     // Check if Supabase is available
     if (!supabase) {
       console.warn('Supabase client not available, skipping Supabase authentication');
@@ -40,22 +47,28 @@ export async function authenticateSupabaseUser(req: Request, res: Response, next
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ No valid authorization header');
       return res.status(401).json({ message: 'No authorization token provided' });
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    console.log('🔑 Token received:', token.substring(0, 20) + '...');
 
     // Verify the JWT token with Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
+      console.log('❌ Supabase token verification failed:', error?.message);
       return res.status(401).json({ message: 'Invalid or expired token' });
     }
+
+    console.log('✅ Supabase user verified:', user.email);
 
     // Get user data from our database using the Supabase user ID
     const dbUser = await storage.getUserBySupabaseId(user.id);
 
     if (!dbUser) {
+      console.log('👤 Creating new user in database');
       // If user doesn't exist in our database, create them
       const newUser = await storage.createUser({
         username: user.email?.split('@')[0] || `supabase_${user.id}`,
@@ -83,6 +96,7 @@ export async function authenticateSupabaseUser(req: Request, res: Response, next
         supabaseUserId: user.id,
       };
     } else {
+      console.log('👤 Found existing user:', dbUser.email);
       req.user = {
         id: dbUser.id,
         email: dbUser.email,
@@ -95,9 +109,10 @@ export async function authenticateSupabaseUser(req: Request, res: Response, next
       };
     }
 
+    console.log('✅ Authentication successful for user:', req.user.email);
     next();
   } catch (error) {
-    console.error('Supabase authentication error:', error);
+    console.error('❌ Supabase authentication error:', error);
     return res.status(500).json({ message: 'Authentication error' });
   }
 }
