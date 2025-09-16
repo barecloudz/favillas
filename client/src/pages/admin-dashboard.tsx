@@ -11818,7 +11818,7 @@ const RewardsManagement = () => {
   const [rewardToDelete, setRewardToDelete] = useState<any>(null);
 
   // Fetch rewards from API
-  const { data: rewards = [], isLoading } = useQuery({
+  const { data: rewards = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/rewards"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/rewards");
@@ -11837,6 +11837,7 @@ const RewardsManagement = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
+      refetch();
       setIsCreateDialogOpen(false);
       toast({
         title: "Reward Created",
@@ -11863,6 +11864,8 @@ const RewardsManagement = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
+      queryClient.refetchQueries({ queryKey: ["/api/rewards"] });
+      setTimeout(() => refetch(), 100);
       setEditingReward(null);
       toast({
         title: "Reward Updated",
@@ -11889,6 +11892,7 @@ const RewardsManagement = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
+      refetch();
       setIsDeleteDialogOpen(false);
       setRewardToDelete(null);
       toast({
