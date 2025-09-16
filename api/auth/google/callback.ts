@@ -117,11 +117,27 @@ export const handler: Handler = async (event, context) => {
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
       });
 
+      // Create JWT token
+      const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+      if (!secret) {
+        throw new Error('JWT_SECRET or SESSION_SECRET not configured');
+      }
+
+      const token = jwt.sign(
+        { 
+          userId: user.id,
+          email: user.email,
+          role: user.role 
+        },
+        secret,
+        { expiresIn: '7d' }
+      );
+
       return {
         statusCode: 200,
         headers: {
           ...headers,
-          'Set-Cookie': `session=${sessionId}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${7 * 24 * 60 * 60}`
+          'Set-Cookie': `session=${sessionId}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${7 * 24 * 60 * 60}, auth-token=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${7 * 24 * 60 * 60}`
         },
         body: JSON.stringify({ 
           success: true, 

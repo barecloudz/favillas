@@ -19,6 +19,48 @@
     
     <!-- Google Platform Library -->
     <script src="https://apis.google.com/js/platform.js" async defer></script>
+    
+    <!-- Google Sign-In Debug -->
+    <script>
+      // Debug Google Sign-In loading
+      window.addEventListener('load', function() {
+        console.log('Page loaded, checking Google Sign-In...');
+        
+        // Check if Google Platform Library loaded
+        if (typeof gapi !== 'undefined') {
+          console.log('✅ Google Platform Library loaded');
+          
+          // Check if auth2 is available
+          if (gapi.auth2) {
+            console.log('✅ Google Auth2 API available');
+          } else {
+            console.log('❌ Google Auth2 API not available');
+          }
+        } else {
+          console.log('❌ Google Platform Library not loaded');
+        }
+        
+        // Check meta tag
+        const metaTag = document.querySelector('meta[name="google-signin-client_id"]');
+        if (metaTag) {
+          const clientId = metaTag.getAttribute('content');
+          console.log('✅ Google Client ID meta tag found:', clientId);
+        } else {
+          console.log('❌ Google Client ID meta tag not found');
+        }
+        
+        // Check for Google Sign-In buttons
+        const googleButtons = document.querySelectorAll('.g-signin2');
+        console.log('Google Sign-In buttons found:', googleButtons.length);
+        
+        // Check if callback function is defined
+        if (typeof window.onGoogleSignIn === 'function') {
+          console.log('✅ Google Sign-In callback function defined');
+        } else {
+          console.log('❌ Google Sign-In callback function not defined');
+        }
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>
