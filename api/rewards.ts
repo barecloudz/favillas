@@ -59,7 +59,7 @@ export const handler: Handler = async (event, context) => {
       };
 
     } else if (event.httpMethod === 'POST') {
-      const { name, description, type, pointsRequired, discount, freeItem, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
+      const { name, description, discount, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
 
       if (!name || !description) {
         return {
@@ -72,8 +72,8 @@ export const handler: Handler = async (event, context) => {
       }
 
       const result = await sql`
-        INSERT INTO rewards (name, description, type, points_required, discount, free_item, min_order_amount, expires_at, created_at)
-        VALUES (${name}, ${description}, ${type || 'discount'}, ${pointsRequired ? parseInt(pointsRequired) : 0}, ${discount ? parseInt(discount) : null}, ${freeItem || null}, ${minOrderAmount ? parseFloat(minOrderAmount) : null}, ${expiresAt || null}, NOW())
+        INSERT INTO rewards (name, description, discount, min_order_amount, expires_at, created_at)
+        VALUES (${name}, ${description}, ${discount ? parseFloat(discount) : null}, ${minOrderAmount ? parseFloat(minOrderAmount) : null}, ${expiresAt || null}, NOW())
         RETURNING *
       `;
       
@@ -96,19 +96,15 @@ export const handler: Handler = async (event, context) => {
         };
       }
       
-      const { name, description, type, pointsRequired, discount, freeItem, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
+      const { name, description, discount, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
 
       const result = await sql`
         UPDATE rewards
         SET name = ${name || null},
             description = ${description || null},
-            type = ${type || 'discount'},
-            points_required = ${pointsRequired ? parseInt(pointsRequired) : null},
-            discount = ${discount ? parseInt(discount) : null},
-            free_item = ${freeItem || null},
+            discount = ${discount ? parseFloat(discount) : null},
             min_order_amount = ${minOrderAmount ? parseFloat(minOrderAmount) : null},
-            expires_at = ${expiresAt || null},
-            updated_at = NOW()
+            expires_at = ${expiresAt || null}
         WHERE id = ${parseInt(rewardId)}
         RETURNING *
       `;

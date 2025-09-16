@@ -11909,10 +11909,7 @@ const RewardsManagement = () => {
     createRewardMutation.mutate({
       name: data.name,
       description: data.description,
-      type: data.type,
-      pointsRequired: parseInt(data.pointsRequired) || 0,
       discount: data.type === 'discount' ? parseInt(data.discount) || null : null,
-      freeItem: data.type === 'free_item' ? data.freeItem : null,
       minOrderAmount: data.minOrderAmount ? parseFloat(data.minOrderAmount) : null,
       expiresAt: data.expiresAt || null,
     });
@@ -11924,10 +11921,7 @@ const RewardsManagement = () => {
       rewardData: {
         name: data.name,
         description: data.description,
-        type: data.type,
-        pointsRequired: parseInt(data.pointsRequired) || 0,
         discount: data.type === 'discount' ? parseInt(data.discount) || null : null,
-        freeItem: data.type === 'free_item' ? data.freeItem : null,
         minOrderAmount: data.minOrderAmount ? parseFloat(data.minOrderAmount) : null,
         expiresAt: data.expiresAt || null,
       },
@@ -12082,9 +12076,7 @@ const RewardsManagement = () => {
                       </td>
                       <td className="py-3 px-4">
                         {reward.discount && `${reward.discount}% off`}
-                        {reward.free_item && `Free ${reward.free_item}`}
-                        {reward.type === 'free_delivery' && 'Free Delivery'}
-                        {reward.type === 'priority' && 'Priority Service'}
+                        {!reward.discount && 'Custom Reward'}
                       </td>
                       <td className="py-3 px-4">
                         <div className="text-sm">
@@ -12183,9 +12175,7 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
     name: "",
     description: "",
     type: "discount",
-    pointsRequired: "",
     discount: "",
-    freeItem: "",
     minOrderAmount: "",
     expiresAt: "",
   });
@@ -12195,10 +12185,8 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
       setFormData({
         name: reward.name || "",
         description: reward.description || "",
-        type: reward.type || "discount",
-        pointsRequired: reward.points_required?.toString() || "",
+        type: "discount",
         discount: reward.discount?.toString() || "",
-        freeItem: reward.free_item || "",
         minOrderAmount: reward.min_order_amount?.toString() || "",
         expiresAt: reward.expires_at ? new Date(reward.expires_at).toISOString().split('T')[0] : "",
       });
@@ -12207,9 +12195,7 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
         name: "",
         description: "",
         type: "discount",
-        pointsRequired: "",
         discount: "",
-        freeItem: "",
         minOrderAmount: "",
         expiresAt: "",
       });
