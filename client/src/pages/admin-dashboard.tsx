@@ -11817,13 +11817,24 @@ const RewardsManagement = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [rewardToDelete, setRewardToDelete] = useState<any>(null);
 
+  // Debug effect to track rewards changes
+  useEffect(() => {
+    console.log('🎯 Rewards data updated:', rewards);
+  }, [rewards]);
+
   // Fetch rewards from API
   const { data: rewards = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/rewards"],
     queryFn: async () => {
+      console.log('🔄 Fetching rewards from API...');
       const response = await apiRequest("GET", "/api/rewards");
-      return response.json();
+      const data = await response.json();
+      console.log('📦 Rewards API response:', data);
+      return data;
     },
+    staleTime: 0,
+    cacheTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   // Create reward mutation

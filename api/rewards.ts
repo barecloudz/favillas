@@ -45,13 +45,14 @@ export const handler: Handler = async (event, context) => {
     const sql = getDB();
 
     if (event.httpMethod === 'GET') {
-      // Get all active rewards (non-expired)
+      // Get all rewards (for admin dashboard, show everything)
       const rewards = await sql`
-        SELECT * FROM rewards 
-        WHERE expires_at IS NULL OR expires_at > NOW()
-        ORDER BY discount ASC
+        SELECT * FROM rewards
+        ORDER BY created_at DESC
       `;
-      
+
+      console.log('Rewards API GET - found rewards:', rewards.length);
+
       return {
         statusCode: 200,
         headers,
