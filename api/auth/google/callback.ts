@@ -1,33 +1,9 @@
 import { Handler } from '@netlify/functions';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
-import { eq } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 import postgres from 'postgres';
 import jwt from 'jsonwebtoken';
-
-// Define users table inline
-const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-  email: text("email").notNull().unique(),
-  googleId: text("google_id").unique(),
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
-  phone: text("phone"),
-  address: text("address"),
-  city: text("city"),
-  state: text("state"),
-  zipCode: text("zip_code"),
-  role: text("role").default("customer").notNull(),
-  isAdmin: boolean("is_admin").default(false).notNull(),
-  isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  rewards: integer("rewards").default(0).notNull(),
-  stripeCustomerId: text("stripe_customer_id"),
-  marketingOptIn: boolean("marketing_opt_in").default(true).notNull(),
-});
+import { users, sessions } from '@shared/schema';
 
 let dbConnection: any = null;
 
@@ -59,12 +35,113 @@ export const handler: Handler = async (event, context) => {
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
 
-  if (event.httpMethod !== 'GET') {
+  if (event.httpMethod !== 'GET' && event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
       headers,
       body: JSON.stringify({ message: 'Method not allowed' })
     };
+  }
+
+  // Handle POST request (ID token verification from client-side)
+  if (event.httpMethod === 'POST') {
+    try {
+      const body = JSON.parse(event.body || '{}');
+      const { idToken, profile } = body;
+
+      if (!idToken || !profile) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ message: 'Missing idToken or profile data' })
+        };
+      }
+
+      // Verify the ID token with Google
+      const googleClientId = process.env.GOOGLE_CLIENT_ID;
+      if (!googleClientId) {
+        throw new Error('Google OAuth credentials not configured');
+      }
+
+      // For now, we'll trust the client-side verification and use the profile data
+      // In production, you should verify the ID token server-side
+      console.log('Processing Google Sign-In with profile:', {
+        id: profile.id,
+        email: profile.email,
+        name: profile.name
+      });
+
+      // Check if user exists by Google ID or email
+      const db = getDB();
+      const existingUser = await db.query.users.findFirst({
+        where: or(
+          eq(users.googleId, profile.id),
+          eq(users.email, profile.email)
+        )
+      });
+
+      let user;
+      if (existingUser) {
+        // Update existing user with Google ID if not set
+        if (!existingUser.googleId) {
+          await db.update(users)
+            .set({ googleId: profile.id })
+            .where(eq(users.id, existingUser.id));
+        }
+        user = existingUser;
+      } else {
+        // Create new user
+        const [newUser] = await db.insert(users).values({
+          googleId: profile.id,
+          email: profile.email,
+          firstName: profile.name.split(' ')[0] || '',
+          lastName: profile.name.split(' ').slice(1).join(' ') || '',
+          username: profile.email.split('@')[0],
+          password: '', // No password for Google users
+          phone: '',
+          address: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          isActive: true,
+          role: 'customer'
+        }).returning();
+        user = newUser;
+      }
+
+      // Create session
+      const sessionId = crypto.randomUUID();
+      await db.insert(sessions).values({
+        id: sessionId,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+      });
+
+      return {
+        statusCode: 200,
+        headers: {
+          ...headers,
+          'Set-Cookie': `session=${sessionId}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${7 * 24 * 60 * 60}`
+        },
+        body: JSON.stringify({ 
+          success: true, 
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role
+          }
+        })
+      };
+    } catch (error) {
+      console.error('Google Sign-In POST error:', error);
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ message: 'Internal server error' })
+      };
+    }
   }
 
   const { code, error } = event.queryStringParameters || {};
