@@ -3240,20 +3240,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/user/rewards", async (req, res) => {
     // Try Supabase authentication first
     if (req.headers.authorization) {
-      return authenticateSupabaseUser(req, res, async () => {
-        try {
-          const userPoints = await storage.getUserPoints(req.user.id);
-          
-          res.json({
-            points: userPoints?.points || 0,
-            totalPointsEarned: userPoints?.totalEarned || 0,
-            totalPointsRedeemed: userPoints?.totalRedeemed || 0,
-            lastEarnedAt: userPoints?.lastEarnedAt,
-          });
-        } catch (error: any) {
-          res.status(500).json({ message: error.message });
-        }
-      });
+      try {
+        return authenticateSupabaseUser(req, res, async () => {
+          try {
+            const userPoints = await storage.getUserPoints(req.user.id);
+            
+            res.json({
+              points: userPoints?.points || 0,
+              totalPointsEarned: userPoints?.totalEarned || 0,
+              totalPointsRedeemed: userPoints?.totalRedeemed || 0,
+              lastEarnedAt: userPoints?.lastEarnedAt,
+            });
+          } catch (error: any) {
+            res.status(500).json({ message: error.message });
+          }
+        });
+      } catch (error) {
+        console.error('Supabase auth error:', error);
+        // Fall through to Express session auth
+      }
     }
     
     // Fallback to Express session authentication
@@ -3313,14 +3318,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/user/redemptions", async (req, res) => {
     // Try Supabase authentication first
     if (req.headers.authorization) {
-      return authenticateSupabaseUser(req, res, async () => {
-        try {
-          const redemptions = await storage.getUserRedemptions(req.user.id);
-          res.json(redemptions);
-        } catch (error: any) {
-          res.status(500).json({ message: error.message });
-        }
-      });
+      try {
+        return authenticateSupabaseUser(req, res, async () => {
+          try {
+            const redemptions = await storage.getUserRedemptions(req.user.id);
+            res.json(redemptions);
+          } catch (error: any) {
+            res.status(500).json({ message: error.message });
+          }
+        });
+      } catch (error) {
+        console.error('Supabase auth error:', error);
+        // Fall through to Express session auth
+      }
     }
     
     // Fallback to Express session authentication

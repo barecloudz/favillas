@@ -6,10 +6,12 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Supabase URL and Service Role Key are required for server-side authentication');
+  console.warn('Supabase URL or Service Role Key is not set. Server-side Supabase authentication will be disabled.');
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = supabaseUrl && supabaseServiceKey 
+  ? createClient(supabaseUrl, supabaseServiceKey)
+  : null;
 
 declare global {
   namespace Express {
@@ -28,6 +30,12 @@ declare global {
 
 export async function authenticateSupabaseUser(req: Request, res: Response, next: NextFunction) {
   try {
+    // Check if Supabase is available
+    if (!supabase) {
+      console.warn('Supabase client not available, skipping Supabase authentication');
+      return res.status(401).json({ message: 'Supabase authentication not configured' });
+    }
+
     // Get the authorization header
     const authHeader = req.headers.authorization;
     
