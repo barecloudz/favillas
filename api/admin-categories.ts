@@ -181,7 +181,11 @@ export const handler: Handler = async (event, context) => {
       
       const [updatedCategory] = await db
         .update(categories)
-        .set(categoryData)
+        .set({
+          name: categoryData.name,
+          order: categoryData.order,
+          isActive: categoryData.isActive
+        })
         .where(eq(categories.id, id))
         .returning();
 
