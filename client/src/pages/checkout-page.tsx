@@ -445,9 +445,10 @@ const CheckoutPage = () => {
     createOrderMutation.mutate({
       userId: user?.id || null, // Allow null for guest users
       status: "pending",
-      total: total.toString(),
+      total: totals.finalTotal.toString(), // Store the final total (what customer actually pays)
       tax: tax.toString(),
       tip: totals.tip.toString(),
+      deliveryFee: orderType === "delivery" ? "3.99" : "0", // Add delivery fee for delivery orders
       orderType,
       paymentStatus: "pending",
       specialInstructions,
@@ -457,6 +458,12 @@ const CheckoutPage = () => {
       items: orderItems,
       fulfillmentTime,
       scheduledTime: fulfillmentTime === "scheduled" ? scheduledTime : null,
+      // Include metadata for breakdown
+      orderMetadata: {
+        subtotal: total,
+        discount: totals.discount,
+        finalSubtotal: totals.finalSubtotal
+      }
     });
   };
 

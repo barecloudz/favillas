@@ -275,27 +275,32 @@ export const handler: Handler = async (event, context) => {
         
         console.log('🛒 Orders API: Creating order with userId:', userId, 'scheduledTime:', formattedScheduledTime);
         
-        // Create the order
+        // Create the order - store both address data and order breakdown metadata in address_data
+        const combinedAddressData = {
+          ...orderData.addressData,
+          orderBreakdown: orderData.orderMetadata
+        };
+
         const newOrders = await sql`
           INSERT INTO orders (
-            user_id, status, total, tax, delivery_fee, tip, order_type, payment_status, 
-            special_instructions, address, address_data, fulfillment_time, scheduled_time, 
+            user_id, status, total, tax, delivery_fee, tip, order_type, payment_status,
+            special_instructions, address, address_data, fulfillment_time, scheduled_time,
             phone, created_at
           ) VALUES (
-            ${userId}, 
-            ${orderData.status || 'pending'}, 
-            ${orderData.total}, 
-            ${orderData.tax}, 
-            ${orderData.deliveryFee || '0'}, 
-            ${orderData.tip || '0'}, 
-            ${orderData.orderType}, 
+            ${userId},
+            ${orderData.status || 'pending'},
+            ${orderData.total},
+            ${orderData.tax},
+            ${orderData.deliveryFee || '0'},
+            ${orderData.tip || '0'},
+            ${orderData.orderType},
             ${orderData.paymentStatus || 'pending'},
-            ${orderData.specialInstructions || ''}, 
-            ${orderData.address || ''}, 
-            ${orderData.addressData ? JSON.stringify(orderData.addressData) : null}, 
-            ${orderData.fulfillmentTime || 'asap'}, 
-            ${formattedScheduledTime}, 
-            ${orderData.phone}, 
+            ${orderData.specialInstructions || ''},
+            ${orderData.address || ''},
+            ${combinedAddressData ? JSON.stringify(combinedAddressData) : null},
+            ${orderData.fulfillmentTime || 'asap'},
+            ${formattedScheduledTime},
+            ${orderData.phone},
             NOW()
           ) RETURNING *
         `;

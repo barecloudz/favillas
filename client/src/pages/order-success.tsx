@@ -148,7 +148,7 @@ const OrderSuccessPage = () => {
     }
   };
 
-  // Calculate points earned (1 point per dollar spent)
+  // Calculate points earned (1 point per dollar spent on final total)
   const getPointsEarned = () => {
     if (!order) return 0;
     const total = parseFloat(order.total || 0);
@@ -172,12 +172,35 @@ ${order?.items?.map((item: any) =>
   `${item.name} x${item.quantity} - ${formatCurrency(parseFloat(item.price || 0) * item.quantity)}`
 ).join('\n')}
 
-Subtotal: ${formatCurrency(parseFloat(order?.total || 0))}
+Subtotal: ${(() => {
+  let orderBreakdown = null;
+  try {
+    if (order?.addressData && typeof order.addressData === 'object') {
+      orderBreakdown = order.addressData.orderBreakdown;
+    } else if (order?.address_data && typeof order.address_data === 'object') {
+      orderBreakdown = order.address_data.orderBreakdown;
+    }
+  } catch (e) {}
+  const subtotal = orderBreakdown?.subtotal || parseFloat(order?.total || 0) - parseFloat(order?.tax || 0) - parseFloat(order?.tip || 0) - parseFloat(order?.deliveryFee || 0);
+  return formatCurrency(subtotal);
+})()}
+${(() => {
+  let orderBreakdown = null;
+  try {
+    if (order?.addressData && typeof order.addressData === 'object') {
+      orderBreakdown = order.addressData.orderBreakdown;
+    } else if (order?.address_data && typeof order.address_data === 'object') {
+      orderBreakdown = order.address_data.orderBreakdown;
+    }
+  } catch (e) {}
+  const discount = orderBreakdown?.discount || 0;
+  return discount > 0 ? `Discount: -${formatCurrency(discount)}` : '';
+})()}
 Tax: ${formatCurrency(parseFloat(order?.tax || 0))}
 ${parseFloat(order?.deliveryFee || 0) > 0 ? `Delivery Fee: ${formatCurrency(parseFloat(order?.deliveryFee || 0))}` : ''}
 ${parseFloat(order?.tip || 0) > 0 ? `Tip: ${formatCurrency(parseFloat(order?.tip || 0))}` : ''}
 
-Total: ${formatCurrency(parseFloat(order?.total || 0) + parseFloat(order?.tax || 0) + parseFloat(order?.deliveryFee || 0) + parseFloat(order?.tip || 0))}
+Total: ${formatCurrency(parseFloat(order?.total || 0))}
 
 Payment Status: ${order?.paymentStatus}
 Order Status: ${order?.status}
@@ -327,30 +350,57 @@ Thank you for choosing Favilla's NY Pizza!
 
                     {/* Order Totals */}
                     <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span>Subtotal</span>
-                        <span>{formatCurrency(parseFloat(order.total || 0))}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Tax</span>
-                        <span>{formatCurrency(parseFloat(order.tax || 0))}</span>
-                      </div>
-                      {parseFloat(order.deliveryFee || 0) > 0 && (
-                        <div className="flex justify-between">
-                          <span>Delivery Fee</span>
-                          <span>{formatCurrency(parseFloat(order.deliveryFee || 0))}</span>
-                        </div>
-                      )}
-                      {parseFloat(order.tip || 0) > 0 && (
-                        <div className="flex justify-between">
-                          <span>Tip</span>
-                          <span>{formatCurrency(parseFloat(order.tip || 0))}</span>
-                        </div>
-                      )}
+                      {(() => {
+                        // Parse order breakdown from address_data if available
+                        let orderBreakdown = null;
+                        try {
+                          if (order.addressData && typeof order.addressData === 'object') {
+                            orderBreakdown = order.addressData.orderBreakdown;
+                          } else if (order.address_data && typeof order.address_data === 'object') {
+                            orderBreakdown = order.address_data.orderBreakdown;
+                          }
+                        } catch (e) {
+                          console.log('Could not parse order breakdown');
+                        }
+
+                        const subtotal = orderBreakdown?.subtotal || parseFloat(order.total || 0) - parseFloat(order.tax || 0) - parseFloat(order.tip || 0) - parseFloat(order.deliveryFee || 0);
+                        const discount = orderBreakdown?.discount || 0;
+
+                        return (
+                          <>
+                            <div className="flex justify-between">
+                              <span>Subtotal</span>
+                              <span>{formatCurrency(subtotal)}</span>
+                            </div>
+                            {discount > 0 && (
+                              <div className="flex justify-between text-green-600">
+                                <span>Discount</span>
+                                <span>-{formatCurrency(discount)}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between">
+                              <span>Tax</span>
+                              <span>{formatCurrency(parseFloat(order.tax || 0))}</span>
+                            </div>
+                            {parseFloat(order.deliveryFee || 0) > 0 && (
+                              <div className="flex justify-between">
+                                <span>Delivery Fee</span>
+                                <span>{formatCurrency(parseFloat(order.deliveryFee || 0))}</span>
+                              </div>
+                            )}
+                            {parseFloat(order.tip || 0) > 0 && (
+                              <div className="flex justify-between">
+                                <span>Tip</span>
+                                <span>{formatCurrency(parseFloat(order.tip || 0))}</span>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                       <Separator />
                       <div className="flex justify-between font-bold text-lg">
                         <span>Total</span>
-                        <span>{formatCurrency(parseFloat(order.total || 0) + parseFloat(order.tax || 0) + parseFloat(order.deliveryFee || 0) + parseFloat(order.tip || 0))}</span>
+                        <span>{formatCurrency(parseFloat(order.total || 0))}</span>
                       </div>
                       
                       {/* Points Earned */}
