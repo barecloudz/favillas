@@ -612,9 +612,27 @@ const RewardsPage = () => {
               </div>
               
               <div className="mt-8 text-center">
-                <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white p-4 rounded-xl shadow-lg">
-                  <h3 className="text-xl font-bold mb-2">🔥 Start Earning Today!</h3>
-                  <p className="text-red-100">Every order gets you closer to delicious rewards</p>
+                <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white p-6 rounded-xl shadow-lg mb-6">
+                  <h3 className="text-2xl font-bold mb-3">🔥 Start Earning Today!</h3>
+                  <p className="text-red-100 mb-4">Every order gets you closer to delicious rewards</p>
+                  
+                  {/* Intriguing Order Now Button */}
+                  <div className="mt-4">
+                    <Button 
+                      size="lg"
+                      className="bg-white text-red-600 hover:bg-red-50 hover:text-red-700 font-bold text-lg px-8 py-4 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 border-2 border-white hover:border-red-200"
+                      onClick={() => navigate('/menu')}
+                    >
+                      <Pizza className="mr-3 h-6 w-6" />
+                      🍕 Order Now & Earn Points!
+                      <Coins className="ml-3 h-5 w-5" />
+                    </Button>
+                  </div>
+                  
+                  <div className="mt-4 text-sm text-red-100">
+                    <p>✨ Earn 1 point for every $1 spent</p>
+                    <p>🎁 Redeem points for free food & discounts</p>
+                  </div>
                 </div>
               </div>
             </CardContent>
