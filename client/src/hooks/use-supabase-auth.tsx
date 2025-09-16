@@ -5,11 +5,12 @@ import { useMutation, UseMutationResult } from '@tanstack/react-query';
 import { insertUserSchema, User as SelectUser, InsertUser } from '@shared/schema';
 import { apiRequest, queryClient } from '../lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { mapSupabaseUser, MappedUser } from '@/lib/user-mapping';
 
 type LoginData = Pick<InsertUser, "username" | "password">;
 
 interface AuthContextType {
-  user: User | null;
+  user: MappedUser | null;
   session: Session | null;
   loading: boolean;
   isLoading: boolean; // For backward compatibility
@@ -23,7 +24,7 @@ interface AuthContextType {
 export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<MappedUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -32,14 +33,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
-        setUser(session?.user || null);
+        const mappedUser = mapSupabaseUser(session?.user || null);
+        setUser(mappedUser);
         setLoading(false);
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setUser(session?.user || null);
+      const mappedUser = mapSupabaseUser(session?.user || null);
+      setUser(mappedUser);
       setLoading(false);
     });
 

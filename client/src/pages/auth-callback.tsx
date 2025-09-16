@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useLocation } from 'wouter'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
+import { mapSupabaseUser } from '@/lib/user-mapping'
 
 export default function AuthCallback() {
   const [, navigate] = useLocation()
@@ -36,10 +37,11 @@ export default function AuthCallback() {
           }
           
           if (data.session) {
-            console.log('Authentication successful:', data.session.user)
+            const mappedUser = mapSupabaseUser(data.session.user)
+            console.log('Authentication successful:', mappedUser)
             toast({
               title: 'Welcome!',
-              description: 'You have been successfully logged in.',
+              description: `Welcome back, ${mappedUser?.firstName || 'User'}!`,
             })
             navigate('/')
           } else {
@@ -57,7 +59,8 @@ export default function AuthCallback() {
           }
 
           if (data.session) {
-            console.log('Authentication successful:', data.session.user)
+            const mappedUser = mapSupabaseUser(data.session.user)
+            console.log('Authentication successful:', mappedUser)
             navigate('/')
           } else {
             console.log('No session found')
