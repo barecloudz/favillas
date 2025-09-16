@@ -51,6 +51,9 @@ const CheckoutForm = ({ orderId, clientSecret }: { orderId: number, clientSecret
       redirect: "always",
     });
 
+    // Note: When using redirect: "always", the else block below will typically not execute
+    // because Stripe will redirect the user to the return_url on success.
+    // This error handling is for cases where redirect fails or payment fails.
     if (error) {
       toast({
         title: "Payment Failed",
@@ -58,17 +61,6 @@ const CheckoutForm = ({ orderId, clientSecret }: { orderId: number, clientSecret
         variant: "destructive",
       });
       setIsLoading(false);
-    } else {
-      toast({
-        title: "Payment Successful",
-        description: "Thank you for your order!",
-      });
-      
-      // Invalidate orders query to refresh order list
-      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
-      
-      // Redirect to order success page
-      navigate(`/order-success?orderId=${orderId}`);
     }
   };
 

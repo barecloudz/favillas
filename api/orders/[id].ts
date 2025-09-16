@@ -1,8 +1,5 @@
 import { Handler } from '@netlify/functions';
-import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { eq } from 'drizzle-orm';
-import { orders, orderItems } from '../../shared/schema';
 import jwt from 'jsonwebtoken';
 
 // Database connection - serverless optimized
@@ -10,30 +7,27 @@ let dbConnection: any = null;
 
 function getDB() {
   if (dbConnection) return dbConnection;
-  
+
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     throw new Error('DATABASE_URL environment variable is required');
   }
-  
-  const sql = postgres(databaseUrl, {
+
+  dbConnection = postgres(databaseUrl, {
     max: 1,
     idle_timeout: 20,
     connect_timeout: 10,
     prepare: false,
     keep_alive: false,
   });
-  
-  dbConnection = drizzle(sql, { schema: { orders, orderItems } });
+
   return dbConnection;
 }
 
 function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
-  // Check for JWT token in Authorization header first
   const authHeader = event.headers.authorization;
-  let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  let token = authHeader && authHeader.split(' ')[1];
 
-  // If no Authorization header, check for auth-token cookie
   if (!token) {
     const cookies = event.headers.cookie;
     if (cookies) {
@@ -44,19 +38,42 @@ function authenticateToken(event: any): { userId: number; username: string; role
     }
   }
 
-  if (!token) {
-    return null;
-  }
+  if (!token) return null;
 
   try {
+    // First try to decode as Supabase JWT token
+    try {
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+      console.log('🔍 Supabase token payload:', payload);
+
+      if (payload.iss && payload.iss.includes('supabase')) {
+        const supabaseUserId = payload.sub;
+        console.log('✅ Supabase user ID:', supabaseUserId);
+
+        return {
+          userId: parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16) || 1,
+          username: payload.email || 'supabase_user',
+          role: 'customer'
+        };
+      }
+    } catch (supabaseError) {
+      console.log('Not a Supabase token, trying JWT verification');
+    }
+
+    // Fallback to our JWT verification
     const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
     if (!jwtSecret) {
       throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
     }
 
-    const payload = jwt.verify(token, jwtSecret) as { userId: number; username: string; role: string };
-    return payload;
+    const decoded = jwt.verify(token, jwtSecret) as any;
+    return {
+      userId: decoded.userId,
+      username: decoded.username,
+      role: decoded.role || 'customer'
+    };
   } catch (error) {
+    console.error('Token authentication failed:', error);
     return null;
   }
 }
@@ -101,13 +118,13 @@ export const handler: Handler = async (event, context) => {
   }
 
   try {
-    const db = getDB();
+    const sql = getDB();
 
     switch (event.httpMethod) {
       case 'GET':
-        // Get single order with items
-        const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
-        if (!order) {
+        // Get single order
+        const orderResult = await sql`SELECT * FROM orders WHERE id = ${orderId}`;
+        if (orderResult.length === 0) {
           return {
             statusCode: 404,
             headers,
@@ -115,8 +132,10 @@ export const handler: Handler = async (event, context) => {
           };
         }
 
+        const order = orderResult[0];
+
         // Check if user can access this order
-        if (authPayload.role !== 'admin' && authPayload.role !== 'kitchen' && authPayload.role !== 'manager' && order.userId !== authPayload.userId) {
+        if (authPayload.role !== 'admin' && authPayload.role !== 'kitchen' && authPayload.role !== 'manager' && order.user_id !== authPayload.userId) {
           return {
             statusCode: 403,
             headers,
@@ -124,13 +143,37 @@ export const handler: Handler = async (event, context) => {
           };
         }
 
-        // Get order items
-        const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
-        
+        // Get order items with menu item details
+        const items = await sql`
+          SELECT
+            oi.*,
+            mi.name as menu_item_name,
+            mi.description as menu_item_description,
+            mi.base_price as menu_item_price,
+            mi.image_url as menu_item_image_url,
+            mi.category as menu_item_category
+          FROM order_items oi
+          LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+          WHERE oi.order_id = ${orderId}
+        `;
+
+        // Transform the data to match expected frontend structure
+        const transformedItems = items.map(item => ({
+          ...item,
+          name: item.menu_item_name || 'Unknown Item',
+          menuItem: item.menu_item_name ? {
+            name: item.menu_item_name,
+            description: item.menu_item_description,
+            price: item.menu_item_price,
+            imageUrl: item.menu_item_image_url,
+            category: item.menu_item_category
+          } : null
+        }));
+
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ ...order, items })
+          body: JSON.stringify({ ...order, items: transformedItems })
         };
 
       case 'PATCH':

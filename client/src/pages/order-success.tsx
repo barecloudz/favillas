@@ -117,6 +117,7 @@ const OrderSuccessPage = () => {
     
     // For ASAP orders, calculate based on order time
     const now = new Date();
+    if (!order.createdAt) return null;
     const orderTime = new Date(order.createdAt);
     
     if (order.orderType === 'pickup') {
@@ -159,8 +160,8 @@ const OrderSuccessPage = () => {
     const receipt = `
 Favilla's NY Pizza - Receipt
 Order #${order?.id}
-Date: ${new Date(order?.createdAt).toLocaleDateString()}
-Time: ${new Date(order?.createdAt).toLocaleTimeString()}
+Date: ${order?.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A'}
+Time: ${order?.createdAt ? new Date(order.createdAt).toLocaleTimeString() : 'N/A'}
 
 Customer: ${user?.firstName} ${user?.lastName}
 ${order?.orderType === 'delivery' ? `Address: ${order?.address || user?.address}` : 'Pickup Order'}
@@ -279,14 +280,14 @@ Thank you for choosing Favilla's NY Pizza!
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span>Order #{orderId}</span>
-                    {order && (
+                    {order && order.status && (
                       <Badge className={getStatusColor(order.status)}>
                         {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                       </Badge>
                     )}
                   </CardTitle>
                   <CardDescription>
-                    {order ? (
+                    {order && order.createdAt ? (
                       `Placed on ${new Date(order.createdAt).toLocaleDateString()} at ${new Date(order.createdAt).toLocaleTimeString()}`
                     ) : (
                       "Your order has been placed successfully"
@@ -398,7 +399,7 @@ Thank you for choosing Favilla's NY Pizza!
                       </div>
                       <div className="flex-1">
                         <p className="font-medium">Order Confirmed</p>
-                        <p className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleTimeString()}</p>
+                        <p className="text-sm text-gray-500">{order.createdAt ? new Date(order.createdAt).toLocaleTimeString() : 'Order confirmed'}</p>
                       </div>
                     </div>
                     
@@ -476,7 +477,7 @@ Thank you for choosing Favilla's NY Pizza!
                   <p className="text-2xl font-bold text-gray-900">{getEstimatedTime()}</p>
                   <p className="text-sm text-gray-500 mt-1">
                     {order.fulfillmentTime === "scheduled" 
-                      ? `Scheduled for ${new Date(order.scheduledTime).toLocaleDateString()}`
+                      ? `Scheduled for ${order.scheduledTime ? new Date(order.scheduledTime).toLocaleDateString() : 'scheduled time'}`
                       : order.orderType === 'pickup' 
                         ? 'Your order will be ready for pickup' 
                         : 'Your order will be delivered to your door'

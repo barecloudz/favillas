@@ -368,7 +368,7 @@ Thank you for choosing Favilla's NY Pizza!
                           <Badge className={getStatusColor(order.status)}>
                             {getStatusIcon(order.status)}
                             <span className="ml-1">
-                              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                              {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Unknown'}
                             </span>
                           </Badge>
                         </CardTitle>
