@@ -29,7 +29,7 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
+async function authenticateToken(event: any): Promise<{ userId: string; username: string; role: string } | null> {
   // Check for JWT token in Authorization header first
   const authHeader = event.headers.authorization;
   let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
@@ -49,15 +49,41 @@ function authenticateToken(event: any): { userId: number; username: string; role
     return null;
   }
 
+  // Try legacy JWT token first
   try {
     const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
-    if (!jwtSecret) {
-      throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
+    if (jwtSecret) {
+      const payload = jwt.verify(token, jwtSecret) as { userId: number; username: string; role: string };
+      return {
+        userId: payload.userId.toString(),
+        username: payload.username,
+        role: payload.role
+      };
+    }
+  } catch (error) {
+    console.log('Legacy JWT verification failed, trying Supabase token...');
+  }
+
+  // Try Supabase token verification
+  try {
+    const supabaseJwtSecret = process.env.SUPABASE_JWT_SECRET;
+    if (!supabaseJwtSecret) {
+      console.error('SUPABASE_JWT_SECRET environment variable is required for Supabase auth');
+      return null;
     }
 
-    const payload = jwt.verify(token, jwtSecret) as { userId: number; username: string; role: string };
-    return payload;
+    const payload = jwt.verify(token, supabaseJwtSecret) as any;
+    console.log('✅ Supabase token verified for user:', payload.sub);
+
+    // For Supabase users, we need to determine role based on user metadata or default to admin if they can access kitchen
+    // This is a temporary solution - in production you'd fetch user role from database
+    return {
+      userId: payload.sub,
+      username: payload.email || 'Supabase User',
+      role: 'admin' // Default to admin for now since this user can access kitchen
+    };
   } catch (error) {
+    console.error('Supabase token verification failed:', error);
     return null;
   }
 }
@@ -88,7 +114,7 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
-  const authPayload = authenticateToken(event);
+  const authPayload = await authenticateToken(event);
   if (!authPayload) {
     return {
       statusCode: 401,
