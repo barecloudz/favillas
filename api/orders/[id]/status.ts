@@ -64,26 +64,40 @@ async function authenticateToken(event: any): Promise<{ userId: string; username
     console.log('Legacy JWT verification failed, trying Supabase token...');
   }
 
-  // Try Supabase token verification
+  // Try Supabase token verification using createClient
   try {
-    const supabaseJwtSecret = process.env.SUPABASE_JWT_SECRET;
-    if (!supabaseJwtSecret) {
-      console.error('SUPABASE_JWT_SECRET environment variable is required for Supabase auth');
+    // Import Supabase here to avoid issues with serverless functions
+    const { createClient } = await import('@supabase/supabase-js');
+
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY required for Supabase auth');
       return null;
     }
 
-    const payload = jwt.verify(token, supabaseJwtSecret) as any;
-    console.log('✅ Supabase token verified for user:', payload.sub);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // For Supabase users, we need to determine role based on user metadata or default to admin if they can access kitchen
-    // This is a temporary solution - in production you'd fetch user role from database
+    // Verify the token by trying to get user info
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
+      console.error('Supabase token verification failed:', error);
+      return null;
+    }
+
+    console.log('✅ Supabase token verified for user:', user.id);
+
+    // For Supabase users, default to admin role since they can access kitchen
+    // In production, you'd fetch the user's role from your database
     return {
-      userId: payload.sub,
-      username: payload.email || 'Supabase User',
-      role: 'admin' // Default to admin for now since this user can access kitchen
+      userId: user.id,
+      username: user.email || 'Supabase User',
+      role: 'admin' // Default to admin for now
     };
   } catch (error) {
-    console.error('Supabase token verification failed:', error);
+    console.error('Supabase auth error:', error);
     return null;
   }
 }
