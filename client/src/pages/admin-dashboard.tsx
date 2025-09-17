@@ -413,182 +413,6 @@ const AdminDashboard = () => {
     );
   };
   
-  // Pause Services component
-  const PauseServices = ({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChange: (open: boolean) => void }) => {
-    const { toast } = useToast();
-    
-    const { data: pauseServices = [], refetch: refetchPauseServices } = useQuery({
-      queryKey: ['pause-services'],
-      queryFn: async () => {
-        const response = await apiRequest('GET', '/api/pause-services');
-        return response.json();
-      }
-    });
-
-    const createPauseServiceMutation = useMutation({
-      mutationFn: (data: any) => apiRequest('POST', '/api/pause-services', data),
-      onSuccess: () => {
-        refetchPauseServices();
-        onOpenChange(false);
-        toast({
-          title: "Success",
-          description: "Services paused successfully",
-        });
-      },
-      onError: (error: any) => {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to pause services",
-          variant: "destructive",
-        });
-      }
-    });
-
-    const [formData, setFormData] = useState({
-      pauseType: 'all',
-      specificServices: [] as string[],
-      pauseDuration: 660, // 11 hours in minutes
-      pauseUntilEndOfDay: false,
-      notificationMessage: ''
-    });
-
-    const handleSave = () => {
-      createPauseServiceMutation.mutate(formData);
-    };
-
-    const handleBack = () => {
-      onOpenChange(false);
-    };
-
-    return (
-      <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="sm" onClick={handleBack}>
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <DialogTitle>Pause services</DialogTitle>
-            </div>
-          </DialogHeader>
-          
-          <div className="space-y-6">
-            {/* Service Selection */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Service Selection</Label>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    id="allServices"
-                    name="pauseType"
-                    value="all"
-                    checked={formData.pauseType === 'all'}
-                    onChange={(e) => setFormData({ ...formData, pauseType: e.target.value })}
-                  />
-                  <Label htmlFor="allServices" className="text-sm">All services</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    id="specificServices"
-                    name="pauseType"
-                    value="specific"
-                    checked={formData.pauseType === 'specific'}
-                    onChange={(e) => setFormData({ ...formData, pauseType: e.target.value })}
-                  />
-                  <Label htmlFor="specificServices" className="text-sm">Specific services</Label>
-                </div>
-              </div>
-            </div>
-
-            {/* Pause Duration */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Pause for</Label>
-              <div className="flex items-center space-x-2">
-                <Select 
-                  value={formData.pauseUntilEndOfDay ? 'endOfDay' : 'custom'} 
-                  onValueChange={(value) => setFormData({ 
-                    ...formData, 
-                    pauseUntilEndOfDay: value === 'endOfDay' 
-                  })}
-                >
-                  <SelectTrigger className="w-20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="custom">
-                      {Math.floor(formData.pauseDuration / 60)}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <span className="text-sm">Hrs</span>
-                
-                <Select 
-                  value={formData.pauseUntilEndOfDay ? '0' : String(formData.pauseDuration % 60)} 
-                  onValueChange={(value) => setFormData({ 
-                    ...formData, 
-                    pauseDuration: formData.pauseUntilEndOfDay 
-                      ? formData.pauseDuration 
-                      : Math.floor(formData.pauseDuration / 60) * 60 + parseInt(value)
-                  })}
-                >
-                  <SelectTrigger className="w-20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0">0</SelectItem>
-                    <SelectItem value="15">15</SelectItem>
-                    <SelectItem value="30">30</SelectItem>
-                    <SelectItem value="45">45</SelectItem>
-                  </SelectContent>
-                </Select>
-                <span className="text-sm">Min</span>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="restOfDay"
-                  checked={formData.pauseUntilEndOfDay}
-                  onChange={(e) => setFormData({ ...formData, pauseUntilEndOfDay: e.target.checked })}
-                />
-                <Label htmlFor="restOfDay" className="text-sm">Rest of the day</Label>
-              </div>
-            </div>
-
-            {/* Notification Message */}
-            <div className="space-y-2">
-              <Label htmlFor="notificationMessage" className="text-sm font-medium">
-                Notification message (optional)
-              </Label>
-              <div className="relative">
-                <Textarea
-                  id="notificationMessage"
-                  placeholder="Enter notification message..."
-                  value={formData.notificationMessage}
-                  onChange={(e) => setFormData({ ...formData, notificationMessage: e.target.value })}
-                  className="min-h-[80px]"
-                  maxLength={200}
-                />
-                <div className="absolute bottom-2 right-2 text-xs text-gray-500">
-                  {formData.notificationMessage.length}/200
-                </div>
-              </div>
-            </div>
-
-            {/* Save Button */}
-            <div className="flex justify-end">
-              <Button onClick={handleSave} className="bg-orange-500 hover:bg-orange-600">
-                Save
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  };
-  
 
 
   
@@ -5309,6 +5133,182 @@ const VacationModeSection = () => {
         )}
       </div>
     </div>
+  );
+};
+
+// Pause Services component
+const PauseServices = ({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChange: (open: boolean) => void }) => {
+  const { toast } = useToast();
+
+  const { data: pauseServices = [], refetch: refetchPauseServices } = useQuery({
+    queryKey: ['pause-services'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/pause-services');
+      return response.json();
+    }
+  });
+
+  const createPauseServiceMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('POST', '/api/pause-services', data),
+    onSuccess: () => {
+      refetchPauseServices();
+      onOpenChange(false);
+      toast({
+        title: "Success",
+        description: "Services paused successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to pause services",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const [formData, setFormData] = useState({
+    pauseType: 'all',
+    specificServices: [] as string[],
+    pauseDuration: 660, // 11 hours in minutes
+    pauseUntilEndOfDay: false,
+    notificationMessage: ''
+  });
+
+  const handleSave = () => {
+    createPauseServiceMutation.mutate(formData);
+  };
+
+  const handleBack = () => {
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <div className="flex items-center space-x-2">
+            <Button variant="ghost" size="sm" onClick={handleBack}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <DialogTitle>Pause services</DialogTitle>
+          </div>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          {/* Service Selection */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Service Selection</Label>
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="radio"
+                  id="allServices"
+                  name="pauseType"
+                  value="all"
+                  checked={formData.pauseType === 'all'}
+                  onChange={(e) => setFormData({ ...formData, pauseType: e.target.value })}
+                />
+                <Label htmlFor="allServices" className="text-sm">All services</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="radio"
+                  id="specificServices"
+                  name="pauseType"
+                  value="specific"
+                  checked={formData.pauseType === 'specific'}
+                  onChange={(e) => setFormData({ ...formData, pauseType: e.target.value })}
+                />
+                <Label htmlFor="specificServices" className="text-sm">Specific services</Label>
+              </div>
+            </div>
+          </div>
+
+          {/* Pause Duration */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Pause for</Label>
+            <div className="flex items-center space-x-2">
+              <Select
+                value={formData.pauseUntilEndOfDay ? 'endOfDay' : 'custom'}
+                onValueChange={(value) => setFormData({
+                  ...formData,
+                  pauseUntilEndOfDay: value === 'endOfDay'
+                })}
+              >
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="custom">
+                    {Math.floor(formData.pauseDuration / 60)}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-sm">Hrs</span>
+
+              <Select
+                value={formData.pauseUntilEndOfDay ? '0' : String(formData.pauseDuration % 60)}
+                onValueChange={(value) => setFormData({
+                  ...formData,
+                  pauseDuration: formData.pauseUntilEndOfDay
+                    ? formData.pauseDuration
+                    : Math.floor(formData.pauseDuration / 60) * 60 + parseInt(value)
+                })}
+              >
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">0</SelectItem>
+                  <SelectItem value="15">15</SelectItem>
+                  <SelectItem value="30">30</SelectItem>
+                  <SelectItem value="45">45</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-sm">Min</span>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="restOfDay"
+                checked={formData.pauseUntilEndOfDay}
+                onChange={(e) => setFormData({ ...formData, pauseUntilEndOfDay: e.target.checked })}
+              />
+              <Label htmlFor="restOfDay" className="text-sm">Rest of the day</Label>
+            </div>
+          </div>
+
+          {/* Notification Message */}
+          <div className="space-y-2">
+            <Label htmlFor="notificationMessage" className="text-sm font-medium">
+              Notification message (optional)
+            </Label>
+            <div className="relative">
+              <Textarea
+                id="notificationMessage"
+                placeholder="Enter notification message..."
+                value={formData.notificationMessage}
+                onChange={(e) => setFormData({ ...formData, notificationMessage: e.target.value })}
+                className="min-h-[80px]"
+                maxLength={200}
+              />
+              <div className="absolute bottom-2 right-2 text-xs text-gray-500">
+                {formData.notificationMessage.length}/200
+              </div>
+            </div>
+          </div>
+
+          {/* Save Button */}
+          <div className="flex justify-end">
+            <Button onClick={handleSave} className="bg-orange-500 hover:bg-orange-600">
+              Save
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
