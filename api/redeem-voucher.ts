@@ -110,16 +110,63 @@ async function createUserVoucher(
     console.log('🎁 Creating voucher for user:', userId, 'reward:', rewardId);
 
     // Check if user has enough points
-    const userQuery = isSupabaseUser
+    let userQuery = isSupabaseUser
       ? await sql`SELECT * FROM users WHERE supabase_user_id = ${userId}`
       : await sql`SELECT * FROM users WHERE id = ${parseInt(userId)}`;
 
+    if (userQuery.length === 0 && isSupabaseUser) {
+      console.log('👤 Supabase user not found in users table, creating new record');
+      try {
+        // Create a new user record for this Supabase user
+        const newUser = await sql`
+          INSERT INTO users (username, email, supabase_user_id, role, phone, password, first_name, last_name, rewards, created_at, updated_at)
+          VALUES (
+            'google_user',
+            'user@example.com',
+            ${userId},
+            'customer',
+            '',
+            'GOOGLE_AUTH',
+            'Google',
+            'User',
+            0,
+            NOW(),
+            NOW()
+          )
+          RETURNING *
+        `;
+
+        if (newUser.length > 0) {
+          console.log('✅ Created new user record for Supabase user:', newUser[0].id);
+          userQuery = newUser; // Use the newly created user
+        }
+      } catch (createUserError) {
+        console.error('❌ Error creating Supabase user record:', createUserError);
+        return { success: false, error: 'Failed to create user record' };
+      }
+    }
+
     if (userQuery.length === 0) {
-      return { success: false, error: 'User not found' };
+      return { success: false, error: 'User not found and could not be created' };
     }
 
     const user = userQuery[0];
-    const currentPoints = user.rewards || 0;
+
+    // Get current points from user_points table (the proper points system)
+    const pointsQuery = await sql`
+      SELECT points FROM user_points
+      WHERE user_id = ${user.id}
+    `;
+
+    const currentPoints = pointsQuery.length > 0 ? pointsQuery[0].points || 0 : (user.rewards || 0);
+
+    console.log('💰 User points check:', {
+      userId: user.id,
+      fromUserPoints: pointsQuery.length > 0 ? pointsQuery[0].points : 'not found',
+      fromUserRewards: user.rewards,
+      finalPoints: currentPoints,
+      requiredPoints: reward.points_required
+    });
 
     if (currentPoints < reward.points_required) {
       return {
@@ -158,9 +205,19 @@ async function createUserVoucher(
 
     // Transaction: Deduct points and create voucher
     const result = await sql.begin(async (transaction: any) => {
-      // Deduct points from user
+      // Deduct points from user (use proper user_points table)
       const newPoints = currentPoints - reward.points_required;
 
+      // Update user_points table (the proper points system)
+      await transaction`
+        UPDATE user_points
+        SET points = ${newPoints},
+            total_redeemed = total_redeemed + ${reward.points_required},
+            updated_at = NOW()
+        WHERE user_id = ${user.id}
+      `;
+
+      // Also update legacy users.rewards field for backward compatibility
       if (isSupabaseUser) {
         await transaction`
           UPDATE users
