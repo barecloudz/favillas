@@ -119,10 +119,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
+      console.log('🔑 Legacy login successful, updating auth state:', user);
+
+      // Update query cache
       queryClient.setQueryData(["/api/user"], user);
+
+      // CRITICAL: Update the auth state that components are checking
+      const mappedUser: MappedUser = {
+        id: user.id?.toString() || '',
+        email: user.email || user.username || '',
+        firstName: user.firstName || user.username || 'User',
+        lastName: user.lastName || '',
+        phone: user.phone || '',
+        address: user.address || '',
+        role: user.role || 'customer'
+      };
+
+      setUser(mappedUser);
+
       toast({
         title: "Login successful",
-        description: `Welcome back, ${user.firstName}!`,
+        description: `Welcome back, ${user.firstName || user.username}!`,
       });
     },
     onError: (error: Error) => {
@@ -141,10 +158,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
+      console.log('🔑 Legacy registration successful, updating auth state:', user);
+
+      // Update query cache
       queryClient.setQueryData(["/api/user"], user);
+
+      // CRITICAL: Update the auth state that components are checking
+      const mappedUser: MappedUser = {
+        id: user.id?.toString() || '',
+        email: user.email || user.username || '',
+        firstName: user.firstName || user.username || 'User',
+        lastName: user.lastName || '',
+        phone: user.phone || '',
+        address: user.address || '',
+        role: user.role || 'customer'
+      };
+
+      setUser(mappedUser);
+
       toast({
         title: "Registration successful",
-        description: `Welcome to Favilla's, ${user.firstName}!`,
+        description: `Welcome to Favilla's, ${user.firstName || user.username}!`,
       });
     },
     onError: (error: Error) => {
