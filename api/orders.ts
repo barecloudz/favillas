@@ -196,14 +196,21 @@ export const handler: Handler = async (event, context) => {
           }
         });
         
-        // Validate required fields
-        if (!orderData.total || !orderData.tax || !orderData.orderType || !orderData.phone) {
-          console.log('❌ Orders API: Missing required fields');
+        // Validate required fields - allow zero values but not null/undefined
+        if (orderData.total === null || orderData.total === undefined ||
+            orderData.tax === null || orderData.tax === undefined ||
+            !orderData.orderType || !orderData.phone) {
+          console.log('❌ Orders API: Missing required fields', {
+            total: orderData.total,
+            tax: orderData.tax,
+            orderType: orderData.orderType,
+            phone: orderData.phone
+          });
           return {
             statusCode: 400,
             headers,
-            body: JSON.stringify({ 
-              error: 'Missing required fields: total, tax, orderType, phone' 
+            body: JSON.stringify({
+              error: 'Missing required fields: total, tax, orderType, phone'
             })
           };
         }
