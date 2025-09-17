@@ -23,7 +23,7 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
+function authenticateToken(event: any): { userId: string; username: string; role: string; isSupabaseUser: boolean } | null {
   const authHeader = event.headers.authorization;
   let token = authHeader && authHeader.split(' ')[1];
 
@@ -37,47 +37,53 @@ function authenticateToken(event: any): { userId: number; username: string; role
     }
   }
 
-  if (!token) {
-    console.log('❌ No token found in request');
-    return null;
-  }
+  if (!token) return null;
 
   try {
     // First try to decode as Supabase JWT token
     try {
-      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-      console.log('🔍 Supabase token payload:', payload);
-      
-      if (payload.iss && payload.iss.includes('supabase')) {
-        const supabaseUserId = payload.sub;
-        console.log('✅ Supabase user ID:', supabaseUserId);
-        
-        return {
-          userId: parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16) || 1,
-          username: payload.email || 'supabase_user',
-          role: 'customer'
-        };
+      if (token && token.includes('.')) {
+        const tokenParts = token.split('.');
+        if (tokenParts.length === 3) {
+          // Add proper base64 padding if missing
+          let payloadB64 = tokenParts[1];
+          while (payloadB64.length % 4) {
+            payloadB64 += '=';
+          }
+
+          const payload = JSON.parse(Buffer.from(payloadB64, 'base64').toString());
+
+          if (payload.iss && payload.iss.includes('supabase')) {
+            const supabaseUserId = payload.sub;
+
+            return {
+              userId: supabaseUserId, // Use full UUID
+              username: payload.email || 'supabase_user',
+              role: 'customer',
+              isSupabaseUser: true
+            };
+          }
+        }
       }
     } catch (supabaseError) {
-      console.log('Not a Supabase token, trying JWT verification');
+      console.log('Not a Supabase token, trying JWT verification:', supabaseError);
     }
 
     // Fallback to our JWT verification
     const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
     if (!jwtSecret) {
-      console.error('❌ JWT_SECRET or SESSION_SECRET environment variable is required');
-      return null;
+      throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
     }
 
     const decoded = jwt.verify(token, jwtSecret) as any;
-    console.log('✅ JWT token verified for user:', decoded.userId);
     return {
-      userId: decoded.userId,
+      userId: decoded.userId.toString(),
       username: decoded.username,
-      role: decoded.role || 'customer'
+      role: decoded.role || 'customer',
+      isSupabaseUser: false
     };
   } catch (error) {
-    console.error('❌ Token authentication failed:', error);
+    console.error('Token authentication failed:', error);
     return null;
   }
 }
@@ -119,28 +125,91 @@ export const handler: Handler = async (event, context) => {
   try {
     const sql = getDB();
 
-    console.log('🔍 Getting redemptions for user ID:', authPayload.userId);
+    console.log('🎁 Getting redemption history for user:', authPayload.userId);
 
-    // For now, just return empty array to get the page working
-    // We'll implement proper redemption tracking later
-    const redemptions = [];
+    // Get user's redemption history (vouchers created from points)
+    const redemptions = authPayload.isSupabaseUser
+      ? await sql`
+          SELECT
+            uv.*,
+            r.name as reward_name,
+            r.description as reward_description,
+            r.points_required
+          FROM user_vouchers uv
+          LEFT JOIN rewards r ON uv.reward_id = r.id
+          WHERE uv.supabase_user_id = ${authPayload.userId}
+          ORDER BY uv.created_at DESC
+        `
+      : await sql`
+          SELECT
+            uv.*,
+            r.name as reward_name,
+            r.description as reward_description,
+            r.points_required
+          FROM user_vouchers uv
+          LEFT JOIN rewards r ON uv.reward_id = r.id
+          WHERE uv.user_id = ${parseInt(authPayload.userId)}
+          ORDER BY uv.created_at DESC
+        `;
 
-    console.log('✅ Returning empty redemptions array');
+    // Categorize redemptions
+    const now = new Date();
+    const categorizedRedemptions = {
+      recent: [],
+      active: [],
+      used: [],
+      expired: []
+    };
+
+    redemptions.forEach((redemption: any) => {
+      const expiresAt = new Date(redemption.expires_at);
+      const createdAt = new Date(redemption.created_at);
+      const isRecent = (now.getTime() - createdAt.getTime()) < (7 * 24 * 60 * 60 * 1000); // Within 7 days
+
+      if (isRecent) {
+        categorizedRedemptions.recent.push(redemption);
+      }
+
+      if (redemption.status === 'used') {
+        categorizedRedemptions.used.push(redemption);
+      } else if (expiresAt < now) {
+        categorizedRedemptions.expired.push(redemption);
+      } else {
+        categorizedRedemptions.active.push(redemption);
+      }
+    });
+
+    console.log(`✅ Found ${redemptions.length} redemptions for user ${authPayload.userId}`);
+    console.log(`   Recent: ${categorizedRedemptions.recent.length}`);
+    console.log(`   Active: ${categorizedRedemptions.active.length}`);
+    console.log(`   Used: ${categorizedRedemptions.used.length}`);
+    console.log(`   Expired: ${categorizedRedemptions.expired.length}`);
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify(redemptions)
+      body: JSON.stringify({
+        redemptions: categorizedRedemptions,
+        summary: {
+          total: redemptions.length,
+          recent: categorizedRedemptions.recent.length,
+          active: categorizedRedemptions.active.length,
+          used: categorizedRedemptions.used.length,
+          expired: categorizedRedemptions.expired.length
+        }
+      })
     };
 
   } catch (error: any) {
     console.error('❌ User redemptions API error:', error);
-    
-    // Return empty array even on error to prevent page crashes
+
     return {
-      statusCode: 200,
+      statusCode: 500,
       headers,
-      body: JSON.stringify([])
+      body: JSON.stringify({
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      })
     };
   }
 };
