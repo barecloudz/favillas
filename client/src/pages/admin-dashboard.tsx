@@ -483,7 +483,7 @@ const AdminDashboard = () => {
   // Update order status
   const updateOrderStatus = async (orderId: number, status: string) => {
     try {
-      await apiRequest("PATCH", `/api/orders/${orderId}/status`, { status });
+      await apiRequest("PATCH", `/api/orders/${orderId}`, { status });
       queryClient.invalidateQueries({ queryKey: ["/api/kitchen/orders"] });
       
       toast({
@@ -10243,7 +10243,7 @@ const APIManagementTab = () => {
               </div>
               <div className="flex items-center space-x-2">
                 <Badge variant="outline">PATCH</Badge>
-                <code className="text-sm">/api/orders/{id}/status</code>
+                <code className="text-sm">/api/orders/{id}</code>
                 <span className="text-sm text-gray-500">Update order status</span>
               </div>
               <div className="flex items-center space-x-2">
