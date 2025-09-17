@@ -142,6 +142,9 @@ const CheckoutPage = () => {
   const [promoCode, setPromoCode] = useState("");
   const [appliedPromoCode, setAppliedPromoCode] = useState<any>(null);
   const [promoCodeError, setPromoCodeError] = useState("");
+  const [voucherCode, setVoucherCode] = useState("");
+  const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
+  const [voucherError, setVoucherError] = useState("");
   const [tip, setTip] = useState(0);
   const [tipType, setTipType] = useState<"percentage" | "amount">("percentage");
   const [customTip, setCustomTip] = useState("");
@@ -297,22 +300,75 @@ const CheckoutPage = () => {
     },
   });
 
-  // Calculate totals with promo code
+  // Validate voucher mutation
+  const validateVoucherMutation = useMutation({
+    mutationFn: async (code: string) => {
+      try {
+        const res = await apiRequest("POST", "/api/vouchers/validate", { voucherCode: code });
+        return await res.json();
+      } catch (error: any) {
+        let errorMessage = "Invalid voucher code";
+        try {
+          const errorData = JSON.parse(error.message);
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          errorMessage = error.message || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+    },
+    onSuccess: (data) => {
+      setAppliedVoucher(data);
+      setVoucherError("");
+      toast({
+        title: "Voucher applied!",
+        description: `${data.discount_type === 'percentage' ? data.discount_amount + '%' : '$' + data.discount_amount} discount applied`,
+      });
+    },
+    onError: (error: any) => {
+      setVoucherError(error.message || "Invalid voucher code");
+      setAppliedVoucher(null);
+      toast({
+        title: "Invalid voucher code",
+        description: error.message || "Please check your code and try again",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Calculate totals with promo code and vouchers
   const calculateTotals = () => {
     const subtotal = total;
     const taxAmount = tax;
     let discountAmount = 0;
-    
+    let voucherDiscountAmount = 0;
+
+    // Apply promo code discount
     if (appliedPromoCode) {
       if (appliedPromoCode.discountType === 'percentage') {
         discountAmount = (subtotal * appliedPromoCode.discount) / 100;
       } else {
         discountAmount = appliedPromoCode.discount;
       }
-      // Don't apply discount to tax
     }
-    
-    const finalSubtotal = Math.max(0, subtotal - discountAmount);
+
+    // Apply voucher discount
+    if (appliedVoucher) {
+      // Check minimum order amount
+      if (subtotal >= (appliedVoucher.min_order_amount || 0)) {
+        if (appliedVoucher.discount_type === 'percentage') {
+          voucherDiscountAmount = (subtotal * appliedVoucher.discount_amount) / 100;
+        } else if (appliedVoucher.discount_type === 'delivery_fee') {
+          // Free delivery - this would be handled separately in delivery fee calculation
+          voucherDiscountAmount = 0; // Delivery fee discount handled elsewhere
+        } else {
+          voucherDiscountAmount = appliedVoucher.discount_amount;
+        }
+      }
+    }
+
+    const totalDiscountAmount = discountAmount + voucherDiscountAmount;
+    const finalSubtotal = Math.max(0, subtotal - totalDiscountAmount);
     
     // Calculate tip
     let tipAmount = 0;
@@ -328,6 +384,8 @@ const CheckoutPage = () => {
       subtotal,
       tax: taxAmount,
       discount: discountAmount,
+      voucherDiscount: voucherDiscountAmount,
+      totalDiscount: totalDiscountAmount,
       tip: tipAmount,
       finalSubtotal,
       finalTotal
@@ -349,6 +407,21 @@ const CheckoutPage = () => {
     setAppliedPromoCode(null);
     setPromoCode("");
     setPromoCodeError("");
+  };
+
+  // Handle voucher submission
+  const handleVoucherSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (voucherCode.trim()) {
+      validateVoucherMutation.mutate(voucherCode.trim());
+    }
+  };
+
+  // Remove voucher
+  const removeVoucher = () => {
+    setAppliedVoucher(null);
+    setVoucherCode("");
+    setVoucherError("");
   };
 
   const handleAddressSelect = (addressInfo: {
@@ -461,10 +534,14 @@ const CheckoutPage = () => {
       items: orderItems,
       fulfillmentTime,
       scheduledTime: fulfillmentTime === "scheduled" ? scheduledTime : null,
+      // Include voucher information
+      voucherCode: appliedVoucher?.voucher_code || null,
+      voucherDiscount: totals.voucherDiscount || 0,
       // Include metadata for breakdown
       orderMetadata: {
         subtotal: total,
         discount: totals.discount,
+        voucherDiscount: totals.voucherDiscount,
         finalSubtotal: totals.finalSubtotal
       }
     });
@@ -572,6 +649,62 @@ const CheckoutPage = () => {
                     </div>
                   </div>
 
+                  {/* Voucher Code Section */}
+                  <div className="mt-4 space-y-3">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Voucher Code</Label>
+                      <p className="text-xs text-gray-500">Have a voucher from your rewards? Enter it here!</p>
+                      {!appliedVoucher ? (
+                        <form onSubmit={handleVoucherSubmit} className="flex gap-2">
+                          <Input
+                            value={voucherCode}
+                            onChange={(e) => setVoucherCode(e.target.value)}
+                            placeholder="Enter voucher code (e.g., SAVE5-ABC123)"
+                            className="flex-1"
+                            disabled={validateVoucherMutation.isPending}
+                          />
+                          <Button
+                            type="submit"
+                            variant="outline"
+                            size="sm"
+                            disabled={!voucherCode.trim() || validateVoucherMutation.isPending}
+                          >
+                            {validateVoucherMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              "Apply"
+                            )}
+                          </Button>
+                        </form>
+                      ) : (
+                        <div className="flex items-center justify-between p-2 bg-blue-50 border border-blue-200 rounded">
+                          <div className="flex items-center gap-2">
+                            <span className="text-blue-700 font-medium">
+                              {appliedVoucher.voucher_code} - {appliedVoucher.discount_type === 'percentage' ? `${appliedVoucher.discount_amount}%` : `$${appliedVoucher.discount_amount}`} off
+                            </span>
+                            {appliedVoucher.min_order_amount > 0 && (
+                              <span className="text-xs text-blue-600">
+                                (min ${appliedVoucher.min_order_amount})
+                              </span>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={removeVoucher}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      )}
+                      {voucherError && (
+                        <p className="text-sm text-red-600">{voucherError}</p>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="mt-6 space-y-2">
                     <div className="flex justify-between">
                       <span>Subtotal</span>
@@ -579,8 +712,14 @@ const CheckoutPage = () => {
                     </div>
                     {totals.discount > 0 && (
                       <div className="flex justify-between text-green-600">
-                        <span>Discount</span>
+                        <span>Promo Discount</span>
                         <span>-${formatPrice(totals.discount)}</span>
+                      </div>
+                    )}
+                    {totals.voucherDiscount > 0 && (
+                      <div className="flex justify-between text-blue-600">
+                        <span>Voucher Discount</span>
+                        <span>-${formatPrice(totals.voucherDiscount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between">

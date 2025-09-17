@@ -576,6 +576,48 @@ export const handler: Handler = async (event, context) => {
           } : null
         }));
 
+        // Process voucher if provided
+        if (orderData.voucherCode && (userId || supabaseUserId)) {
+          try {
+            console.log('🎫 Orders API: Processing voucher:', orderData.voucherCode);
+
+            // Get voucher details and validate it's active for this user
+            const vouchers = supabaseUserId
+              ? await sql`
+                  SELECT * FROM user_vouchers
+                  WHERE voucher_code = ${orderData.voucherCode}
+                  AND supabase_user_id = ${supabaseUserId}
+                  AND status = 'active'
+                  AND expires_at > NOW()
+                `
+              : await sql`
+                  SELECT * FROM user_vouchers
+                  WHERE voucher_code = ${orderData.voucherCode}
+                  AND user_id = ${userId}
+                  AND status = 'active'
+                  AND expires_at > NOW()
+                `;
+
+            if (vouchers.length > 0) {
+              const voucher = vouchers[0];
+
+              // Mark voucher as used
+              await sql`
+                UPDATE user_vouchers
+                SET status = 'used', used_at = NOW(), order_id = ${newOrder.id}
+                WHERE id = ${voucher.id}
+              `;
+
+              console.log('✅ Orders API: Voucher marked as used:', voucher.voucher_code);
+            } else {
+              console.warn('⚠️ Orders API: Voucher not found or invalid:', orderData.voucherCode);
+            }
+          } catch (voucherError) {
+            console.error('❌ Orders API: Voucher processing failed:', voucherError);
+            // Don't fail the order creation, just log the error
+          }
+        }
+
         // Award points for authenticated users (1 point per $1 spent)
         if (userId) {
           try {
