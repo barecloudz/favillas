@@ -150,6 +150,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/test-auth-simple"
+  to = "/.netlify/functions/test-auth-simple"
+  status = 200
+
+[[redirects]]
   from = "/api/menu-items"
   to = "/.netlify/functions/menu-items"
   status = 200
