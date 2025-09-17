@@ -532,33 +532,57 @@ export const handler: Handler = async (event, context) => {
         if (userId) {
           try {
             const pointsToAward = Math.floor(parseFloat(newOrder.total));
-            console.log('🎁 Orders API: Awarding points to user:', userId, 'Points:', pointsToAward);
+            console.log('🎁 Orders API: Awarding points to user:', userId, 'Points:', pointsToAward, 'Total:', newOrder.total);
+
+            // First check if user exists in users table
+            const userExists = await sql`SELECT id FROM users WHERE id = ${userId}`;
+            console.log('🎁 Orders API: User exists check:', userExists.length > 0, 'for user:', userId);
 
             // Record points transaction in audit table
-            await sql`
-              INSERT INTO points_transactions (user_id, order_id, type, points, description, order_amount, created_at)
-              VALUES (${userId}, ${newOrder.id}, 'earned', ${pointsToAward}, ${'Order #' + newOrder.id}, ${newOrder.total}, NOW())
-            `;
+            try {
+              const pointsTransaction = await sql`
+                INSERT INTO points_transactions (user_id, order_id, type, points, description, order_amount, created_at)
+                VALUES (${userId}, ${newOrder.id}, 'earned', ${pointsToAward}, ${'Order #' + newOrder.id}, ${newOrder.total}, NOW())
+                RETURNING id
+              `;
+              console.log('✅ Orders API: Points transaction created:', pointsTransaction[0]?.id);
+            } catch (transactionError) {
+              console.error('❌ Orders API: Points transaction failed:', transactionError);
+              throw transactionError;
+            }
 
             // Update user_points table with correct schema
-            await sql`
-              INSERT INTO user_points (user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
-              VALUES (${userId}, ${pointsToAward}, ${pointsToAward}, 0, NOW(), NOW(), NOW())
-              ON CONFLICT (user_id) DO UPDATE SET
-                points = user_points.points + ${pointsToAward},
-                total_earned = user_points.total_earned + ${pointsToAward},
-                last_earned_at = NOW(),
-                updated_at = NOW()
-            `;
+            try {
+              const userPointsUpdate = await sql`
+                INSERT INTO user_points (user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
+                VALUES (${userId}, ${pointsToAward}, ${pointsToAward}, 0, NOW(), NOW(), NOW())
+                ON CONFLICT (user_id) DO UPDATE SET
+                  points = user_points.points + ${pointsToAward},
+                  total_earned = user_points.total_earned + ${pointsToAward},
+                  last_earned_at = NOW(),
+                  updated_at = NOW()
+                RETURNING user_id, points, total_earned
+              `;
+              console.log('✅ Orders API: User points updated:', userPointsUpdate[0]);
+            } catch (userPointsError) {
+              console.error('❌ Orders API: User points update failed:', userPointsError);
+              throw userPointsError;
+            }
 
             // Also update legacy rewards column for backward compatibility
-            await sql`
-              UPDATE users
-              SET rewards = (SELECT points FROM user_points WHERE user_id = ${userId}), updated_at = NOW()
-              WHERE id = ${userId}
-            `;
+            try {
+              await sql`
+                UPDATE users
+                SET rewards = (SELECT points FROM user_points WHERE user_id = ${userId}), updated_at = NOW()
+                WHERE id = ${userId}
+              `;
+              console.log('✅ Orders API: Legacy rewards column updated');
+            } catch (legacyUpdateError) {
+              console.error('❌ Orders API: Legacy rewards update failed:', legacyUpdateError);
+              // Don't throw - this is just for backward compatibility
+            }
 
-            console.log('✅ Orders API: Points awarded successfully');
+            console.log('✅ Orders API: Points awarded successfully - Total:', pointsToAward, 'points');
           } catch (pointsError) {
             console.error('❌ Orders API: Error awarding points:', pointsError);
             // Don't fail the order if points fail
