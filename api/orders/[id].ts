@@ -43,22 +43,27 @@ function authenticateToken(event: any): { userId: string; username: string; role
   try {
     // First try to decode as Supabase JWT token
     try {
-      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-      console.log('🔍 Supabase token payload:', payload);
+      if (token && token.includes('.')) {
+        const tokenParts = token.split('.');
+        if (tokenParts.length === 3) {
+          const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
+          console.log('🔍 Supabase token payload:', payload);
 
-      if (payload.iss && payload.iss.includes('supabase')) {
-        const supabaseUserId = payload.sub;
-        console.log('✅ Supabase user ID:', supabaseUserId);
+          if (payload.iss && payload.iss.includes('supabase')) {
+            const supabaseUserId = payload.sub;
+            console.log('✅ Supabase user ID:', supabaseUserId);
 
-        return {
-          userId: supabaseUserId, // Use the full UUID instead of converting to integer
-          username: payload.email || 'supabase_user',
-          role: 'customer',
-          isSupabaseUser: true
-        };
+            return {
+              userId: supabaseUserId, // Use the full UUID instead of converting to integer
+              username: payload.email || 'supabase_user',
+              role: 'customer',
+              isSupabaseUser: true
+            };
+          }
+        }
       }
     } catch (supabaseError) {
-      console.log('Not a Supabase token, trying JWT verification');
+      console.log('Not a Supabase token, trying JWT verification:', supabaseError);
     }
 
     // Fallback to our JWT verification
@@ -139,13 +144,15 @@ export const handler: Handler = async (event, context) => {
 
         // Check if user can access this order
         let canAccessOrder = false;
-        if (authPayload.role === 'admin' || authPayload.role === 'kitchen' || authPayload.role === 'manager') {
+        if (authPayload.role === 'admin' || authPayload.role === 'superadmin' || authPayload.role === 'kitchen' || authPayload.role === 'manager') {
           canAccessOrder = true;
         } else {
           // Check both user_id and supabase_user_id for access
           if (authPayload.isSupabaseUser) {
-            canAccessOrder = order.user_id === authPayload.userId || order.supabase_user_id === authPayload.userId;
+            // For Supabase users, check the supabase_user_id column (both are UUIDs)
+            canAccessOrder = order.supabase_user_id === authPayload.userId;
           } else {
+            // For legacy users, compare integer user IDs
             canAccessOrder = order.user_id === parseInt(authPayload.userId);
           }
         }
