@@ -63,11 +63,11 @@ export const handler: Handler = async (event, context) => {
     const ordersWithItems = await Promise.all(
       kitchenOrders.map(async (order) => {
         const items = await sql`
-          SELECT 
+          SELECT
             oi.*,
             mi.name as menu_item_name,
             mi.description as menu_item_description,
-            mi.price as menu_item_price,
+            mi.base_price as menu_item_price,
             mi.image_url as menu_item_image_url,
             mi.category as menu_item_category
           FROM order_items oi
