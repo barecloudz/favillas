@@ -10,6 +10,11 @@
   SECRETS_SCAN_ENABLED = "false"
 
 [[redirects]]
+  from = "/api/debug-orders"
+  to = "/.netlify/functions/debug-orders"
+  status = 200
+
+[[redirects]]
   from = "/api/orders"
   to = "/.netlify/functions/orders"
   status = 200
