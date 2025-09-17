@@ -130,6 +130,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/run-voucher-migration"
+  to = "/.netlify/functions/run-voucher-migration"
+  status = 200
+
+[[redirects]]
   from = "/api/menu-items"
   to = "/.netlify/functions/menu-items"
   status = 200
