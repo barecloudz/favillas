@@ -281,7 +281,77 @@ export const handler: Handler = async (event, context) => {
         }
         
         console.log('🛒 Orders API: Creating order with userId:', userId, 'scheduledTime:', formattedScheduledTime);
-        
+
+        // Calculate server-side totals from items to prevent frontend manipulation
+        let calculatedSubtotal = 0;
+        let validItems = [];
+
+        if (items && items.length > 0) {
+          console.log('🧮 Orders API: Calculating server-side totals from items');
+
+          for (const item of items) {
+            // Validate item has required fields
+            if (!item.menuItemId || !item.quantity || !item.price) {
+              console.warn('❌ Orders API: Invalid item, skipping:', item);
+              continue;
+            }
+
+            // Get menu item from database to verify pricing
+            const menuItems = await sql`
+              SELECT id, base_price FROM menu_items WHERE id = ${item.menuItemId}
+            `;
+
+            if (menuItems.length === 0) {
+              console.warn('❌ Orders API: Menu item not found, skipping:', item.menuItemId);
+              continue;
+            }
+
+            const menuItem = menuItems[0];
+            const itemPrice = parseFloat(item.price);
+            const basePrice = parseFloat(menuItem.base_price);
+
+            // Use the price from the order item (allows for customizations/options)
+            // but validate it's reasonable (within 50% of base price for safety)
+            if (itemPrice < basePrice * 0.5 || itemPrice > basePrice * 2) {
+              console.warn('❌ Orders API: Suspicious item price, using base price:', {
+                itemPrice,
+                basePrice,
+                menuItemId: item.menuItemId
+              });
+              item.price = basePrice.toString();
+            }
+
+            const itemTotal = parseFloat(item.price) * parseInt(item.quantity);
+            calculatedSubtotal += itemTotal;
+            validItems.push(item);
+
+            console.log(`   Item ${item.menuItemId}: ${item.quantity} x $${item.price} = $${itemTotal.toFixed(2)}`);
+          }
+        }
+
+        // Calculate final totals
+        const deliveryFee = parseFloat(orderData.deliveryFee || '0');
+        const tip = parseFloat(orderData.tip || '0');
+        const tax = calculatedSubtotal * 0.0825; // 8.25% tax rate
+        const finalTotal = calculatedSubtotal + tax + deliveryFee + tip;
+
+        console.log('🧮 Orders API: Server-calculated totals:', {
+          subtotal: calculatedSubtotal.toFixed(2),
+          tax: tax.toFixed(2),
+          deliveryFee: deliveryFee.toFixed(2),
+          tip: tip.toFixed(2),
+          finalTotal: finalTotal.toFixed(2),
+          frontendTotal: orderData.total
+        });
+
+        // Use server-calculated values instead of frontend values
+        const serverCalculatedOrder = {
+          ...orderData,
+          total: finalTotal.toFixed(2),
+          tax: tax.toFixed(2),
+          items: validItems // Use only valid items
+        };
+
         // Create the order - store both address data and order breakdown metadata in address_data
         const combinedAddressData = {
           ...orderData.addressData,
@@ -296,10 +366,10 @@ export const handler: Handler = async (event, context) => {
           ) VALUES (
             ${userId},
             ${orderData.status || 'pending'},
-            ${orderData.total},
-            ${orderData.tax},
-            ${orderData.deliveryFee || '0'},
-            ${orderData.tip || '0'},
+            ${serverCalculatedOrder.total},
+            ${serverCalculatedOrder.tax},
+            ${deliveryFee.toFixed(2)},
+            ${tip.toFixed(2)},
             ${orderData.orderType},
             ${orderData.paymentStatus || 'pending'},
             ${orderData.specialInstructions || ''},
@@ -319,21 +389,11 @@ export const handler: Handler = async (event, context) => {
         
         console.log('✅ Orders API: Order created with ID:', newOrder.id);
 
-        // Insert order items if provided
-        if (items && items.length > 0) {
-          console.log('🛒 Orders API: Creating order items:', items.length);
+        // Insert order items using validated items
+        if (validItems && validItems.length > 0) {
+          console.log('🛒 Orders API: Creating order items:', validItems.length);
           const orderItemsInserts = [];
-          for (const item of items) {
-            if (!item.menuItemId || !item.quantity || !item.price) {
-              console.log('❌ Orders API: Invalid order item:', item);
-              return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({ 
-                  error: 'Invalid order item: missing menuItemId, quantity, or price' 
-                })
-              };
-            }
+          for (const item of validItems) {
             
             const insertResult = await sql`
               INSERT INTO order_items (
