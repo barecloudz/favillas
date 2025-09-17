@@ -210,13 +210,8 @@ const CheckoutPage = () => {
   // Create order mutation
   const createOrderMutation = useMutation({
     mutationFn: async (orderData: any) => {
-      console.log('🚀 CHECKOUT: Sending order data to API:', JSON.stringify(orderData, null, 2));
-      console.log('🚀 CHECKOUT: Order items count:', orderData.items?.length || 0);
-      console.log('🚀 CHECKOUT: Total being sent:', orderData.total, 'Type:', typeof orderData.total);
       const res = await apiRequest("POST", "/api/orders", orderData);
-      const result = await res.json();
-      console.log('✅ CHECKOUT: API response:', JSON.stringify(result, null, 2));
-      return result;
+      return await res.json();
     },
     onSuccess: (data) => {
       setOrderId(data.id);
@@ -340,20 +335,6 @@ const CheckoutPage = () => {
   };
 
   const totals = calculateTotals();
-
-  // Debug logging for cart and totals
-  console.log('🛒 CHECKOUT DEBUG:', {
-    itemsCount: items.length,
-    cartTotal: total,
-    cartTax: tax,
-    calculatedTotals: totals,
-    items: items.map(item => ({
-      id: item.id,
-      name: item.name,
-      price: item.price,
-      quantity: item.quantity
-    }))
-  });
 
   // Handle promo code submission
   const handlePromoCodeSubmit = (e: React.FormEvent) => {
