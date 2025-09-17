@@ -46,7 +46,13 @@ function authenticateToken(event: any): { userId: string; username: string; role
       if (token && token.includes('.')) {
         const tokenParts = token.split('.');
         if (tokenParts.length === 3) {
-          const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
+          // Add proper base64 padding if missing
+          let payloadB64 = tokenParts[1];
+          while (payloadB64.length % 4) {
+            payloadB64 += '=';
+          }
+
+          const payload = JSON.parse(Buffer.from(payloadB64, 'base64').toString());
           console.log('🔍 Supabase token payload:', payload);
 
           if (payload.iss && payload.iss.includes('supabase')) {

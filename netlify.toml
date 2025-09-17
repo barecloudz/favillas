@@ -15,8 +15,8 @@
   status = 200
 
 [[redirects]]
-  from = "/api/orders/*"
-  to = "/.netlify/functions/orders"
+  from = "/api/orders/:id"
+  to = "/.netlify/functions/orders/[id]"
   status = 200
 
 [[redirects]]
