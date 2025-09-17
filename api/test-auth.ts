@@ -24,13 +24,32 @@ export const handler: Handler = async (event, context) => {
     const authHeader = event.headers.authorization;
     let token = authHeader && authHeader.split(' ')[1];
 
-    // Check for cookie as fallback
+    // Check for cookie as fallback - try multiple cookie names
     if (!token) {
       const cookies = event.headers.cookie;
       if (cookies) {
-        const authCookie = cookies.split(';').find((c: string) => c.trim().startsWith('auth-token='));
-        if (authCookie) {
-          token = authCookie.split('=')[1];
+        console.log('🍪 Available cookies:', cookies.split(';').map(c => c.trim().split('=')[0]));
+
+        // Try different cookie names that Supabase might use
+        const cookieNames = ['auth-token', 'sb-access-token', 'supabase-auth-token', 'access-token', 'sb-auth-token'];
+
+        for (const cookieName of cookieNames) {
+          const authCookie = cookies.split(';').find((c: string) => c.trim().startsWith(cookieName + '='));
+          if (authCookie) {
+            token = authCookie.split('=')[1];
+            console.log(`✅ Found token in cookie: ${cookieName}`);
+            break;
+          }
+        }
+
+        // If still no token, try to find any JWT-like cookie (contains dots)
+        if (!token) {
+          const jwtCookies = cookies.split(';').filter(c => c.includes('.') && c.split('.').length >= 3);
+          if (jwtCookies.length > 0) {
+            const jwtCookie = jwtCookies[0];
+            token = jwtCookie.split('=')[1];
+            console.log('🔍 Found JWT-like cookie:', jwtCookie.split('=')[0]);
+          }
         }
       }
     }
@@ -46,6 +65,10 @@ export const handler: Handler = async (event, context) => {
     });
 
     if (!token) {
+      const cookieNames = event.headers.cookie
+        ? event.headers.cookie.split(';').map(c => c.trim().split('=')[0])
+        : [];
+
       return {
         statusCode: 200,
         headers,
@@ -53,10 +76,12 @@ export const handler: Handler = async (event, context) => {
           status: 'No token found',
           authHeader: !!authHeader,
           cookies: !!event.headers.cookie,
+          availableCookies: cookieNames,
           debug: {
             headers: Object.keys(event.headers),
             authHeaderExists: !!authHeader,
-            cookieExists: !!event.headers.cookie
+            cookieExists: !!event.headers.cookie,
+            cookieCount: cookieNames.length
           }
         })
       };
