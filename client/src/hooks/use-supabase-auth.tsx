@@ -132,7 +132,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         lastName: user.lastName || '',
         phone: user.phone || '',
         address: user.address || '',
-        role: user.role || 'customer'
+        role: user.role || 'customer',
+        isAdmin: user.role === 'admin' || user.role === 'superadmin' || user.username === 'superadmin',
+        isGoogleUser: false
       };
 
       setUser(mappedUser);
@@ -171,7 +173,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         lastName: user.lastName || '',
         phone: user.phone || '',
         address: user.address || '',
-        role: user.role || 'customer'
+        role: user.role || 'customer',
+        isAdmin: user.role === 'admin' || user.role === 'superadmin' || user.username === 'superadmin',
+        isGoogleUser: false
       };
 
       setUser(mappedUser);
