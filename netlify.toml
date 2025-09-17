@@ -85,6 +85,16 @@
   status = 200
 
 [[redirects]]
+  from = "/api/user/redemptions"
+  to = "/.netlify/functions/user/redemptions"
+  status = 200
+
+[[redirects]]
+  from = "/api/rewards/*/redeem"
+  to = "/.netlify/functions/redeem-points"
+  status = 200
+
+[[redirects]]
   from = "/api/menu-items"
   to = "/.netlify/functions/menu-items"
   status = 200
