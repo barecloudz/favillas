@@ -108,10 +108,16 @@ const RewardsPage = () => {
       return response.json();
     },
     onSuccess: (data) => {
+      const voucherCode = data.voucher?.voucher_code || data.message?.match(/Code: ([A-Z0-9-]+)/)?.[1];
+
       toast({
-        title: "Reward Redeemed!",
-        description: `You've successfully redeemed ${data.reward.name}!`,
+        title: "🎉 Reward Redeemed Successfully!",
+        description: voucherCode
+          ? `Your voucher code: ${voucherCode}. Go to checkout and your voucher will be automatically available to select, or you can enter the code manually.`
+          : `You've successfully redeemed ${data.reward?.name || 'this reward'}! Check the checkout page to use your voucher.`,
+        duration: 8000, // Show longer so user can read instructions
       });
+
       // Refresh user data, redemptions, and active vouchers
       queryClient.invalidateQueries({ queryKey: ["/api/user/rewards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/redemptions"] });

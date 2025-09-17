@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Loader2 } from "lucide-react";
@@ -145,6 +146,7 @@ const CheckoutPage = () => {
   const [voucherCode, setVoucherCode] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
   const [voucherError, setVoucherError] = useState("");
+  const [selectedVoucherId, setSelectedVoucherId] = useState<string>("");
   const [tip, setTip] = useState(0);
   const [tipType, setTipType] = useState<"percentage" | "amount">("percentage");
   const [customTip, setCustomTip] = useState("");
@@ -209,6 +211,20 @@ const CheckoutPage = () => {
   //   enabled: !!user,
   // });
   const rewards = null; // Temporary fix for superadmin checkout crash
+
+  // Fetch user's active vouchers for current order total
+  const { data: activeVouchersData, isLoading: vouchersLoading } = useQuery({
+    queryKey: ["/api/user/active-vouchers", total],
+    queryFn: async () => {
+      const response = await apiRequest("POST", "/api/user/active-vouchers", {
+        orderTotal: total
+      });
+      return response.json();
+    },
+    enabled: !!user && total > 0,
+  });
+
+  const availableVouchers = activeVouchersData?.vouchers || [];
 
   // Create order mutation
   const createOrderMutation = useMutation({
@@ -409,7 +425,25 @@ const CheckoutPage = () => {
     setPromoCodeError("");
   };
 
-  // Handle voucher submission
+  // Handle voucher selection from dropdown
+  const handleVoucherSelect = (voucherId: string) => {
+    setSelectedVoucherId(voucherId);
+    setVoucherError("");
+
+    if (voucherId === "") {
+      // No voucher selected
+      setAppliedVoucher(null);
+      return;
+    }
+
+    // Find the selected voucher
+    const selectedVoucher = availableVouchers.find((v: any) => v.id.toString() === voucherId);
+    if (selectedVoucher) {
+      setAppliedVoucher(selectedVoucher);
+    }
+  };
+
+  // Handle manual voucher code submission (fallback)
   const handleVoucherSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (voucherCode.trim()) {
@@ -421,6 +455,7 @@ const CheckoutPage = () => {
   const removeVoucher = () => {
     setAppliedVoucher(null);
     setVoucherCode("");
+    setSelectedVoucherId("");
     setVoucherError("");
   };
 
