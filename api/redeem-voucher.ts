@@ -268,20 +268,22 @@ export const handler: Handler = async (event, context) => {
     const body = JSON.parse(event.body || '{}');
     const { rewardId } = body;
 
-    // Validate input
-    if (!rewardId || !Number.isInteger(rewardId)) {
+    // Validate input - handle both number and string inputs
+    const parsedRewardId = parseInt(rewardId);
+    if (!rewardId || isNaN(parsedRewardId) || parsedRewardId <= 0) {
       return {
         statusCode: 400,
         headers,
         body: JSON.stringify({
-          error: 'Invalid reward ID. Must be a valid integer.',
-          received: rewardId
+          error: 'Invalid reward ID. Must be a valid positive integer.',
+          received: rewardId,
+          type: typeof rewardId
         })
       };
     }
 
     // Get reward details
-    const rewards = await sql`SELECT * FROM rewards WHERE id = ${rewardId} AND active = true`;
+    const rewards = await sql`SELECT * FROM rewards WHERE id = ${parsedRewardId} AND is_active = true`;
     if (rewards.length === 0) {
       return {
         statusCode: 404,
@@ -297,7 +299,7 @@ export const handler: Handler = async (event, context) => {
       sql,
       authPayload.userId,
       authPayload.isSupabaseUser,
-      rewardId,
+      parsedRewardId,
       reward
     );
 
