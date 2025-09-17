@@ -47,7 +47,7 @@ const OrderSuccessPage = () => {
     const id = params.get('orderId');
     if (id) {
       setOrderId(parseInt(id));
-      
+
       // Clear cart immediately for guest users when we have an order ID
       // This ensures the cart is cleared even if we can't fetch order details
       if (!user && !cartCleared) {
@@ -64,25 +64,63 @@ const OrderSuccessPage = () => {
     }
   }, [navigate, user, cartCleared, clearCart, toast]);
 
+  // Add timeout to prevent infinite loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (isLoading && user && orderId) {
+        console.warn('Order details fetch timeout - showing success page anyway');
+        setIsLoading(false);
+
+        if (!cartCleared) {
+          clearCart();
+          setCartCleared(true);
+          toast({
+            title: "Order Placed Successfully!",
+            description: "Your order has been placed. We couldn't load order details, but your order is being processed.",
+          });
+        }
+      }
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [isLoading, user, orderId, cartCleared, clearCart, toast]);
+
   // Fetch order details (only for authenticated users)
-  const { data: orderData, isLoading: orderLoading } = useQuery({
+  const { data: orderData, isLoading: orderLoading, error: orderError } = useQuery({
     queryKey: [`/api/orders/${orderId}`],
     enabled: !!orderId && !!user,
+    retry: 2, // Only retry twice
+    retryDelay: 1000, // Wait 1 second between retries
+    staleTime: 0, // Always fetch fresh data
   });
 
   useEffect(() => {
     if (orderData) {
       setOrder(orderData);
       setIsLoading(false);
-      
+
       // Only clear cart if the order is confirmed and we have order data and haven't cleared it yet
       // This ensures the cart is only cleared once after a successful order
       if (!cartCleared && orderData && typeof orderData === 'object' && 'status' in orderData && 'id' in orderData) {
         clearCart();
         setCartCleared(true);
       }
+    } else if (orderError) {
+      // If there's an error fetching order details, stop loading and show success page anyway
+      console.warn('Failed to fetch order details:', orderError);
+      setIsLoading(false);
+
+      // Clear cart for authenticated users even if we can't fetch order details
+      if (user && !cartCleared) {
+        clearCart();
+        setCartCleared(true);
+        toast({
+          title: "Order Placed Successfully!",
+          description: "Your order has been placed. We couldn't load order details, but your order is being processed.",
+        });
+      }
     }
-  }, [orderData, cartCleared]); // Include cartCleared to prevent multiple clears
+  }, [orderData, orderError, cartCleared, user, clearCart, toast]);
 
   // Listen for real-time order status updates
   useEffect(() => {
