@@ -309,19 +309,42 @@ export const handler: Handler = async (event, context) => {
             const menuItem = menuItems[0];
             const itemPrice = parseFloat(item.price);
             const basePrice = parseFloat(menuItem.base_price);
+            const quantity = parseInt(item.quantity);
 
-            // Use the price from the order item (allows for customizations/options)
-            // but validate it's reasonable (within 50% of base price for safety)
-            if (itemPrice < basePrice * 0.5 || itemPrice > basePrice * 2) {
-              console.warn('❌ Orders API: Suspicious item price, using base price:', {
-                itemPrice,
-                basePrice,
-                menuItemId: item.menuItemId
-              });
-              item.price = basePrice.toString();
+            // Detect if frontend sent total price (price * quantity) vs individual price
+            const expectedTotalPrice = basePrice * quantity;
+            const individualPrice = itemPrice / quantity;
+
+            let finalItemPrice = basePrice; // Default to base price
+            let itemTotal = 0;
+
+            // Check if the price looks like an individual price or total price
+            if (Math.abs(itemPrice - basePrice) < Math.abs(itemPrice - expectedTotalPrice)) {
+              // Price is close to base price - treat as individual price
+              if (itemPrice >= basePrice * 0.5 && itemPrice <= basePrice * 2) {
+                finalItemPrice = itemPrice;
+                itemTotal = itemPrice * quantity;
+                console.log(`   ✅ Item ${item.menuItemId}: Individual price $${itemPrice} x ${quantity} = $${itemTotal.toFixed(2)}`);
+              } else {
+                finalItemPrice = basePrice;
+                itemTotal = basePrice * quantity;
+                console.log(`   ⚠️ Item ${item.menuItemId}: Invalid individual price, using base price $${basePrice} x ${quantity} = $${itemTotal.toFixed(2)}`);
+              }
+            } else {
+              // Price looks like total price - divide by quantity to get individual price
+              if (individualPrice >= basePrice * 0.5 && individualPrice <= basePrice * 2) {
+                finalItemPrice = individualPrice;
+                itemTotal = itemPrice; // Use the total that was sent
+                console.log(`   ✅ Item ${item.menuItemId}: Total price $${itemPrice} ÷ ${quantity} = $${individualPrice.toFixed(2)} each`);
+              } else {
+                finalItemPrice = basePrice;
+                itemTotal = basePrice * quantity;
+                console.log(`   ⚠️ Item ${item.menuItemId}: Invalid total price, using base price $${basePrice} x ${quantity} = $${itemTotal.toFixed(2)}`);
+              }
             }
 
-            const itemTotal = parseFloat(item.price) * parseInt(item.quantity);
+            // Update item with correct individual price for storage
+            item.price = finalItemPrice.toString();
             calculatedSubtotal += itemTotal;
             validItems.push(item);
 
