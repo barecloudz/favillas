@@ -143,11 +143,13 @@ async function createUserVoucher(
       };
     }
 
+    // Handle both old and new reward schemas
+    const discountAmount = parseFloat(reward.discount_amount || reward.discount || 5);
+    const discountType = reward.discount_type || (reward.reward_type === 'discount' && reward.discount ? 'fixed' : 'fixed');
+    const minOrderAmount = parseFloat(reward.min_order_amount || 0);
+
     // Generate voucher code
-    const voucherCode = generateVoucherCode(
-      parseFloat(reward.discount_amount || reward.discount || 5),
-      reward.discount_type || 'fixed'
-    );
+    const voucherCode = generateVoucherCode(discountAmount, discountType);
 
     // Calculate expiration date
     const validityDays = reward.voucher_validity_days || 30;
@@ -179,14 +181,14 @@ async function createUserVoucher(
         supabase_user_id: isSupabaseUser ? userId : null,
         reward_id: rewardId,
         voucher_code: voucherCode,
-        discount_amount: parseFloat(reward.discount_amount || reward.discount || 5),
-        discount_type: reward.discount_type || 'fixed',
-        min_order_amount: parseFloat(reward.min_order_amount || 0),
+        discount_amount: discountAmount,
+        discount_type: discountType,
+        min_order_amount: minOrderAmount,
         points_used: reward.points_required,
         status: 'active',
         expires_at: expiresAt.toISOString(),
         title: reward.name,
-        description: reward.usage_instructions || `Save ${reward.discount_type === 'percentage' ? reward.discount_amount + '%' : '$' + reward.discount_amount} on your order`
+        description: reward.usage_instructions || `Save ${discountType === 'percentage' ? discountAmount + '%' : '$' + discountAmount} on your order`
       };
 
       const voucher = await transaction`
