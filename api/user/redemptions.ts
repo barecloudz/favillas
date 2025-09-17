@@ -23,7 +23,7 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: string; username: string; role: string; isSupabaseUser: boolean } | null {
+function authenticateToken(event: any): { userId: number; supabaseUserId: string | null; username: string; role: string; isSupabaseUser: boolean } | null {
   const authHeader = event.headers.authorization;
   let token = authHeader && authHeader.split(' ')[1];
 
@@ -55,9 +55,12 @@ function authenticateToken(event: any): { userId: string; username: string; role
 
           if (payload.iss && payload.iss.includes('supabase')) {
             const supabaseUserId = payload.sub;
+            // Convert Supabase UUID to numeric user ID using same logic as other APIs
+            const numericUserId = parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16);
 
             return {
-              userId: supabaseUserId, // Use full UUID
+              userId: numericUserId,
+              supabaseUserId: supabaseUserId,
               username: payload.email || 'supabase_user',
               role: 'customer',
               isSupabaseUser: true
@@ -77,7 +80,8 @@ function authenticateToken(event: any): { userId: string; username: string; role
 
     const decoded = jwt.verify(token, jwtSecret) as any;
     return {
-      userId: decoded.userId.toString(),
+      userId: decoded.userId,
+      supabaseUserId: null,
       username: decoded.username,
       role: decoded.role || 'customer',
       isSupabaseUser: false
@@ -125,32 +129,20 @@ export const handler: Handler = async (event, context) => {
   try {
     const sql = getDB();
 
-    console.log('🎁 Getting redemption history for user:', authPayload.userId);
+    console.log('🎁 Getting redemption history for user:', { userId: authPayload.userId, supabaseUserId: authPayload.supabaseUserId });
 
-    // Get user's redemption history (vouchers created from points)
-    const redemptions = authPayload.isSupabaseUser
-      ? await sql`
-          SELECT
-            uv.*,
-            r.name as reward_name,
-            r.description as reward_description,
-            r.points_required
-          FROM user_vouchers uv
-          LEFT JOIN rewards r ON uv.reward_id = r.id
-          WHERE uv.supabase_user_id = ${authPayload.userId}
-          ORDER BY uv.created_at DESC
-        `
-      : await sql`
-          SELECT
-            uv.*,
-            r.name as reward_name,
-            r.description as reward_description,
-            r.points_required
-          FROM user_vouchers uv
-          LEFT JOIN rewards r ON uv.reward_id = r.id
-          WHERE uv.user_id = ${parseInt(authPayload.userId)}
-          ORDER BY uv.created_at DESC
-        `;
+    // Get user's redemption history (vouchers created from points) - use numeric user ID
+    const redemptions = await sql`
+      SELECT
+        uv.*,
+        r.name as reward_name,
+        r.description as reward_description,
+        r.points_required
+      FROM user_vouchers uv
+      LEFT JOIN rewards r ON uv.reward_id = r.id
+      WHERE uv.user_id = ${authPayload.userId}
+      ORDER BY uv.created_at DESC
+    `;
 
     // Categorize redemptions
     const now = new Date();

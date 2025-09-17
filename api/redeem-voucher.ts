@@ -24,7 +24,7 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: string; username: string; role: string; isSupabaseUser: boolean } | null {
+function authenticateToken(event: any): { userId: number; supabaseUserId: string | null; username: string; role: string; isSupabaseUser: boolean } | null {
   const authHeader = event.headers.authorization;
   let token = authHeader && authHeader.split(' ')[1];
 
@@ -56,9 +56,12 @@ function authenticateToken(event: any): { userId: string; username: string; role
 
           if (payload.iss && payload.iss.includes('supabase')) {
             const supabaseUserId = payload.sub;
+            // Convert Supabase UUID to numeric user ID using same logic as other APIs
+            const numericUserId = parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16);
 
             return {
-              userId: supabaseUserId, // Use full UUID
+              userId: numericUserId,
+              supabaseUserId: supabaseUserId,
               username: payload.email || 'supabase_user',
               role: 'customer',
               isSupabaseUser: true
@@ -78,7 +81,8 @@ function authenticateToken(event: any): { userId: string; username: string; role
 
     const decoded = jwt.verify(token, jwtSecret) as any;
     return {
-      userId: decoded.userId.toString(),
+      userId: decoded.userId,
+      supabaseUserId: null,
       username: decoded.username,
       role: decoded.role || 'customer',
       isSupabaseUser: false
@@ -101,53 +105,23 @@ function generateVoucherCode(discountAmount: number, discountType: string): stri
 // Main voucher creation function
 async function createUserVoucher(
   sql: any,
-  userId: string,
+  userId: number,
+  supabaseUserId: string | null,
   isSupabaseUser: boolean,
   rewardId: number,
   reward: any
 ): Promise<{ success: boolean; voucher?: any; error?: string }> {
   try {
-    console.log('🎁 Creating voucher for user:', userId, 'reward:', rewardId);
+    console.log('🎁 Creating voucher for user:', { userId, supabaseUserId, rewardId });
 
-    // Check if user has enough points
-    let userQuery = isSupabaseUser
-      ? await sql`SELECT * FROM users WHERE supabase_user_id = ${userId}`
-      : await sql`SELECT * FROM users WHERE id = ${parseInt(userId)}`;
-
-    if (userQuery.length === 0 && isSupabaseUser) {
-      console.log('👤 Supabase user not found in users table, creating new record');
-      try {
-        // Create a new user record for this Supabase user
-        const newUser = await sql`
-          INSERT INTO users (username, email, supabase_user_id, role, phone, password, first_name, last_name, rewards, created_at, updated_at)
-          VALUES (
-            'google_user',
-            'user@example.com',
-            ${userId},
-            'customer',
-            '',
-            'GOOGLE_AUTH',
-            'Google',
-            'User',
-            0,
-            NOW(),
-            NOW()
-          )
-          RETURNING *
-        `;
-
-        if (newUser.length > 0) {
-          console.log('✅ Created new user record for Supabase user:', newUser[0].id);
-          userQuery = newUser; // Use the newly created user
-        }
-      } catch (createUserError) {
-        console.error('❌ Error creating Supabase user record:', createUserError);
-        return { success: false, error: 'Failed to create user record' };
-      }
-    }
+    // Look up user by numeric ID (same conversion logic as other APIs)
+    const userQuery = await sql`SELECT * FROM users WHERE id = ${userId}`;
 
     if (userQuery.length === 0) {
-      return { success: false, error: 'User not found and could not be created' };
+      return {
+        success: false,
+        error: `User not found. Account not linked properly. (User ID: ${userId})`
+      };
     }
 
     const user = userQuery[0];
@@ -176,9 +150,7 @@ async function createUserVoucher(
     }
 
     // Check if user has reached max uses for this reward
-    const existingVouchers = isSupabaseUser
-      ? await sql`SELECT COUNT(*) as count FROM user_vouchers WHERE supabase_user_id = ${userId} AND reward_id = ${rewardId}`
-      : await sql`SELECT COUNT(*) as count FROM user_vouchers WHERE user_id = ${parseInt(userId)} AND reward_id = ${rewardId}`;
+    const existingVouchers = await sql`SELECT COUNT(*) as count FROM user_vouchers WHERE user_id = ${userId} AND reward_id = ${rewardId}`;
 
     const currentUses = parseInt(existingVouchers[0].count);
     const maxUses = reward.max_uses_per_user || 1;
@@ -218,24 +190,16 @@ async function createUserVoucher(
       `;
 
       // Also update legacy users.rewards field for backward compatibility
-      if (isSupabaseUser) {
-        await transaction`
-          UPDATE users
-          SET rewards = ${newPoints}, updated_at = NOW()
-          WHERE supabase_user_id = ${userId}
-        `;
-      } else {
-        await transaction`
-          UPDATE users
-          SET rewards = ${newPoints}, updated_at = NOW()
-          WHERE id = ${parseInt(userId)}
-        `;
-      }
+      await transaction`
+        UPDATE users
+        SET rewards = ${newPoints}, updated_at = NOW()
+        WHERE id = ${userId}
+      `;
 
       // Create voucher
       const voucherData = {
-        user_id: isSupabaseUser ? null : parseInt(userId),
-        supabase_user_id: isSupabaseUser ? userId : null,
+        user_id: userId,
+        supabase_user_id: supabaseUserId,
         reward_id: rewardId,
         voucher_code: voucherCode,
         discount_amount: discountAmount,
@@ -378,6 +342,7 @@ export const handler: Handler = async (event, context) => {
     const result = await createUserVoucher(
       sql,
       authPayload.userId,
+      authPayload.supabaseUserId,
       authPayload.isSupabaseUser,
       parsedRewardId,
       reward
