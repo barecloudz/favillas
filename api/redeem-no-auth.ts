@@ -65,9 +65,16 @@ export const handler: Handler = async (event, context) => {
     const { rewardId, supabaseUserId } = body;
 
     // Use hardcoded Supabase User ID if not provided
-    const userId = supabaseUserId || '1422df18-924e-47ae-af1b-6d1f2b4b659b';
+    const supabaseUuid = supabaseUserId || '1422df18-924e-47ae-af1b-6d1f2b4b659b';
 
-    console.log('🎁 No-auth redemption for user:', userId, 'reward:', rewardId);
+    // Convert Supabase UUID to numeric user ID using same logic as user-rewards API
+    const numericUserId = parseInt(supabaseUuid.replace(/-/g, '').substring(0, 8), 16);
+
+    console.log('🎁 No-auth redemption:', {
+      supabaseUuid,
+      numericUserId,
+      rewardId
+    });
 
     // Extract reward ID from body (URL path not used for this endpoint)
     const finalRewardId = parseInt(rewardId);
@@ -97,13 +104,16 @@ export const handler: Handler = async (event, context) => {
 
     const reward = rewards[0];
 
-    // Get user by Supabase ID
-    const userQuery = await sql`SELECT * FROM users WHERE supabase_user_id = ${userId}`;
+    // Get user by numeric ID (same conversion logic as user-rewards API)
+    const userQuery = await sql`SELECT * FROM users WHERE id = ${numericUserId}`;
     if (userQuery.length === 0) {
       return {
         statusCode: 404,
         headers,
-        body: JSON.stringify({ error: 'User not found. Account not linked properly.' })
+        body: JSON.stringify({
+          error: 'User not found. Account not linked properly.',
+          debug: { supabaseUuid, numericUserId }
+        })
       };
     }
 
@@ -164,7 +174,7 @@ export const handler: Handler = async (event, context) => {
           discount_amount, discount_type, min_order_amount,
           points_used, status, expires_at, title, description
         ) VALUES (
-          ${user.id}, ${userId}, ${finalRewardId}, ${voucherCode},
+          ${user.id}, ${supabaseUuid}, ${finalRewardId}, ${voucherCode},
           ${discountAmount}, ${discountType}, ${minOrderAmount},
           ${reward.points_required}, 'active', ${expiresAt.toISOString()},
           ${reward.name}, 'Use this voucher code at checkout for your discount'
