@@ -15,6 +15,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/fix-order-associations"
+  to = "/.netlify/functions/fix-order-associations"
+  status = 200
+
+[[redirects]]
   from = "/api/orders"
   to = "/.netlify/functions/orders"
   status = 200
