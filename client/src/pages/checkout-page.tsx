@@ -90,27 +90,30 @@ const CheckoutPage = () => {
   const [location, navigate] = useLocation();
   const { toast } = useToast();
 
-  // EMERGENCY: Circuit breaker for corrupted items
+  // Check for corrupted items and handle gracefully
   useEffect(() => {
     try {
-      // Test if we can safely access all item names
-      items.forEach((item, index) => {
+      const corruptedItems = items.filter((item, index) => {
         if (!item || !item.name) {
-          console.error(`EMERGENCY: Item at index ${index} is corrupted:`, item);
-          // Nuclear option: clear everything and reload
-          localStorage.clear();
-          sessionStorage.clear();
-          window.location.href = '/';
-          return;
+          console.warn(`Found corrupted item at index ${index}:`, item);
+          return true;
         }
+        return false;
       });
+
+      if (corruptedItems.length > 0) {
+        console.warn(`Found ${corruptedItems.length} corrupted items, but continuing with valid items`);
+        toast({
+          title: "Some cart items were invalid",
+          description: "Invalid items have been filtered out automatically.",
+          variant: "default"
+        });
+      }
     } catch (error) {
-      console.error('EMERGENCY: Error accessing cart items', error);
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.href = '/';
+      console.warn('Error checking cart items:', error);
+      // Just log the error, don't crash the checkout
     }
-  }, [items]);
+  }, [items, toast]);
   
   const formatPrice = (price: number) => {
     if (isNaN(price) || price === null || price === undefined) {
