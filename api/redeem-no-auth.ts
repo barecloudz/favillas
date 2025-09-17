@@ -69,10 +69,8 @@ export const handler: Handler = async (event, context) => {
 
     console.log('🎁 No-auth redemption for user:', userId, 'reward:', rewardId);
 
-    // Extract reward ID from URL path or body
-    const pathParts = event.path.split('/');
-    const rewardIdFromPath = pathParts[pathParts.length - 2];
-    const finalRewardId = parseInt(rewardIdFromPath || rewardId);
+    // Extract reward ID from body (URL path not used for this endpoint)
+    const finalRewardId = parseInt(rewardId);
 
     if (!finalRewardId || isNaN(finalRewardId)) {
       return {
@@ -80,7 +78,9 @@ export const handler: Handler = async (event, context) => {
         headers,
         body: JSON.stringify({
           error: 'Invalid reward ID',
-          debug: { path: event.path, rewardIdFromPath, rewardId }
+          received: rewardId,
+          parsed: finalRewardId,
+          debug: { path: event.path, body: body }
         })
       };
     }
