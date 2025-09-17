@@ -36,16 +36,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const initializeAuth = async () => {
       try {
         setLoading(true);
+
+        // First, try to get Supabase session for Google users
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {
           console.error('Error getting session:', error);
         }
 
-        console.log('🔄 Initializing auth state:', session ? 'Session found' : 'No session');
-        setSession(session);
-        const mappedUser = mapSupabaseUser(session?.user || null);
-        setUser(mappedUser);
+        if (session) {
+          console.log('🔄 Found Supabase session (Google user)');
+          setSession(session);
+          const mappedUser = mapSupabaseUser(session?.user || null);
+          setUser(mappedUser);
+        } else {
+          // If no Supabase session, check for legacy JWT cookie
+          console.log('🔄 No Supabase session, checking for legacy JWT cookie');
+          try {
+            const response = await apiRequest('GET', '/api/user');
+            const userData = await response.json();
+
+            if (userData && userData.id) {
+              console.log('🔑 Found legacy JWT session:', userData.username);
+              const mappedUser: MappedUser = {
+                id: userData.id?.toString() || '',
+                email: userData.email || userData.username || '',
+                firstName: userData.firstName || userData.username || 'User',
+                lastName: userData.lastName || '',
+                phone: userData.phone || '',
+                address: userData.address || '',
+                role: userData.role || 'customer',
+                isAdmin: userData.role === 'admin' || userData.role === 'superadmin' || userData.username === 'superadmin',
+                isGoogleUser: false
+              };
+              setUser(mappedUser);
+              console.log('✅ Legacy session restored');
+            } else {
+              console.log('❌ No valid authentication found');
+            }
+          } catch (authError) {
+            console.log('❌ No legacy JWT session found');
+          }
+        }
       } catch (error) {
         console.error('Error initializing auth:', error);
       } finally {
