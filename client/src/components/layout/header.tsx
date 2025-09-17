@@ -176,6 +176,11 @@ const Header = () => {
                             <BarChart3 className="mr-2 h-4 w-4" />
                             <span>Admin Dashboard</span>
                           </DropdownMenuItem>
+                        </>
+                      )}
+                      {(user.isAdmin || user.role === "employee" || user.role === "kitchen" || user.role === "manager") && (
+                        <>
+                          {!user.isAdmin && <DropdownMenuSeparator />}
                           <DropdownMenuItem onClick={() => navigate("/kitchen")}>
                             <ChefHat className="mr-2 h-4 w-4" />
                             <span>Kitchen Display</span>
@@ -252,6 +257,11 @@ const Header = () => {
                           <BarChart3 className="mr-2 h-4 w-4" />
                           <span>Admin Dashboard</span>
                         </DropdownMenuItem>
+                      </>
+                    )}
+                    {(user.isAdmin || user.role === "employee" || user.role === "kitchen" || user.role === "manager") && (
+                      <>
+                        {!user.isAdmin && <DropdownMenuSeparator />}
                         <DropdownMenuItem onClick={() => navigate("/kitchen")}>
                           <ChefHat className="mr-2 h-4 w-4" />
                           <span>Kitchen Display</span>
@@ -351,6 +361,11 @@ const Header = () => {
                           <BarChart3 className="mr-2 h-4 w-4" />
                           <span>Admin Dashboard</span>
                         </DropdownMenuItem>
+                      </>
+                    )}
+                    {(user.isAdmin || user.role === "employee" || user.role === "kitchen" || user.role === "manager") && (
+                      <>
+                        {!user.isAdmin && <DropdownMenuSeparator />}
                         <DropdownMenuItem onClick={() => navigate("/kitchen")}>
                           <ChefHat className="mr-2 h-4 w-4" />
                           <span>Kitchen Display</span>

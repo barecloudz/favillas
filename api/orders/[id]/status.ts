@@ -98,7 +98,7 @@ export const handler: Handler = async (event, context) => {
   }
 
   // Only staff can update order status
-  if (authPayload.role !== 'admin' && authPayload.role !== 'kitchen' && authPayload.role !== 'manager') {
+  if (authPayload.role !== 'admin' && authPayload.role !== 'superadmin' && authPayload.role !== 'kitchen' && authPayload.role !== 'manager' && authPayload.role !== 'employee') {
     return {
       statusCode: 403,
       headers,
