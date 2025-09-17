@@ -103,24 +103,16 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   
   // Load cart from localStorage on initial render
   useEffect(() => {
-    // EMERGENCY: Check for corruption flag and clear everything if set
-    const corruptionFlag = localStorage.getItem('cartCorrupted');
-    if (corruptionFlag) {
-      console.error('CORRUPTION DETECTED - Emergency clearing all data');
-      localStorage.clear();
-      sessionStorage.clear();
-      setItems([]);
-      return;
-    }
+    // Clear any old corruption flags
+    localStorage.removeItem('cartCorrupted');
 
     const savedCart = localStorage.getItem(CART_STORAGE_KEY);
     if (savedCart) {
       try {
         const parsedCart = JSON.parse(savedCart);
-        // More aggressive validation - check if parsedCart is an array
+        // Check if parsedCart is an array
         if (!Array.isArray(parsedCart)) {
-          console.warn("Cart data is not an array, clearing cart");
-          localStorage.setItem('cartCorrupted', 'true'); // Set corruption flag
+          console.warn("Cart data is not an array, starting with empty cart");
           localStorage.removeItem(CART_STORAGE_KEY);
           setItems([]);
           return;
@@ -146,16 +138,9 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             quantity: typeof item.quantity === 'string' ? parseInt(item.quantity) : item.quantity
           }));
 
-        // If we filtered out items, log it and update localStorage
+        // If we filtered out items, log it and continue with valid items
         if (normalizedCart.length !== parsedCart.length) {
-          console.error(`SEVERE CORRUPTION: Filtered out ${parsedCart.length - normalizedCart.length} corrupted cart items`);
-          // Set corruption flag for next reload
-          localStorage.setItem('cartCorrupted', 'true');
-          // Clear everything immediately
-          localStorage.clear();
-          sessionStorage.clear();
-          setItems([]);
-          return;
+          console.warn(`Filtered out ${parsedCart.length - normalizedCart.length} corrupted cart items, continuing with ${normalizedCart.length} valid items`);
         }
 
         setItems(normalizedCart);
@@ -319,14 +304,12 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   };
   
-  // Clean up corrupted items automatically with NUCLEAR option
+  // Clean up corrupted items automatically (gentle approach)
   useEffect(() => {
     if (validItems.length !== items.length && items.length > 0) {
-      console.error(`NUCLEAR OPTION TRIGGERED: Detected ${items.length - validItems.length} corrupted cart items`);
-      // Nuclear option: clear EVERYTHING and reload
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.reload();
+      console.warn(`Detected ${items.length - validItems.length} corrupted cart items, filtering them out`);
+      // Gently filter out corrupted items instead of clearing everything
+      setItems(validItems);
     }
   }, [items, validItems]);
 
