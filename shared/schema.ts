@@ -30,6 +30,38 @@ export const users = pgTable("users", {
   marketingOptIn: boolean("marketing_opt_in").default(true).notNull(),
 });
 
+// User vouchers schema
+export const userVouchers = pgTable("user_vouchers", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  supabaseUserId: text("supabase_user_id"),
+  rewardId: integer("reward_id"),
+  voucherCode: text("voucher_code").notNull().unique(),
+
+  // Discount details
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).notNull(),
+  discountType: text("discount_type").notNull().default("fixed"), // 'fixed' or 'percentage'
+  minOrderAmount: decimal("min_order_amount", { precision: 10, scale: 2 }).default("0"),
+
+  // Lifecycle
+  pointsUsed: integer("points_used").notNull(),
+  status: text("status").notNull().default("active"), // 'active', 'used', 'expired'
+  expiresAt: timestamp("expires_at").notNull(),
+
+  // Usage tracking
+  appliedToOrderId: integer("applied_to_order_id").references(() => orders.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  usedAt: timestamp("used_at"),
+
+  // Metadata
+  title: text("title"),
+  description: text("description"),
+});
+
+export const insertUserVoucherSchema = createInsertSchema(userVouchers);
+export type SelectUserVoucher = typeof userVouchers.$inferSelect;
+export type InsertUserVoucher = typeof userVouchers.$inferInsert;
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -143,22 +175,43 @@ export const insertOrderItemSchema = createInsertSchema(orderItems).omit({
   createdAt: true,
 });
 
-// Reward schema
+// Reward schema - fully admin configurable
 export const rewards = pgTable("rewards", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description").notNull(),
+
+  // Admin-configurable voucher properties
+  pointsRequired: integer("points_required").notNull().default(50),
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }),
+  discountType: text("discount_type").default("fixed"), // 'fixed', 'percentage', 'delivery_fee'
+  minOrderAmount: decimal("min_order_amount", { precision: 10, scale: 2 }).default("0"),
+
+  // Admin-configurable limits and validity
+  voucherValidityDays: integer("voucher_validity_days").default(30),
+  maxUsesPerUser: integer("max_uses_per_user").default(1),
+
+  // Admin display and instructions
+  usageInstructions: text("usage_instructions"),
+  adminNotes: text("admin_notes"),
+  active: boolean("active").default(true).notNull(),
+
+  // Legacy fields (keep for compatibility)
   discount: decimal("discount", { precision: 10, scale: 2 }),
-  discountType: text("discount_type"), // percentage, fixed
-  minOrderAmount: decimal("min_order_amount", { precision: 10, scale: 2 }),
   expiresAt: timestamp("expires_at"),
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const insertRewardSchema = createInsertSchema(rewards).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
 });
+
+export type SelectReward = typeof rewards.$inferSelect;
+export type InsertReward = typeof rewards.$inferInsert;
 
 // UserReward schema
 export const userRewards = pgTable("user_rewards", {

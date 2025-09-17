@@ -10,23 +10,13 @@
   SECRETS_SCAN_ENABLED = "false"
 
 [[redirects]]
-  from = "/api/debug-orders"
-  to = "/.netlify/functions/debug-orders"
-  status = 200
-
-[[redirects]]
-  from = "/api/fix-order-associations"
-  to = "/.netlify/functions/fix-order-associations"
-  status = 200
-
-[[redirects]]
   from = "/api/orders"
   to = "/.netlify/functions/orders"
   status = 200
 
 [[redirects]]
-  from = "/api/orders/:id"
-  to = "/.netlify/functions/orders/[id]"
+  from = "/api/orders/*"
+  to = "/.netlify/functions/orders"
   status = 200
 
 [[redirects]]
@@ -82,21 +72,6 @@
 [[redirects]]
   from = "/api/user/rewards"
   to = "/.netlify/functions/user-rewards"
-  status = 200
-
-[[redirects]]
-  from = "/api/user/redemptions"
-  to = "/.netlify/functions/user/redemptions"
-  status = 200
-
-[[redirects]]
-  from = "/api/rewards/*/redeem"
-  to = "/.netlify/functions/redeem-voucher"
-  status = 200
-
-[[redirects]]
-  from = "/api/user/vouchers"
-  to = "/.netlify/functions/user/vouchers"
   status = 200
 
 [[redirects]]
