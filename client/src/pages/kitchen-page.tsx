@@ -89,7 +89,7 @@ const KitchenPage = () => {
   // Update order status
   const updateOrderStatus = async (orderId: number, status: string) => {
     try {
-      await apiRequest("PATCH", `/api/orders/${orderId}/status`, { status });
+      await apiRequest("PATCH", `/api/orders/${orderId}`, { status });
       queryClient.invalidateQueries({ queryKey: ["/api/kitchen/orders"] });
       
       toast({
