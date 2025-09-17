@@ -110,6 +110,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/fix-user-link"
+  to = "/.netlify/functions/fix-user-link"
+  status = 200
+
+[[redirects]]
   from = "/api/menu-items"
   to = "/.netlify/functions/menu-items"
   status = 200
