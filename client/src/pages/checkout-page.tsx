@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Loader2 } from "lucide-react";
+import { Loader2, X, Gift } from "lucide-react";
 import AddressForm from "@/components/ui/address-autocomplete";
 
 // Load Stripe outside of component to avoid recreating it on render
@@ -687,52 +687,75 @@ const CheckoutPage = () => {
                   {/* Voucher Code Section */}
                   <div className="mt-4 space-y-3">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Voucher Code</Label>
-                      <p className="text-xs text-gray-500">Have a voucher from your rewards? Enter it here!</p>
-                      {!appliedVoucher ? (
-                        <form onSubmit={handleVoucherSubmit} className="flex gap-2">
-                          <Input
-                            value={voucherCode}
-                            onChange={(e) => setVoucherCode(e.target.value)}
-                            placeholder="Enter voucher code (e.g., SAVE5-ABC123)"
-                            className="flex-1"
-                            disabled={validateVoucherMutation.isPending}
-                          />
-                          <Button
-                            type="submit"
-                            variant="outline"
-                            size="sm"
-                            disabled={!voucherCode.trim() || validateVoucherMutation.isPending}
-                          >
-                            {validateVoucherMutation.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              "Apply"
-                            )}
-                          </Button>
-                        </form>
-                      ) : (
-                        <div className="flex items-center justify-between p-2 bg-blue-50 border border-blue-200 rounded">
-                          <div className="flex items-center gap-2">
-                            <span className="text-blue-700 font-medium">
-                              {appliedVoucher.voucher_code} - {appliedVoucher.discount_type === 'percentage' ? `${appliedVoucher.discount_amount}%` : `$${appliedVoucher.discount_amount}`} off
-                            </span>
-                            {appliedVoucher.min_order_amount > 0 && (
-                              <span className="text-xs text-blue-600">
-                                (min ${appliedVoucher.min_order_amount})
-                              </span>
-                            )}
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={removeVoucher}
-                            className="text-blue-600 hover:text-blue-800"
-                          >
-                            Remove
-                          </Button>
+                      <Label className="text-sm font-medium">🎫 Available Rewards</Label>
+                      <p className="text-xs text-gray-500">Your redeemed vouchers will be automatically applied</p>
+
+                      {vouchersLoading ? (
+                        <div className="flex items-center gap-2 p-3 text-gray-500 bg-gray-50 rounded-lg">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Loading your vouchers...</span>
                         </div>
+                      ) : availableVouchers.length === 0 ? (
+                        <div className="p-4 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                          <div className="text-gray-400 mb-2">🎁</div>
+                          <p className="text-gray-600 font-medium">No vouchers available</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Redeem rewards to get vouchers for discounts!
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          {!appliedVoucher ? (
+                            <Select value={selectedVoucherId} onValueChange={handleVoucherSelect}>
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Choose a voucher to apply (optional)" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">No voucher</SelectItem>
+                                {availableVouchers.map((voucher: any) => (
+                                  <SelectItem key={voucher.id} value={voucher.id.toString()}>
+                                    <div className="flex flex-col">
+                                      <span className="font-medium">
+                                        {voucher.voucher_code} - {voucher.savings_text}
+                                      </span>
+                                      {voucher.min_order_amount > 0 && (
+                                        <span className="text-xs text-gray-500">
+                                          Min order: ${voucher.min_order_amount}
+                                        </span>
+                                      )}
+                                      {voucher.calculated_discount > 0 && (
+                                        <span className="text-xs text-green-600">
+                                          Saves ${voucher.calculated_discount.toFixed(2)} on this order
+                                        </span>
+                                      )}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <div className="bg-green-50 p-3 rounded-lg flex-1 border border-green-200">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-green-700 font-medium">
+                                    🎉 {appliedVoucher.voucher_code} - {appliedVoucher.savings_text}
+                                  </span>
+                                  <span className="text-green-800 font-bold">
+                                    -${appliedVoucher.calculated_discount?.toFixed(2) || appliedVoucher.discount_amount}
+                                  </span>
+                                </div>
+                                {appliedVoucher.min_order_amount > 0 && (
+                                  <span className="text-xs text-green-600">
+                                    Min order: ${appliedVoucher.min_order_amount}
+                                  </span>
+                                )}
+                              </div>
+                              <Button variant="ghost" size="sm" onClick={removeVoucher}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </>
                       )}
                       {voucherError && (
                         <p className="text-sm text-red-600">{voucherError}</p>

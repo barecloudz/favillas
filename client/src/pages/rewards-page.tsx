@@ -112,10 +112,8 @@ const RewardsPage = () => {
 
       toast({
         title: "🎉 Reward Redeemed Successfully!",
-        description: voucherCode
-          ? `Your voucher code: ${voucherCode}. Go to checkout and your voucher will be automatically available to select, or you can enter the code manually.`
-          : `You've successfully redeemed ${data.reward?.name || 'this reward'}! Check the checkout page to use your voucher.`,
-        duration: 8000, // Show longer so user can read instructions
+        description: `Your voucher is ready! Go to checkout and select it from your available vouchers - no codes needed!`,
+        duration: 6000,
       });
 
       // Refresh user data, redemptions, and active vouchers
