@@ -553,17 +553,34 @@ export const handler: Handler = async (event, context) => {
 
             // Update user_points table with correct schema
             try {
-              const userPointsUpdate = await sql`
-                INSERT INTO user_points (user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
-                VALUES (${userId}, ${pointsToAward}, ${pointsToAward}, 0, NOW(), NOW(), NOW())
-                ON CONFLICT (user_id) DO UPDATE SET
-                  points = user_points.points + ${pointsToAward},
-                  total_earned = user_points.total_earned + ${pointsToAward},
-                  last_earned_at = NOW(),
-                  updated_at = NOW()
-                RETURNING user_id, points, total_earned
+              // First check if user points record exists
+              const existingPoints = await sql`
+                SELECT user_id, points, total_earned FROM user_points WHERE user_id = ${userId}
               `;
-              console.log('✅ Orders API: User points updated:', userPointsUpdate[0]);
+
+              let userPointsUpdate;
+              if (existingPoints.length > 0) {
+                // Update existing record
+                userPointsUpdate = await sql`
+                  UPDATE user_points
+                  SET
+                    points = points + ${pointsToAward},
+                    total_earned = total_earned + ${pointsToAward},
+                    last_earned_at = NOW(),
+                    updated_at = NOW()
+                  WHERE user_id = ${userId}
+                  RETURNING user_id, points, total_earned
+                `;
+                console.log('✅ Orders API: User points updated (existing record):', userPointsUpdate[0]);
+              } else {
+                // Create new record
+                userPointsUpdate = await sql`
+                  INSERT INTO user_points (user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
+                  VALUES (${userId}, ${pointsToAward}, ${pointsToAward}, 0, NOW(), NOW(), NOW())
+                  RETURNING user_id, points, total_earned
+                `;
+                console.log('✅ Orders API: User points created (new record):', userPointsUpdate[0]);
+              }
             } catch (userPointsError) {
               console.error('❌ Orders API: User points update failed:', userPointsError);
               throw userPointsError;
