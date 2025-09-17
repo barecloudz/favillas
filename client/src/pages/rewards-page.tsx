@@ -89,6 +89,18 @@ const RewardsPage = () => {
     enabled: !!user,
   });
 
+  // Fetch user's active vouchers to check which rewards are already redeemed
+  const { data: activeVouchersData, isLoading: vouchersLoading } = useQuery({
+    queryKey: ["/api/user/active-vouchers"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/user/active-vouchers");
+      return response.json();
+    },
+    enabled: !!user,
+  });
+
+  const activeVouchers = activeVouchersData?.vouchers || [];
+
   // Redeem reward mutation
   const redeemRewardMutation = useMutation({
     mutationFn: async (rewardId: number) => {
@@ -100,9 +112,10 @@ const RewardsPage = () => {
         title: "Reward Redeemed!",
         description: `You've successfully redeemed ${data.reward.name}!`,
       });
-      // Refresh user data and redemptions
+      // Refresh user data, redemptions, and active vouchers
       queryClient.invalidateQueries({ queryKey: ["/api/user/rewards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/redemptions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/active-vouchers"] });
     },
     onError: (error: any) => {
       toast({
@@ -140,7 +153,27 @@ const RewardsPage = () => {
     }
   };
 
+  // Check if a reward is already redeemed (has active voucher)
+  const isRewardRedeemed = (rewardId: number) => {
+    return activeVouchers.some((voucher: any) => voucher.reward_id === rewardId);
+  };
+
+  // Get active voucher for a reward
+  const getActiveVoucher = (rewardId: number) => {
+    return activeVouchers.find((voucher: any) => voucher.reward_id === rewardId);
+  };
+
   const handleRedeemReward = (reward: any) => {
+    // Check if already redeemed first
+    if (isRewardRedeemed(reward.id)) {
+      toast({
+        title: "Already Redeemed",
+        description: "You already have an active voucher for this reward. Use it before redeeming again!",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (userData.points < reward.pointsRequired) {
       toast({
         title: "Insufficient Points",
@@ -449,21 +482,42 @@ const RewardsPage = () => {
                             </div>
                           )}
 
+                          {isRewardRedeemed(reward.id) && (
+                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 rounded-lg border border-green-200">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-700">🎫 Your Voucher:</span>
+                                <span className="text-lg font-bold text-green-600">
+                                  {getActiveVoucher(reward.id)?.voucher_code}
+                                </span>
+                              </div>
+                              <p className="text-xs text-green-600 mt-1">
+                                Use this code at checkout or it will be auto-applied
+                              </p>
+                            </div>
+                          )}
+
                           <Separator />
 
-                          <Button 
+                          <Button
                             className={`w-full h-12 text-lg font-bold transition-all duration-300 ${
-                              userData?.points >= reward.pointsRequired 
-                                ? 'bg-gradient-to-r from-[#d73a31] to-[#ff6b35] hover:from-[#c73128] hover:to-[#e55a2b] text-white shadow-lg hover:shadow-xl transform hover:scale-105' 
-                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              isRewardRedeemed(reward.id)
+                                ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg cursor-default'
+                                : userData?.points >= reward.pointsRequired
+                                  ? 'bg-gradient-to-r from-[#d73a31] to-[#ff6b35] hover:from-[#c73128] hover:to-[#e55a2b] text-white shadow-lg hover:shadow-xl transform hover:scale-105'
+                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                             }`}
-                            disabled={userData?.points < reward.pointsRequired || redeemRewardMutation.isPending}
+                            disabled={isRewardRedeemed(reward.id) || userData?.points < reward.pointsRequired || redeemRewardMutation.isPending}
                             onClick={() => handleRedeemReward(reward)}
                           >
                             {redeemRewardMutation.isPending ? (
                               <>
                                 <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                                 Redeeming...
+                              </>
+                            ) : isRewardRedeemed(reward.id) ? (
+                              <>
+                                <CheckCircle className="h-5 w-5 mr-2" />
+                                ✅ Already Redeemed
                               </>
                             ) : userData?.points >= reward.pointsRequired ? (
                               <>
