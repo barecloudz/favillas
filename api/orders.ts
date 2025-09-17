@@ -110,9 +110,74 @@ export const handler: Handler = async (event, context) => {
           body: JSON.stringify({ error: 'Unauthorized' })
         };
       }
-      
+
+      // Check if this is a request for a specific order (e.g., /api/orders/123)
+      const pathParts = event.path.split('/');
+      const orderIdFromPath = pathParts[pathParts.length - 1];
+
+      if (orderIdFromPath && !isNaN(parseInt(orderIdFromPath))) {
+        // Request for specific order by ID
+        const orderId = parseInt(orderIdFromPath);
+        console.log('🔍 Orders API: Getting specific order:', orderId, 'for user:', authPayload.userId);
+
+        let orderQuery;
+        if (authPayload.role === 'admin' || authPayload.role === 'kitchen' || authPayload.role === 'manager') {
+          // Staff can see any order
+          orderQuery = await sql`SELECT * FROM orders WHERE id = ${orderId}`;
+        } else {
+          // Customers can only see their own orders
+          orderQuery = await sql`SELECT * FROM orders WHERE id = ${orderId} AND user_id = ${authPayload.userId}`;
+        }
+
+        if (orderQuery.length === 0) {
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({ error: 'Order not found' })
+          };
+        }
+
+        const order = orderQuery[0];
+
+        // Get order items for this specific order
+        const items = await sql`
+          SELECT
+            oi.*,
+            mi.name as menu_item_name,
+            mi.description as menu_item_description,
+            mi.base_price as menu_item_price,
+            mi.image_url as menu_item_image_url,
+            mi.category as menu_item_category
+          FROM order_items oi
+          LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+          WHERE oi.order_id = ${orderId}
+        `;
+
+        // Transform the data to match expected frontend structure
+        const transformedItems = items.map(item => ({
+          ...item,
+          name: item.menu_item_name || 'Unknown Item',
+          menuItem: item.menu_item_name ? {
+            name: item.menu_item_name,
+            description: item.menu_item_description,
+            price: item.menu_item_price,
+            imageUrl: item.menu_item_image_url,
+            category: item.menu_item_category
+          } : null
+        }));
+
+        console.log('✅ Orders API: Successfully retrieved order', orderId);
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ ...order, items: transformedItems })
+        };
+      }
+
+      // Request for all orders (existing logic)
       console.log('🔍 Orders API: Getting orders for user:', authPayload.userId, 'role:', authPayload.role);
-      
+
       let allOrders;
       
       if (authPayload.role === 'admin' || authPayload.role === 'kitchen' || authPayload.role === 'manager') {
