@@ -265,8 +265,25 @@ export const handler: Handler = async (event, context) => {
 
   try {
     const sql = getDB();
+
+    // Extract reward ID from URL path: /api/rewards/123/redeem
+    const pathParts = event.path.split('/');
+    const rewardIdFromPath = pathParts[pathParts.length - 2]; // Get the ID before 'redeem'
+
+    // Also check request body as fallback
     const body = JSON.parse(event.body || '{}');
-    const { rewardId } = body;
+    const rewardIdFromBody = body.rewardId;
+
+    // Use path parameter first, then fallback to body
+    const rewardId = rewardIdFromPath || rewardIdFromBody;
+
+    console.log('🎯 Reward redemption request:', {
+      path: event.path,
+      pathParts,
+      rewardIdFromPath,
+      rewardIdFromBody,
+      finalRewardId: rewardId
+    });
 
     // Validate input - handle both number and string inputs
     const parsedRewardId = parseInt(rewardId);
@@ -277,7 +294,13 @@ export const handler: Handler = async (event, context) => {
         body: JSON.stringify({
           error: 'Invalid reward ID. Must be a valid positive integer.',
           received: rewardId,
-          type: typeof rewardId
+          type: typeof rewardId,
+          pathParts: pathParts,
+          debug: {
+            path: event.path,
+            rewardIdFromPath,
+            rewardIdFromBody
+          }
         })
       };
     }
