@@ -29,7 +29,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const Header = () => {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { user, signOut } = useAuth();
   const { items, toggleCart } = useCart();
   const { companyName, logoUrl } = useBranding();
@@ -151,20 +151,20 @@ const Header = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuItem onClick={() => window.location.href = "/profile"}>
+                      <DropdownMenuItem onClick={() => navigate("/profile")}>
                         <User className="mr-2 h-4 w-4" />
                         <span>My Profile</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => window.location.href = "/orders"}>
+                      <DropdownMenuItem onClick={() => navigate("/orders")}>
                         <ShoppingBag className="mr-2 h-4 w-4" />
                         <span>My Orders</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => window.location.href = "/rewards"}>
+                      <DropdownMenuItem onClick={() => navigate("/rewards")}>
                         <Star className="mr-2 h-4 w-4" />
                         <span>Rewards</span>
                       </DropdownMenuItem>
                       {(user.role === "employee" || user.isAdmin) && (
-                        <DropdownMenuItem onClick={() => window.location.href = "/employee/clock"}>
+                        <DropdownMenuItem onClick={() => navigate("/employee/clock")}>
                           <Clock className="mr-2 h-4 w-4" />
                           <span>Clock In/Out</span>
                         </DropdownMenuItem>
@@ -172,11 +172,11 @@ const Header = () => {
                       {user.isAdmin && (
                         <>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => window.location.href = "/admin"}>
+                          <DropdownMenuItem onClick={() => navigate("/admin")}>
                             <BarChart3 className="mr-2 h-4 w-4" />
                             <span>Admin Dashboard</span>
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => window.location.href = "/kitchen"}>
+                          <DropdownMenuItem onClick={() => navigate("/kitchen")}>
                             <ChefHat className="mr-2 h-4 w-4" />
                             <span>Kitchen Display</span>
                           </DropdownMenuItem>
@@ -227,20 +227,20 @@ const Header = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem onClick={() => window.location.href = "/profile"}>
+                    <DropdownMenuItem onClick={() => navigate("/profile")}>
                       <User className="mr-2 h-4 w-4" />
                       <span>My Profile</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => window.location.href = "/orders"}>
+                    <DropdownMenuItem onClick={() => navigate("/orders")}>
                       <ShoppingBag className="mr-2 h-4 w-4" />
                       <span>My Orders</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => window.location.href = "/rewards"}>
+                    <DropdownMenuItem onClick={() => navigate("/rewards")}>
                       <Star className="mr-2 h-4 w-4" />
                       <span>Rewards</span>
                     </DropdownMenuItem>
                     {(user.role === "employee" || user.isAdmin) && (
-                      <DropdownMenuItem onClick={() => window.location.href = "/employee/clock"}>
+                      <DropdownMenuItem onClick={() => navigate("/employee/clock")}>
                         <Clock className="mr-2 h-4 w-4" />
                         <span>Clock In/Out</span>
                       </DropdownMenuItem>
@@ -248,11 +248,11 @@ const Header = () => {
                     {user.isAdmin && (
                       <>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => window.location.href = "/admin"}>
+                        <DropdownMenuItem onClick={() => navigate("/admin")}>
                           <BarChart3 className="mr-2 h-4 w-4" />
                           <span>Admin Dashboard</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => window.location.href = "/kitchen"}>
+                        <DropdownMenuItem onClick={() => navigate("/kitchen")}>
                           <ChefHat className="mr-2 h-4 w-4" />
                           <span>Kitchen Display</span>
                         </DropdownMenuItem>
@@ -326,20 +326,20 @@ const Header = () => {
                     </div>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem onClick={() => window.location.href = "/profile"}>
+                    <DropdownMenuItem onClick={() => navigate("/profile")}>
                       <User className="mr-2 h-4 w-4" />
                       <span>My Profile</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => window.location.href = "/orders"}>
+                    <DropdownMenuItem onClick={() => navigate("/orders")}>
                       <ShoppingBag className="mr-2 h-4 w-4" />
                       <span>My Orders</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => window.location.href = "/rewards"}>
+                    <DropdownMenuItem onClick={() => navigate("/rewards")}>
                       <Star className="mr-2 h-4 w-4" />
                       <span>Rewards</span>
                     </DropdownMenuItem>
                     {(user.role === "employee" || user.isAdmin) && (
-                      <DropdownMenuItem onClick={() => window.location.href = "/employee/clock"}>
+                      <DropdownMenuItem onClick={() => navigate("/employee/clock")}>
                         <Clock className="mr-2 h-4 w-4" />
                         <span>Clock In/Out</span>
                       </DropdownMenuItem>
@@ -347,11 +347,11 @@ const Header = () => {
                     {user.isAdmin && (
                       <>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => window.location.href = "/admin"}>
+                        <DropdownMenuItem onClick={() => navigate("/admin")}>
                           <BarChart3 className="mr-2 h-4 w-4" />
                           <span>Admin Dashboard</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => window.location.href = "/kitchen"}>
+                        <DropdownMenuItem onClick={() => navigate("/kitchen")}>
                           <ChefHat className="mr-2 h-4 w-4" />
                           <span>Kitchen Display</span>
                         </DropdownMenuItem>
