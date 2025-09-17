@@ -24,7 +24,7 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
+function authenticateToken(event: any): { userId: string; username: string; role: string; isSupabaseUser: boolean } | null {
   const authHeader = event.headers.authorization;
   let token = authHeader && authHeader.split(' ')[1];
 
@@ -51,9 +51,10 @@ function authenticateToken(event: any): { userId: number; username: string; role
         console.log('✅ Supabase user ID:', supabaseUserId);
 
         return {
-          userId: parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16) || 1,
+          userId: supabaseUserId, // Use the full UUID instead of converting to integer
           username: payload.email || 'supabase_user',
-          role: 'customer'
+          role: 'customer',
+          isSupabaseUser: true
         };
       }
     } catch (supabaseError) {
@@ -68,9 +69,10 @@ function authenticateToken(event: any): { userId: number; username: string; role
 
     const decoded = jwt.verify(token, jwtSecret) as any;
     return {
-      userId: decoded.userId,
+      userId: decoded.userId.toString(), // Ensure string for consistency
       username: decoded.username,
-      role: decoded.role || 'customer'
+      role: decoded.role || 'customer',
+      isSupabaseUser: false
     };
   } catch (error) {
     console.error('Token authentication failed:', error);
@@ -136,7 +138,19 @@ export const handler: Handler = async (event, context) => {
         const order = orderResult[0];
 
         // Check if user can access this order
-        if (authPayload.role !== 'admin' && authPayload.role !== 'kitchen' && authPayload.role !== 'manager' && order.user_id !== authPayload.userId) {
+        let canAccessOrder = false;
+        if (authPayload.role === 'admin' || authPayload.role === 'kitchen' || authPayload.role === 'manager') {
+          canAccessOrder = true;
+        } else {
+          // Check both user_id and supabase_user_id for access
+          if (authPayload.isSupabaseUser) {
+            canAccessOrder = order.user_id === authPayload.userId || order.supabase_user_id === authPayload.userId;
+          } else {
+            canAccessOrder = order.user_id === parseInt(authPayload.userId);
+          }
+        }
+
+        if (!canAccessOrder) {
           return {
             statusCode: 403,
             headers,

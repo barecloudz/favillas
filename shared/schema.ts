@@ -9,6 +9,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   email: text("email").notNull().unique(),
   googleId: text("google_id").unique(),
+  supabaseUserId: text("supabase_user_id").unique(), // Full Supabase UUID for Google OAuth users
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   phone: text("phone"),
@@ -91,6 +92,7 @@ export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id),
+  supabaseUserId: text("supabase_user_id"), // Links orders to Supabase users via UUID
   status: text("status").notNull().default("pending"),
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   tax: decimal("tax", { precision: 10, scale: 2 }).notNull(),
