@@ -105,6 +105,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/debug-user"
+  to = "/.netlify/functions/debug-user"
+  status = 200
+
+[[redirects]]
   from = "/api/menu-items"
   to = "/.netlify/functions/menu-items"
   status = 200
