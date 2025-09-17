@@ -35,6 +35,16 @@
   status = 200
 
 [[redirects]]
+  from = "/api/store-hours"
+  to = "/.netlify/functions/store-hours"
+  status = 200
+
+[[redirects]]
+  from = "/api/store-hours/*"
+  to = "/.netlify/functions/store-hours"
+  status = 200
+
+[[redirects]]
   from = "/api/auth/google/callback"
   to = "/.netlify/functions/auth-google-callback"
   status = 200

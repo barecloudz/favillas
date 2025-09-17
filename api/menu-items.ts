@@ -44,8 +44,8 @@ export const handler: Handler = async (event, context) => {
     if (event.httpMethod === 'GET') {
       // Get all menu items
       const menuItems = await sql`
-        SELECT * FROM menu_items 
-        ORDER BY category_id, name
+        SELECT * FROM menu_items
+        ORDER BY category, name
       `;
 
       return {
@@ -60,8 +60,8 @@ export const handler: Handler = async (event, context) => {
       const data = JSON.parse(event.body || '{}');
       
       const menuItem = await sql`
-        INSERT INTO menu_items (name, description, base_price, category_id, is_available, image_url)
-        VALUES (${data.name}, ${data.description || ''}, ${data.basePrice}, ${data.categoryId}, ${data.isAvailable !== false}, ${data.imageUrl || ''})
+        INSERT INTO menu_items (name, description, base_price, category, is_available, image_url)
+        VALUES (${data.name}, ${data.description || ''}, ${data.basePrice}, ${data.category}, ${data.isAvailable !== false}, ${data.imageUrl || ''})
         RETURNING *
       `;
 
@@ -78,11 +78,11 @@ export const handler: Handler = async (event, context) => {
       const id = parseInt(event.path.split('/').pop() || '0');
       
       const menuItem = await sql`
-        UPDATE menu_items 
-        SET name = ${data.name}, 
-            description = ${data.description || ''}, 
-            base_price = ${data.basePrice}, 
-            category_id = ${data.categoryId}, 
+        UPDATE menu_items
+        SET name = ${data.name},
+            description = ${data.description || ''},
+            base_price = ${data.basePrice},
+            category = ${data.category},
             is_available = ${data.isAvailable !== false},
             image_url = ${data.imageUrl || ''}
         WHERE id = ${id}

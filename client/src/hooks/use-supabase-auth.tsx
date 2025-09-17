@@ -32,8 +32,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [, navigate] = useLocation();
 
   useEffect(() => {
+    // Initialize auth state on app load
+    const initializeAuth = async () => {
+      try {
+        setLoading(true);
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error('Error getting session:', error);
+        }
+
+        console.log('🔄 Initializing auth state:', session ? 'Session found' : 'No session');
+        setSession(session);
+        const mappedUser = mapSupabaseUser(session?.user || null);
+        setUser(mappedUser);
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Set up auth state listener
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        console.log('🔄 Auth state changed:', event, session ? 'Session exists' : 'No session');
         setSession(session);
         const mappedUser = mapSupabaseUser(session?.user || null);
         setUser(mappedUser);
@@ -41,12 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      const mappedUser = mapSupabaseUser(session?.user || null);
-      setUser(mappedUser);
-      setLoading(false);
-    });
+    // Initialize auth state
+    initializeAuth();
 
     return () => {
       authListener.subscription.unsubscribe();

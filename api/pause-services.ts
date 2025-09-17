@@ -42,11 +42,11 @@ export const handler: Handler = async (event, context) => {
     const sql = getDB();
 
     if (event.httpMethod === 'GET') {
-      // Get pause services settings
+      // Get pause services settings from system_settings table
       const settings = await sql`
-        SELECT * FROM system_settings 
-        WHERE key LIKE 'pause_%'
-        ORDER BY key
+        SELECT setting_key as key, setting_value as value FROM system_settings
+        WHERE setting_key LIKE 'pause_%'
+        ORDER BY setting_key
       `;
       
       // Convert to object format
