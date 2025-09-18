@@ -2,31 +2,35 @@ import { useEffect } from 'react'
 import { useLocation } from 'wouter'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
-import { mapSupabaseUser } from '@/lib/user-mapping'
+import { useAuth } from '@/hooks/use-supabase-auth'
 
 export default function AuthCallback() {
   const [, navigate] = useLocation()
   const { toast } = useToast()
+  const { user, loading } = useAuth()
 
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        console.log('🔄 Auth callback started')
+
         // Check if we have tokens in the URL fragment
         const hash = window.location.hash.substring(1)
         const params = new URLSearchParams(hash)
-        
+
         const access_token = params.get('access_token')
         const refresh_token = params.get('refresh_token')
-        
+
         if (access_token && refresh_token) {
+          console.log('🔑 Setting session from URL tokens')
           // Set the session with the tokens from the URL fragment
           const { data, error } = await supabase.auth.setSession({
             access_token,
             refresh_token,
           })
-          
+
           if (error) {
-            console.error('Error setting session:', error)
+            console.error('❌ Error setting session:', error)
             toast({
               title: 'Authentication failed',
               description: error.message,
@@ -35,40 +39,30 @@ export default function AuthCallback() {
             navigate('/auth?error=auth_error')
             return
           }
-          
-          if (data.session) {
-            const mappedUser = mapSupabaseUser(data.session.user)
-            console.log('Authentication successful:', mappedUser)
-            toast({
-              title: 'Welcome!',
-              description: `Welcome back, ${mappedUser?.firstName || 'User'}!`,
-            })
-            navigate('/')
-          } else {
-            console.log('No session found after setting tokens')
-            navigate('/auth')
-          }
+
+          console.log('✅ Session set successfully, waiting for auth hook to process')
+          // Don't navigate immediately - wait for auth hook to process
         } else {
+          console.log('⚠️ No tokens in URL fragment, checking existing session')
           // Fallback: try to get existing session
           const { data, error } = await supabase.auth.getSession()
-          
+
           if (error) {
-            console.error('Auth callback error:', error)
+            console.error('❌ Auth callback error:', error)
             navigate('/auth?error=auth_error')
             return
           }
 
-          if (data.session) {
-            const mappedUser = mapSupabaseUser(data.session.user)
-            console.log('Authentication successful:', mappedUser)
-            navigate('/')
-          } else {
-            console.log('No session found')
+          if (!data.session) {
+            console.log('❌ No session found')
             navigate('/auth')
+            return
           }
+
+          console.log('✅ Found existing session, waiting for auth hook to process')
         }
       } catch (error) {
-        console.error('Auth callback error:', error)
+        console.error('❌ Auth callback error:', error)
         toast({
           title: 'Authentication failed',
           description: 'There was an error completing your sign-in.',
@@ -80,6 +74,24 @@ export default function AuthCallback() {
 
     handleAuthCallback()
   }, [navigate, toast])
+
+  // Watch for auth state changes and navigate when user is loaded
+  useEffect(() => {
+    if (!loading) {
+      if (user) {
+        console.log('✅ User authenticated, redirecting to home')
+        toast({
+          title: 'Welcome!',
+          description: `Welcome back, ${user.firstName || 'User'}!`,
+        })
+        navigate('/')
+      } else {
+        // If auth processing is complete but no user, redirect to auth
+        console.log('❌ No user after auth processing, redirecting to auth')
+        navigate('/auth')
+      }
+    }
+  }, [user, loading, navigate, toast])
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
