@@ -91,43 +91,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (session) {
-          console.log('🔄 Found Supabase session (Google user):', session.user.id);
+          console.log('🔄 Found Supabase session (Google user)');
           setSession(session);
-          // Fetch complete profile instead of using basic mapping
-          try {
-            console.log('🔄 Attempting to fetch user profile during init');
-
-            // Add timeout to prevent hanging during init
-            const profilePromise = fetchUserProfile();
-            const timeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Profile fetch timeout during init')), 10000)
-            );
-
-            const completeProfile = await Promise.race([profilePromise, timeoutPromise]);
-
-            if (completeProfile) {
-              console.log('✅ Successfully fetched complete profile during init');
-              setUser(completeProfile);
-            } else {
-              console.log('⚠️ Profile fetch returned null during init, using basic mapping');
-              // Fallback to basic mapping if profile fetch fails
-              const mappedUser = mapSupabaseUser(session?.user || null);
-              setUser(mappedUser);
-            }
-          } catch (error) {
-            console.error('❌ Failed to fetch user profile during init:', error);
-            console.log('🚨 Signing out due to init profile fetch failure');
-
-            // If profile fetch fails, likely means user is not properly authenticated
-            try {
-              await supabase.auth.signOut();
-            } catch (signOutError) {
-              console.error('Failed to sign out during init:', signOutError);
-            }
-
-            setUser(null);
-            setSession(null);
-          }
+          const mappedUser = mapSupabaseUser(session?.user || null);
+          setUser(mappedUser);
         } else {
           // If no Supabase session, check for legacy JWT cookie
           console.log('🔄 No Supabase session, checking for legacy JWT cookie');
@@ -137,27 +104,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             if (userData && userData.id) {
               console.log('🔑 Found legacy JWT session:', userData.username);
-              // Fetch complete profile for legacy users too
-              const completeProfile = await fetchUserProfile();
-              if (completeProfile) {
-                setUser(completeProfile);
-                console.log('✅ Legacy session restored with complete profile');
-              } else {
-                // Fallback to basic user data if profile fetch fails
-                const mappedUser: MappedUser = {
-                  id: userData.id?.toString() || '',
-                  email: userData.email || userData.username || '',
-                  firstName: userData.firstName || userData.username || 'User',
-                  lastName: userData.lastName || '',
-                  phone: userData.phone || '',
-                  address: userData.address || '',
-                  role: userData.role || 'customer',
-                  isAdmin: userData.role === 'admin' || userData.role === 'superadmin' || userData.username === 'superadmin',
-                  isGoogleUser: false
-                };
-                setUser(mappedUser);
-                console.log('✅ Legacy session restored with basic data');
-              }
+              const mappedUser: MappedUser = {
+                id: userData.id?.toString() || '',
+                email: userData.email || userData.username || '',
+                firstName: userData.firstName || userData.username || 'User',
+                lastName: userData.lastName || '',
+                phone: userData.phone || '',
+                address: userData.address || '',
+                role: userData.role || 'customer',
+                isAdmin: userData.role === 'admin' || userData.role === 'superadmin' || userData.username === 'superadmin',
+                isGoogleUser: false
+              };
+              setUser(mappedUser);
+              console.log('✅ Legacy session restored');
             } else {
               console.log('❌ No valid authentication found');
             }
@@ -179,43 +138,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
 
         if (session) {
-          // Fetch complete profile for authenticated users with timeout
-          try {
-            console.log('🔄 Attempting to fetch user profile for session:', session.user.id);
-
-            // Add timeout to prevent hanging
-            const profilePromise = fetchUserProfile();
-            const timeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Profile fetch timeout')), 10000)
-            );
-
-            const completeProfile = await Promise.race([profilePromise, timeoutPromise]);
-
-            if (completeProfile) {
-              console.log('✅ Successfully fetched complete profile');
-              setUser(completeProfile);
-            } else {
-              console.log('⚠️ Profile fetch returned null, using basic mapping');
-              // Fallback to basic mapping
-              const mappedUser = mapSupabaseUser(session?.user || null);
-              setUser(mappedUser);
-            }
-          } catch (error) {
-            console.error('❌ Failed to fetch user profile, error:', error);
-            console.log('🚨 Signing out due to profile fetch failure');
-
-            // If profile fetch fails, likely means user is not properly authenticated
-            try {
-              await supabase.auth.signOut();
-            } catch (signOutError) {
-              console.error('Failed to sign out:', signOutError);
-            }
-
-            setUser(null);
-            setSession(null);
-          }
+          const mappedUser = mapSupabaseUser(session?.user || null);
+          setUser(mappedUser);
         } else {
-          console.log('🔄 No session, clearing user');
           setUser(null);
         }
         setLoading(false);
@@ -306,31 +231,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest("POST", "/api/login", credentials);
       return await res.json();
     },
-    onSuccess: async (user: SelectUser) => {
+    onSuccess: (user: SelectUser) => {
       console.log('🔑 Legacy login successful, updating auth state:', user);
 
       // Update query cache
       queryClient.setQueryData(["/api/user"], user);
 
-      // Fetch complete profile after successful login
-      const completeProfile = await fetchUserProfile();
-      if (completeProfile) {
-        setUser(completeProfile);
-      } else {
-        // Fallback to basic user data
-        const mappedUser: MappedUser = {
-          id: user.id?.toString() || '',
-          email: user.email || user.username || '',
-          firstName: user.firstName || user.username || 'User',
-          lastName: user.lastName || '',
-          phone: user.phone || '',
-          address: user.address || '',
-          role: user.role || 'customer',
-          isAdmin: user.role === 'admin' || user.role === 'superadmin' || user.username === 'superadmin',
-          isGoogleUser: false
-        };
-        setUser(mappedUser);
-      }
+      // CRITICAL: Update the auth state that components are checking
+      const mappedUser: MappedUser = {
+        id: user.id?.toString() || '',
+        email: user.email || user.username || '',
+        firstName: user.firstName || user.username || 'User',
+        lastName: user.lastName || '',
+        phone: user.phone || '',
+        address: user.address || '',
+        role: user.role || 'customer',
+        isAdmin: user.role === 'admin' || user.role === 'superadmin' || user.username === 'superadmin',
+        isGoogleUser: false
+      };
+
+      setUser(mappedUser);
 
       toast({
         title: "Login successful",
@@ -352,31 +272,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest("POST", "/api/register", credentials);
       return await res.json();
     },
-    onSuccess: async (user: SelectUser) => {
+    onSuccess: (user: SelectUser) => {
       console.log('🔑 Legacy registration successful, updating auth state:', user);
 
       // Update query cache
       queryClient.setQueryData(["/api/user"], user);
 
-      // Fetch complete profile after successful registration
-      const completeProfile = await fetchUserProfile();
-      if (completeProfile) {
-        setUser(completeProfile);
-      } else {
-        // Fallback to basic user data
-        const mappedUser: MappedUser = {
-          id: user.id?.toString() || '',
-          email: user.email || user.username || '',
-          firstName: user.firstName || user.username || 'User',
-          lastName: user.lastName || '',
-          phone: user.phone || '',
-          address: user.address || '',
-          role: user.role || 'customer',
-          isAdmin: user.role === 'admin' || user.role === 'superadmin' || user.username === 'superadmin',
-          isGoogleUser: false
-        };
-        setUser(mappedUser);
-      }
+      // CRITICAL: Update the auth state that components are checking
+      const mappedUser: MappedUser = {
+        id: user.id?.toString() || '',
+        email: user.email || user.username || '',
+        firstName: user.firstName || user.username || 'User',
+        lastName: user.lastName || '',
+        phone: user.phone || '',
+        address: user.address || '',
+        role: user.role || 'customer',
+        isAdmin: user.role === 'admin' || user.role === 'superadmin' || user.username === 'superadmin',
+        isGoogleUser: false
+      };
+
+      setUser(mappedUser);
 
       toast({
         title: "Registration successful",
