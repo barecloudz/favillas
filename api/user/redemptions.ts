@@ -23,7 +23,7 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: number; supabaseUserId: string | null; username: string; role: string; isSupabaseUser: boolean } | null {
+function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
   const authHeader = event.headers.authorization;
   let token = authHeader && authHeader.split(' ')[1];
 
@@ -54,12 +54,12 @@ function authenticateToken(event: any): { userId: number; supabaseUserId: string
         const numericUserId = parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16);
         console.log('✅ Converted to numeric ID:', numericUserId);
 
+        // Return the Supabase user ID as the userId for now
+        // We'll need to create a proper mapping later
         return {
-          userId: numericUserId,
-          supabaseUserId: supabaseUserId,
+          userId: parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16) || 1, // Convert to number
           username: payload.email || 'supabase_user',
-          role: 'customer',
-          isSupabaseUser: true
+          role: 'customer'
         };
       }
     } catch (supabaseError) {
@@ -75,10 +75,8 @@ function authenticateToken(event: any): { userId: number; supabaseUserId: string
     const decoded = jwt.verify(token, jwtSecret) as any;
     return {
       userId: decoded.userId,
-      supabaseUserId: null,
       username: decoded.username,
-      role: decoded.role || 'customer',
-      isSupabaseUser: false
+      role: decoded.role || 'customer'
     };
   } catch (error) {
     console.error('Token authentication failed:', error);
@@ -123,7 +121,7 @@ export const handler: Handler = async (event, context) => {
   try {
     const sql = getDB();
 
-    console.log('🎁 Getting redemption history for user:', { userId: authPayload.userId, supabaseUserId: authPayload.supabaseUserId });
+    console.log('🎁 Getting redemption history for user:', { userId: authPayload.userId });
 
     // Get user's redemption history (vouchers created from points) - use numeric user ID
     const redemptions = await sql`

@@ -24,7 +24,7 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: number; supabaseUserId: string | null; username: string; role: string; isSupabaseUser: boolean } | null {
+function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
   const authHeader = event.headers.authorization;
   let token = authHeader && authHeader.split(' ')[1];
 
@@ -55,12 +55,12 @@ function authenticateToken(event: any): { userId: number; supabaseUserId: string
         const numericUserId = parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16);
         console.log('✅ Converted to numeric ID:', numericUserId);
 
+        // Return the Supabase user ID as the userId for now
+        // We'll need to create a proper mapping later
         return {
-          userId: numericUserId,
-          supabaseUserId: supabaseUserId,
+          userId: parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16) || 1, // Convert to number
           username: payload.email || 'supabase_user',
-          role: 'customer',
-          isSupabaseUser: true
+          role: 'customer'
         };
       }
     } catch (supabaseError) {
@@ -76,10 +76,8 @@ function authenticateToken(event: any): { userId: number; supabaseUserId: string
     const decoded = jwt.verify(token, jwtSecret) as any;
     return {
       userId: decoded.userId,
-      supabaseUserId: null,
       username: decoded.username,
-      role: decoded.role || 'customer',
-      isSupabaseUser: false
+      role: decoded.role || 'customer'
     };
   } catch (error) {
     console.error('Token authentication failed:', error);
@@ -100,13 +98,11 @@ function generateVoucherCode(discountAmount: number, discountType: string): stri
 async function createUserVoucher(
   sql: any,
   userId: number,
-  supabaseUserId: string | null,
-  isSupabaseUser: boolean,
   rewardId: number,
   reward: any
 ): Promise<{ success: boolean; voucher?: any; error?: string }> {
   try {
-    console.log('🎁 Creating voucher for user:', { userId, supabaseUserId, rewardId });
+    console.log('🎁 Creating voucher for user:', { userId, rewardId });
 
     // Look up user by numeric ID (same conversion logic as other APIs)
     const userQuery = await sql`SELECT * FROM users WHERE id = ${userId}`;
@@ -193,7 +189,6 @@ async function createUserVoucher(
       // Create voucher
       const voucherData = {
         user_id: userId,
-        supabase_user_id: supabaseUserId,
         reward_id: rewardId,
         voucher_code: voucherCode,
         discount_amount: discountAmount,
@@ -208,11 +203,11 @@ async function createUserVoucher(
 
       const voucher = await transaction`
         INSERT INTO user_vouchers (
-          user_id, supabase_user_id, reward_id, voucher_code,
+          user_id, reward_id, voucher_code,
           discount_amount, discount_type, min_order_amount,
           points_used, status, expires_at, title, description
         ) VALUES (
-          ${voucherData.user_id}, ${voucherData.supabase_user_id}, ${voucherData.reward_id}, ${voucherData.voucher_code},
+          ${voucherData.user_id}, ${voucherData.reward_id}, ${voucherData.voucher_code},
           ${voucherData.discount_amount}, ${voucherData.discount_type}, ${voucherData.min_order_amount},
           ${voucherData.points_used}, ${voucherData.status}, ${voucherData.expires_at}, ${voucherData.title}, ${voucherData.description}
         )
@@ -336,8 +331,6 @@ export const handler: Handler = async (event, context) => {
     const result = await createUserVoucher(
       sql,
       authPayload.userId,
-      authPayload.supabaseUserId,
-      authPayload.isSupabaseUser,
       parsedRewardId,
       reward
     );

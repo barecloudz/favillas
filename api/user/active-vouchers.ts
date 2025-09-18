@@ -23,10 +23,12 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: number; supabaseUserId: string | null; username: string; role: string; isSupabaseUser: boolean } | null {
+function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
+  // Check for JWT token in Authorization header first
   const authHeader = event.headers.authorization;
-  let token = authHeader && authHeader.split(' ')[1];
+  let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
+  // If no Authorization header, check for auth-token cookie
   if (!token) {
     const cookies = event.headers.cookie;
     if (cookies) {
@@ -37,7 +39,9 @@ function authenticateToken(event: any): { userId: number; supabaseUserId: string
     }
   }
 
-  if (!token) return null;
+  if (!token) {
+    return null;
+  }
 
   try {
     // First try to decode as Supabase JWT token
@@ -50,20 +54,16 @@ function authenticateToken(event: any): { userId: number; supabaseUserId: string
         const supabaseUserId = payload.sub;
         console.log('✅ Supabase user ID:', supabaseUserId);
 
-        // Convert Supabase UUID to numeric user ID using same logic as user-rewards API
-        const numericUserId = parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16);
-        console.log('✅ Converted to numeric ID:', numericUserId);
-
+        // Return the Supabase user ID as the userId for now
+        // We'll need to create a proper mapping later
         return {
-          userId: numericUserId,
-          supabaseUserId: supabaseUserId,
+          userId: parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16) || 1, // Convert to number
           username: payload.email || 'supabase_user',
-          role: 'customer',
-          isSupabaseUser: true
+          role: 'customer'
         };
       }
     } catch (supabaseError) {
-      console.log('Not a Supabase token, trying JWT verification:', supabaseError);
+      console.log('Not a Supabase token, trying JWT verification');
     }
 
     // Fallback to our JWT verification
@@ -75,10 +75,8 @@ function authenticateToken(event: any): { userId: number; supabaseUserId: string
     const decoded = jwt.verify(token, jwtSecret) as any;
     return {
       userId: decoded.userId,
-      supabaseUserId: null,
       username: decoded.username,
-      role: decoded.role || 'customer',
-      isSupabaseUser: false
+      role: decoded.role || 'customer'
     };
   } catch (error) {
     console.error('Token authentication failed:', error);
