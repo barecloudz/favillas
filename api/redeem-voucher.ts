@@ -58,7 +58,7 @@ function authenticateToken(event: any): { userId: number; username: string; role
         // Return the Supabase user ID as the userId for now
         // We'll need to create a proper mapping later
         return {
-          userId: parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16) || 1, // Convert to number
+          userId: Math.abs(parseInt(supabaseUserId.replace(/-/g, '').substring(0, 6), 16) % 2000000000) + 1000000, // Convert to safe integer
           username: payload.email || 'supabase_user',
           role: 'customer'
         };
