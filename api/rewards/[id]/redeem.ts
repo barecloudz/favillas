@@ -23,7 +23,7 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
+function authenticateToken(event: any): { userId: number | null; supabaseUserId: string | null; username: string; role: string; isSupabase: boolean } | null {
   const authHeader = event.headers.authorization;
   let token = authHeader && authHeader.split(' ')[1];
 
@@ -40,6 +40,30 @@ function authenticateToken(event: any): { userId: number; username: string; role
   if (!token) return null;
 
   try {
+    // First try to decode as Supabase JWT token
+    try {
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+      console.log('🔍 Supabase token payload:', payload);
+
+      if (payload.iss && payload.iss.includes('supabase')) {
+        // This is a Supabase token, extract user ID
+        const supabaseUserId = payload.sub;
+        console.log('✅ Supabase user ID:', supabaseUserId);
+
+        // For Supabase users, return the UUID directly
+        return {
+          userId: null, // No integer user ID for Supabase users
+          supabaseUserId: supabaseUserId,
+          username: payload.email || 'supabase_user',
+          role: 'customer',
+          isSupabase: true
+        };
+      }
+    } catch (supabaseError) {
+      console.log('Not a Supabase token, trying JWT verification');
+    }
+
+    // Fallback to our JWT verification
     const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
     if (!jwtSecret) {
       throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
@@ -48,10 +72,13 @@ function authenticateToken(event: any): { userId: number; username: string; role
     const decoded = jwt.verify(token, jwtSecret) as any;
     return {
       userId: decoded.userId,
+      supabaseUserId: null,
       username: decoded.username,
-      role: decoded.role || 'customer'
+      role: decoded.role || 'customer',
+      isSupabase: false
     };
   } catch (error) {
+    console.error('Token authentication failed:', error);
     return null;
   }
 }
@@ -125,45 +152,123 @@ export const handler: Handler = async (event, context) => {
         throw new Error('Reward usage limit reached');
       }
 
-      // Get user's current points
-      const userPoints = await sql`
-        SELECT
-          COALESCE(SUM(CASE WHEN transaction_type = 'earned' THEN points_earned ELSE 0 END), 0) -
-          COALESCE(SUM(CASE WHEN transaction_type = 'redeemed' THEN points_redeemed ELSE 0 END), 0) as current_points
-        FROM user_points
-        WHERE user_id = ${authPayload.userId}
-      `;
+      // Get user's current points - handle both authentication types
+      let currentPoints = 0;
 
-      const currentPoints = userPoints[0]?.current_points || 0;
+      if (authPayload.isSupabase) {
+        // Supabase user - query using supabase_user_id
+        const userPointsRecord = await sql`
+          SELECT points FROM user_points WHERE supabase_user_id = ${authPayload.supabaseUserId}
+        `;
+        currentPoints = userPointsRecord[0]?.points || 0;
+        console.log('🎁 Supabase user current points:', currentPoints);
+      } else {
+        // Legacy user - query using user_id
+        const userPointsRecord = await sql`
+          SELECT points FROM user_points WHERE user_id = ${authPayload.userId}
+        `;
+        currentPoints = userPointsRecord[0]?.points || 0;
+        console.log('🎁 Legacy user current points:', currentPoints);
+      }
+
+      console.log('🔍 User auth info:', {
+        isSupabase: authPayload.isSupabase,
+        userId: authPayload.userId,
+        supabaseUserId: authPayload.supabaseUserId,
+        currentPoints
+      });
 
       if (currentPoints < rewardData.points_required) {
         throw new Error(`Insufficient points. You need ${rewardData.points_required} points but have ${currentPoints}`);
       }
 
-      // Create redemption record
-      const redemption = await sql`
-        INSERT INTO reward_redemptions (user_id, reward_id, points_spent, redeemed_at, expires_at)
-        VALUES (
-          ${authPayload.userId},
-          ${rewardId},
-          ${rewardData.points_required},
-          NOW(),
-          ${rewardData.expires_at || null}
-        )
-        RETURNING *
-      `;
+      // Create redemption record - handle both authentication types
+      let redemption;
 
-      // Record points transaction
-      await sql`
-        INSERT INTO user_points (user_id, points_redeemed, transaction_type, reference_id, description)
-        VALUES (
-          ${authPayload.userId},
-          ${rewardData.points_required},
-          'redeemed',
-          ${rewardId},
-          'Redeemed reward: ' || ${rewardData.name}
-        )
-      `;
+      if (authPayload.isSupabase) {
+        // Supabase user redemption
+        redemption = await sql`
+          INSERT INTO user_points_redemptions (supabase_user_id, points_reward_id, points_spent, is_used, used_at, expires_at, created_at)
+          VALUES (
+            ${authPayload.supabaseUserId},
+            ${rewardId},
+            ${rewardData.points_required},
+            true,
+            NOW(),
+            ${rewardData.expires_at || null},
+            NOW()
+          )
+          RETURNING *
+        `;
+        console.log('✅ Created Supabase user redemption record');
+      } else {
+        // Legacy user redemption
+        redemption = await sql`
+          INSERT INTO user_points_redemptions (user_id, points_reward_id, points_spent, is_used, used_at, expires_at, created_at)
+          VALUES (
+            ${authPayload.userId},
+            ${rewardId},
+            ${rewardData.points_required},
+            true,
+            NOW(),
+            ${rewardData.expires_at || null},
+            NOW()
+          )
+          RETURNING *
+        `;
+        console.log('✅ Created legacy user redemption record');
+      }
+
+      // Record points transaction and update user_points balance
+      if (authPayload.isSupabase) {
+        // Supabase user transaction
+        await sql`
+          INSERT INTO points_transactions (supabase_user_id, type, points, description, created_at)
+          VALUES (
+            ${authPayload.supabaseUserId},
+            'redeemed',
+            ${-rewardData.points_required},
+            'Redeemed reward: ' || ${rewardData.name},
+            NOW()
+          )
+        `;
+
+        // Update user_points balance
+        await sql`
+          UPDATE user_points
+          SET
+            points = points - ${rewardData.points_required},
+            total_redeemed = total_redeemed + ${rewardData.points_required},
+            updated_at = NOW()
+          WHERE supabase_user_id = ${authPayload.supabaseUserId}
+        `;
+
+        console.log('✅ Updated Supabase user points balance');
+      } else {
+        // Legacy user transaction
+        await sql`
+          INSERT INTO points_transactions (user_id, type, points, description, created_at)
+          VALUES (
+            ${authPayload.userId},
+            'redeemed',
+            ${-rewardData.points_required},
+            'Redeemed reward: ' || ${rewardData.name},
+            NOW()
+          )
+        `;
+
+        // Update user_points balance
+        await sql`
+          UPDATE user_points
+          SET
+            points = points - ${rewardData.points_required},
+            total_redeemed = total_redeemed + ${rewardData.points_required},
+            updated_at = NOW()
+          WHERE user_id = ${authPayload.userId}
+        `;
+
+        console.log('✅ Updated legacy user points balance');
+      }
 
       // Update reward usage count
       await sql`
@@ -172,6 +277,8 @@ export const handler: Handler = async (event, context) => {
         WHERE id = ${rewardId}
       `;
 
+      console.log('✅ Reward redemption completed successfully');
+
       return {
         statusCode: 200,
         headers,
@@ -179,7 +286,9 @@ export const handler: Handler = async (event, context) => {
           success: true,
           redemption: redemption[0],
           reward: rewardData,
-          message: `Successfully redeemed ${rewardData.name}!`
+          message: `Successfully redeemed ${rewardData.name}!`,
+          userType: authPayload.isSupabase ? 'google' : 'legacy',
+          userId: authPayload.isSupabase ? authPayload.supabaseUserId : authPayload.userId
         })
       };
     });
@@ -190,8 +299,11 @@ export const handler: Handler = async (event, context) => {
       statusCode: 400,
       headers,
       body: JSON.stringify({
+        success: false,
         message: error.message || 'Failed to redeem reward',
-        error: error.message
+        error: error.message,
+        userType: authPayload?.isSupabase ? 'google' : 'legacy',
+        userId: authPayload?.isSupabase ? authPayload.supabaseUserId : authPayload?.userId
       })
     };
   }

@@ -517,9 +517,21 @@ export const handler: Handler = async (event, context) => {
         };
 
         // Save contact information to user profile for authenticated users
+        console.log('🔍 Orders API: Contact info saving check:', {
+          hasUserId: !!userId,
+          hasSupabaseUserId: !!supabaseUserId,
+          hasPhone: !!orderData.phone,
+          hasAddress: !!orderData.address,
+          hasAddressData: !!orderData.addressData,
+          orderDataKeys: Object.keys(orderData),
+          phoneValue: orderData.phone,
+          addressValue: orderData.address,
+          addressDataValue: orderData.addressData
+        });
+
         if ((userId || supabaseUserId) && (orderData.phone || orderData.address || orderData.addressData)) {
           try {
-            console.log('💾 Orders API: Saving contact info to user profile');
+            console.log('💾 Orders API: Saving contact info to user profile for user:', userId || supabaseUserId);
 
             // Extract address components from orderData
             const addressComponents = {
@@ -531,6 +543,7 @@ export const handler: Handler = async (event, context) => {
             };
 
             console.log('📍 Address components to save:', addressComponents);
+            console.log('📍 User identification:', { userId, supabaseUserId, authPayload: authPayload?.username });
 
             if (supabaseUserId) {
               // Supabase user - create or update profile
@@ -610,6 +623,16 @@ export const handler: Handler = async (event, context) => {
             console.error('❌ Orders API: Error saving contact info to profile:', contactInfoError);
             // Don't fail the order if contact info save fails
           }
+        } else {
+          console.log('⚠️ Orders API: Contact info NOT saved because:', {
+            noUserId: !userId && !supabaseUserId,
+            noContactData: !orderData.phone && !orderData.address && !orderData.addressData,
+            userId,
+            supabaseUserId,
+            phone: orderData.phone,
+            address: orderData.address,
+            addressData: orderData.addressData
+          });
         }
 
         // Create the order - store both address data and order breakdown metadata in address_data
@@ -703,16 +726,20 @@ export const handler: Handler = async (event, context) => {
 
         // Fetch user contact information to include in order confirmation
         let userContactInfo = null;
+        console.log('📞 Orders API: Attempting to fetch user contact info for order confirmation:', { userId, supabaseUserId });
+
         if (userId || supabaseUserId) {
           try {
             let userQuery;
             if (supabaseUserId) {
+              console.log('📞 Orders API: Querying contact info for Supabase user:', supabaseUserId);
               userQuery = await sql`
                 SELECT phone, address, city, state, zip_code
                 FROM users
                 WHERE supabase_user_id = ${supabaseUserId}
               `;
             } else {
+              console.log('📞 Orders API: Querying contact info for legacy user:', userId);
               userQuery = await sql`
                 SELECT phone, address, city, state, zip_code
                 FROM users
@@ -720,13 +747,19 @@ export const handler: Handler = async (event, context) => {
               `;
             }
 
+            console.log('📞 Orders API: User query result:', userQuery);
+
             if (userQuery.length > 0) {
               userContactInfo = userQuery[0];
-              console.log('📞 Orders API: Retrieved user contact info for order confirmation');
+              console.log('📞 Orders API: Retrieved user contact info for order confirmation:', userContactInfo);
+            } else {
+              console.log('⚠️ Orders API: No user record found for contact info retrieval');
             }
           } catch (contactInfoError) {
             console.error('❌ Orders API: Error retrieving user contact info:', contactInfoError);
           }
+        } else {
+          console.log('⚠️ Orders API: No user ID available for contact info retrieval');
         }
 
         // Enhance order object with user contact information
