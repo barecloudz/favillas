@@ -125,6 +125,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/fix-user-migration"
+  to = "/.netlify/functions/fix-user-migration"
+  status = 200
+
+[[redirects]]
   from = "/api/redeem-no-auth"
   to = "/.netlify/functions/redeem-no-auth"
   status = 200
