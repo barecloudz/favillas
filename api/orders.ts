@@ -182,12 +182,39 @@ export const handler: Handler = async (event, context) => {
           } : null
         }));
 
+        // Fetch user contact information for single order view
+        let userContactInfo = null;
+        if (order.user_id || order.supabase_user_id) {
+          try {
+            let userQuery;
+            if (order.supabase_user_id) {
+              userQuery = await sql`
+                SELECT phone, address, city, state, zip_code
+                FROM users
+                WHERE supabase_user_id = ${order.supabase_user_id}
+              `;
+            } else {
+              userQuery = await sql`
+                SELECT phone, address, city, state, zip_code
+                FROM users
+                WHERE id = ${order.user_id}
+              `;
+            }
+
+            if (userQuery.length > 0) {
+              userContactInfo = userQuery[0];
+            }
+          } catch (contactInfoError) {
+            console.error('❌ Orders API: Error retrieving user contact info for single order:', contactInfoError);
+          }
+        }
+
         console.log('✅ Orders API: Successfully retrieved order', orderId);
 
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ ...order, items: transformedItems })
+          body: JSON.stringify({ ...order, items: transformedItems, userContactInfo })
         };
       }
 
@@ -323,15 +350,30 @@ export const handler: Handler = async (event, context) => {
               if (existingUser.length === 0) {
                 console.log('⚠️ Orders API: Creating user record for legacy authenticated user');
 
-                // Create user record
+                // Extract address components for new user creation
+                const addressComponents = {
+                  phone: orderData.phone || '',
+                  address: orderData.address || '',
+                  city: orderData.addressData?.city || '',
+                  state: orderData.addressData?.state || '',
+                  zip_code: orderData.addressData?.zipCode || orderData.addressData?.zip || ''
+                };
+
+                // Create user record with contact information
                 await sql`
-                  INSERT INTO users (id, username, email, role, phone, password, first_name, last_name, created_at, updated_at)
-                  VALUES (
+                  INSERT INTO users (
+                    id, username, email, role, phone, address, city, state, zip_code,
+                    password, first_name, last_name, created_at, updated_at
+                  ) VALUES (
                     ${userId},
                     ${authPayload.username || 'user'},
                     ${authPayload.username || 'user@example.com'},
                     'customer',
-                    ${orderData.phone || ''},
+                    ${addressComponents.phone},
+                    ${addressComponents.address},
+                    ${addressComponents.city},
+                    ${addressComponents.state},
+                    ${addressComponents.zip_code},
                     'AUTH_USER',
                     ${authPayload.username?.split('@')[0] || 'User'},
                     'Customer',
@@ -474,6 +516,102 @@ export const handler: Handler = async (event, context) => {
           items: validItems // Use only valid items
         };
 
+        // Save contact information to user profile for authenticated users
+        if ((userId || supabaseUserId) && (orderData.phone || orderData.address || orderData.addressData)) {
+          try {
+            console.log('💾 Orders API: Saving contact info to user profile');
+
+            // Extract address components from orderData
+            const addressComponents = {
+              phone: orderData.phone || '',
+              address: orderData.address || '',
+              city: orderData.addressData?.city || '',
+              state: orderData.addressData?.state || '',
+              zip_code: orderData.addressData?.zipCode || orderData.addressData?.zip || ''
+            };
+
+            console.log('📍 Address components to save:', addressComponents);
+
+            if (supabaseUserId) {
+              // Supabase user - create or update profile
+              const existingSupabaseUser = await sql`
+                SELECT id FROM users WHERE supabase_user_id = ${supabaseUserId}
+              `;
+
+              if (existingSupabaseUser.length === 0) {
+                // Create new Supabase user record
+                await sql`
+                  INSERT INTO users (
+                    supabase_user_id, username, email, role, phone, address, city, state, zip_code,
+                    first_name, last_name, password, created_at, updated_at
+                  ) VALUES (
+                    ${supabaseUserId},
+                    ${authPayload?.username || 'google_user'},
+                    ${authPayload?.username || 'user@example.com'},
+                    'customer',
+                    ${addressComponents.phone},
+                    ${addressComponents.address},
+                    ${addressComponents.city},
+                    ${addressComponents.state},
+                    ${addressComponents.zip_code},
+                    ${authPayload?.username?.split('@')[0] || 'User'},
+                    'Customer',
+                    'GOOGLE_USER',
+                    NOW(),
+                    NOW()
+                  )
+                  ON CONFLICT (supabase_user_id) DO UPDATE SET
+                    phone = COALESCE(NULLIF(${addressComponents.phone}, ''), users.phone),
+                    address = COALESCE(NULLIF(${addressComponents.address}, ''), users.address),
+                    city = COALESCE(NULLIF(${addressComponents.city}, ''), users.city),
+                    state = COALESCE(NULLIF(${addressComponents.state}, ''), users.state),
+                    zip_code = COALESCE(NULLIF(${addressComponents.zip_code}, ''), users.zip_code),
+                    updated_at = NOW()
+                `;
+                console.log('✅ Created/updated Supabase user profile with contact info');
+              } else {
+                // Update existing Supabase user
+                await sql`
+                  UPDATE users SET
+                    phone = COALESCE(NULLIF(${addressComponents.phone}, ''), phone),
+                    address = COALESCE(NULLIF(${addressComponents.address}, ''), address),
+                    city = COALESCE(NULLIF(${addressComponents.city}, ''), city),
+                    state = COALESCE(NULLIF(${addressComponents.state}, ''), state),
+                    zip_code = COALESCE(NULLIF(${addressComponents.zip_code}, ''), zip_code),
+                    updated_at = NOW()
+                  WHERE supabase_user_id = ${supabaseUserId}
+                `;
+                console.log('✅ Updated existing Supabase user profile with contact info');
+              }
+
+              // Initialize user points record for Supabase user if needed
+              await sql`
+                INSERT INTO user_points (supabase_user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
+                VALUES (${supabaseUserId}, 0, 0, 0, NOW(), NOW(), NOW())
+                ON CONFLICT DO NOTHING
+              `;
+
+            } else if (userId) {
+              // Legacy user - update profile
+              await sql`
+                UPDATE users SET
+                  phone = COALESCE(NULLIF(${addressComponents.phone}, ''), phone),
+                  address = COALESCE(NULLIF(${addressComponents.address}, ''), address),
+                  city = COALESCE(NULLIF(${addressComponents.city}, ''), city),
+                  state = COALESCE(NULLIF(${addressComponents.state}, ''), state),
+                  zip_code = COALESCE(NULLIF(${addressComponents.zip_code}, ''), zip_code),
+                  updated_at = NOW()
+                WHERE id = ${userId}
+              `;
+              console.log('✅ Updated legacy user profile with contact info');
+            }
+
+          } catch (contactInfoError) {
+            console.error('❌ Orders API: Error saving contact info to profile:', contactInfoError);
+            // Don't fail the order if contact info save fails
+          }
+        }
+
         // Create the order - store both address data and order breakdown metadata in address_data
         const combinedAddressData = {
           ...orderData.addressData,
@@ -549,7 +687,7 @@ export const handler: Handler = async (event, context) => {
           LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
           WHERE oi.order_id = ${newOrder.id}
         `;
-        
+
         // Transform the data to match expected frontend structure
         const transformedItems = orderItems.map(item => ({
           ...item,
@@ -562,6 +700,41 @@ export const handler: Handler = async (event, context) => {
             category: item.menu_item_category
           } : null
         }));
+
+        // Fetch user contact information to include in order confirmation
+        let userContactInfo = null;
+        if (userId || supabaseUserId) {
+          try {
+            let userQuery;
+            if (supabaseUserId) {
+              userQuery = await sql`
+                SELECT phone, address, city, state, zip_code
+                FROM users
+                WHERE supabase_user_id = ${supabaseUserId}
+              `;
+            } else {
+              userQuery = await sql`
+                SELECT phone, address, city, state, zip_code
+                FROM users
+                WHERE id = ${userId}
+              `;
+            }
+
+            if (userQuery.length > 0) {
+              userContactInfo = userQuery[0];
+              console.log('📞 Orders API: Retrieved user contact info for order confirmation');
+            }
+          } catch (contactInfoError) {
+            console.error('❌ Orders API: Error retrieving user contact info:', contactInfoError);
+          }
+        }
+
+        // Enhance order object with user contact information
+        const enhancedOrder = {
+          ...newOrder,
+          items: transformedItems,
+          userContactInfo: userContactInfo
+        };
 
         // Process voucher if provided
         if (orderData.voucherCode && (userId || supabaseUserId)) {
@@ -726,9 +899,17 @@ export const handler: Handler = async (event, context) => {
                   userPointsUpdate = await sql`
                     INSERT INTO user_points (user_id, supabase_user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
                     VALUES (NULL, ${supabaseUserId}, ${pointsToAward}, ${pointsToAward}, 0, NOW(), NOW(), NOW())
+                    ON CONFLICT DO NOTHING
                     RETURNING supabase_user_id, points, total_earned
                   `;
-                  console.log('✅ Orders API: Supabase user points created (new record):', userPointsUpdate[0]);
+
+                  // If insert was ignored due to conflict, try to fetch existing record
+                  if (userPointsUpdate.length === 0) {
+                    userPointsUpdate = await sql`
+                      SELECT supabase_user_id, points, total_earned FROM user_points WHERE supabase_user_id = ${supabaseUserId}
+                    `;
+                  }
+                  console.log('✅ Orders API: Supabase user points created/found:', userPointsUpdate[0]);
                 }
               } catch (userPointsError) {
                 console.error('❌ Orders API: Supabase user points update failed:', userPointsError);
@@ -748,7 +929,7 @@ export const handler: Handler = async (event, context) => {
         return {
           statusCode: 201,
           headers,
-          body: JSON.stringify({ ...newOrder, items: transformedItems })
+          body: JSON.stringify(enhancedOrder)
         };
       } catch (orderError) {
         console.error('❌ Orders API: Error creating order:', orderError);

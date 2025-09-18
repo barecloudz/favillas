@@ -6,12 +6,12 @@ let dbConnection: any = null;
 
 function getDB() {
   if (dbConnection) return dbConnection;
-  
+
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     throw new Error('DATABASE_URL environment variable is required');
   }
-  
+
   dbConnection = postgres(databaseUrl, {
     max: 1,
     idle_timeout: 20,
@@ -19,11 +19,11 @@ function getDB() {
     prepare: false,
     keep_alive: false,
   });
-  
+
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
+function authenticateToken(event: any): { userId: number | null; supabaseUserId: string | null; username: string; role: string; isSupabase: boolean } | null {
   // Check for JWT token in Authorization header first
   const authHeader = event.headers.authorization;
   let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
@@ -48,18 +48,19 @@ function authenticateToken(event: any): { userId: number; username: string; role
     try {
       const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
       console.log('🔍 Supabase token payload:', payload);
-      
+
       if (payload.iss && payload.iss.includes('supabase')) {
         // This is a Supabase token, extract user ID
         const supabaseUserId = payload.sub;
         console.log('✅ Supabase user ID:', supabaseUserId);
-        
-        // Return the Supabase user ID as the userId for now
-        // We'll need to create a proper mapping later
+
+        // For Supabase users, return the UUID directly
         return {
-          userId: Math.abs(parseInt(supabaseUserId.replace(/-/g, '').substring(0, 6), 16) % 2000000000) + 1000000, // Convert to safe integer
+          userId: null, // No integer user ID for Supabase users
+          supabaseUserId: supabaseUserId,
           username: payload.email || 'supabase_user',
-          role: 'customer'
+          role: 'customer',
+          isSupabase: true
         };
       }
     } catch (supabaseError) {
@@ -71,12 +72,14 @@ function authenticateToken(event: any): { userId: number; username: string; role
     if (!jwtSecret) {
       throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
     }
-    
+
     const decoded = jwt.verify(token, jwtSecret) as any;
     return {
       userId: decoded.userId,
+      supabaseUserId: null,
       username: decoded.username,
-      role: decoded.role || 'customer'
+      role: decoded.role || 'customer',
+      isSupabase: false
     };
   } catch (error) {
     console.error('Token authentication failed:', error);
@@ -91,7 +94,7 @@ export const handler: Handler = async (event, context) => {
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Content-Type': 'application/json',
   };
-  
+
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
@@ -120,102 +123,176 @@ export const handler: Handler = async (event, context) => {
 
   try {
     const sql = getDB();
-    
-    console.log('🔍 Getting rewards for user ID:', authPayload.userId);
-    
-    // First, ensure the user exists in the users table
-    const userExists = await sql`
-      SELECT id FROM users WHERE id = ${authPayload.userId}
-    `;
-    
-    if (userExists.length === 0) {
-      console.log('👤 User not found, creating new user');
-      // Create a new user for this Supabase user
-      const newUser = await sql`
-        INSERT INTO users (id, username, email, first_name, last_name, password, role, is_admin, is_active, marketing_opt_in, rewards, created_at, updated_at)
-        VALUES (${authPayload.userId}, ${authPayload.username}, ${authPayload.username}, 'User', 'Name', '', 'customer', false, true, false, 0, NOW(), NOW())
-        RETURNING id
+
+    console.log('🔍 Getting rewards for user:', authPayload.isSupabase ? authPayload.supabaseUserId : authPayload.userId);
+
+    let rewardsData;
+
+    if (authPayload.isSupabase) {
+      // Handle Supabase user (Google OAuth)
+      console.log('🔑 Processing Supabase user rewards:', authPayload.supabaseUserId);
+
+      // Get user's current points using supabase_user_id
+      const userPointsRecord = await sql`
+        SELECT
+          points,
+          total_earned,
+          total_redeemed,
+          last_earned_at,
+          updated_at
+        FROM user_points
+        WHERE supabase_user_id = ${authPayload.supabaseUserId}
       `;
-      console.log('✅ Created new user:', newUser[0].id);
-      
-      // Initialize user_points record with 0 points using proper schema
-      await sql`
-        INSERT INTO user_points (user_id, points, total_earned, total_redeemed, created_at, updated_at)
-        VALUES (${authPayload.userId}, 0, 0, 0, NOW(), NOW())
+
+      if (userPointsRecord.length === 0) {
+        console.log('📋 No user_points record found for Supabase user, creating one');
+
+        // First ensure user exists in users table
+        const userExists = await sql`
+          SELECT id FROM users WHERE supabase_user_id = ${authPayload.supabaseUserId}
+        `;
+
+        if (userExists.length === 0) {
+          // Create user record
+          await sql`
+            INSERT INTO users (
+              supabase_user_id, username, email, first_name, last_name, password, role,
+              is_admin, is_active, marketing_opt_in, rewards, created_at, updated_at
+            ) VALUES (
+              ${authPayload.supabaseUserId}, ${authPayload.username}, ${authPayload.username},
+              'User', 'Name', 'GOOGLE_USER', 'customer', false, true, false, 0, NOW(), NOW()
+            )
+            ON CONFLICT (supabase_user_id) DO NOTHING
+          `;
+          console.log('✅ Created Supabase user record');
+        }
+
+        // Create user_points record
+        await sql`
+          INSERT INTO user_points (supabase_user_id, points, total_earned, total_redeemed, created_at, updated_at)
+          VALUES (${authPayload.supabaseUserId}, 0, 0, 0, NOW(), NOW())
+          ON CONFLICT DO NOTHING
+        `;
+
+        // Create initial transaction
+        await sql`
+          INSERT INTO points_transactions (supabase_user_id, type, points, description, created_at)
+          VALUES (${authPayload.supabaseUserId}, 'signup', 0, 'Supabase user account created with 0 points', NOW())
+          ON CONFLICT DO NOTHING
+        `;
+
+        console.log('✅ Initialized Supabase user points');
+
+        rewardsData = {
+          points: 0,
+          total_earned: 0,
+          total_redeemed: 0,
+          last_earned_at: null,
+          updated_at: null
+        };
+      } else {
+        rewardsData = userPointsRecord[0];
+        console.log('✅ Retrieved Supabase user rewards data:', rewardsData);
+      }
+
+    } else {
+      // Handle legacy user (traditional authentication)
+      console.log('🔑 Processing legacy user rewards:', authPayload.userId);
+
+      // First, ensure the user exists in the users table
+      const userExists = await sql`
+        SELECT id FROM users WHERE id = ${authPayload.userId}
       `;
-      
-      // Create initial transaction record for audit trail
-      await sql`
-        INSERT INTO points_transactions (user_id, type, points, description, created_at)
-        VALUES (${authPayload.userId}, 'signup', 0, 'User account created with 0 points', NOW())
+
+      if (userExists.length === 0) {
+        console.log('👤 Legacy user not found, creating new user');
+
+        // Create a new user for this legacy user
+        await sql`
+          INSERT INTO users (
+            id, username, email, first_name, last_name, password, role,
+            is_admin, is_active, marketing_opt_in, rewards, created_at, updated_at
+          ) VALUES (
+            ${authPayload.userId}, ${authPayload.username}, ${authPayload.username},
+            'User', 'Name', 'AUTH_USER', 'customer', false, true, false, 0, NOW(), NOW()
+          )
+          ON CONFLICT (id) DO NOTHING
+        `;
+        console.log('✅ Created new legacy user');
+
+        // Initialize user_points record
+        await sql`
+          INSERT INTO user_points (user_id, points, total_earned, total_redeemed, created_at, updated_at)
+          VALUES (${authPayload.userId}, 0, 0, 0, NOW(), NOW())
+          ON CONFLICT (user_id) DO NOTHING
+        `;
+
+        // Create initial transaction
+        await sql`
+          INSERT INTO points_transactions (user_id, type, points, description, created_at)
+          VALUES (${authPayload.userId}, 'signup', 0, 'Legacy user account created with 0 points', NOW())
+        `;
+
+        console.log('✅ Initialized legacy user points');
+      }
+
+      // Get user's current points using user_id
+      const userPointsRecord = await sql`
+        SELECT
+          points,
+          total_earned,
+          total_redeemed,
+          last_earned_at,
+          updated_at
+        FROM user_points
+        WHERE user_id = ${authPayload.userId}
       `;
-      
-      console.log('✅ Initialized user points');
+
+      // If no user_points record exists, create one
+      if (userPointsRecord.length === 0) {
+        console.log('📋 No user_points record found for legacy user, creating one');
+
+        await sql`
+          INSERT INTO user_points (user_id, points, total_earned, total_redeemed, created_at, updated_at)
+          VALUES (${authPayload.userId}, 0, 0, 0, NOW(), NOW())
+          ON CONFLICT (user_id) DO NOTHING
+        `;
+
+        // Also create initial transaction
+        await sql`
+          INSERT INTO points_transactions (user_id, type, points, description, created_at)
+          VALUES (${authPayload.userId}, 'signup', 0, 'Legacy user account created with 0 points', NOW())
+        `;
+
+        rewardsData = {
+          points: 0,
+          total_earned: 0,
+          total_redeemed: 0,
+          last_earned_at: null,
+          updated_at: null
+        };
+      } else {
+        rewardsData = userPointsRecord[0];
+        console.log('✅ Retrieved legacy user rewards data:', rewardsData);
+      }
     }
-    
-    // Get user's current points from the proper user_points table
-    const userPointsRecord = await sql`
-      SELECT 
-        points,
-        total_earned,
-        total_redeemed,
-        last_earned_at,
-        updated_at
-      FROM user_points
-      WHERE user_id = ${authPayload.userId}
-    `;
-
-    // If no user_points record exists, create one
-    if (userPointsRecord.length === 0) {
-      console.log('📊 No user_points record found, creating one');
-      await sql`
-        INSERT INTO user_points (user_id, points, total_earned, total_redeemed, created_at, updated_at)
-        VALUES (${authPayload.userId}, 0, 0, 0, NOW(), NOW())
-      `;
-      
-      // Also create initial transaction
-      await sql`
-        INSERT INTO points_transactions (user_id, type, points, description, created_at)
-        VALUES (${authPayload.userId}, 'signup', 0, 'User account created with 0 points', NOW())
-      `;
-    }
-
-    // Get the current points data
-    const currentPointsData = await sql`
-      SELECT 
-        points,
-        total_earned,
-        total_redeemed,
-        last_earned_at,
-        updated_at
-      FROM user_points
-      WHERE user_id = ${authPayload.userId}
-    `;
-
-    const rewardsData = currentPointsData[0] || {
-      points: 0,
-      total_earned: 0,
-      total_redeemed: 0,
-      last_earned_at: null,
-      updated_at: null
-    };
-
-    console.log('✅ Rewards data retrieved:', rewardsData);
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        points: rewardsData.points,
-        totalPointsEarned: rewardsData.total_earned,
-        totalPointsRedeemed: rewardsData.total_redeemed,
-        lastEarnedAt: rewardsData.last_earned_at
+        points: rewardsData.points || 0,
+        totalPointsEarned: rewardsData.total_earned || 0,
+        totalPointsRedeemed: rewardsData.total_redeemed || 0,
+        lastEarnedAt: rewardsData.last_earned_at,
+        userType: authPayload.isSupabase ? 'google' : 'legacy',
+        userId: authPayload.isSupabase ? authPayload.supabaseUserId : authPayload.userId
       })
     };
 
   } catch (error) {
     console.error('❌ User Rewards API error:', error);
-    
+
     // Return default values even on error to prevent page crashes
     return {
       statusCode: 200,
@@ -224,7 +301,9 @@ export const handler: Handler = async (event, context) => {
         points: 0,
         totalPointsEarned: 0,
         totalPointsRedeemed: 0,
-        lastEarnedAt: null
+        lastEarnedAt: null,
+        userType: 'unknown',
+        userId: null
       })
     };
   }

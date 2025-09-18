@@ -23,7 +23,7 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
+function authenticateToken(event: any): { userId: number | null; supabaseUserId: string | null; username: string; role: string; isSupabase: boolean } | null {
   const authHeader = event.headers.authorization;
   let token = authHeader && authHeader.split(' ')[1];
 
@@ -50,9 +50,11 @@ function authenticateToken(event: any): { userId: number; username: string; role
         console.log('✅ Supabase user ID:', supabaseUserId);
 
         return {
-          userId: parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16) || 1,
+          userId: null, // No integer user ID for Supabase users
+          supabaseUserId: supabaseUserId,
           username: payload.email || 'supabase_user',
-          role: 'customer'
+          role: 'customer',
+          isSupabase: true
         };
       }
     } catch (supabaseError) {
@@ -68,8 +70,10 @@ function authenticateToken(event: any): { userId: number; username: string; role
     const decoded = jwt.verify(token, jwtSecret) as any;
     return {
       userId: decoded.userId,
+      supabaseUserId: null,
       username: decoded.username,
-      role: decoded.role || 'customer'
+      role: decoded.role || 'customer',
+      isSupabase: false
     };
   } catch (error) {
     console.error('Token authentication failed:', error);
@@ -108,12 +112,24 @@ export const handler: Handler = async (event, context) => {
     const sql = getDB();
 
     if (event.httpMethod === 'GET') {
-      // Get user profile
-      const user = await sql`
-        SELECT id, username, email, phone, address, role, created_at
-        FROM users
-        WHERE id = ${authPayload.userId}
-      `;
+      // Get user profile - support both authentication types
+      let user;
+
+      if (authPayload.isSupabase) {
+        console.log('📝 Getting Supabase user profile:', authPayload.supabaseUserId);
+        user = await sql`
+          SELECT id, username, email, phone, address, city, state, zip_code, role, created_at, supabase_user_id
+          FROM users
+          WHERE supabase_user_id = ${authPayload.supabaseUserId}
+        `;
+      } else {
+        console.log('📝 Getting legacy user profile:', authPayload.userId);
+        user = await sql`
+          SELECT id, username, email, phone, address, city, state, zip_code, role, created_at
+          FROM users
+          WHERE id = ${authPayload.userId}
+        `;
+      }
 
       if (user.length === 0) {
         return {
@@ -130,68 +146,160 @@ export const handler: Handler = async (event, context) => {
       };
 
     } else if (event.httpMethod === 'PATCH') {
-      // Update user profile
-      const { phone, address } = JSON.parse(event.body || '{}');
+      // Update user profile - support comprehensive contact information
+      const { phone, address, city, state, zip_code } = JSON.parse(event.body || '{}');
 
-      console.log('🔄 Updating user profile for user:', authPayload.userId);
+      console.log('🔄 Updating user profile:', {
+        userId: authPayload.userId,
+        supabaseUserId: authPayload.supabaseUserId,
+        isSupabase: authPayload.isSupabase,
+        contactData: { phone, address, city, state, zip_code }
+      });
 
-      // Check if user exists, if not create them (for Google users)
-      const existingUser = await sql`SELECT id FROM users WHERE id = ${authPayload.userId}`;
-
-      if (existingUser.length === 0) {
-        console.log('⚠️ User not found, creating Google user account');
-
-        // Create user record for Google login
-        await sql`
-          INSERT INTO users (id, username, email, role, phone, address, created_at)
-          VALUES (
-            ${authPayload.userId},
-            ${authPayload.username || 'google_user'},
-            ${authPayload.username || 'user@example.com'},
-            'customer',
-            ${phone || ''},
-            ${address || ''},
-            NOW()
-          )
-          ON CONFLICT (id) DO NOTHING
+      if (authPayload.isSupabase) {
+        // Handle Supabase user profile update
+        const existingSupabaseUser = await sql`
+          SELECT id FROM users WHERE supabase_user_id = ${authPayload.supabaseUserId}
         `;
 
-        // Initialize user points using correct schema
-        await sql`
-          INSERT INTO user_points (user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
-          VALUES (${authPayload.userId}, 0, 0, 0, NOW(), NOW(), NOW())
-          ON CONFLICT (user_id) DO NOTHING
+        if (existingSupabaseUser.length === 0) {
+          console.log('⚠️ Supabase user not found, creating user account');
+
+          // Create user record for Supabase user
+          await sql`
+            INSERT INTO users (
+              supabase_user_id, username, email, role, phone, address, city, state, zip_code,
+              first_name, last_name, password, created_at, updated_at
+            ) VALUES (
+              ${authPayload.supabaseUserId},
+              ${authPayload.username || 'google_user'},
+              ${authPayload.username || 'user@example.com'},
+              'customer',
+              ${phone || ''},
+              ${address || ''},
+              ${city || ''},
+              ${state || ''},
+              ${zip_code || ''},
+              ${authPayload.username?.split('@')[0] || 'User'},
+              'Customer',
+              'GOOGLE_USER',
+              NOW(),
+              NOW()
+            )
+            ON CONFLICT (supabase_user_id) DO NOTHING
+          `;
+
+          // Initialize user points using correct schema for Supabase user
+          await sql`
+            INSERT INTO user_points (supabase_user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
+            VALUES (${authPayload.supabaseUserId}, 0, 0, 0, NOW(), NOW(), NOW())
+            ON CONFLICT DO NOTHING
+          `;
+
+          console.log('✅ Created Supabase user account with points system');
+        }
+
+        // Update Supabase user profile
+        const updatedUser = await sql`
+          UPDATE users
+          SET
+            phone = COALESCE(NULLIF(${phone || ''}, ''), phone),
+            address = COALESCE(NULLIF(${address || ''}, ''), address),
+            city = COALESCE(NULLIF(${city || ''}, ''), city),
+            state = COALESCE(NULLIF(${state || ''}, ''), state),
+            zip_code = COALESCE(NULLIF(${zip_code || ''}, ''), zip_code),
+            updated_at = NOW()
+          WHERE supabase_user_id = ${authPayload.supabaseUserId}
+          RETURNING id, username, email, phone, address, city, state, zip_code, role, created_at, updated_at, supabase_user_id
         `;
 
-        console.log('✅ Created Google user account with points system');
-      }
+        if (updatedUser.length === 0) {
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({ error: 'User not found' })
+          };
+        }
 
-      // Update user profile
-      const updatedUser = await sql`
-        UPDATE users
-        SET
-          phone = ${phone || ''},
-          address = ${address || ''},
-          updated_at = NOW()
-        WHERE id = ${authPayload.userId}
-        RETURNING id, username, email, phone, address, role, created_at, updated_at
-      `;
+        console.log('✅ Supabase user profile updated successfully');
 
-      if (updatedUser.length === 0) {
         return {
-          statusCode: 404,
+          statusCode: 200,
           headers,
-          body: JSON.stringify({ error: 'User not found' })
+          body: JSON.stringify(updatedUser[0])
+        };
+
+      } else {
+        // Handle legacy user profile update
+        const existingUser = await sql`SELECT id FROM users WHERE id = ${authPayload.userId}`;
+
+        if (existingUser.length === 0) {
+          console.log('⚠️ Legacy user not found, creating user account');
+
+          // Create user record for legacy user
+          await sql`
+            INSERT INTO users (
+              id, username, email, role, phone, address, city, state, zip_code,
+              first_name, last_name, password, created_at, updated_at
+            ) VALUES (
+              ${authPayload.userId},
+              ${authPayload.username || 'user'},
+              ${authPayload.username || 'user@example.com'},
+              'customer',
+              ${phone || ''},
+              ${address || ''},
+              ${city || ''},
+              ${state || ''},
+              ${zip_code || ''},
+              ${authPayload.username?.split('@')[0] || 'User'},
+              'Customer',
+              'AUTH_USER',
+              NOW(),
+              NOW()
+            )
+            ON CONFLICT (id) DO NOTHING
+          `;
+
+          // Initialize user points using correct schema for legacy user
+          await sql`
+            INSERT INTO user_points (user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
+            VALUES (${authPayload.userId}, 0, 0, 0, NOW(), NOW(), NOW())
+            ON CONFLICT (user_id) DO NOTHING
+          `;
+
+          console.log('✅ Created legacy user account with points system');
+        }
+
+        // Update legacy user profile
+        const updatedUser = await sql`
+          UPDATE users
+          SET
+            phone = COALESCE(NULLIF(${phone || ''}, ''), phone),
+            address = COALESCE(NULLIF(${address || ''}, ''), address),
+            city = COALESCE(NULLIF(${city || ''}, ''), city),
+            state = COALESCE(NULLIF(${state || ''}, ''), state),
+            zip_code = COALESCE(NULLIF(${zip_code || ''}, ''), zip_code),
+            updated_at = NOW()
+          WHERE id = ${authPayload.userId}
+          RETURNING id, username, email, phone, address, city, state, zip_code, role, created_at, updated_at
+        `;
+
+        if (updatedUser.length === 0) {
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({ error: 'User not found' })
+          };
+        }
+
+        console.log('✅ Legacy user profile updated successfully');
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify(updatedUser[0])
         };
       }
-
-      console.log('✅ User profile updated successfully');
-
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify(updatedUser[0])
-      };
 
     } else {
       return {
