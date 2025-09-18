@@ -65,7 +65,11 @@ const RewardsPage = () => {
       const response = await apiRequest("GET", "/api/rewards");
       const data = await response.json();
       // Ensure we have an array and each reward has required properties
-      return Array.isArray(data) ? data.map(reward => ({
+      if (!Array.isArray(data)) {
+        console.error('Rewards API returned non-array data:', data);
+        return [];
+      }
+      return data.map(reward => ({
         id: reward.id || 0,
         name: reward.name || 'Unknown Reward',
         description: reward.description || 'No description available',
@@ -74,7 +78,7 @@ const RewardsPage = () => {
         discount: reward.discount,
         freeItem: reward.free_item,
         isActive: reward.is_active !== false
-      })) : [];
+      }));
     },
     enabled: !!user,
   });
@@ -425,7 +429,7 @@ const RewardsPage = () => {
                 </Card>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {rewards.map((reward: any, index: number) => (
+                  {Array.isArray(rewards) && rewards.map((reward: any, index: number) => (
                     <Card 
                       key={reward.id} 
                       className="overflow-hidden bg-gradient-to-br from-white to-gray-50 shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-500 border-2 hover:border-orange-300 group relative"
@@ -563,7 +567,7 @@ const RewardsPage = () => {
                 </Card>
               ) : (
                 <div className="space-y-4">
-                  {redemptions.map((redemption: any) => (
+                  {Array.isArray(redemptions) && redemptions.map((redemption: any) => (
                     <Card key={redemption.id}>
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
