@@ -130,6 +130,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/restore-user-points"
+  to = "/.netlify/functions/restore-user-points"
+  status = 200
+
+[[redirects]]
   from = "/api/redeem-no-auth"
   to = "/.netlify/functions/redeem-no-auth"
   status = 200
