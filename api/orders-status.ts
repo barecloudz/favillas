@@ -23,12 +23,10 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
-  // Check for JWT token in Authorization header first
+function authenticateToken(event: any): { userId: string; username: string; role: string; isSupabaseUser: boolean } | null {
   const authHeader = event.headers.authorization;
-  let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  let token = authHeader && authHeader.split(' ')[1];
 
-  // If no Authorization header, check for auth-token cookie
   if (!token) {
     const cookies = event.headers.cookie;
     if (cookies) {
@@ -39,23 +37,44 @@ function authenticateToken(event: any): { userId: number; username: string; role
     }
   }
 
-  if (!token) {
-    return null;
-  }
+  if (!token) return null;
 
   try {
+    // First try to decode as Supabase JWT token
+    try {
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+      console.log('🔍 Orders-Status: Supabase token payload:', payload);
+
+      if (payload.iss && payload.iss.includes('supabase')) {
+        const supabaseUserId = payload.sub;
+        console.log('✅ Orders-Status: Supabase user ID:', supabaseUserId);
+
+        return {
+          userId: supabaseUserId, // Use the full UUID instead of converting to integer
+          username: payload.email || 'supabase_user',
+          role: 'customer',
+          isSupabaseUser: true
+        };
+      }
+    } catch (supabaseError) {
+      console.log('Orders-Status: Not a Supabase token, trying JWT verification');
+    }
+
+    // Fallback to our JWT verification
     const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
     if (!jwtSecret) {
       throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
     }
-    
+
     const decoded = jwt.verify(token, jwtSecret) as any;
     return {
-      userId: decoded.userId,
+      userId: decoded.userId.toString(), // Ensure string for consistency
       username: decoded.username,
-      role: decoded.role || 'customer'
+      role: decoded.role || 'customer',
+      isSupabaseUser: false
     };
   } catch (error) {
+    console.error('Orders-Status: Token authentication failed:', error);
     return null;
   }
 }
@@ -172,19 +191,36 @@ export const handler: Handler = async (event, context) => {
     }
 
     // Award points if order is being completed and has a user
-    if (status === 'completed' && 
-        currentOrder[0].status !== 'completed' && 
-        currentOrder[0].user_id) {
+    if (status === 'completed' &&
+        currentOrder[0].status !== 'completed' &&
+        (currentOrder[0].user_id || currentOrder[0].supabase_user_id)) {
       try {
         const orderTotal = parseFloat(currentOrder[0].total);
         const pointsToAward = Math.floor(orderTotal * 10); // 10 points per dollar
-        
-        await sql`
-          INSERT INTO rewards (user_id, order_id, points_earned, description, created_at)
-          VALUES (${currentOrder[0].user_id}, ${orderId}, ${pointsToAward}, 'Order completion bonus', NOW())
-        `;
-        
-        console.log(`Points awarded for order ${orderId}: ${pointsToAward} points`);
+
+        // Handle both legacy user_id and new supabase_user_id
+        if (currentOrder[0].user_id) {
+          // Legacy user - use existing rewards table
+          await sql`
+            INSERT INTO rewards (user_id, order_id, points_earned, description, created_at)
+            VALUES (${currentOrder[0].user_id}, ${orderId}, ${pointsToAward}, 'Order completion bonus', NOW())
+          `;
+          console.log(`Legacy points awarded for order ${orderId}: ${pointsToAward} points`);
+        } else if (currentOrder[0].supabase_user_id) {
+          // Supabase user - try to find corresponding user_id, or create transaction for Supabase user
+          const userRecord = await sql`SELECT id FROM users WHERE supabase_user_id = ${currentOrder[0].supabase_user_id}`;
+
+          if (userRecord.length > 0) {
+            const userId = userRecord[0].id;
+            await sql`
+              INSERT INTO rewards (user_id, order_id, points_earned, description, created_at)
+              VALUES (${userId}, ${orderId}, ${pointsToAward}, 'Order completion bonus', NOW())
+            `;
+            console.log(`Supabase user points awarded for order ${orderId}: ${pointsToAward} points (user_id: ${userId})`);
+          } else {
+            console.log(`No user record found for Supabase user ${currentOrder[0].supabase_user_id}, skipping points award`);
+          }
+        }
       } catch (pointsError) {
         // Log error but don't fail the status update
         console.error(`Error awarding points for order ${orderId}:`, pointsError);
