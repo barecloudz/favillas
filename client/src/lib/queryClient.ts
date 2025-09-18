@@ -6,25 +6,50 @@ type UnauthorizedBehavior = "throw" | "returnNull";
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {};
-  
+
   try {
     const { data: { session } } = await supabase.auth.getSession();
+
+    // Debug: log the full session to see what's available
+    console.log('🔍 Full session debug:', {
+      hasSession: !!session,
+      sessionKeys: session ? Object.keys(session) : [],
+      access_token: session?.access_token,
+      accessToken: (session as any)?.accessToken,
+      token: (session as any)?.token,
+      userToken: session?.user ? (session.user as any).token : undefined
+    });
+
+    // Try multiple possible token property names
+    const token = session?.access_token ||
+                  (session as any)?.accessToken ||
+                  (session as any)?.token ||
+                  (session?.user as any)?.token;
+
     console.log('🔍 Client auth check:', {
       hasSession: !!session,
-      hasAccessToken: !!session?.access_token,
-      tokenPreview: session?.access_token?.substring(0, 20) + '...'
+      hasAccessToken: !!token,
+      tokenPreview: token ? token.substring(0, 20) + '...' : 'null'
     });
-    
-    if (session?.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`;
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
       console.log('✅ Adding Authorization header');
     } else {
-      console.log('❌ No access token available');
+      console.log('❌ No access token available - session may be expired');
+      // Try to refresh the session
+      const { data: { session: refreshedSession }, error } = await supabase.auth.refreshSession();
+      if (refreshedSession?.access_token) {
+        headers['Authorization'] = `Bearer ${refreshedSession.access_token}`;
+        console.log('✅ Used refreshed token');
+      } else {
+        console.log('❌ Failed to refresh session:', error);
+      }
     }
   } catch (error) {
     console.warn('Failed to get Supabase session:', error);
   }
-  
+
   return headers;
 }
 

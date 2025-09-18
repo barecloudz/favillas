@@ -43,31 +43,25 @@ function authenticateToken(event: any): { userId: number; supabaseUserId: string
   try {
     // First try to decode as Supabase JWT token
     try {
-      if (token && token.includes('.')) {
-        const tokenParts = token.split('.');
-        if (tokenParts.length === 3) {
-          // Add proper base64 padding if missing
-          let payloadB64 = tokenParts[1];
-          while (payloadB64.length % 4) {
-            payloadB64 += '=';
-          }
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+      console.log('🔍 Supabase token payload:', payload);
 
-          const payload = JSON.parse(Buffer.from(payloadB64, 'base64').toString());
+      if (payload.iss && payload.iss.includes('supabase')) {
+        // This is a Supabase token, extract user ID
+        const supabaseUserId = payload.sub;
+        console.log('✅ Supabase user ID:', supabaseUserId);
 
-          if (payload.iss && payload.iss.includes('supabase')) {
-            const supabaseUserId = payload.sub;
-            // Convert Supabase UUID to numeric user ID using same logic as other APIs
-            const numericUserId = parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16);
+        // Convert Supabase UUID to numeric user ID using same logic as user-rewards API
+        const numericUserId = parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16);
+        console.log('✅ Converted to numeric ID:', numericUserId);
 
-            return {
-              userId: numericUserId,
-              supabaseUserId: supabaseUserId,
-              username: payload.email || 'supabase_user',
-              role: 'customer',
-              isSupabaseUser: true
-            };
-          }
-        }
+        return {
+          userId: numericUserId,
+          supabaseUserId: supabaseUserId,
+          username: payload.email || 'supabase_user',
+          role: 'customer',
+          isSupabaseUser: true
+        };
       }
     } catch (supabaseError) {
       console.log('Not a Supabase token, trying JWT verification:', supabaseError);

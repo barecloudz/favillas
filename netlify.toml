@@ -155,6 +155,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/debug-token-simple"
+  to = "/.netlify/functions/debug-token-simple"
+  status = 200
+
+[[redirects]]
   from = "/api/menu-items"
   to = "/.netlify/functions/menu-items"
   status = 200
