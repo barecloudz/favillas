@@ -98,6 +98,14 @@ const OrderSuccessPage = () => {
     if (orderData) {
       setOrder(orderData);
       setIsLoading(false);
+      console.log('📝 Order data received:', orderData);
+      console.log('🔍 Order debug info:', {
+        orderType: orderData.orderType,
+        order_type: orderData.order_type,
+        addressData: orderData.addressData,
+        address_data: orderData.address_data,
+        total: orderData.total
+      });
 
       // Only clear cart if the order is confirmed and we have order data and haven't cleared it yet
       // This ensures the cart is only cleared once after a successful order
@@ -398,11 +406,15 @@ Thank you for choosing Favilla's NY Pizza!
                         try {
                           if (order.addressData && typeof order.addressData === 'object') {
                             orderBreakdown = order.addressData.orderBreakdown;
+                            console.log('📊 Found orderBreakdown in addressData:', orderBreakdown);
                           } else if (order.address_data && typeof order.address_data === 'object') {
                             orderBreakdown = order.address_data.orderBreakdown;
+                            console.log('📊 Found orderBreakdown in address_data:', orderBreakdown);
+                          } else {
+                            console.log('⚠️ No address data found for order breakdown', { addressData: order.addressData, address_data: order.address_data });
                           }
                         } catch (e) {
-                          console.log('Could not parse order breakdown');
+                          console.log('❌ Could not parse order breakdown:', e);
                         }
 
                         const subtotal = orderBreakdown?.subtotal || parseFloat(order.total || 0) - parseFloat(order.tax || 0) - parseFloat(order.tip || 0) - parseFloat(order.deliveryFee || 0);

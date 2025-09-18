@@ -211,10 +211,18 @@ export const handler: Handler = async (event, context) => {
 
         console.log('✅ Orders API: Successfully retrieved order', orderId);
 
+        // Transform database fields to frontend expected format
+        const transformedOrder = {
+          ...order,
+          orderType: order.order_type, // Transform snake_case to camelCase for frontend
+          items: transformedItems,
+          userContactInfo
+        };
+
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ ...order, items: transformedItems, userContactInfo })
+          body: JSON.stringify(transformedOrder)
         };
       }
 
