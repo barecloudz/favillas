@@ -23,7 +23,7 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
+function authenticateToken(event: any): { userId: number | null; supabaseUserId: string | null; username: string; role: string; isSupabase: boolean } | null {
   const authHeader = event.headers.authorization;
   let token = authHeader && authHeader.split(' ')[1];
 
@@ -50,16 +50,13 @@ function authenticateToken(event: any): { userId: number; username: string; role
         const supabaseUserId = payload.sub;
         console.log('✅ Supabase user ID:', supabaseUserId);
 
-        // Convert Supabase UUID to numeric user ID using same logic as user-rewards API
-        const numericUserId = parseInt(supabaseUserId.replace(/-/g, '').substring(0, 8), 16);
-        console.log('✅ Converted to numeric ID:', numericUserId);
-
-        // Return the Supabase user ID as the userId for now
-        // We'll need to create a proper mapping later
+        // For Supabase users, return the UUID directly
         return {
-          userId: Math.abs(parseInt(supabaseUserId.replace(/-/g, '').substring(0, 6), 16) % 2000000000) + 1000000, // Convert to safe integer
+          userId: null, // No integer user ID for Supabase users
+          supabaseUserId: supabaseUserId,
           username: payload.email || 'supabase_user',
-          role: 'customer'
+          role: 'customer',
+          isSupabase: true
         };
       }
     } catch (supabaseError) {
@@ -75,8 +72,10 @@ function authenticateToken(event: any): { userId: number; username: string; role
     const decoded = jwt.verify(token, jwtSecret) as any;
     return {
       userId: decoded.userId,
+      supabaseUserId: null,
       username: decoded.username,
-      role: decoded.role || 'customer'
+      role: decoded.role || 'customer',
+      isSupabase: false
     };
   } catch (error) {
     console.error('Token authentication failed:', error);
@@ -121,20 +120,42 @@ export const handler: Handler = async (event, context) => {
   try {
     const sql = getDB();
 
-    console.log('🎁 Getting redemption history for user:', { userId: authPayload.userId });
+    console.log('🎁 Getting redemption history for user:', {
+      userId: authPayload.userId,
+      supabaseUserId: authPayload.supabaseUserId,
+      isSupabase: authPayload.isSupabase
+    });
 
-    // Get user's redemption history (vouchers created from points) - use numeric user ID
-    const redemptions = await sql`
-      SELECT
-        uv.*,
-        r.name as reward_name,
-        r.description as reward_description,
-        r.points_required
-      FROM user_vouchers uv
-      LEFT JOIN rewards r ON uv.reward_id = r.id
-      WHERE uv.user_id = ${authPayload.userId}
-      ORDER BY uv.created_at DESC
-    `;
+    // Get user's redemption history from user_points_redemptions table
+    let redemptions;
+
+    if (authPayload.isSupabase) {
+      // Supabase user - query using supabase_user_id
+      redemptions = await sql`
+        SELECT
+          upr.*,
+          r.name as reward_name,
+          r.description as reward_description,
+          r.points_required
+        FROM user_points_redemptions upr
+        LEFT JOIN rewards r ON upr.reward_id = r.id
+        WHERE upr.supabase_user_id = ${authPayload.supabaseUserId}
+        ORDER BY upr.created_at DESC
+      `;
+    } else {
+      // Legacy user - query using user_id
+      redemptions = await sql`
+        SELECT
+          upr.*,
+          r.name as reward_name,
+          r.description as reward_description,
+          r.points_required
+        FROM user_points_redemptions upr
+        LEFT JOIN rewards r ON upr.reward_id = r.id
+        WHERE upr.user_id = ${authPayload.userId}
+        ORDER BY upr.created_at DESC
+      `;
+    }
 
     // Categorize redemptions
     const now = new Date();
@@ -146,7 +167,7 @@ export const handler: Handler = async (event, context) => {
     };
 
     redemptions.forEach((redemption: any) => {
-      const expiresAt = new Date(redemption.expires_at);
+      const expiresAt = redemption.expires_at ? new Date(redemption.expires_at) : null;
       const createdAt = new Date(redemption.created_at);
       const isRecent = (now.getTime() - createdAt.getTime()) < (7 * 24 * 60 * 60 * 1000); // Within 7 days
 
@@ -154,9 +175,9 @@ export const handler: Handler = async (event, context) => {
         categorizedRedemptions.recent.push(redemption);
       }
 
-      if (redemption.status === 'used') {
+      if (redemption.is_used) {
         categorizedRedemptions.used.push(redemption);
-      } else if (expiresAt < now) {
+      } else if (expiresAt && expiresAt < now) {
         categorizedRedemptions.expired.push(redemption);
       } else {
         categorizedRedemptions.active.push(redemption);

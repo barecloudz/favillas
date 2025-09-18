@@ -774,36 +774,48 @@ export const handler: Handler = async (event, context) => {
           try {
             console.log('🎫 Orders API: Processing voucher:', orderData.voucherCode);
 
-            // Get voucher details and validate it's active for this user
-            const vouchers = supabaseUserId
-              ? await sql`
-                  SELECT * FROM user_vouchers
-                  WHERE voucher_code = ${orderData.voucherCode}
-                  AND supabase_user_id = ${supabaseUserId}
-                  AND status = 'active'
-                  AND expires_at > NOW()
-                `
-              : await sql`
-                  SELECT * FROM user_vouchers
-                  WHERE voucher_code = ${orderData.voucherCode}
-                  AND user_id = ${userId}
-                  AND status = 'active'
-                  AND expires_at > NOW()
+            // Extract voucher ID from voucher code (format: PREFIX + ID, e.g., DISC0001)
+            const voucherIdMatch = orderData.voucherCode.match(/\d+$/);
+            if (!voucherIdMatch) {
+              console.warn('⚠️ Orders API: Invalid voucher code format:', orderData.voucherCode);
+            } else {
+              const voucherId = parseInt(voucherIdMatch[0]);
+
+              // Get voucher details from user_points_redemptions and validate it's active for this user
+              const vouchers = supabaseUserId
+                ? await sql`
+                    SELECT upr.*, r.name as reward_name
+                    FROM user_points_redemptions upr
+                    LEFT JOIN rewards r ON upr.reward_id = r.id
+                    WHERE upr.id = ${voucherId}
+                    AND upr.supabase_user_id = ${supabaseUserId}
+                    AND upr.is_used = false
+                    AND (upr.expires_at IS NULL OR upr.expires_at > NOW())
+                  `
+                : await sql`
+                    SELECT upr.*, r.name as reward_name
+                    FROM user_points_redemptions upr
+                    LEFT JOIN rewards r ON upr.reward_id = r.id
+                    WHERE upr.id = ${voucherId}
+                    AND upr.user_id = ${userId}
+                    AND upr.is_used = false
+                    AND (upr.expires_at IS NULL OR upr.expires_at > NOW())
+                  `;
+
+              if (vouchers.length > 0) {
+                const voucher = vouchers[0];
+
+                // Mark voucher as used
+                await sql`
+                  UPDATE user_points_redemptions
+                  SET is_used = true, used_at = NOW()
+                  WHERE id = ${voucher.id}
                 `;
 
-            if (vouchers.length > 0) {
-              const voucher = vouchers[0];
-
-              // Mark voucher as used
-              await sql`
-                UPDATE user_vouchers
-                SET status = 'used', used_at = NOW(), order_id = ${newOrder.id}
-                WHERE id = ${voucher.id}
-              `;
-
-              console.log('✅ Orders API: Voucher marked as used:', voucher.voucher_code);
-            } else {
-              console.warn('⚠️ Orders API: Voucher not found or invalid:', orderData.voucherCode);
+                console.log('✅ Orders API: Voucher marked as used:', orderData.voucherCode, 'Reward:', voucher.reward_name);
+              } else {
+                console.warn('⚠️ Orders API: Voucher not found or invalid:', orderData.voucherCode, 'ID:', voucherId);
+              }
             }
           } catch (voucherError) {
             console.error('❌ Orders API: Voucher processing failed:', voucherError);

@@ -97,7 +97,9 @@ const RewardsPage = () => {
   const { data: activeVouchersData, isLoading: vouchersLoading } = useQuery({
     queryKey: ["/api/user/active-vouchers"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/user/active-vouchers");
+      const response = await apiRequest("POST", "/api/user/active-vouchers", {
+        orderTotal: 0 // For display purposes, we don't need order total
+      });
       return response.json();
     },
     enabled: !!user,
@@ -397,10 +399,19 @@ const RewardsPage = () => {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="rewards" className="flex items-center">
                 <Gift className="h-4 w-4 mr-2" />
                 Available Rewards
+              </TabsTrigger>
+              <TabsTrigger value="vouchers" className="flex items-center">
+                <CheckCircle className="h-4 w-4 mr-2" />
+                My Vouchers
+                {activeVouchers.length > 0 && (
+                  <span className="ml-1 bg-green-500 text-white text-xs rounded-full px-2 py-0.5">
+                    {activeVouchers.length}
+                  </span>
+                )}
               </TabsTrigger>
               <TabsTrigger value="history" className="flex items-center">
                 <History className="h-4 w-4 mr-2" />
@@ -543,6 +554,118 @@ const RewardsPage = () => {
                       </CardContent>
                     </Card>
                   ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="vouchers" className="space-y-6">
+              {vouchersLoading ? (
+                <div className="text-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-red-600 mx-auto mb-4" />
+                  <p className="text-gray-600">Loading your vouchers...</p>
+                </div>
+              ) : activeVouchers.length === 0 ? (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <CheckCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No active vouchers</h3>
+                    <p className="text-gray-600 mb-6">Redeem rewards to get vouchers you can use at checkout!</p>
+                    <Button onClick={() => setActiveTab("rewards")}>
+                      <Gift className="h-4 w-4 mr-2" />
+                      Browse Rewards
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
+                    <div className="flex items-center mb-2">
+                      <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                      <h3 className="font-semibold text-green-800">Ready to Use!</h3>
+                    </div>
+                    <p className="text-green-700 text-sm">
+                      These vouchers will automatically appear at checkout. No codes needed!
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {activeVouchers.map((voucher: any) => (
+                      <Card
+                        key={voucher.id}
+                        className="overflow-hidden bg-gradient-to-br from-white to-green-50 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 border-2 border-green-200"
+                      >
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-green-200 to-emerald-200 rounded-full -mr-8 -mt-8 opacity-30"></div>
+
+                        <CardHeader className="pb-3 relative z-10">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg flex items-center font-bold text-green-800">
+                              <div className="mr-3 p-2 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full">
+                                <Gift className="h-5 w-5 text-green-600" />
+                              </div>
+                              {voucher.title}
+                            </CardTitle>
+                            <Badge className="bg-green-100 text-green-800 animate-pulse shadow-lg">
+                              READY
+                            </Badge>
+                          </div>
+                          <CardDescription className="text-gray-600 mt-2 text-sm leading-relaxed">
+                            {voucher.description}
+                          </CardDescription>
+                        </CardHeader>
+
+                        <CardContent className="pt-0 relative z-10">
+                          <div className="space-y-3">
+                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 rounded-lg border border-green-200">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-700">💰 Your Savings:</span>
+                                <span className="text-xl font-bold text-green-600 animate-bounce">
+                                  {voucher.savings_text}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-3 rounded-lg border border-blue-200">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-700">🎫 Voucher Code:</span>
+                                <span className="text-lg font-bold text-blue-600 font-mono">
+                                  {voucher.voucher_code}
+                                </span>
+                              </div>
+                            </div>
+
+                            {voucher.min_order_amount > 0 && (
+                              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-3 rounded-lg border border-yellow-200">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-gray-700">📋 Minimum Order:</span>
+                                  <span className="text-lg font-bold text-yellow-600">
+                                    ${voucher.min_order_amount}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            {voucher.expires_at && (
+                              <div className="text-center">
+                                <p className="text-xs text-gray-500">
+                                  Expires: {new Date(voucher.expires_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                            )}
+
+                            <Separator />
+
+                            <Button
+                              className="w-full h-12 text-lg font-bold bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                              onClick={() => navigate("/menu")}
+                            >
+                              <ShoppingCart className="h-5 w-5 mr-2 animate-bounce" />
+                              🛒 Use at Checkout
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
               )}
             </TabsContent>

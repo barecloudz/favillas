@@ -23,7 +23,7 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
+function authenticateToken(event: any): { userId: number | null; supabaseUserId: string | null; username: string; role: string; isSupabase: boolean } | null {
   // Check for JWT token in Authorization header first
   const authHeader = event.headers.authorization;
   let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
@@ -54,12 +54,13 @@ function authenticateToken(event: any): { userId: number; username: string; role
         const supabaseUserId = payload.sub;
         console.log('✅ Supabase user ID:', supabaseUserId);
 
-        // Return the Supabase user ID as the userId for now
-        // We'll need to create a proper mapping later
+        // For Supabase users, return the UUID directly
         return {
-          userId: Math.abs(parseInt(supabaseUserId.replace(/-/g, '').substring(0, 6), 16) % 2000000000) + 1000000, // Convert to safe integer
+          userId: null, // No integer user ID for Supabase users
+          supabaseUserId: supabaseUserId,
           username: payload.email || 'supabase_user',
-          role: 'customer'
+          role: 'customer',
+          isSupabase: true
         };
       }
     } catch (supabaseError) {
@@ -75,8 +76,10 @@ function authenticateToken(event: any): { userId: number; username: string; role
     const decoded = jwt.verify(token, jwtSecret) as any;
     return {
       userId: decoded.userId,
+      supabaseUserId: null,
       username: decoded.username,
-      role: decoded.role || 'customer'
+      role: decoded.role || 'customer',
+      isSupabase: false
     };
   } catch (error) {
     console.error('Token authentication failed:', error);
@@ -121,67 +124,114 @@ export const handler: Handler = async (event, context) => {
   try {
     const sql = getDB();
 
-    console.log('🎫 Getting active vouchers for user:', { userId: authPayload.userId });
+    console.log('🎫 Getting active vouchers for user:', {
+      userId: authPayload.userId,
+      supabaseUserId: authPayload.supabaseUserId,
+      isSupabase: authPayload.isSupabase
+    });
 
-    // Get user's active vouchers (not used and not expired)
-    const activeVouchers = await sql`
-      SELECT
-        uv.*,
-        r.name as reward_name,
-        r.description as reward_description
-      FROM user_vouchers uv
-      LEFT JOIN rewards r ON uv.reward_id = r.id
-      WHERE uv.user_id = ${authPayload.userId}
-        AND uv.status = 'active'
-        AND uv.expires_at > NOW()
-        AND uv.used_at IS NULL
-      ORDER BY uv.created_at DESC
-    `;
+    // Get user's active vouchers from user_points_redemptions (redeemed rewards that haven't been used)
+    let activeVouchers;
+
+    if (authPayload.isSupabase) {
+      // Supabase user - query using supabase_user_id
+      activeVouchers = await sql`
+        SELECT
+          upr.*,
+          r.name as reward_name,
+          r.description as reward_description,
+          r.reward_type,
+          r.discount,
+          r.free_item,
+          r.min_order_amount
+        FROM user_points_redemptions upr
+        LEFT JOIN rewards r ON upr.reward_id = r.id
+        WHERE upr.supabase_user_id = ${authPayload.supabaseUserId}
+          AND upr.is_used = false
+          AND (upr.expires_at IS NULL OR upr.expires_at > NOW())
+        ORDER BY upr.created_at DESC
+      `;
+    } else {
+      // Legacy user - query using user_id
+      activeVouchers = await sql`
+        SELECT
+          upr.*,
+          r.name as reward_name,
+          r.description as reward_description,
+          r.reward_type,
+          r.discount,
+          r.free_item,
+          r.min_order_amount
+        FROM user_points_redemptions upr
+        LEFT JOIN rewards r ON upr.reward_id = r.id
+        WHERE upr.user_id = ${authPayload.userId}
+          AND upr.is_used = false
+          AND (upr.expires_at IS NULL OR upr.expires_at > NOW())
+        ORDER BY upr.created_at DESC
+      `;
+    }
 
     // Get order total from request body if provided (for calculating best voucher)
     const body = event.body ? JSON.parse(event.body) : {};
     const orderTotal = body.orderTotal || 0;
 
-    // Calculate discount value for each voucher
+    // Calculate discount value for each voucher based on reward type
     const calculateDiscount = (voucher: any, total: number) => {
-      if (total < (voucher.min_order_amount || 0)) {
+      const minOrderAmount = parseFloat(voucher.min_order_amount || 0);
+      if (total < minOrderAmount) {
         return 0; // Doesn't meet minimum order requirement
       }
 
-      if (voucher.discount_type === 'percentage') {
-        return (total * voucher.discount_amount) / 100;
-      } else if (voucher.discount_type === 'delivery_fee') {
-        return 5; // Assume $5 delivery fee savings
+      // Use reward data to determine discount type and amount
+      if (voucher.reward_type === 'discount' && voucher.discount) {
+        return (total * voucher.discount) / 100; // Percentage discount
+      } else if (voucher.reward_type === 'free_delivery') {
+        return 3.99; // Delivery fee amount
+      } else if (voucher.reward_type === 'free_item') {
+        return 15; // Estimated value of free item
       } else {
-        return voucher.discount_amount; // Fixed amount
+        return 5; // Default value
       }
+    };
+
+    // Generate a unique voucher code for each redemption
+    const generateVoucherCode = (voucher: any) => {
+      const prefix = voucher.reward_type === 'discount' ? 'DISC' :
+                   voucher.reward_type === 'free_delivery' ? 'SHIP' :
+                   voucher.reward_type === 'free_item' ? 'FREE' : 'GIFT';
+      const suffix = voucher.id.toString().padStart(4, '0');
+      return `${prefix}${suffix}`;
     };
 
     // Format vouchers for frontend use
     const formattedVouchers = activeVouchers.map((voucher: any) => {
       const discountValue = calculateDiscount(voucher, orderTotal);
       const isApplicable = discountValue > 0;
+      const voucherCode = generateVoucherCode(voucher);
 
       return {
         id: voucher.id,
-        voucher_code: voucher.voucher_code,
-        title: voucher.title || voucher.reward_name,
+        voucher_code: voucherCode,
+        title: voucher.reward_name,
         description: voucher.description,
-        discount_amount: parseFloat(voucher.discount_amount),
-        discount_type: voucher.discount_type,
+        discount_amount: voucher.reward_type === 'discount' ? voucher.discount : discountValue,
+        discount_type: voucher.reward_type === 'discount' ? 'percentage' :
+                      voucher.reward_type === 'free_delivery' ? 'delivery_fee' : 'fixed',
         min_order_amount: parseFloat(voucher.min_order_amount || 0),
         expires_at: voucher.expires_at,
         created_at: voucher.created_at,
         reward_id: voucher.reward_id,
-        points_used: voucher.points_used,
+        points_spent: voucher.points_spent,
         // Calculated fields for this order
         calculated_discount: discountValue,
         is_applicable: isApplicable,
-        savings_text: voucher.discount_type === 'percentage'
-          ? `${voucher.discount_amount}% off`
-          : voucher.discount_type === 'delivery_fee'
+        savings_text: voucher.reward_type === 'discount'
+          ? `${voucher.discount}% off`
+          : voucher.reward_type === 'free_delivery'
           ? 'Free delivery'
-          : `$${voucher.discount_amount} off`
+          : voucher.reward_type === 'free_item'
+          ? `Free ${voucher.free_item}`
+          : `$${discountValue} off`
       };
     });
 

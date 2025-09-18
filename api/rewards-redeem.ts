@@ -193,8 +193,8 @@ export const handler: Handler = async (event, context) => {
             ${authPayload.supabaseUserId},
             ${rewardId},
             ${rewardData.points_required},
-            true,
-            NOW(),
+            false,
+            NULL,
             ${rewardData.expires_at || null},
             NOW()
           )
@@ -209,8 +209,8 @@ export const handler: Handler = async (event, context) => {
             ${authPayload.userId},
             ${rewardId},
             ${rewardData.points_required},
-            true,
-            NOW(),
+            false,
+            NULL,
             ${rewardData.expires_at || null},
             NOW()
           )
