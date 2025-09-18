@@ -58,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.log('❌ Failed to fetch user profile:', error);
+      throw error; // Re-throw to trigger error handling in auth flows
     }
     return null;
   };
@@ -84,6 +85,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (error) {
           console.error('Error getting session:', error);
+          // Clear any corrupted local storage
+          localStorage.removeItem('supabase.auth.token');
+          await supabase.auth.signOut();
         }
 
         if (session) {
@@ -191,10 +195,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     setLoading(true);
-    const redirectUrl = window.location.hostname === 'localhost' 
+
+    // Force sign out first to clear any stuck session
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+      console.log('🔄 Cleared any existing session before Google sign in');
+    } catch (error) {
+      console.warn('Failed to clear session:', error);
+    }
+
+    const redirectUrl = window.location.hostname === 'localhost'
       ? `${window.location.origin}/auth/callback`
       : 'https://favillasnypizza.netlify.app/auth/callback'
-      
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
