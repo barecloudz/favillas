@@ -152,7 +152,7 @@ async function getPointsAudit(
       const redemptions = await sql`
         SELECT
           id,
-          points_reward_id,
+          reward_id,
           points_spent,
           is_used,
           used_at,
@@ -166,7 +166,7 @@ async function getPointsAudit(
       auditData.recoveryData = {
         redemptions: redemptions.map(r => ({
           id: r.id,
-          pointsRewardId: r.points_reward_id,
+          pointsRewardId: r.reward_id,
           pointsSpent: r.points_spent,
           isUsed: r.is_used,
           usedAt: r.used_at,

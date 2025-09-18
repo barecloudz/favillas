@@ -233,8 +233,8 @@ async function restorePointsFromBackup(
 
           if (existingRedemption.length === 0) {
             await sql`
-              INSERT INTO user_points_redemptions (id, user_id, points_reward_id, order_id, points_spent, is_used, used_at, expires_at, created_at)
-              VALUES (${redemption.id}, ${redemption.user_id}, ${redemption.points_reward_id}, ${redemption.order_id}, ${redemption.points_spent}, ${redemption.is_used}, ${redemption.used_at}, ${redemption.expires_at}, ${redemption.created_at})
+              INSERT INTO user_points_redemptions (id, user_id, reward_id, order_id, points_spent, is_used, used_at, expires_at, created_at)
+              VALUES (${redemption.id}, ${redemption.user_id}, ${redemption.reward_id}, ${redemption.order_id}, ${redemption.points_spent}, ${redemption.is_used}, ${redemption.used_at}, ${redemption.expires_at}, ${redemption.created_at})
             `;
             restoredData.redemptionsRestored++;
           }

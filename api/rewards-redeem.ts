@@ -188,7 +188,7 @@ export const handler: Handler = async (event, context) => {
       if (authPayload.isSupabase) {
         // Supabase user redemption
         redemption = await sql`
-          INSERT INTO user_points_redemptions (supabase_user_id, points_reward_id, points_spent, is_used, used_at, expires_at, created_at)
+          INSERT INTO user_points_redemptions (supabase_user_id, reward_id, points_spent, is_used, used_at, expires_at, created_at)
           VALUES (
             ${authPayload.supabaseUserId},
             ${rewardId},
@@ -204,7 +204,7 @@ export const handler: Handler = async (event, context) => {
       } else {
         // Legacy user redemption
         redemption = await sql`
-          INSERT INTO user_points_redemptions (user_id, points_reward_id, points_spent, is_used, used_at, expires_at, created_at)
+          INSERT INTO user_points_redemptions (user_id, reward_id, points_spent, is_used, used_at, expires_at, created_at)
           VALUES (
             ${authPayload.userId},
             ${rewardId},

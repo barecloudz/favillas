@@ -92,7 +92,7 @@ async function redeemPointsRobust(
         await sql`
           INSERT INTO user_points_redemptions (
             user_id,
-            points_reward_id,
+            reward_id,
             points_spent,
             is_used,
             expires_at,
