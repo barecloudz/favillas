@@ -145,6 +145,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/debug-orders-schema"
+  to = "/.netlify/functions/debug-orders-schema"
+  status = 200
+
+[[redirects]]
   from = "/api/redeem-no-auth"
   to = "/.netlify/functions/redeem-no-auth"
   status = 200
