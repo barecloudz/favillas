@@ -91,22 +91,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (session) {
-          console.log('🔄 Found Supabase session (Google user)');
+          console.log('🔄 Found Supabase session (Google user):', session.user.id);
           setSession(session);
           // Fetch complete profile instead of using basic mapping
           try {
-            const completeProfile = await fetchUserProfile();
+            console.log('🔄 Attempting to fetch user profile during init');
+
+            // Add timeout to prevent hanging during init
+            const profilePromise = fetchUserProfile();
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Profile fetch timeout during init')), 10000)
+            );
+
+            const completeProfile = await Promise.race([profilePromise, timeoutPromise]);
+
             if (completeProfile) {
+              console.log('✅ Successfully fetched complete profile during init');
               setUser(completeProfile);
             } else {
+              console.log('⚠️ Profile fetch returned null during init, using basic mapping');
               // Fallback to basic mapping if profile fetch fails
               const mappedUser = mapSupabaseUser(session?.user || null);
               setUser(mappedUser);
             }
           } catch (error) {
-            console.error('Failed to fetch user profile during init, signing out:', error);
+            console.error('❌ Failed to fetch user profile during init:', error);
+            console.log('🚨 Signing out due to init profile fetch failure');
+
             // If profile fetch fails, likely means user is not properly authenticated
-            await supabase.auth.signOut();
+            try {
+              await supabase.auth.signOut();
+            } catch (signOutError) {
+              console.error('Failed to sign out during init:', signOutError);
+            }
+
             setUser(null);
             setSession(null);
           }
@@ -161,24 +179,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
 
         if (session) {
-          // Fetch complete profile for authenticated users
+          // Fetch complete profile for authenticated users with timeout
           try {
-            const completeProfile = await fetchUserProfile();
+            console.log('🔄 Attempting to fetch user profile for session:', session.user.id);
+
+            // Add timeout to prevent hanging
+            const profilePromise = fetchUserProfile();
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Profile fetch timeout')), 10000)
+            );
+
+            const completeProfile = await Promise.race([profilePromise, timeoutPromise]);
+
             if (completeProfile) {
+              console.log('✅ Successfully fetched complete profile');
               setUser(completeProfile);
             } else {
+              console.log('⚠️ Profile fetch returned null, using basic mapping');
               // Fallback to basic mapping
               const mappedUser = mapSupabaseUser(session?.user || null);
               setUser(mappedUser);
             }
           } catch (error) {
-            console.error('Failed to fetch user profile, signing out:', error);
+            console.error('❌ Failed to fetch user profile, error:', error);
+            console.log('🚨 Signing out due to profile fetch failure');
+
             // If profile fetch fails, likely means user is not properly authenticated
-            await supabase.auth.signOut();
+            try {
+              await supabase.auth.signOut();
+            } catch (signOutError) {
+              console.error('Failed to sign out:', signOutError);
+            }
+
             setUser(null);
             setSession(null);
           }
         } else {
+          console.log('🔄 No session, clearing user');
           setUser(null);
         }
         setLoading(false);
