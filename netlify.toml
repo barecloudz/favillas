@@ -140,6 +140,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/recover-user-orders"
+  to = "/.netlify/functions/recover-user-orders"
+  status = 200
+
+[[redirects]]
   from = "/api/redeem-no-auth"
   to = "/.netlify/functions/redeem-no-auth"
   status = 200

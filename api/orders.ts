@@ -23,10 +23,12 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: string; username: string; role: string; isSupabaseUser: boolean } | null {
+function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
+  // Check for JWT token in Authorization header first
   const authHeader = event.headers.authorization;
-  let token = authHeader && authHeader.split(' ')[1];
+  let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
+  // If no Authorization header, check for auth-token cookie
   if (!token) {
     const cookies = event.headers.cookie;
     if (cookies) {
@@ -37,7 +39,9 @@ function authenticateToken(event: any): { userId: string; username: string; role
     }
   }
 
-  if (!token) return null;
+  if (!token) {
+    return null;
+  }
 
   try {
     // First try to decode as Supabase JWT token
@@ -46,14 +50,16 @@ function authenticateToken(event: any): { userId: string; username: string; role
       console.log('🔍 Supabase token payload:', payload);
 
       if (payload.iss && payload.iss.includes('supabase')) {
+        // This is a Supabase token, extract user ID
         const supabaseUserId = payload.sub;
         console.log('✅ Supabase user ID:', supabaseUserId);
 
+        // Return the Supabase user ID as the userId for now
+        // We'll need to create a proper mapping later
         return {
-          userId: supabaseUserId, // Use the full UUID instead of converting to integer
+          userId: Math.abs(parseInt(supabaseUserId.replace(/-/g, '').substring(0, 6), 16) % 2000000000) + 1000000, // Convert to safe integer
           username: payload.email || 'supabase_user',
-          role: 'customer',
-          isSupabaseUser: true
+          role: 'customer'
         };
       }
     } catch (supabaseError) {
@@ -68,10 +74,9 @@ function authenticateToken(event: any): { userId: string; username: string; role
 
     const decoded = jwt.verify(token, jwtSecret) as any;
     return {
-      userId: decoded.userId.toString(), // Ensure string for consistency
+      userId: decoded.userId,
       username: decoded.username,
-      role: decoded.role || 'customer',
-      isSupabaseUser: false
+      role: decoded.role || 'customer'
     };
   } catch (error) {
     console.error('Token authentication failed:', error);
@@ -128,12 +133,8 @@ export const handler: Handler = async (event, context) => {
           orderQuery = await sql`SELECT * FROM orders WHERE id = ${orderId}`;
         } else {
           // Customers can only see their own orders
-          // Handle both Supabase UUIDs and legacy integer user IDs
-          if (authPayload.isSupabaseUser) {
-            orderQuery = await sql`SELECT * FROM orders WHERE id = ${orderId} AND (user_id = ${authPayload.userId} OR supabase_user_id = ${authPayload.userId})`;
-          } else {
-            orderQuery = await sql`SELECT * FROM orders WHERE id = ${orderId} AND user_id = ${authPayload.userId}`;
-          }
+          // Use the converted user ID to find orders
+          orderQuery = await sql`SELECT * FROM orders WHERE id = ${orderId} AND user_id = ${authPayload.userId}`;
         }
 
         if (orderQuery.length === 0) {
@@ -193,13 +194,9 @@ export const handler: Handler = async (event, context) => {
         allOrders = await sql`SELECT * FROM orders ORDER BY created_at DESC`;
       } else {
         // Customers can only see their own orders
-        console.log('📋 Orders API: Getting orders for user:', authPayload.userId, 'isSupabaseUser:', authPayload.isSupabaseUser);
-        // Handle both Supabase UUIDs and legacy integer user IDs
-        if (authPayload.isSupabaseUser) {
-          allOrders = await sql`SELECT * FROM orders WHERE (user_id = ${authPayload.userId} OR supabase_user_id = ${authPayload.userId}) ORDER BY created_at DESC`;
-        } else {
-          allOrders = await sql`SELECT * FROM orders WHERE user_id = ${authPayload.userId} ORDER BY created_at DESC`;
-        }
+        console.log('📋 Orders API: Getting orders for user:', authPayload.userId);
+        // Use the converted user ID to find orders
+        allOrders = await sql`SELECT * FROM orders WHERE user_id = ${authPayload.userId} ORDER BY created_at DESC`;
       }
       
       console.log('📋 Orders API: Found', allOrders.length, 'orders');
@@ -297,76 +294,47 @@ export const handler: Handler = async (event, context) => {
         let supabaseUserId = null;
 
         if (authPayload) {
-          if (authPayload.isSupabaseUser) {
-            // For Supabase users, store the UUID in supabase_user_id
-            supabaseUserId = authPayload.userId;
-            console.log('🔑 Orders API: Using Supabase user ID:', supabaseUserId);
+          // Use the converted user ID directly
+          userId = authPayload.userId;
+          console.log('🔑 Orders API: Using authenticated user ID:', userId);
 
-            // Try to find existing user record or create one
-            try {
-              // First check if we have a user record with this Supabase ID
-              const existingSupabaseUser = await sql`SELECT id FROM users WHERE supabase_user_id = ${supabaseUserId}`;
+          // Ensure user record exists
+          try {
+            const existingUser = await sql`SELECT id FROM users WHERE id = ${userId}`;
 
-              if (existingSupabaseUser.length > 0) {
-                userId = existingSupabaseUser[0].id;
-                console.log('✅ Orders API: Found existing user record for Supabase user:', userId);
-              } else {
-                // Create new user record for this Supabase user
-                console.log('⚠️ Orders API: Creating new user record for Supabase user');
+            if (existingUser.length === 0) {
+              console.log('⚠️ Orders API: Creating user record for authenticated user');
 
-                try {
-                  const newUser = await sql`
-                    INSERT INTO users (username, email, supabase_user_id, role, phone, password, first_name, last_name, created_at)
-                    VALUES (
-                      ${authPayload.username || 'google_user'},
-                      ${authPayload.username || 'user@example.com'},
-                      ${supabaseUserId},
-                      'customer',
-                      ${orderData.phone || ''},
-                      'GOOGLE_AUTH',
-                      ${authPayload.username?.split('@')[0] || 'Google'},
-                      'User',
-                      NOW()
-                    )
-                    RETURNING id
-                  `;
+              // Create user record
+              await sql`
+                INSERT INTO users (id, username, email, role, phone, password, first_name, last_name, created_at, updated_at)
+                VALUES (
+                  ${userId},
+                  ${authPayload.username || 'user'},
+                  ${authPayload.username || 'user@example.com'},
+                  'customer',
+                  ${orderData.phone || ''},
+                  'AUTH_USER',
+                  ${authPayload.username?.split('@')[0] || 'User'},
+                  'Customer',
+                  NOW(),
+                  NOW()
+                )
+                ON CONFLICT (id) DO NOTHING
+              `;
 
-                  if (newUser.length > 0) {
-                    userId = newUser[0].id;
-                    console.log('✅ Orders API: Created new user record for Supabase user:', userId);
+              // Initialize user points record
+              await sql`
+                INSERT INTO user_points (user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
+                VALUES (${userId}, 0, 0, 0, NOW(), NOW(), NOW())
+                ON CONFLICT (user_id) DO NOTHING
+              `;
 
-                    // Initialize user points record
-                    await sql`
-                      INSERT INTO user_points (user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
-                      VALUES (${userId}, 0, 0, 0, NOW(), NOW(), NOW())
-                      ON CONFLICT (user_id) DO NOTHING
-                    `;
-                  }
-                } catch (createUserError) {
-                  console.error('❌ Orders API: Error creating Supabase user record:', createUserError);
-                  // Continue with supabaseUserId only
-                }
-              }
-            } catch (userCheckError) {
-              console.error('❌ Orders API: Error checking Supabase user existence:', userCheckError);
-              // Continue with supabaseUserId only
+              console.log('✅ Orders API: Created user records for user:', userId);
             }
-          } else {
-            // For legacy users, use the integer user ID
-            userId = parseInt(authPayload.userId);
-            console.log('🔑 Orders API: Using legacy user ID:', userId);
-
-            // Verify legacy user exists
-            try {
-              const existingUser = await sql`SELECT id FROM users WHERE id = ${userId}`;
-              if (existingUser.length === 0) {
-                console.log('❌ Orders API: Legacy user not found, falling back to guest');
-                userId = null;
-              }
-            } catch (userCheckError) {
-              console.error('❌ Orders API: Error checking legacy user existence:', userCheckError);
-              userId = null;
-            }
+          } catch (createUserError) {
+            console.error('❌ Orders API: Error with user record:', createUserError);
+            // Continue with the user ID anyway
           }
         } else {
           // Guest order
