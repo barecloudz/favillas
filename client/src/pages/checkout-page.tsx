@@ -143,7 +143,6 @@ const CheckoutPage = () => {
   const [promoCode, setPromoCode] = useState("");
   const [appliedPromoCode, setAppliedPromoCode] = useState<any>(null);
   const [promoCodeError, setPromoCodeError] = useState("");
-  const [voucherCode, setVoucherCode] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
   const [voucherError, setVoucherError] = useState("");
   const [selectedVoucherId, setSelectedVoucherId] = useState<string>("");
@@ -316,41 +315,6 @@ const CheckoutPage = () => {
     },
   });
 
-  // Validate voucher mutation
-  const validateVoucherMutation = useMutation({
-    mutationFn: async (code: string) => {
-      try {
-        const res = await apiRequest("POST", "/api/vouchers/validate", { voucherCode: code });
-        return await res.json();
-      } catch (error: any) {
-        let errorMessage = "Invalid voucher code";
-        try {
-          const errorData = JSON.parse(error.message);
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-          errorMessage = error.message || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
-    },
-    onSuccess: (data) => {
-      setAppliedVoucher(data);
-      setVoucherError("");
-      toast({
-        title: "Voucher applied!",
-        description: `${data.discount_type === 'percentage' ? data.discount_amount + '%' : '$' + data.discount_amount} discount applied`,
-      });
-    },
-    onError: (error: any) => {
-      setVoucherError(error.message || "Invalid voucher code");
-      setAppliedVoucher(null);
-      toast({
-        title: "Invalid voucher code",
-        description: error.message || "Please check your code and try again",
-        variant: "destructive",
-      });
-    },
-  });
 
   // Calculate totals with promo code and vouchers
   const calculateTotals = () => {
@@ -443,18 +407,10 @@ const CheckoutPage = () => {
     }
   };
 
-  // Handle manual voucher code submission (fallback)
-  const handleVoucherSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (voucherCode.trim()) {
-      validateVoucherMutation.mutate(voucherCode.trim());
-    }
-  };
 
   // Remove voucher
   const removeVoucher = () => {
     setAppliedVoucher(null);
-    setVoucherCode("");
     setSelectedVoucherId("");
     setVoucherError("");
   };
@@ -684,11 +640,14 @@ const CheckoutPage = () => {
                     </div>
                   </div>
 
-                  {/* Voucher Code Section */}
+                  {/* Available Vouchers Section */}
                   <div className="mt-4 space-y-3">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">🎫 Available Rewards</Label>
-                      <p className="text-xs text-gray-500">Your redeemed vouchers will be automatically applied</p>
+                      <Label className="text-sm font-medium flex items-center gap-2">
+                        <Gift className="h-4 w-4 text-blue-600" />
+                        Available Vouchers
+                      </Label>
+                      <p className="text-xs text-gray-500">Select one of your redeemed vouchers to apply (no codes needed!)</p>
 
                       {vouchersLoading ? (
                         <div className="flex items-center gap-2 p-3 text-gray-500 bg-gray-50 rounded-lg">
@@ -707,15 +666,15 @@ const CheckoutPage = () => {
                         <>
                           {!appliedVoucher ? (
                             <Select value={selectedVoucherId} onValueChange={handleVoucherSelect}>
-                              <SelectTrigger className="w-full">
+                              <SelectTrigger className="w-full border-blue-200 focus:border-blue-400 focus:ring-blue-100">
                                 <SelectValue placeholder="Choose a voucher to apply (optional)" />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="">No voucher</SelectItem>
                                 {availableVouchers.map((voucher: any) => (
                                   <SelectItem key={voucher.id} value={voucher.id.toString()}>
-                                    <div className="flex flex-col">
-                                      <span className="font-medium">
+                                    <div className="flex flex-col py-1">
+                                      <span className="font-medium text-gray-900">
                                         {voucher.voucher_code} - {voucher.savings_text}
                                       </span>
                                       {voucher.min_order_amount > 0 && (
@@ -724,7 +683,7 @@ const CheckoutPage = () => {
                                         </span>
                                       )}
                                       {voucher.calculated_discount > 0 && (
-                                        <span className="text-xs text-green-600">
+                                        <span className="text-xs text-green-600 font-medium">
                                           Saves ${voucher.calculated_discount.toFixed(2)} on this order
                                         </span>
                                       )}
@@ -735,7 +694,7 @@ const CheckoutPage = () => {
                             </Select>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <div className="bg-green-50 p-3 rounded-lg flex-1 border border-green-200">
+                              <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 rounded-lg flex-1 border border-green-300">
                                 <div className="flex items-center justify-between">
                                   <span className="text-green-700 font-medium">
                                     🎉 {appliedVoucher.voucher_code} - {appliedVoucher.savings_text}
@@ -750,7 +709,12 @@ const CheckoutPage = () => {
                                   </span>
                                 )}
                               </div>
-                              <Button variant="ghost" size="sm" onClick={removeVoucher}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={removeVoucher}
+                                className="text-gray-400 hover:text-red-500 hover:bg-red-50"
+                              >
                                 <X className="h-4 w-4" />
                               </Button>
                             </div>
@@ -775,8 +739,11 @@ const CheckoutPage = () => {
                       </div>
                     )}
                     {totals.voucherDiscount > 0 && (
-                      <div className="flex justify-between text-blue-600">
-                        <span>Voucher Discount</span>
+                      <div className="flex justify-between text-green-600 font-medium">
+                        <span className="flex items-center gap-1">
+                          <Gift className="h-4 w-4" />
+                          Voucher Discount
+                        </span>
                         <span>-${formatPrice(totals.voucherDiscount)}</span>
                       </div>
                     )}

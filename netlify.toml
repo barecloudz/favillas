@@ -86,7 +86,7 @@
 
 [[redirects]]
   from = "/api/user/redemptions"
-  to = "/.netlify/functions/user/redemptions"
+  to = "/.netlify/functions/user-redemptions"
   status = 200
 
 [[redirects]]
@@ -96,7 +96,7 @@
 
 [[redirects]]
   from = "/api/user/vouchers"
-  to = "/.netlify/functions/user/vouchers"
+  to = "/.netlify/functions/user-vouchers"
   status = 200
 
 [[redirects]]
@@ -141,7 +141,7 @@
 
 [[redirects]]
   from = "/api/user/active-vouchers"
-  to = "/.netlify/functions/user/active-vouchers"
+  to = "/.netlify/functions/user-active-vouchers"
   status = 200
 
 [[redirects]]

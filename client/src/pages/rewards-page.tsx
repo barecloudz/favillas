@@ -112,7 +112,7 @@ const RewardsPage = () => {
 
       toast({
         title: "🎉 Reward Redeemed Successfully!",
-        description: `Your voucher is ready! Go to checkout and select it from your available vouchers - no codes needed!`,
+        description: `Your voucher is ready! Go to checkout and select it - no codes needed!`,
         duration: 6000,
       });
 
@@ -505,12 +505,12 @@ const RewardsPage = () => {
                           <Button
                             className={`w-full h-12 text-lg font-bold transition-all duration-300 ${
                               isRewardRedeemed(reward.id)
-                                ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg cursor-default'
+                                ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg'
                                 : userData?.points >= reward.pointsRequired
                                   ? 'bg-gradient-to-r from-[#d73a31] to-[#ff6b35] hover:from-[#c73128] hover:to-[#e55a2b] text-white shadow-lg hover:shadow-xl transform hover:scale-105'
                                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                             }`}
-                            disabled={isRewardRedeemed(reward.id) || userData?.points < reward.pointsRequired || redeemRewardMutation.isPending}
+                            disabled={userData?.points < reward.pointsRequired || redeemRewardMutation.isPending}
                             onClick={() => handleRedeemReward(reward)}
                           >
                             {redeemRewardMutation.isPending ? (
@@ -520,8 +520,8 @@ const RewardsPage = () => {
                               </>
                             ) : isRewardRedeemed(reward.id) ? (
                               <>
-                                <CheckCircle className="h-5 w-5 mr-2" />
-                                ✅ Already Redeemed
+                                <CheckCircle className="h-5 w-5 mr-2 animate-pulse" />
+                                Already Redeemed
                               </>
                             ) : userData?.points >= reward.pointsRequired ? (
                               <>
