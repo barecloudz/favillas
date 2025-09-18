@@ -145,7 +145,7 @@ const CheckoutPage = () => {
   const [promoCodeError, setPromoCodeError] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
   const [voucherError, setVoucherError] = useState("");
-  const [selectedVoucherId, setSelectedVoucherId] = useState<string>("");
+  const [selectedVoucherId, setSelectedVoucherId] = useState<string>("none");
   const [tip, setTip] = useState(0);
   const [tipType, setTipType] = useState<"percentage" | "amount">("percentage");
   const [customTip, setCustomTip] = useState("");
@@ -394,7 +394,7 @@ const CheckoutPage = () => {
     setSelectedVoucherId(voucherId);
     setVoucherError("");
 
-    if (voucherId === "") {
+    if (voucherId === "" || voucherId === "none") {
       // No voucher selected
       setAppliedVoucher(null);
       return;
@@ -411,7 +411,7 @@ const CheckoutPage = () => {
   // Remove voucher
   const removeVoucher = () => {
     setAppliedVoucher(null);
-    setSelectedVoucherId("");
+    setSelectedVoucherId("none");
     setVoucherError("");
   };
 
@@ -670,7 +670,7 @@ const CheckoutPage = () => {
                                 <SelectValue placeholder="Choose a voucher to apply (optional)" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">No voucher</SelectItem>
+                                <SelectItem value="none">No voucher</SelectItem>
                                 {availableVouchers.map((voucher: any) => (
                                   <SelectItem key={voucher.id} value={voucher.id.toString()}>
                                     <div className="flex flex-col py-1">
