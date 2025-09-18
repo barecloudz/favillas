@@ -270,12 +270,8 @@ export const handler: Handler = async (event, context) => {
         console.log('✅ Updated legacy user points balance');
       }
 
-      // Update reward usage count
-      await sql`
-        UPDATE rewards
-        SET times_used = times_used + 1, updated_at = NOW()
-        WHERE id = ${rewardId}
-      `;
+      // Note: Reward usage tracking removed since times_used column doesn't exist
+      // This functionality can be restored by adding times_used column to rewards table if needed
 
       console.log('✅ Reward redemption completed successfully');
 
