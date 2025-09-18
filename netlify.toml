@@ -91,7 +91,7 @@
 
 [[redirects]]
   from = "/api/rewards/*/redeem"
-  to = "/.netlify/functions/rewards/[id]/redeem"
+  to = "/.netlify/functions/rewards-redeem"
   status = 200
 
 [[redirects]]
