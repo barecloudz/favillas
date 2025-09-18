@@ -86,7 +86,7 @@ const CheckoutForm = ({ orderId, clientSecret }: { orderId: number, clientSecret
 
 // CheckoutPage component
 const CheckoutPage = () => {
-  const { user } = useAuth();
+  const { user, refreshUserProfile } = useAuth();
   const { items, total, tax, clearCart, showLoginModal } = useCart();
   const [location, navigate] = useLocation();
   const { toast } = useToast();
@@ -126,8 +126,8 @@ const CheckoutPage = () => {
   const [orderType, setOrderType] = useState("pickup");
   const [fulfillmentTime, setFulfillmentTime] = useState("asap");
   const [scheduledTime, setScheduledTime] = useState("");
-  const [phone, setPhone] = useState(user?.phone || "");
-  const [address, setAddress] = useState(user?.address || "");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
   const [addressData, setAddressData] = useState<{
     fullAddress: string;
     street: string;
@@ -149,6 +149,85 @@ const CheckoutPage = () => {
   const [tip, setTip] = useState(0);
   const [tipType, setTipType] = useState<"percentage" | "amount">("percentage");
   const [customTip, setCustomTip] = useState("");
+  const [contactInfoLoaded, setContactInfoLoaded] = useState(false);
+
+  // Auto-populate contact information when user data is available
+  useEffect(() => {
+    if (user && !contactInfoLoaded) {
+      console.log('📞 Auto-populating contact info from user profile:', {
+        phone: user.phone,
+        address: user.address,
+        city: user.city,
+        state: user.state,
+        zipCode: user.zipCode
+      });
+
+      // Set phone number if available
+      if (user.phone) {
+        setPhone(user.phone);
+        console.log('✅ Phone auto-populated:', user.phone);
+      }
+
+      // Set address if available - construct full address from components
+      if (user.address || (user.city && user.state)) {
+        let fullAddress = '';
+
+        if (user.address) {
+          fullAddress = user.address;
+
+          // Add city, state, zip if they exist and aren't already in the address
+          const addressParts = [];
+          if (user.city && !fullAddress.toLowerCase().includes(user.city.toLowerCase())) {
+            addressParts.push(user.city);
+          }
+          if (user.state && !fullAddress.toLowerCase().includes(user.state.toLowerCase())) {
+            addressParts.push(user.state);
+          }
+          if (user.zipCode && !fullAddress.includes(user.zipCode)) {
+            addressParts.push(user.zipCode);
+          }
+
+          if (addressParts.length > 0) {
+            fullAddress += ', ' + addressParts.join(', ');
+          }
+        } else if (user.city && user.state) {
+          // If no street address but have city/state, just use those
+          fullAddress = [user.city, user.state, user.zipCode].filter(Boolean).join(', ');
+        }
+
+        if (fullAddress) {
+          setAddress(fullAddress);
+
+          // Also set the structured address data
+          setAddressData({
+            fullAddress: fullAddress,
+            street: user.address || '',
+            city: user.city || '',
+            state: user.state || '',
+            zipCode: user.zipCode || ''
+          });
+
+          console.log('✅ Address auto-populated:', fullAddress);
+        }
+      }
+
+      setContactInfoLoaded(true);
+
+      // Only show toast if we actually populated some data
+      if (user.phone || user.address || (user.city && user.state)) {
+        toast({
+          title: "Contact info auto-filled",
+          description: "Your saved information has been loaded. You can edit it if needed.",
+          duration: 4000
+        });
+      }
+    }
+  }, [user, contactInfoLoaded, toast]);
+
+  // Reset contact info loaded flag when user changes
+  useEffect(() => {
+    setContactInfoLoaded(false);
+  }, [user?.id]);
 
   // Store hours validation
   const isStoreOpen = () => {
@@ -225,15 +304,39 @@ const CheckoutPage = () => {
 
   const availableVouchers = activeVouchersData?.vouchers || [];
 
+  // Update user profile mutation to save contact information
+  const updateUserProfileMutation = useMutation({
+    mutationFn: async (contactData: { phone?: string; address?: string; city?: string; state?: string; zip_code?: string }) => {
+      const res = await apiRequest("PATCH", "/api/user-profile", contactData);
+      return await res.json();
+    },
+    onSuccess: () => {
+      console.log('✅ User profile updated with contact information');
+    },
+    onError: (error: Error) => {
+      console.warn('⚠️ Failed to update user profile:', error);
+    },
+  });
+
   // Create order mutation
   const createOrderMutation = useMutation({
     mutationFn: async (orderData: any) => {
       const res = await apiRequest("POST", "/api/orders", orderData);
       return await res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setOrderId(data.id);
-      
+
+      // Refresh user profile after order creation to get updated contact info
+      if (user) {
+        try {
+          await refreshUserProfile();
+          console.log('✅ User profile refreshed after order creation');
+        } catch (error) {
+          console.warn('⚠️ Failed to refresh user profile:', error);
+        }
+      }
+
       // Create payment intent
       createPaymentIntentMutation.mutate({
         amount: totals.finalTotal,
@@ -776,14 +879,29 @@ const CheckoutPage = () => {
                     <form onSubmit={handleSubmitOrder} className="space-y-6">
                       <div>
                         <Label htmlFor="phone">Phone Number</Label>
-                        <Input 
-                          id="phone" 
-                          type="tel" 
-                          placeholder="Enter your phone number" 
-                          value={phone} 
-                          onChange={(e) => setPhone(e.target.value)} 
-                          required 
+                        <Input
+                          id="phone"
+                          type="tel"
+                          placeholder={user ? "Your phone number will be saved for future orders" : "Enter your phone number"}
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          required
                         />
+                        {user && !phone && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            📞 Your phone number will be saved to your account for faster checkout next time
+                          </p>
+                        )}
+                        {user && phone && user.phone && phone === user.phone && (
+                          <p className="text-xs text-green-600 mt-1">
+                            ✅ Using your saved phone number
+                          </p>
+                        )}
+                        {user && phone && user.phone && phone !== user.phone && (
+                          <p className="text-xs text-blue-600 mt-1">
+                            ℹ️ This will update your saved phone number
+                          </p>
+                        )}
                       </div>
                       
                       <div>
@@ -916,14 +1034,31 @@ const CheckoutPage = () => {
                       </div>
                       
                       {orderType === "delivery" && (
-                        <AddressForm
-                          value={address}
-                          onChange={setAddress}
-                          onAddressSelect={handleAddressSelect}
-                          placeholder="Enter your delivery address"
-                          label="Delivery Address"
-                          required={true}
-                        />
+                        <div>
+                          <AddressForm
+                            value={address}
+                            onChange={setAddress}
+                            onAddressSelect={handleAddressSelect}
+                            placeholder={user ? "Your address will be saved for future orders" : "Enter your delivery address"}
+                            label="Delivery Address"
+                            required={true}
+                          />
+                          {user && !address && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              🏠 Your delivery address will be saved to your account for faster checkout next time
+                            </p>
+                          )}
+                          {user && address && user.address && address.includes(user.address) && (
+                            <p className="text-xs text-green-600 mt-1">
+                              ✅ Using your saved delivery address
+                            </p>
+                          )}
+                          {user && address && user.address && !address.includes(user.address) && (
+                            <p className="text-xs text-blue-600 mt-1">
+                              ℹ️ This will update your saved delivery address
+                            </p>
+                          )}
+                        </div>
                       )}
                       
                       <div>

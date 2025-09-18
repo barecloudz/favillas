@@ -407,8 +407,14 @@ Thank you for choosing Favilla's NY Pizza!
                           if (order.addressData && typeof order.addressData === 'object') {
                             orderBreakdown = order.addressData.orderBreakdown;
                             console.log('📊 Found orderBreakdown in addressData:', orderBreakdown);
-                          } else if (order.address_data && typeof order.address_data === 'object') {
-                            orderBreakdown = order.address_data.orderBreakdown;
+                          } else if (order.address_data) {
+                            // Handle both object and string formats
+                            let addressDataObj = order.address_data;
+                            if (typeof order.address_data === 'string') {
+                              addressDataObj = JSON.parse(order.address_data);
+                              console.log('📊 Parsed address_data from JSON string:', addressDataObj);
+                            }
+                            orderBreakdown = addressDataObj.orderBreakdown;
                             console.log('📊 Found orderBreakdown in address_data:', orderBreakdown);
                           } else {
                             console.log('⚠️ No address data found for order breakdown', { addressData: order.addressData, address_data: order.address_data });

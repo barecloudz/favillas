@@ -1,7 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
-import { useMutation, UseMutationResult } from '@tanstack/react-query';
+import { useMutation, UseMutationResult, useQuery } from '@tanstack/react-query';
 import { insertUserSchema, User as SelectUser, InsertUser } from '@shared/schema';
 import { apiRequest, queryClient } from '../lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +20,7 @@ interface AuthContextType {
   loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
+  refreshUserProfile: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -30,6 +31,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [, navigate] = useLocation();
+
+  // Fetch complete user profile including contact information
+  const fetchUserProfile = async (): Promise<MappedUser | null> => {
+    try {
+      const response = await apiRequest('GET', '/api/user-profile');
+      const userData = await response.json();
+
+      if (userData && (userData.id || userData.supabase_user_id)) {
+        console.log('📞 Fetched complete user profile:', userData);
+        const mappedUser: MappedUser = {
+          id: userData.id?.toString() || userData.supabase_user_id || '',
+          email: userData.email || userData.username || '',
+          firstName: userData.first_name || userData.username || 'User',
+          lastName: userData.last_name || '',
+          phone: userData.phone || '',
+          address: userData.address || '',
+          city: userData.city || '',
+          state: userData.state || '',
+          zipCode: userData.zip_code || '',
+          role: userData.role || 'customer',
+          isAdmin: userData.role === 'admin' || userData.role === 'superadmin' || userData.username === 'superadmin',
+          isGoogleUser: !!userData.supabase_user_id
+        };
+        return mappedUser;
+      }
+    } catch (error) {
+      console.log('❌ Failed to fetch user profile:', error);
+    }
+    return null;
+  };
+
+  // Function to refresh user profile (exposed to components)
+  const refreshUserProfile = async () => {
+    if (user) {
+      const updatedProfile = await fetchUserProfile();
+      if (updatedProfile) {
+        setUser(updatedProfile);
+        console.log('✅ User profile refreshed with contact info');
+      }
+    }
+  };
 
   useEffect(() => {
     // Initialize auth state on app load
@@ -47,8 +89,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session) {
           console.log('🔄 Found Supabase session (Google user)');
           setSession(session);
-          const mappedUser = mapSupabaseUser(session?.user || null);
-          setUser(mappedUser);
+          // Fetch complete profile instead of using basic mapping
+          const completeProfile = await fetchUserProfile();
+          if (completeProfile) {
+            setUser(completeProfile);
+          } else {
+            // Fallback to basic mapping if profile fetch fails
+            const mappedUser = mapSupabaseUser(session?.user || null);
+            setUser(mappedUser);
+          }
         } else {
           // If no Supabase session, check for legacy JWT cookie
           console.log('🔄 No Supabase session, checking for legacy JWT cookie');
@@ -58,19 +107,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             if (userData && userData.id) {
               console.log('🔑 Found legacy JWT session:', userData.username);
-              const mappedUser: MappedUser = {
-                id: userData.id?.toString() || '',
-                email: userData.email || userData.username || '',
-                firstName: userData.firstName || userData.username || 'User',
-                lastName: userData.lastName || '',
-                phone: userData.phone || '',
-                address: userData.address || '',
-                role: userData.role || 'customer',
-                isAdmin: userData.role === 'admin' || userData.role === 'superadmin' || userData.username === 'superadmin',
-                isGoogleUser: false
-              };
-              setUser(mappedUser);
-              console.log('✅ Legacy session restored');
+              // Fetch complete profile for legacy users too
+              const completeProfile = await fetchUserProfile();
+              if (completeProfile) {
+                setUser(completeProfile);
+                console.log('✅ Legacy session restored with complete profile');
+              } else {
+                // Fallback to basic user data if profile fetch fails
+                const mappedUser: MappedUser = {
+                  id: userData.id?.toString() || '',
+                  email: userData.email || userData.username || '',
+                  firstName: userData.firstName || userData.username || 'User',
+                  lastName: userData.lastName || '',
+                  phone: userData.phone || '',
+                  address: userData.address || '',
+                  role: userData.role || 'customer',
+                  isAdmin: userData.role === 'admin' || userData.role === 'superadmin' || userData.username === 'superadmin',
+                  isGoogleUser: false
+                };
+                setUser(mappedUser);
+                console.log('✅ Legacy session restored with basic data');
+              }
             } else {
               console.log('❌ No valid authentication found');
             }
@@ -90,8 +147,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         console.log('🔄 Auth state changed:', event, session ? 'Session exists' : 'No session');
         setSession(session);
-        const mappedUser = mapSupabaseUser(session?.user || null);
-        setUser(mappedUser);
+
+        if (session) {
+          // Fetch complete profile for authenticated users
+          const completeProfile = await fetchUserProfile();
+          if (completeProfile) {
+            setUser(completeProfile);
+          } else {
+            // Fallback to basic mapping
+            const mappedUser = mapSupabaseUser(session?.user || null);
+            setUser(mappedUser);
+          }
+        } else {
+          setUser(null);
+        }
         setLoading(false);
       }
     );
@@ -169,26 +238,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest("POST", "/api/login", credentials);
       return await res.json();
     },
-    onSuccess: (user: SelectUser) => {
+    onSuccess: async (user: SelectUser) => {
       console.log('🔑 Legacy login successful, updating auth state:', user);
 
       // Update query cache
       queryClient.setQueryData(["/api/user"], user);
 
-      // CRITICAL: Update the auth state that components are checking
-      const mappedUser: MappedUser = {
-        id: user.id?.toString() || '',
-        email: user.email || user.username || '',
-        firstName: user.firstName || user.username || 'User',
-        lastName: user.lastName || '',
-        phone: user.phone || '',
-        address: user.address || '',
-        role: user.role || 'customer',
-        isAdmin: user.role === 'admin' || user.role === 'superadmin' || user.username === 'superadmin',
-        isGoogleUser: false
-      };
-
-      setUser(mappedUser);
+      // Fetch complete profile after successful login
+      const completeProfile = await fetchUserProfile();
+      if (completeProfile) {
+        setUser(completeProfile);
+      } else {
+        // Fallback to basic user data
+        const mappedUser: MappedUser = {
+          id: user.id?.toString() || '',
+          email: user.email || user.username || '',
+          firstName: user.firstName || user.username || 'User',
+          lastName: user.lastName || '',
+          phone: user.phone || '',
+          address: user.address || '',
+          role: user.role || 'customer',
+          isAdmin: user.role === 'admin' || user.role === 'superadmin' || user.username === 'superadmin',
+          isGoogleUser: false
+        };
+        setUser(mappedUser);
+      }
 
       toast({
         title: "Login successful",
@@ -210,26 +284,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest("POST", "/api/register", credentials);
       return await res.json();
     },
-    onSuccess: (user: SelectUser) => {
+    onSuccess: async (user: SelectUser) => {
       console.log('🔑 Legacy registration successful, updating auth state:', user);
 
       // Update query cache
       queryClient.setQueryData(["/api/user"], user);
 
-      // CRITICAL: Update the auth state that components are checking
-      const mappedUser: MappedUser = {
-        id: user.id?.toString() || '',
-        email: user.email || user.username || '',
-        firstName: user.firstName || user.username || 'User',
-        lastName: user.lastName || '',
-        phone: user.phone || '',
-        address: user.address || '',
-        role: user.role || 'customer',
-        isAdmin: user.role === 'admin' || user.role === 'superadmin' || user.username === 'superadmin',
-        isGoogleUser: false
-      };
-
-      setUser(mappedUser);
+      // Fetch complete profile after successful registration
+      const completeProfile = await fetchUserProfile();
+      if (completeProfile) {
+        setUser(completeProfile);
+      } else {
+        // Fallback to basic user data
+        const mappedUser: MappedUser = {
+          id: user.id?.toString() || '',
+          email: user.email || user.username || '',
+          firstName: user.firstName || user.username || 'User',
+          lastName: user.lastName || '',
+          phone: user.phone || '',
+          address: user.address || '',
+          role: user.role || 'customer',
+          isAdmin: user.role === 'admin' || user.role === 'superadmin' || user.username === 'superadmin',
+          isGoogleUser: false
+        };
+        setUser(mappedUser);
+      }
 
       toast({
         title: "Registration successful",
@@ -269,16 +348,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      session, 
-      loading, 
+    <AuthContext.Provider value={{
+      user,
+      session,
+      loading,
       isLoading: loading, // For backward compatibility
-      signInWithGoogle, 
+      signInWithGoogle,
       signOut,
       loginMutation,
       logoutMutation,
-      registerMutation
+      registerMutation,
+      refreshUserProfile
     }}>
       {children}
     </AuthContext.Provider>
