@@ -145,9 +145,10 @@ export const handler: Handler = async (event, context) => {
       `;
 
       // Add transaction record for the migrated orders
+      const migrationDescription = `Historical orders migrated - ${ordersMigrated} orders totaling $${totalOrderValue}`;
       await transaction`
         INSERT INTO points_transactions (user_id, type, points, description, created_at)
-        VALUES (${newUserId}, 'order_migration', 0, 'Historical orders migrated - ${ordersMigrated} orders totaling $${totalOrderValue}', NOW())
+        VALUES (${newUserId}, 'order_migration', 0, ${migrationDescription}, NOW())
       `;
 
       return {
