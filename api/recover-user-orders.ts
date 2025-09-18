@@ -44,16 +44,47 @@ export const handler: Handler = async (event, context) => {
 
     console.log(`🔍 Searching for orders for user: ${userEmail}`);
 
-    // Search for orders by email address (most likely to find them)
-    const ordersByEmail = await sql`
-      SELECT * FROM orders
-      WHERE customer_email = ${userEmail}
-      ORDER BY created_at DESC
-    `;
+    // Search for orders by multiple strategies since there's no email column
+    let ordersToMigrate = [];
 
-    console.log(`📦 Found ${ordersByEmail.length} orders by email`);
+    // Strategy 1: Search by supabase_user_id
+    try {
+      const ordersBySupabaseId = await sql`
+        SELECT * FROM orders
+        WHERE supabase_user_id = ${userUuid}
+        ORDER BY created_at DESC
+      `;
+      ordersToMigrate = ordersToMigrate.concat(ordersBySupabaseId);
+      console.log(`📦 Found ${ordersBySupabaseId.length} orders by Supabase UUID`);
+    } catch (e) {
+      console.log('Supabase UUID search failed:', e.message);
+    }
 
-    if (ordersByEmail.length === 0) {
+    // Strategy 2: Check recent orders that might be yours (last 30 days)
+    try {
+      const recentOrders = await sql`
+        SELECT * FROM orders
+        WHERE created_at > NOW() - INTERVAL '30 days'
+        ORDER BY created_at DESC
+      `;
+      console.log(`📦 Found ${recentOrders.length} recent orders to analyze`);
+
+      // Add any recent orders that don't have a user_id set (might be guest orders)
+      const guestOrders = recentOrders.filter(order => !order.user_id || order.user_id === null);
+      ordersToMigrate = ordersToMigrate.concat(guestOrders);
+      console.log(`📦 Found ${guestOrders.length} recent guest orders`);
+    } catch (e) {
+      console.log('Recent orders search failed:', e.message);
+    }
+
+    // Remove duplicates
+    const uniqueOrders = ordersToMigrate.filter((order, index, arr) =>
+      arr.findIndex(o => o.id === order.id) === index
+    );
+
+    console.log(`📦 Found ${uniqueOrders.length} orders total after deduplication`);
+
+    if (uniqueOrders.length === 0) {
       return {
         statusCode: 200,
         headers,
@@ -70,7 +101,7 @@ export const handler: Handler = async (event, context) => {
       let ordersMigrated = 0;
       const migratedOrders = [];
 
-      for (const order of ordersByEmail) {
+      for (const order of uniqueOrders) {
         console.log(`🔄 Migrating order ${order.id} from user_id ${order.user_id} to ${newUserId}`);
 
         // Update order to use new user ID
@@ -93,7 +124,7 @@ export const handler: Handler = async (event, context) => {
       }
 
       // Calculate points that should have been earned
-      const totalOrderValue = ordersByEmail.reduce((sum, order) => sum + parseFloat(order.final_total || 0), 0);
+      const totalOrderValue = uniqueOrders.reduce((sum, order) => sum + parseFloat(order.total || 0), 0);
       const pointsEarned = Math.floor(totalOrderValue); // 1 point per dollar
 
       console.log(`💰 Total order value: $${totalOrderValue}, Points earned: ${pointsEarned}`);
@@ -120,7 +151,7 @@ export const handler: Handler = async (event, context) => {
       `;
 
       return {
-        ordersFound: ordersByEmail.length,
+        ordersFound: uniqueOrders.length,
         ordersMigrated,
         migratedOrders,
         totalOrderValue,
