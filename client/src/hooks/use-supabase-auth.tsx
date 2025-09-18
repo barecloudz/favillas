@@ -90,13 +90,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('🔄 Found Supabase session (Google user)');
           setSession(session);
           // Fetch complete profile instead of using basic mapping
-          const completeProfile = await fetchUserProfile();
-          if (completeProfile) {
-            setUser(completeProfile);
-          } else {
-            // Fallback to basic mapping if profile fetch fails
-            const mappedUser = mapSupabaseUser(session?.user || null);
-            setUser(mappedUser);
+          try {
+            const completeProfile = await fetchUserProfile();
+            if (completeProfile) {
+              setUser(completeProfile);
+            } else {
+              // Fallback to basic mapping if profile fetch fails
+              const mappedUser = mapSupabaseUser(session?.user || null);
+              setUser(mappedUser);
+            }
+          } catch (error) {
+            console.error('Failed to fetch user profile during init, signing out:', error);
+            // If profile fetch fails, likely means user is not properly authenticated
+            await supabase.auth.signOut();
+            setUser(null);
+            setSession(null);
           }
         } else {
           // If no Supabase session, check for legacy JWT cookie
@@ -150,13 +158,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (session) {
           // Fetch complete profile for authenticated users
-          const completeProfile = await fetchUserProfile();
-          if (completeProfile) {
-            setUser(completeProfile);
-          } else {
-            // Fallback to basic mapping
-            const mappedUser = mapSupabaseUser(session?.user || null);
-            setUser(mappedUser);
+          try {
+            const completeProfile = await fetchUserProfile();
+            if (completeProfile) {
+              setUser(completeProfile);
+            } else {
+              // Fallback to basic mapping
+              const mappedUser = mapSupabaseUser(session?.user || null);
+              setUser(mappedUser);
+            }
+          } catch (error) {
+            console.error('Failed to fetch user profile, signing out:', error);
+            // If profile fetch fails, likely means user is not properly authenticated
+            await supabase.auth.signOut();
+            setUser(null);
+            setSession(null);
           }
         } else {
           setUser(null);
