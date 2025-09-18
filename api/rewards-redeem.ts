@@ -133,7 +133,7 @@ export const handler: Handler = async (event, context) => {
     }
 
     // Start transaction
-    await sql.begin(async (sql: any) => {
+    const result = await sql.begin(async (sql: any) => {
       // Get the reward details
       const reward = await sql`
         SELECT * FROM rewards
@@ -275,19 +275,21 @@ export const handler: Handler = async (event, context) => {
 
       console.log('✅ Reward redemption completed successfully');
 
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-          success: true,
-          redemption: redemption[0],
-          reward: rewardData,
-          message: `Successfully redeemed ${rewardData.name}!`,
-          userType: authPayload.isSupabase ? 'google' : 'legacy',
-          userId: authPayload.isSupabase ? authPayload.supabaseUserId : authPayload.userId
-        })
-      };
+      return { redemption: redemption[0], reward: rewardData };
     });
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        success: true,
+        redemption: result.redemption,
+        reward: result.reward,
+        message: `Successfully redeemed ${result.reward.name}!`,
+        userType: authPayload.isSupabase ? 'google' : 'legacy',
+        userId: authPayload.isSupabase ? authPayload.supabaseUserId : authPayload.userId
+      })
+    };
 
   } catch (error: any) {
     console.error('Reward redemption error:', error);
