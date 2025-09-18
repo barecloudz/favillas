@@ -203,7 +203,7 @@ Time: ${order?.createdAt ? new Date(order.createdAt).toLocaleTimeString() : 'N/A
 
 Customer: ${user?.firstName} ${user?.lastName}
 ${order?.orderType === 'delivery' ? `Address: ${order?.address || user?.address}` : 'Pickup Order'}
-${user?.phone ? `Phone: ${user.phone}` : ''}
+${order?.phone || order?.userContactInfo?.phone || user?.phone ? `Phone: ${order?.phone || order?.userContactInfo?.phone || user.phone}` : 'Phone: Contact information not provided'}
 
 Items:
 ${order?.items?.map((item: any) => 
@@ -231,8 +231,12 @@ ${(() => {
       orderBreakdown = order.address_data.orderBreakdown;
     }
   } catch (e) {}
-  const discount = orderBreakdown?.discount || 0;
-  return discount > 0 ? `Discount: -${formatCurrency(discount)}` : '';
+  const promoDiscount = orderBreakdown?.discount || 0;
+  const voucherDiscount = orderBreakdown?.voucherDiscount || 0;
+  let discountLines = [];
+  if (promoDiscount > 0) discountLines.push(`Promo Discount: -${formatCurrency(promoDiscount)}`);
+  if (voucherDiscount > 0) discountLines.push(`Voucher Discount: -${formatCurrency(voucherDiscount)}`);
+  return discountLines.join('\n');
 })()}
 Tax: ${formatCurrency(parseFloat(order?.tax || 0))}
 ${parseFloat(order?.deliveryFee || 0) > 0 ? `Delivery Fee: ${formatCurrency(parseFloat(order?.deliveryFee || 0))}` : ''}
@@ -402,7 +406,9 @@ Thank you for choosing Favilla's NY Pizza!
                         }
 
                         const subtotal = orderBreakdown?.subtotal || parseFloat(order.total || 0) - parseFloat(order.tax || 0) - parseFloat(order.tip || 0) - parseFloat(order.deliveryFee || 0);
-                        const discount = orderBreakdown?.discount || 0;
+                        const promoDiscount = orderBreakdown?.discount || 0;
+                        const voucherDiscount = orderBreakdown?.voucherDiscount || 0;
+                        const totalDiscount = promoDiscount + voucherDiscount;
 
                         return (
                           <>
@@ -410,10 +416,16 @@ Thank you for choosing Favilla's NY Pizza!
                               <span>Subtotal</span>
                               <span>{formatCurrency(subtotal)}</span>
                             </div>
-                            {discount > 0 && (
+                            {promoDiscount > 0 && (
                               <div className="flex justify-between text-green-600">
-                                <span>Discount</span>
-                                <span>-{formatCurrency(discount)}</span>
+                                <span>Promo Code Discount</span>
+                                <span>-{formatCurrency(promoDiscount)}</span>
+                              </div>
+                            )}
+                            {voucherDiscount > 0 && (
+                              <div className="flex justify-between text-green-600">
+                                <span>Voucher Discount</span>
+                                <span>-{formatCurrency(voucherDiscount)}</span>
                               </div>
                             )}
                             <div className="flex justify-between">
@@ -582,12 +594,20 @@ Thank you for choosing Favilla's NY Pizza!
                 <CardContent className="space-y-3">
                   <div className="flex items-center space-x-2">
                     <Phone className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm">{user?.phone || 'Not provided'}</span>
+                    <span className="text-sm">
+                      {order.phone || order.userContactInfo?.phone || user?.phone || 'Contact information not provided'}
+                    </span>
                   </div>
                   {order.orderType === 'delivery' && (
                     <div className="flex items-start space-x-2">
                       <MapPin className="h-4 w-4 text-gray-400 mt-0.5" />
-                      <span className="text-sm">{order.address || user?.address || 'Address not provided'}</span>
+                      <span className="text-sm">
+                        {order.address ||
+                         (order.userContactInfo &&
+                          `${order.userContactInfo.address}${order.userContactInfo.city ? `, ${order.userContactInfo.city}` : ''}${order.userContactInfo.state ? `, ${order.userContactInfo.state}` : ''}${order.userContactInfo.zip_code ? ` ${order.userContactInfo.zip_code}` : ''}`) ||
+                         user?.address ||
+                         'Address not provided'}
+                      </span>
                     </div>
                   )}
                 </CardContent>
@@ -637,7 +657,7 @@ Thank you for choosing Favilla's NY Pizza!
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-yellow-700 mb-3">
-                    Don't forget to spin the wheel for rewards after your order is completed!
+                    You earned points on this order! Use them to redeem rewards and get discounts on future orders.
                   </p>
                   <Button 
                     variant="outline" 
