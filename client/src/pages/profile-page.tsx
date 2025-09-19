@@ -115,6 +115,17 @@ const ProfilePage: React.FC = () => {
       zip_code: zipCode,
     });
   };
+
+  const handleSavePersonalInfo = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateProfileMutation.mutate({
+      phone,
+      address,
+      city,
+      state,
+      zip_code: zipCode,
+    });
+  };
   
   const handleChangePassword = (e: React.FormEvent) => {
     e.preventDefault();

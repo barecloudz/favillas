@@ -1,6 +1,7 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
 import jwt from 'jsonwebtoken';
+import { authenticateToken } from './_shared/auth';
 
 let dbConnection: any = null;
 
@@ -23,61 +24,7 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: number | null; supabaseUserId: string | null; username: string; role: string; isSupabase: boolean } | null {
-  const authHeader = event.headers.authorization;
-  let token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    const cookies = event.headers.cookie;
-    if (cookies) {
-      const authCookie = cookies.split(';').find((c: string) => c.trim().startsWith('auth-token='));
-      if (authCookie) {
-        token = authCookie.split('=')[1];
-      }
-    }
-  }
-
-  if (!token) return null;
-
-  try {
-    // First try to decode as Supabase JWT token
-    try {
-      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-
-      if (payload.iss && payload.iss.includes('supabase')) {
-        const supabaseUserId = payload.sub;
-
-        return {
-          userId: null, // No integer user ID for Supabase users
-          supabaseUserId: supabaseUserId,
-          username: payload.email || 'supabase_user',
-          role: 'customer',
-          isSupabase: true
-        };
-      }
-    } catch (supabaseError) {
-      console.log('Not a Supabase token, trying JWT verification');
-    }
-
-    // Fallback to our JWT verification
-    const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
-    if (!jwtSecret) {
-      throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
-    }
-
-    const decoded = jwt.verify(token, jwtSecret) as any;
-    return {
-      userId: decoded.userId,
-      supabaseUserId: null,
-      username: decoded.username,
-      role: decoded.role || 'customer',
-      isSupabase: false
-    };
-  } catch (error) {
-    console.error('Token authentication failed:', error);
-    return null;
-  }
-}
+// Using shared authentication function from _shared/auth.ts
 
 export const handler: Handler = async (event, context) => {
   const origin = event.headers.origin || 'http://localhost:3000';
