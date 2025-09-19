@@ -151,7 +151,9 @@ export const handler: Handler = async (event, context) => {
         userId: authPayload.userId,
         supabaseUserId: authPayload.supabaseUserId,
         isSupabase: authPayload.isSupabase,
-        contactData: { phone, address, city, state, zip_code }
+        username: authPayload.username,
+        contactData: { phone, address, city, state, zip_code },
+        rawBody: event.body
       });
 
       if (authPayload.isSupabase) {
@@ -161,40 +163,63 @@ export const handler: Handler = async (event, context) => {
         `;
 
         if (existingSupabaseUser.length === 0) {
-          console.log('⚠️ Supabase user not found, creating user account');
+          console.log('⚠️ Supabase user not found, creating user account for:', authPayload.supabaseUserId);
 
-          // Create user record for Supabase user
-          await sql`
-            INSERT INTO users (
-              supabase_user_id, username, email, role, phone, address, city, state, zip_code,
-              first_name, last_name, password, created_at, updated_at
-            ) VALUES (
-              ${authPayload.supabaseUserId},
-              ${authPayload.username || 'google_user'},
-              ${authPayload.username || 'user@example.com'},
-              'customer',
-              ${phone || ''},
-              ${address || ''},
-              ${city || ''},
-              ${state || ''},
-              ${zip_code || ''},
-              ${authPayload.username?.split('@')[0] || 'User'},
-              'Customer',
-              'GOOGLE_USER',
-              NOW(),
-              NOW()
-            )
-            ON CONFLICT (supabase_user_id) DO NOTHING
-          `;
+          try {
+            // Create user record for Supabase user
+            const newUserResult = await sql`
+              INSERT INTO users (
+                supabase_user_id, username, email, role, phone, address, city, state, zip_code,
+                first_name, last_name, password, created_at, updated_at
+              ) VALUES (
+                ${authPayload.supabaseUserId},
+                ${authPayload.username || 'google_user'},
+                ${authPayload.username || 'user@example.com'},
+                'customer',
+                ${phone || ''},
+                ${address || ''},
+                ${city || ''},
+                ${state || ''},
+                ${zip_code || ''},
+                ${authPayload.username?.split('@')[0] || 'User'},
+                'Customer',
+                'GOOGLE_USER',
+                NOW(),
+                NOW()
+              )
+              ON CONFLICT (supabase_user_id) DO UPDATE SET
+                phone = EXCLUDED.phone,
+                address = EXCLUDED.address,
+                city = EXCLUDED.city,
+                state = EXCLUDED.state,
+                zip_code = EXCLUDED.zip_code,
+                updated_at = NOW()
+              RETURNING *
+            `;
 
-          // Initialize user points using correct schema for Supabase user
-          await sql`
-            INSERT INTO user_points (supabase_user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
-            VALUES (${authPayload.supabaseUserId}, 0, 0, 0, NOW(), NOW(), NOW())
-            ON CONFLICT DO NOTHING
-          `;
+            // Initialize user points using correct schema for Supabase user
+            await sql`
+              INSERT INTO user_points (supabase_user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
+              VALUES (${authPayload.supabaseUserId}, 0, 0, 0, NOW(), NOW(), NOW())
+              ON CONFLICT (supabase_user_id) DO NOTHING
+            `;
 
-          console.log('✅ Created Supabase user account with points system');
+            console.log('✅ Created/Updated Supabase user account with points system:', newUserResult[0]);
+
+            // Return the newly created user data
+            return {
+              statusCode: 200,
+              headers,
+              body: JSON.stringify(newUserResult[0])
+            };
+          } catch (createError) {
+            console.error('❌ Error creating Supabase user:', createError);
+            return {
+              statusCode: 500,
+              headers,
+              body: JSON.stringify({ error: 'Failed to create user profile', details: createError.message })
+            };
+          }
         }
 
         // Update Supabase user profile - allow setting to empty values
@@ -219,7 +244,10 @@ export const handler: Handler = async (event, context) => {
           };
         }
 
-        console.log('✅ Supabase user profile updated successfully');
+        console.log('✅ Supabase user profile updated successfully:', {
+          updatedRows: updatedUser.length,
+          updatedData: updatedUser[0]
+        });
 
         return {
           statusCode: 200,
