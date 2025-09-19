@@ -137,7 +137,7 @@ export const handler: Handler = async (event, context) => {
       // Get the reward details with FOR UPDATE lock to prevent concurrent modifications
       const reward = await sql`
         SELECT * FROM rewards
-        WHERE id = ${rewardId} AND active = true
+        WHERE id = ${rewardId} AND is_active = true
         AND (expires_at IS NULL OR expires_at > NOW())
         FOR UPDATE
       `;
