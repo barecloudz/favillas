@@ -327,13 +327,34 @@ const CheckoutPage = () => {
     onSuccess: async (data) => {
       setOrderId(data.id);
 
-      // Refresh user profile after order creation to get updated contact info
-      if (user) {
+      // Save contact information to user profile for future orders
+      if (user && (phone || address || city || state || zipCode)) {
         try {
+          console.log('💾 Saving contact information to user profile:', { phone, address, city, state, zipCode });
+
+          // Extract address components if we have addressData
+          const contactData: { phone?: string; address?: string; city?: string; state?: string; zip_code?: string } = {};
+
+          if (phone) contactData.phone = phone;
+          if (addressData) {
+            if (addressData.street) contactData.address = addressData.street;
+            if (addressData.city) contactData.city = addressData.city;
+            if (addressData.state) contactData.state = addressData.state;
+            if (addressData.zipCode) contactData.zip_code = addressData.zipCode;
+          } else if (address) {
+            // Fallback: just save the full address string
+            contactData.address = address;
+          }
+
+          await updateUserProfileMutation.mutateAsync(contactData);
+          console.log('✅ Contact information saved to user profile');
+
+          // Refresh user profile to get updated data
           await refreshUserProfile();
-          console.log('✅ User profile refreshed after order creation');
+          console.log('✅ User profile refreshed after contact info update');
         } catch (error) {
-          console.warn('⚠️ Failed to refresh user profile:', error);
+          console.warn('⚠️ Failed to save contact information to user profile:', error);
+          // Don't block the checkout process if profile update fails
         }
       }
 
