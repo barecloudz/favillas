@@ -8,46 +8,52 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {};
 
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    // First try to get token from localStorage (where it's actually stored)
+    const localStorageAuth = localStorage.getItem('favillasnypizza-auth-token');
+    let token = null;
 
-    // Debug: log the full session to see what's available
-    console.log('🔍 Full session debug:', {
-      hasSession: !!session,
-      sessionKeys: session ? Object.keys(session) : [],
-      access_token: session?.access_token,
-      accessToken: (session as any)?.accessToken,
-      token: (session as any)?.token,
-      userToken: session?.user ? (session.user as any).token : undefined
-    });
+    if (localStorageAuth) {
+      try {
+        const authData = JSON.parse(localStorageAuth);
+        token = authData.access_token;
+        console.log('🔍 Using localStorage token:', {
+          hasLocalAuth: !!localStorageAuth,
+          hasAccessToken: !!token,
+          tokenPreview: token ? token.substring(0, 20) + '...' : 'null'
+        });
+      } catch (parseError) {
+        console.warn('Failed to parse localStorage auth data:', parseError);
+      }
+    }
 
-    // Try multiple possible token property names
-    const token = session?.access_token ||
-                  (session as any)?.accessToken ||
-                  (session as any)?.token ||
-                  (session?.user as any)?.token;
+    // Fallback to Supabase session if localStorage token not found
+    if (!token) {
+      const { data: { session } } = await supabase.auth.getSession();
+      token = session?.access_token;
+      console.log('🔍 Fallback to Supabase session:', {
+        hasSession: !!session,
+        hasAccessToken: !!token,
+        tokenPreview: token ? token.substring(0, 20) + '...' : 'null'
+      });
 
-    console.log('🔍 Client auth check:', {
-      hasSession: !!session,
-      hasAccessToken: !!token,
-      tokenPreview: token ? token.substring(0, 20) + '...' : 'null'
-    });
+      // Try to refresh if no token
+      if (!token) {
+        const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
+        token = refreshedSession?.access_token;
+        console.log('🔍 Tried refreshed session:', {
+          hasRefreshedToken: !!token
+        });
+      }
+    }
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
       console.log('✅ Adding Authorization header');
     } else {
-      console.log('❌ No access token available - session may be expired');
-      // Try to refresh the session
-      const { data: { session: refreshedSession }, error } = await supabase.auth.refreshSession();
-      if (refreshedSession?.access_token) {
-        headers['Authorization'] = `Bearer ${refreshedSession.access_token}`;
-        console.log('✅ Used refreshed token');
-      } else {
-        console.log('❌ Failed to refresh session:', error);
-      }
+      console.log('❌ No access token available from any source');
     }
   } catch (error) {
-    console.warn('Failed to get Supabase session:', error);
+    console.warn('Failed to get auth headers:', error);
   }
 
   return headers;

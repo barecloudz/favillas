@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -25,7 +25,7 @@ import {
 import { Link } from "wouter";
 
 const ProfilePage: React.FC = () => {
-  const { user, logoutMutation } = useAuth();
+  const { user, logoutMutation, refreshUserProfile } = useAuth();
   const { toast } = useToast();
   
   // Form states
@@ -34,7 +34,24 @@ const ProfilePage: React.FC = () => {
   const [email, setEmail] = useState(user?.email || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [address, setAddress] = useState(user?.address || "");
-  
+  const [city, setCity] = useState(user?.city || "");
+  const [state, setState] = useState(user?.state || "");
+  const [zipCode, setZipCode] = useState(user?.zipCode || "");
+
+  // Sync form state with user data when it changes
+  useEffect(() => {
+    if (user) {
+      setFirstName(user.firstName || "");
+      setLastName(user.lastName || "");
+      setEmail(user.email || "");
+      setPhone(user.phone || "");
+      setAddress(user.address || "");
+      setCity(user.city || "");
+      setState(user.state || "");
+      setZipCode(user.zipCode || "");
+    }
+  }, [user]);
+
   // Password change states
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -45,14 +62,16 @@ const ProfilePage: React.FC = () => {
   
   // Update profile mutation
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { firstName: string; lastName: string; email: string; phone: string; address: string }) => {
-      return apiRequest("PATCH", "/api/user/profile", data);
+    mutationFn: async (data: { phone: string; address: string; city: string; state: string; zip_code: string }) => {
+      return apiRequest("PATCH", "/api/user-profile", data);
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Success",
         description: "Profile updated successfully",
       });
+      // Refresh user profile to get updated data
+      await refreshUserProfile();
     },
     onError: (error: any) => {
       toast({
@@ -89,11 +108,11 @@ const ProfilePage: React.FC = () => {
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     updateProfileMutation.mutate({
-      firstName,
-      lastName,
-      email,
       phone,
       address,
+      city,
+      state,
+      zip_code: zipCode,
     });
   };
   
@@ -302,9 +321,51 @@ const ProfilePage: React.FC = () => {
                           id="address"
                           value={address}
                           onChange={(e) => setAddress(e.target.value)}
-                          placeholder="123 Main St, City, State 12345"
+                          placeholder="123 Main St"
                         />
                       </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <Label htmlFor="city">City</Label>
+                          <Input
+                            id="city"
+                            value={city}
+                            onChange={(e) => setCity(e.target.value)}
+                            placeholder="City"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="state">State</Label>
+                          <Input
+                            id="state"
+                            value={state}
+                            onChange={(e) => setState(e.target.value)}
+                            placeholder="State"
+                            maxLength={2}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="zipCode">ZIP Code</Label>
+                          <Input
+                            id="zipCode"
+                            value={zipCode}
+                            onChange={(e) => setZipCode(e.target.value)}
+                            placeholder="12345"
+                          />
+                        </div>
+                      </div>
+
+                      <Button
+                        type="button"
+                        onClick={handleSaveProfile}
+                        disabled={updateProfileMutation.isPending}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <Save className="mr-2 h-4 w-4" />
+                        {updateProfileMutation.isPending ? "Saving..." : "Save Address"}
+                      </Button>
+
                       <p className="text-sm text-gray-500">
                         This address will be used as your default for delivery orders
                       </p>
