@@ -89,8 +89,13 @@ class ShipDayService {
   async createDeliveryOrder(orderData: ShipDayOrderData): Promise<ShipDayResponse> {
     try {
       // Use documented ShipDay API format
+      const customerName = orderData.customerName && orderData.customerName.trim() !== "" ? orderData.customerName.trim() : "Customer";
+      const customerPhone = orderData.customerPhone.replace(/[^\d]/g, ''); // Clean phone number
+      const customerEmail = orderData.customerEmail || "";
+      const customerAddress = `${orderData.address.street || orderData.address.fullAddress}, ${orderData.address.city}, ${orderData.address.state} ${orderData.address.zipCode}`;
+
       const shipdayPayload = {
-        orderItem: orderData.items.map(item => ({
+        orderItems: orderData.items.map(item => ({
           name: item.name,
           unitPrice: item.price,
           quantity: item.quantity
@@ -100,7 +105,8 @@ class ShipDayService {
             street: "123 Main St", // Update with actual restaurant address
             city: "Asheville",
             state: "NC",
-            zip: "28801"
+            zip: "28801",
+            country: "United States"
           },
           contactPerson: {
             name: "Favillas NY Pizza", // Ensure proper restaurant name
@@ -112,17 +118,23 @@ class ShipDayService {
             street: orderData.address.street || orderData.address.fullAddress,
             city: orderData.address.city,
             state: orderData.address.state,
-            zip: orderData.address.zipCode
+            zip: orderData.address.zipCode,
+            country: "United States"
           },
           contactPerson: {
-            name: orderData.customerName,
-            phone: orderData.customerPhone.replace(/[^\d]/g, ''), // Clean phone number
-            ...(orderData.customerEmail && { email: orderData.customerEmail })
+            name: customerName,
+            phone: customerPhone,
+            ...(customerEmail && { email: customerEmail })
           }
         },
         orderNumber: orderData.orderId,
-        totalAmount: orderData.totalAmount,
-        paymentMethod: 'credit_card' // Update based on your payment processing
+        totalOrderCost: orderData.totalAmount,
+        paymentMethod: 'credit_card', // Update based on your payment processing
+        // Required customer fields at root level
+        customerName: customerName,
+        customerPhoneNumber: customerPhone,
+        customerAddress: customerAddress,
+        ...(customerEmail && { customerEmail: customerEmail })
       };
 
       log(`Sending ShipDay payload: ${JSON.stringify(shipdayPayload, null, 2)}`, 'ShipDay');

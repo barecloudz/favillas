@@ -1347,7 +1347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (req.body.orderType === "delivery" && req.body.addressData && shipdayService.isConfigured()) {
         try {
-          const customerName = req.user ? `${req.user.firstName} ${req.user.lastName}` : "Guest Customer";
+          const customerName = req.user ? `${req.user.firstName} ${req.user.lastName}` : "Customer";
           const customerEmail = req.user?.email || "";
           
           // Format order for ShipDay API
