@@ -643,67 +643,76 @@ export const handler: Handler = async (event, context) => {
           });
         }
 
-        // Create the order - store both address data and order breakdown metadata in address_data
-        const combinedAddressData = {
-          ...orderData.addressData,
-          orderBreakdown: orderData.orderMetadata
-        };
+        // Begin atomic transaction for order creation + payment
+        const transactionResult = await sql.begin(async (sql) => {
+          console.log('🔒 Orders API: Starting atomic transaction for order creation');
 
-        const newOrders = await sql`
-          INSERT INTO orders (
-            user_id, supabase_user_id, status, total, tax, delivery_fee, tip, order_type, payment_status,
-            special_instructions, address, address_data, fulfillment_time, scheduled_time,
-            phone, created_at
-          ) VALUES (
-            ${userId},
-            ${supabaseUserId},
-            ${orderData.status || 'pending'},
-            ${serverCalculatedOrder.total},
-            ${serverCalculatedOrder.tax},
-            ${deliveryFee.toFixed(2)},
-            ${tip.toFixed(2)},
-            ${orderData.orderType},
-            ${orderData.paymentStatus || 'pending'},
-            ${orderData.specialInstructions || ''},
-            ${orderData.address || ''},
-            ${combinedAddressData ? JSON.stringify(combinedAddressData) : null},
-            ${orderData.fulfillmentTime || 'asap'},
-            ${formattedScheduledTime},
-            ${orderData.phone},
-            NOW()
-          ) RETURNING *
-        `;
+          // Create the order - store both address data and order breakdown metadata in address_data
+          const combinedAddressData = {
+            ...orderData.addressData,
+            orderBreakdown: orderData.orderMetadata
+          };
 
-        const newOrder = newOrders[0];
-        if (!newOrder) {
-          throw new Error('Failed to create order');
-        }
-        
-        console.log('✅ Orders API: Order created with ID:', newOrder.id);
+          const newOrders = await sql`
+            INSERT INTO orders (
+              user_id, supabase_user_id, status, total, tax, delivery_fee, tip, order_type, payment_status,
+              special_instructions, address, address_data, fulfillment_time, scheduled_time,
+              phone, created_at
+            ) VALUES (
+              ${userId},
+              ${supabaseUserId},
+              ${orderData.status || 'pending'},
+              ${serverCalculatedOrder.total},
+              ${serverCalculatedOrder.tax},
+              ${deliveryFee.toFixed(2)},
+              ${tip.toFixed(2)},
+              ${orderData.orderType},
+              ${orderData.paymentStatus || 'pending'},
+              ${orderData.specialInstructions || ''},
+              ${orderData.address || ''},
+              ${combinedAddressData ? JSON.stringify(combinedAddressData) : null},
+              ${orderData.fulfillmentTime || 'asap'},
+              ${formattedScheduledTime},
+              ${orderData.phone},
+              NOW()
+            ) RETURNING *
+          `;
 
-        // Insert order items using validated items
-        if (validItems && validItems.length > 0) {
-          console.log('🛒 Orders API: Creating order items:', validItems.length);
-          const orderItemsInserts = [];
-          for (const item of validItems) {
-            
-            const insertResult = await sql`
-              INSERT INTO order_items (
-                order_id, menu_item_id, quantity, price, options, special_instructions, created_at
-              ) VALUES (
-                ${newOrder.id}, 
-                ${item.menuItemId}, 
-                ${item.quantity}, 
-                ${item.price}, 
-                ${item.options ? JSON.stringify(item.options) : null}, 
-                ${item.specialInstructions || ''}, 
-                NOW()
-              ) RETURNING *
-            `;
-            orderItemsInserts.push(insertResult[0]);
+          const newOrder = newOrders[0];
+          if (!newOrder) {
+            throw new Error('Failed to create order');
           }
-          console.log('✅ Orders API: Order items created:', orderItemsInserts.length);
-        }
+
+          console.log('✅ Orders API: Order created with ID:', newOrder.id);
+
+          // Insert order items using validated items within the same transaction
+          const orderItemsInserts = [];
+          if (validItems && validItems.length > 0) {
+            console.log('🛒 Orders API: Creating order items in transaction:', validItems.length);
+            for (const item of validItems) {
+              const insertResult = await sql`
+                INSERT INTO order_items (
+                  order_id, menu_item_id, quantity, price, options, special_instructions, created_at
+                ) VALUES (
+                  ${newOrder.id},
+                  ${item.menuItemId},
+                  ${item.quantity},
+                  ${item.price},
+                  ${item.options ? JSON.stringify(item.options) : null},
+                  ${item.specialInstructions || ''},
+                  NOW()
+                ) RETURNING *
+              `;
+              orderItemsInserts.push(insertResult[0]);
+            }
+            console.log('✅ Orders API: Order items created in transaction:', orderItemsInserts.length);
+          }
+
+          return { newOrder, orderItemsInserts };
+        });
+
+        const { newOrder, orderItemsInserts } = transactionResult;
+        console.log('✅ Orders API: Atomic transaction completed successfully');
 
         // Fetch the complete order with items and menu item details
         const orderItems = await sql`
@@ -782,48 +791,54 @@ export const handler: Handler = async (event, context) => {
           try {
             console.log('🎫 Orders API: Processing voucher:', orderData.voucherCode);
 
-            // Extract voucher ID from voucher code (format: PREFIX + ID, e.g., DISC0001)
-            const voucherIdMatch = orderData.voucherCode.match(/\d+$/);
-            if (!voucherIdMatch) {
-              console.warn('⚠️ Orders API: Invalid voucher code format:', orderData.voucherCode);
+            // Get voucher details from user_vouchers table (correct table for vouchers)
+            let voucherQuery;
+
+            if (supabaseUserId) {
+              voucherQuery = await sql`
+                SELECT uv.*, r.name as reward_name
+                FROM user_vouchers uv
+                LEFT JOIN rewards r ON uv.reward_id = r.id
+                WHERE uv.voucher_code = ${orderData.voucherCode}
+                AND uv.user_id IN (
+                  SELECT id FROM users WHERE supabase_user_id = ${supabaseUserId}
+                )
+                AND uv.status = 'active'
+                AND (uv.expires_at IS NULL OR uv.expires_at > NOW())
+              `;
             } else {
-              const voucherId = parseInt(voucherIdMatch[0]);
+              voucherQuery = await sql`
+                SELECT uv.*, r.name as reward_name
+                FROM user_vouchers uv
+                LEFT JOIN rewards r ON uv.reward_id = r.id
+                WHERE uv.voucher_code = ${orderData.voucherCode}
+                AND uv.user_id = ${userId}
+                AND uv.status = 'active'
+                AND (uv.expires_at IS NULL OR uv.expires_at > NOW())
+              `;
+            }
 
-              // Get voucher details from user_points_redemptions and validate it's active for this user
-              const vouchers = supabaseUserId
-                ? await sql`
-                    SELECT upr.*, r.name as reward_name
-                    FROM user_points_redemptions upr
-                    LEFT JOIN rewards r ON upr.reward_id = r.id
-                    WHERE upr.id = ${voucherId}
-                    AND upr.supabase_user_id = ${supabaseUserId}
-                    AND upr.is_used = false
-                    AND (upr.expires_at IS NULL OR upr.expires_at > NOW())
-                  `
-                : await sql`
-                    SELECT upr.*, r.name as reward_name
-                    FROM user_points_redemptions upr
-                    LEFT JOIN rewards r ON upr.reward_id = r.id
-                    WHERE upr.id = ${voucherId}
-                    AND upr.user_id = ${userId}
-                    AND upr.is_used = false
-                    AND (upr.expires_at IS NULL OR upr.expires_at > NOW())
-                  `;
+            if (voucherQuery.length > 0) {
+              const voucher = voucherQuery[0];
 
-              if (vouchers.length > 0) {
-                const voucher = vouchers[0];
+              // Mark voucher as used in user_vouchers table
+              await sql`
+                UPDATE user_vouchers
+                SET status = 'used', used_at = NOW()
+                WHERE id = ${voucher.id}
+              `;
 
-                // Mark voucher as used
-                await sql`
-                  UPDATE user_points_redemptions
-                  SET is_used = true, used_at = NOW()
-                  WHERE id = ${voucher.id}
-                `;
+              // Store voucher details in order for confirmation display
+              enhancedOrder.voucherUsed = {
+                code: voucher.voucher_code,
+                discountAmount: voucher.discount_amount,
+                discountType: voucher.discount_type,
+                rewardName: voucher.reward_name || voucher.title
+              };
 
-                console.log('✅ Orders API: Voucher marked as used:', orderData.voucherCode, 'Reward:', voucher.reward_name);
-              } else {
-                console.warn('⚠️ Orders API: Voucher not found or invalid:', orderData.voucherCode, 'ID:', voucherId);
-              }
+              console.log('✅ Orders API: Voucher marked as used:', orderData.voucherCode, 'Discount:', voucher.discount_amount, voucher.discount_type);
+            } else {
+              console.warn('⚠️ Orders API: Voucher not found or invalid:', orderData.voucherCode);
             }
           } catch (voucherError) {
             console.error('❌ Orders API: Voucher processing failed:', voucherError);
@@ -831,146 +846,87 @@ export const handler: Handler = async (event, context) => {
           }
         }
 
-        // Award points for authenticated users (1 point per $1 spent)
+        // Award points for authenticated users (1 point per $1 spent) with race condition protection
         if (userId || supabaseUserId) {
           try {
             const pointsToAward = Math.floor(parseFloat(newOrder.total));
             const userIdentifier = userId || supabaseUserId;
             console.log('🎁 Orders API: Awarding points to user:', userIdentifier, 'Points:', pointsToAward, 'Total:', newOrder.total);
 
-            // For Supabase users, we only award points if we have an order association
-            // Legacy users get points as usual
-            if (userId) {
-              // Legacy user - check if they exist in users table
-              const userExists = await sql`SELECT id FROM users WHERE id = ${userId}`;
-              console.log('🎁 Orders API: Legacy user exists check:', userExists.length > 0, 'for user:', userId);
+            // Use atomic transaction for points operations to prevent race conditions
+            await sql.begin(async (sql) => {
+              console.log('🔒 Orders API: Starting atomic transaction for points award');
 
-              if (userExists.length > 0) {
-                // Record points transaction in audit table
-                try {
+              if (userId) {
+                // Legacy user - check if they exist in users table
+                const userExists = await sql`SELECT id FROM users WHERE id = ${userId}`;
+                console.log('🎁 Orders API: Legacy user exists check:', userExists.length > 0, 'for user:', userId);
+
+                if (userExists.length > 0) {
+                  // Record points transaction in audit table
                   const pointsTransaction = await sql`
                     INSERT INTO points_transactions (user_id, order_id, type, points, description, order_amount, created_at)
                     VALUES (${userId}, ${newOrder.id}, 'earned', ${pointsToAward}, ${'Order #' + newOrder.id}, ${newOrder.total}, NOW())
                     RETURNING id
                   `;
                   console.log('✅ Orders API: Points transaction created:', pointsTransaction[0]?.id);
-                } catch (transactionError) {
-                  console.error('❌ Orders API: Points transaction failed:', transactionError);
-                  throw transactionError;
-                }
 
-                // Update user_points table with correct schema
-                try {
-                  // First check if user points record exists
-                  const existingPoints = await sql`
-                    SELECT user_id, points, total_earned FROM user_points WHERE user_id = ${userId}
+                  // Use UPSERT with optimistic locking for user_points table
+                  const userPointsUpdate = await sql`
+                    INSERT INTO user_points (user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
+                    VALUES (${userId}, ${pointsToAward}, ${pointsToAward}, 0, NOW(), NOW(), NOW())
+                    ON CONFLICT (user_id) DO UPDATE SET
+                      points = user_points.points + ${pointsToAward},
+                      total_earned = user_points.total_earned + ${pointsToAward},
+                      last_earned_at = NOW(),
+                      updated_at = NOW()
+                    RETURNING user_id, points, total_earned
                   `;
+                  console.log('✅ Orders API: User points updated with UPSERT:', userPointsUpdate[0]);
 
-                  let userPointsUpdate;
-                  if (existingPoints.length > 0) {
-                    // Update existing record
-                    userPointsUpdate = await sql`
-                      UPDATE user_points
-                      SET
-                        points = points + ${pointsToAward},
-                        total_earned = total_earned + ${pointsToAward},
-                        last_earned_at = NOW(),
-                        updated_at = NOW()
-                      WHERE user_id = ${userId}
-                      RETURNING user_id, points, total_earned
+                  // Also update legacy rewards column for backward compatibility
+                  try {
+                    await sql`
+                      UPDATE users
+                      SET rewards = (SELECT points FROM user_points WHERE user_id = ${userId}), updated_at = NOW()
+                      WHERE id = ${userId}
                     `;
-                    console.log('✅ Orders API: User points updated (existing record):', userPointsUpdate[0]);
-                  } else {
-                    // Create new record
-                    userPointsUpdate = await sql`
-                      INSERT INTO user_points (user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
-                      VALUES (${userId}, ${pointsToAward}, ${pointsToAward}, 0, NOW(), NOW(), NOW())
-                      RETURNING user_id, points, total_earned
-                    `;
-                    console.log('✅ Orders API: User points created (new record):', userPointsUpdate[0]);
+                    console.log('✅ Orders API: Legacy rewards column updated');
+                  } catch (legacyUpdateError) {
+                    console.error('❌ Orders API: Legacy rewards update failed:', legacyUpdateError);
+                    // Don't throw - this is just for backward compatibility
                   }
-                } catch (userPointsError) {
-                  console.error('❌ Orders API: User points update failed:', userPointsError);
-                  throw userPointsError;
+
+                  console.log('✅ Orders API: Points awarded successfully - Total:', pointsToAward, 'points');
                 }
+              } else if (supabaseUserId) {
+                // Supabase user - award points using supabase_user_id
+                console.log('🎁 Orders API: Awarding points to Supabase user:', supabaseUserId);
 
-                // Also update legacy rewards column for backward compatibility
-                try {
-                  await sql`
-                    UPDATE users
-                    SET rewards = (SELECT points FROM user_points WHERE user_id = ${userId}), updated_at = NOW()
-                    WHERE id = ${userId}
-                  `;
-                  console.log('✅ Orders API: Legacy rewards column updated');
-                } catch (legacyUpdateError) {
-                  console.error('❌ Orders API: Legacy rewards update failed:', legacyUpdateError);
-                  // Don't throw - this is just for backward compatibility
-                }
-
-                console.log('✅ Orders API: Points awarded successfully - Total:', pointsToAward, 'points');
-              }
-            } else if (supabaseUserId) {
-              // Supabase user - award points using supabase_user_id
-              console.log('🎁 Orders API: Awarding points to Supabase user:', supabaseUserId);
-
-              // Record points transaction in audit table
-              try {
+                // Record points transaction in audit table
                 const pointsTransaction = await sql`
                   INSERT INTO points_transactions (user_id, supabase_user_id, order_id, type, points, description, order_amount, created_at)
                   VALUES (NULL, ${supabaseUserId}, ${newOrder.id}, 'earned', ${pointsToAward}, ${'Order #' + newOrder.id}, ${newOrder.total}, NOW())
                   RETURNING id
                 `;
                 console.log('✅ Orders API: Supabase points transaction created:', pointsTransaction[0]?.id);
-              } catch (transactionError) {
-                console.error('❌ Orders API: Supabase points transaction failed:', transactionError);
-                throw transactionError;
-              }
 
-              // Update user_points table for Supabase user
-              try {
-                // First check if user points record exists
-                const existingPoints = await sql`
-                  SELECT supabase_user_id, points, total_earned FROM user_points WHERE supabase_user_id = ${supabaseUserId}
+                // Use UPSERT with optimistic locking for Supabase user points
+                const userPointsUpdate = await sql`
+                  INSERT INTO user_points (user_id, supabase_user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
+                  VALUES (NULL, ${supabaseUserId}, ${pointsToAward}, ${pointsToAward}, 0, NOW(), NOW(), NOW())
+                  ON CONFLICT (supabase_user_id) DO UPDATE SET
+                    points = user_points.points + ${pointsToAward},
+                    total_earned = user_points.total_earned + ${pointsToAward},
+                    last_earned_at = NOW(),
+                    updated_at = NOW()
+                  RETURNING supabase_user_id, points, total_earned
                 `;
+                console.log('✅ Orders API: Supabase user points updated with UPSERT:', userPointsUpdate[0]);
 
-                let userPointsUpdate;
-                if (existingPoints.length > 0) {
-                  // Update existing record
-                  userPointsUpdate = await sql`
-                    UPDATE user_points
-                    SET
-                      points = points + ${pointsToAward},
-                      total_earned = total_earned + ${pointsToAward},
-                      last_earned_at = NOW(),
-                      updated_at = NOW()
-                    WHERE supabase_user_id = ${supabaseUserId}
-                    RETURNING supabase_user_id, points, total_earned
-                  `;
-                  console.log('✅ Orders API: Supabase user points updated (existing record):', userPointsUpdate[0]);
-                } else {
-                  // Create new record
-                  userPointsUpdate = await sql`
-                    INSERT INTO user_points (user_id, supabase_user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
-                    VALUES (NULL, ${supabaseUserId}, ${pointsToAward}, ${pointsToAward}, 0, NOW(), NOW(), NOW())
-                    ON CONFLICT DO NOTHING
-                    RETURNING supabase_user_id, points, total_earned
-                  `;
-
-                  // If insert was ignored due to conflict, try to fetch existing record
-                  if (userPointsUpdate.length === 0) {
-                    userPointsUpdate = await sql`
-                      SELECT supabase_user_id, points, total_earned FROM user_points WHERE supabase_user_id = ${supabaseUserId}
-                    `;
-                  }
-                  console.log('✅ Orders API: Supabase user points created/found:', userPointsUpdate[0]);
-                }
-              } catch (userPointsError) {
-                console.error('❌ Orders API: Supabase user points update failed:', userPointsError);
-                throw userPointsError;
+                console.log('✅ Orders API: Points awarded successfully to Supabase user - Total:', pointsToAward, 'points');
               }
-
-              console.log('✅ Orders API: Points awarded successfully to Supabase user - Total:', pointsToAward, 'points');
-            }
+            });
           } catch (pointsError) {
             console.error('❌ Orders API: Error awarding points:', pointsError);
             // Don't fail the order if points fail
