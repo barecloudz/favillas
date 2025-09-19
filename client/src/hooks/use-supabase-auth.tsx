@@ -93,8 +93,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session) {
           console.log('🔄 Found Supabase session (Google user)');
           setSession(session);
-          const mappedUser = mapSupabaseUser(session?.user || null);
-          setUser(mappedUser);
+
+          // For Supabase users, fetch complete profile from database instead of just mapping metadata
+          try {
+            const completeProfile = await fetchUserProfile();
+            if (completeProfile) {
+              setUser(completeProfile);
+              console.log('✅ Supabase user profile loaded with complete data:', completeProfile);
+            } else {
+              // Fallback to basic mapping if profile fetch fails
+              const mappedUser = mapSupabaseUser(session?.user || null);
+              setUser(mappedUser);
+              console.log('⚠️ Fallback to basic Supabase user mapping');
+            }
+          } catch (profileError) {
+            console.warn('⚠️ Failed to fetch complete profile, using basic mapping:', profileError);
+            const mappedUser = mapSupabaseUser(session?.user || null);
+            setUser(mappedUser);
+          }
         } else {
           // If no Supabase session, check for legacy JWT cookie
           console.log('🔄 No Supabase session, checking for legacy JWT cookie');
