@@ -101,14 +101,14 @@ export const handler: Handler = async (event, context) => {
 
     } else if (event.httpMethod === 'PATCH') {
       // Update user profile - support comprehensive contact information
-      const { phone, address, city, state, zip_code } = JSON.parse(event.body || '{}');
+      const { first_name, last_name, email, phone, address, city, state, zip_code } = JSON.parse(event.body || '{}');
 
       console.log('🔄 Updating user profile:', {
         userId: authPayload.userId,
         supabaseUserId: authPayload.supabaseUserId,
         isSupabase: authPayload.isSupabase,
         username: authPayload.username,
-        contactData: { phone, address, city, state, zip_code },
+        contactData: { first_name, last_name, email, phone, address, city, state, zip_code },
         rawBody: event.body
       });
 
@@ -212,9 +212,9 @@ export const handler: Handler = async (event, context) => {
             city = ${city || ''},
             state = ${state || ''},
             zip_code = ${zip_code || ''},
-            email = ${authPayload.email || authPayload.username},
-            first_name = ${authPayload.firstName || (authPayload.fullName ? authPayload.fullName.split(' ')[0] : 'User')},
-            last_name = ${authPayload.lastName || (authPayload.fullName ? authPayload.fullName.split(' ').slice(1).join(' ') : 'Google User')},
+            email = ${email || authPayload.email || authPayload.username},
+            first_name = ${first_name || authPayload.firstName || (authPayload.fullName ? authPayload.fullName.split(' ')[0] : 'User')},
+            last_name = ${last_name || authPayload.lastName || (authPayload.fullName ? authPayload.fullName.split(' ').slice(1).join(' ') : 'Google User')},
             updated_at = NOW()
           WHERE id = ${existingSupabaseUser[0].id}
           RETURNING id, username, email, phone, address, city, state, zip_code, role, created_at, updated_at, supabase_user_id, first_name, last_name
@@ -297,9 +297,12 @@ export const handler: Handler = async (event, context) => {
             city = ${city || ''},
             state = ${state || ''},
             zip_code = ${zip_code || ''},
+            email = ${email || authPayload.username},
+            first_name = ${first_name || authPayload.username?.split('@')[0] || 'User'},
+            last_name = ${last_name || 'Customer'},
             updated_at = NOW()
           WHERE id = ${authPayload.userId}
-          RETURNING id, username, email, phone, address, city, state, zip_code, role, created_at, updated_at
+          RETURNING id, username, email, phone, address, city, state, zip_code, role, created_at, updated_at, first_name, last_name
         `;
 
         if (updatedUser.length === 0) {

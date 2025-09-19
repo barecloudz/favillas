@@ -62,7 +62,7 @@ const ProfilePage: React.FC = () => {
   
   // Update profile mutation
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { phone: string; address: string; city: string; state: string; zip_code: string }) => {
+    mutationFn: async (data: { first_name?: string; last_name?: string; email?: string; phone: string; address: string; city: string; state: string; zip_code: string }) => {
       return apiRequest("PATCH", "/api/user-profile", data);
     },
     onSuccess: async () => {
@@ -108,6 +108,9 @@ const ProfilePage: React.FC = () => {
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     updateProfileMutation.mutate({
+      first_name: firstName,
+      last_name: lastName,
+      email,
       phone,
       address,
       city,
@@ -119,6 +122,9 @@ const ProfilePage: React.FC = () => {
   const handleSavePersonalInfo = (e: React.FormEvent) => {
     e.preventDefault();
     updateProfileMutation.mutate({
+      first_name: firstName,
+      last_name: lastName,
+      email,
       phone,
       address,
       city,

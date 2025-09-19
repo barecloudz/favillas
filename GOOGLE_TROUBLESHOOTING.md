@@ -22,6 +22,7 @@
 https://favillasnypizza.netlify.app
 http://localhost:3000
 http://localhost:5173
+http://localhost:8888
 ```
 
 **Authorized redirect URIs:**
@@ -29,6 +30,7 @@ http://localhost:5173
 https://favillasnypizza.netlify.app/api/auth/google/callback
 http://localhost:3000/api/auth/google/callback
 http://localhost:5173/api/auth/google/callback
+http://localhost:8888/api/auth/google/callback
 ```
 
 ### 2. OAuth Consent Screen
