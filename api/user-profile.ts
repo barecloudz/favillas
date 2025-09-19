@@ -164,25 +164,32 @@ export const handler: Handler = async (event, context) => {
 
         if (existingSupabaseUser.length === 0) {
           console.log('⚠️ Supabase user not found, creating user account for:', authPayload.supabaseUserId);
+          console.log('🔍 Auth payload details:', {
+            email: authPayload.email,
+            username: authPayload.username,
+            firstName: authPayload.firstName,
+            lastName: authPayload.lastName,
+            fullName: authPayload.fullName
+          });
 
           try {
-            // Create user record for Supabase user
+            // Create user record for Supabase user using actual Google data
             const newUserResult = await sql`
               INSERT INTO users (
                 supabase_user_id, username, email, role, phone, address, city, state, zip_code,
                 first_name, last_name, password, created_at, updated_at
               ) VALUES (
                 ${authPayload.supabaseUserId},
-                ${authPayload.username || 'google_user'},
-                ${authPayload.username || 'user@example.com'},
+                ${authPayload.email || authPayload.username || 'google_user'},
+                ${authPayload.email || authPayload.username || 'user@example.com'},
                 'customer',
                 ${phone || ''},
                 ${address || ''},
                 ${city || ''},
                 ${state || ''},
                 ${zip_code || ''},
-                ${authPayload.username?.split('@')[0] || 'User'},
-                'Customer',
+                ${authPayload.firstName || authPayload.fullName?.split(' ')[0] || 'User'},
+                ${authPayload.lastName || authPayload.fullName?.split(' ').slice(1).join(' ') || 'Google User'},
                 'GOOGLE_USER',
                 NOW(),
                 NOW()

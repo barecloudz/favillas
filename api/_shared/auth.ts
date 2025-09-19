@@ -9,6 +9,11 @@ export interface AuthPayload {
   username: string;
   role: string;
   isSupabase: boolean;
+  // Additional fields for Google users
+  email?: string;
+  fullName?: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 /**
@@ -57,16 +62,30 @@ export function authenticateToken(event: NetlifyEvent): AuthPayload | null {
       const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
 
       if (payload.iss && payload.iss.includes('supabase')) {
-        // This is a Supabase token, extract user ID
+        // This is a Supabase token, extract user ID and metadata
         const supabaseUserId = payload.sub;
+        const userMetadata = payload.user_metadata || {};
 
-        // For Supabase users, return the UUID directly
+        console.log('🔍 Google user metadata extracted:', {
+          email: payload.email,
+          fullName: userMetadata.full_name,
+          firstName: userMetadata.name?.split(' ')[0],
+          lastName: userMetadata.name?.split(' ').slice(1).join(' '),
+          metadataKeys: Object.keys(userMetadata)
+        });
+
+        // For Supabase users, return the UUID and extracted metadata
         return {
           userId: null, // No integer user ID for Supabase users
           supabaseUserId: supabaseUserId,
           username: payload.email || 'supabase_user',
           role: 'customer',
-          isSupabase: true
+          isSupabase: true,
+          // Extract Google user information from metadata
+          email: payload.email,
+          fullName: userMetadata.full_name || userMetadata.name,
+          firstName: userMetadata.name?.split(' ')[0] || userMetadata.full_name?.split(' ')[0],
+          lastName: userMetadata.name?.split(' ').slice(1).join(' ') || userMetadata.full_name?.split(' ').slice(1).join(' ')
         };
       }
     } catch (supabaseError) {
