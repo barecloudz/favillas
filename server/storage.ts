@@ -219,6 +219,11 @@ export interface IStorage {
   deletePrinterConfig(id: number): Promise<boolean>;
   setPrimaryPrinter(id: number): Promise<boolean>;
   updatePrinterConnectionStatus(id: number, status: 'connected' | 'disconnected' | 'error' | 'unknown', error?: string): Promise<PrinterConfig | undefined>;
+
+  // Database reset operations
+  resetAllOrders(): Promise<boolean>;
+  resetAllCustomerPoints(): Promise<boolean>;
+  resetAllData(): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -1720,7 +1725,30 @@ export class MemStorage implements IStorage {
   async getSystemSettingsByCategory(category: string): Promise<any[]> {
     return Array.from(this.systemSettings.values()).filter(s => s.category === category);
   }
-  
+
+  // Database reset operations (MemStorage implementation)
+  async resetAllOrders(): Promise<boolean> {
+    this.orders.clear();
+    this.orderItems.clear();
+    return true;
+  }
+
+  async resetAllCustomerPoints(): Promise<boolean> {
+    this.userPoints.clear();
+    this.pointsTransactions.clear();
+    this.userPointsRedemptions.clear();
+    return true;
+  }
+
+  async resetAllData(): Promise<boolean> {
+    this.orders.clear();
+    this.orderItems.clear();
+    this.userPoints.clear();
+    this.pointsTransactions.clear();
+    this.userPointsRedemptions.clear();
+    return true;
+  }
+
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3466,6 +3494,69 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('Error updating printer connection status:', error);
       return undefined;
+    }
+  }
+
+  // Database reset operations (DatabaseStorage implementation)
+  async resetAllOrders(): Promise<boolean> {
+    try {
+      log('Resetting all orders and order items from database...', 'DB');
+
+      // Delete order items first (foreign key constraint)
+      await db.delete(orderItems);
+      log('Deleted all order items', 'DB');
+
+      // Delete orders
+      await db.delete(orders);
+      log('Deleted all orders', 'DB');
+
+      return true;
+    } catch (error) {
+      console.error('Error resetting orders:', error);
+      return false;
+    }
+  }
+
+  async resetAllCustomerPoints(): Promise<boolean> {
+    try {
+      log('Resetting all customer points from database...', 'DB');
+
+      // Delete points redemptions first (foreign key constraint)
+      await db.delete(userPointsRedemptions);
+      log('Deleted all points redemptions', 'DB');
+
+      // Delete points transactions
+      await db.delete(pointsTransactions);
+      log('Deleted all points transactions', 'DB');
+
+      // Reset user points to zero
+      await db.update(userPoints)
+        .set({
+          totalPoints: 0,
+          availablePoints: 0,
+          lifetimePoints: 0,
+          updatedAt: new Date()
+        });
+      log('Reset all user points to zero', 'DB');
+
+      return true;
+    } catch (error) {
+      console.error('Error resetting customer points:', error);
+      return false;
+    }
+  }
+
+  async resetAllData(): Promise<boolean> {
+    try {
+      log('Resetting all orders and customer points from database...', 'DB');
+
+      const ordersReset = await this.resetAllOrders();
+      const pointsReset = await this.resetAllCustomerPoints();
+
+      return ordersReset && pointsReset;
+    } catch (error) {
+      console.error('Error resetting all data:', error);
+      return false;
     }
   }
 }

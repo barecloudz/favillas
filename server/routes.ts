@@ -4404,6 +4404,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Database reset endpoints (Admin only)
+  app.post("/api/admin/reset/orders", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user.isAdmin) {
+      return res.status(401).json({ message: "Admin access required" });
+    }
+
+    try {
+      log(`Admin ${req.user.email} initiated order reset`, 'API');
+      const success = await storage.resetAllOrders();
+
+      if (success) {
+        res.json({
+          message: "All orders and order items have been deleted successfully",
+          success: true
+        });
+        log('Order reset completed successfully', 'API');
+      } else {
+        res.status(500).json({
+          message: "Failed to reset orders",
+          success: false
+        });
+      }
+    } catch (error: any) {
+      log(`Error resetting orders: ${error.message}`, 'API');
+      res.status(500).json({
+        message: "Error resetting orders: " + error.message,
+        success: false
+      });
+    }
+  });
+
+  app.post("/api/admin/reset/points", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user.isAdmin) {
+      return res.status(401).json({ message: "Admin access required" });
+    }
+
+    try {
+      log(`Admin ${req.user.email} initiated customer points reset`, 'API');
+      const success = await storage.resetAllCustomerPoints();
+
+      if (success) {
+        res.json({
+          message: "All customer points have been reset to zero",
+          success: true
+        });
+        log('Customer points reset completed successfully', 'API');
+      } else {
+        res.status(500).json({
+          message: "Failed to reset customer points",
+          success: false
+        });
+      }
+    } catch (error: any) {
+      log(`Error resetting customer points: ${error.message}`, 'API');
+      res.status(500).json({
+        message: "Error resetting customer points: " + error.message,
+        success: false
+      });
+    }
+  });
+
+  app.post("/api/admin/reset/all", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user.isAdmin) {
+      return res.status(401).json({ message: "Admin access required" });
+    }
+
+    try {
+      log(`Admin ${req.user.email} initiated full data reset (orders + points)`, 'API');
+      const success = await storage.resetAllData();
+
+      if (success) {
+        res.json({
+          message: "All orders and customer points have been reset successfully",
+          success: true
+        });
+        log('Full data reset completed successfully', 'API');
+      } else {
+        res.status(500).json({
+          message: "Failed to reset all data",
+          success: false
+        });
+      }
+    } catch (error: any) {
+      log(`Error resetting all data: ${error.message}`, 'API');
+      res.status(500).json({
+        message: "Error resetting all data: " + error.message,
+        success: false
+      });
+    }
+  });
+
   // Order tracking endpoint - get delivery status for customer
   app.get("/api/orders/:orderId/tracking", async (req, res) => {
     try {
