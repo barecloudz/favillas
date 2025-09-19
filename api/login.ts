@@ -1,35 +1,12 @@
 import { Handler } from '@netlify/functions';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
-import { eq } from 'drizzle-orm';
 import postgres from 'postgres';
 import { scrypt, timingSafeEqual } from 'crypto';
 import { promisify } from 'util';
 import jwt from 'jsonwebtoken';
+import { getCorsHeaders, validateInput, loginSchema, withDB } from './utils/auth';
 
 const scryptAsync = promisify(scrypt);
 
-// Database connection
-let dbConnection: any = null;
-
-function getDB() {
-  if (dbConnection) return dbConnection;
-  
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL environment variable is required');
-  }
-  
-  dbConnection = postgres(databaseUrl, {
-    max: 1,
-    idle_timeout: 20,
-    connect_timeout: 10,
-    prepare: false,
-    keep_alive: false,
-  });
-  
-  return dbConnection;
-}
 
 async function comparePasswords(supplied: string, stored: string) {
   try {
@@ -47,14 +24,7 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export const handler: Handler = async (event, context) => {
-  // Set CORS headers
-  const headers = {
-    'Access-Control-Allow-Origin': event.headers.origin || 'http://localhost:3000',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Credentials': 'true',
-    'Content-Type': 'application/json',
-  };
+  const headers = getCorsHeaders(event.headers.origin);
   
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -73,72 +43,63 @@ export const handler: Handler = async (event, context) => {
   }
 
   try {
-    console.log('Login attempt started');
-    console.log('Environment check - DATABASE_URL exists:', !!process.env.DATABASE_URL);
+    const requestData = JSON.parse(event.body || '{}');
+    const { username, password } = requestData;
 
-    const { username, password } = JSON.parse(event.body || '{}');
-
-    if (!username || !password) {
-      console.log('Missing username or password');
+    // Validate input
+    const validation = validateInput(requestData, loginSchema);
+    if (!validation.isValid) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ 
-          message: 'Username and password are required' 
+        body: JSON.stringify({
+          message: 'Validation failed',
+          errors: validation.errors
         })
       };
     }
 
-    console.log('Attempting login for username:', username);
-    
-    // Get database connection
-    const sql = getDB();
-    
-    // Query user data - simplified query
-    const users = await sql`
-      SELECT 
-        id,
-        username,
-        password,
-        email,
-        first_name,
-        last_name,
-        phone,
-        address,
-        city,
-        state,
-        zip_code,
-        role,
-        is_admin,
-        is_active,
-        rewards,
-        stripe_customer_id,
-        marketing_opt_in,
-        created_at
-      FROM users 
-      WHERE username = ${username}
-      LIMIT 1
-    `;
-
-    const user = users[0];
-
-    console.log('User found:', !!user, 'Has password:', !!user.password);
+    // Query user data
+    const user = await withDB(async (sql) => {
+      const users = await sql`
+        SELECT
+          id,
+          username,
+          password,
+          email,
+          first_name,
+          last_name,
+          phone,
+          address,
+          city,
+          state,
+          zip_code,
+          role,
+          is_admin,
+          is_active,
+          rewards,
+          stripe_customer_id,
+          marketing_opt_in,
+          created_at
+        FROM users
+        WHERE username = ${username}
+        LIMIT 1
+      `;
+      return users[0];
+    });
 
     if (!user) {
       return {
         statusCode: 401,
         headers,
-        body: JSON.stringify({ 
-          message: 'Invalid credentials' 
+        body: JSON.stringify({
+          message: 'Invalid credentials'
         })
       };
     }
 
-    console.log('User found:', !!user, 'Has password:', !!user.password);
-
     // Check password
     const isValidPassword = await comparePasswords(password, user.password);
-    console.log('Password validation result:', isValidPassword);
     
     if (!isValidPassword) {
       return {
@@ -150,7 +111,7 @@ export const handler: Handler = async (event, context) => {
       };
     }
 
-    console.log('Login successful for user:', user.username);
+    // Login successful - no sensitive data logging
     
     // Return user data (excluding password)
     const safeUser = {
@@ -173,12 +134,12 @@ export const handler: Handler = async (event, context) => {
       createdAt: user.created_at
     };
     
-    console.log('Safe user object:', JSON.stringify(safeUser, null, 2));
+    // User object prepared for response
     
-    // Create JWT token
-    const secret = process.env.SESSION_SECRET;
+    // Create JWT token with secure secret handling
+    const secret = process.env.JWT_SECRET;
     if (!secret) {
-      throw new Error('SESSION_SECRET not configured');
+      throw new Error('JWT_SECRET not configured');
     }
     
     const token = jwt.sign(
@@ -206,15 +167,13 @@ export const handler: Handler = async (event, context) => {
     };
     
   } catch (error) {
-    console.error('Login error:', error);
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    // Log error without sensitive data
+    console.error('Login error occurred:', error instanceof Error ? error.message : 'Unknown error');
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
-        message: 'Internal server error',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
+      body: JSON.stringify({
+        message: 'Internal server error'
       })
     };
   }

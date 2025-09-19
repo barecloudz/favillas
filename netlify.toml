@@ -8,6 +8,17 @@
   NPM_CONFIG_AUDIT = "false"
   DISABLE_OPENCOLLECTIVE = "true"
   SECRETS_SCAN_ENABLED = "false"
+  # Optimize build performance
+  NODE_OPTIONS = "--max-old-space-size=2048"
+  NETLIFY_USE_YARN = "false"
+
+# Health check endpoint
+[[redirects]]
+  from = "/api/health"
+  to = "/.netlify/functions/health"
+  status = 200
+  # Cache health checks to reduce function invocations
+  headers = {Cache-Control = "public, max-age=60, s-maxage=60"}
 
 [[redirects]]
   from = "/api/debug-orders"
@@ -184,34 +195,142 @@
   to = "/.netlify/functions/debug-token-simple"
   status = 200
 
+# Menu endpoints (cacheable for GET requests)
 [[redirects]]
   from = "/api/menu-items"
   to = "/.netlify/functions/menu-items"
   status = 200
+  # Cache menu items for 5 minutes
+  headers = {Cache-Control = "public, max-age=300, s-maxage=300, stale-while-revalidate=60"}
 
 [[redirects]]
   from = "/api/menu-items/*"
   to = "/.netlify/functions/menu-items"
   status = 200
+  headers = {Cache-Control = "public, max-age=300, s-maxage=300, stale-while-revalidate=60"}
 
 [[redirects]]
   from = "/api/menu/:id"
   to = "/.netlify/functions/menu-item"
   status = 200
 
+# Categories endpoint (cacheable)
+[[redirects]]
+  from = "/api/categories"
+  to = "/.netlify/functions/categories"
+  status = 200
+  headers = {Cache-Control = "public, max-age=300, s-maxage=300, stale-while-revalidate=60"}
+
+[[redirects]]
+  from = "/api/categories/*"
+  to = "/.netlify/functions/categories"
+  status = 200
+
+# Rewards endpoints (cacheable for GET)
+[[redirects]]
+  from = "/api/rewards"
+  to = "/.netlify/functions/rewards"
+  status = 200
+  headers = {Cache-Control = "public, max-age=300, s-maxage=300, stale-while-revalidate=60"}
+
+# Catch-all API redirect (must be before SPA fallback)
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
+  force = false
 
+# Static assets with long cache
+[[redirects]]
+  from = "/assets/*"
+  to = "/assets/:splat"
+  status = 200
+  headers = {Cache-Control = "public, max-age=31536000, immutable"}
+
+[[redirects]]
+  from = "/*.js"
+  to = "/:splat.js"
+  status = 200
+  headers = {Cache-Control = "public, max-age=31536000, immutable"}
+
+[[redirects]]
+  from = "/*.css"
+  to = "/:splat.css"
+  status = 200
+  headers = {Cache-Control = "public, max-age=31536000, immutable"}
+
+# SPA fallback - must be last and only for HTML requests
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+  # Don't force this redirect, allow other rules to match first
+  force = false
 
 [functions]
   directory = "api"
   node_bundler = "esbuild"
+  # Include source maps for better debugging
+  included_files = ["**/*.map"]
+
+# Function-specific configurations for optimization
+[functions."health"]
+  # Health check should be fast
+  timeout = 3
+  memory = 128
+
+[functions."menu-items"]
+  # Menu items can use more memory for caching
+  memory = 256
+  timeout = 8
+
+[functions."categories"]
+  # Categories are lightweight
+  memory = 256
+  timeout = 8
+
+[functions."rewards"]
+  # Rewards queries are simple
+  memory = 256
+  timeout = 8
+
+[functions."user-rewards"]
+  # User-specific queries need more resources
+  memory = 512
+  timeout = 10
+
+[functions."orders"]
+  # Order processing needs more resources
+  memory = 512
+  timeout = 15
+
+[functions."kitchen-orders"]
+  # Kitchen orders may have complex queries
+  memory = 512
+  timeout = 12
+
+[functions."auth-google"]
+  # OAuth needs time for external calls
+  memory = 256
+  timeout = 15
+
+[functions."auth-google-callback"]
+  # OAuth callback processing
+  memory = 256
+  timeout = 15
+
+# Heavy/debug functions get more resources
+[functions."debug-orders"]
+  memory = 512
+  timeout = 20
+
+[functions."fix-order-associations"]
+  memory = 512
+  timeout = 20
+
+[functions."recover-user-orders"]
+  memory = 512
+  timeout = 20
 
 [dev]
   command = "npm run dev:client"

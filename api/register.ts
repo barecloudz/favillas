@@ -3,40 +3,13 @@ import postgres from 'postgres';
 import { scrypt, randomBytes } from 'crypto';
 import { promisify } from 'util';
 import jwt from 'jsonwebtoken';
+import { getCorsHeaders, validateInput, registerSchema, withDB } from './utils/auth';
 
 const scryptAsync = promisify(scrypt);
 
-// Database connection
-let dbConnection: any = null;
-
-function getDB() {
-  if (dbConnection) return dbConnection;
-  
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL environment variable is required');
-  }
-  
-  dbConnection = postgres(databaseUrl, {
-    max: 1,
-    idle_timeout: 20,
-    connect_timeout: 10,
-    prepare: false,
-    keep_alive: false,
-  });
-  
-  return dbConnection;
-}
 
 export const handler: Handler = async (event, context) => {
-  // Set CORS headers
-  const headers = {
-    'Access-Control-Allow-Origin': event.headers.origin || '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Credentials': 'true',
-    'Content-Type': 'application/json',
-  };
+  const headers = getCorsHeaders(event.headers.origin);
   
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -55,25 +28,27 @@ export const handler: Handler = async (event, context) => {
   }
 
   try {
-    const { firstName, lastName, email, phone, address, password } = JSON.parse(event.body || '{}');
-    
-    if (!firstName || !lastName || !email || !password) {
+    const requestData = JSON.parse(event.body || '{}');
+    const { firstName, lastName, email, phone, address, password } = requestData;
+
+    // Validate input
+    const validation = validateInput(requestData, registerSchema);
+    if (!validation.isValid) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ 
-          message: 'Missing required fields: firstName, lastName, email, password' 
+        body: JSON.stringify({
+          message: 'Validation failed',
+          errors: validation.errors
         })
       };
     }
 
-    const sql = getDB();
-    
     // Check if user already exists
-    const existingUser = await sql`
-      SELECT id FROM users WHERE email = ${email}
-    `;
-    
+    const existingUser = await withDB(async (sql) => {
+      return await sql`SELECT id FROM users WHERE email = ${email}`;
+    });
+
     if (existingUser.length > 0) {
       return {
         statusCode: 400,
@@ -88,7 +63,8 @@ export const handler: Handler = async (event, context) => {
     const passwordHash = `${hashedPassword.toString('hex')}.${salt}`;
     
     // Create user with proper points initialization
-    const result = await sql.begin(async (sql: any) => {
+    const result = await withDB(async (sql) => {
+      return await sql.begin(async (sql: any) => {
       // Create user
       const userResult = await sql`
         INSERT INTO users (first_name, last_name, email, phone, address, password_hash, role, is_active, rewards, created_at, updated_at)
@@ -110,15 +86,16 @@ export const handler: Handler = async (event, context) => {
         VALUES (${user.id}, 'signup', 0, 'User account created with 0 points', NOW())
       `;
       
-      return user;
+        return user;
+      });
     });
     
     const user = result;
     
-    // Generate JWT token
-    const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+    // Generate JWT token with secure secret handling
+    const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
-      throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
+      throw new Error('JWT_SECRET environment variable is required');
     }
     
     const token = jwt.sign(
@@ -152,13 +129,13 @@ export const handler: Handler = async (event, context) => {
       body: JSON.stringify(safeUser)
     };
   } catch (error: any) {
-    console.error('Registration error:', error);
+    // Log error without sensitive data
+    console.error('Registration error occurred:', error instanceof Error ? error.message : 'Unknown error');
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
-        message: 'Internal server error',
-        error: error.message 
+      body: JSON.stringify({
+        message: 'Internal server error'
       })
     };
   }

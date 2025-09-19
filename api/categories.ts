@@ -32,6 +32,15 @@ export const handler: Handler = async (event, context) => {
     'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json',
   };
+
+  // Add caching headers for GET requests
+  const headersWithCache = event.httpMethod === 'GET' ? {
+    ...headers,
+    // Cache categories for 5 minutes with stale-while-revalidate
+    'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=60',
+    'CDN-Cache-Control': 'max-age=600',
+    'Surrogate-Control': 'max-age=3600'
+  } : headers;
   
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -52,7 +61,7 @@ export const handler: Handler = async (event, context) => {
       
       return {
         statusCode: 200,
-        headers,
+        headers: headersWithCache,
         body: JSON.stringify({ categories })
       };
 

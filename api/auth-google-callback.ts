@@ -1,35 +1,11 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
 import jwt from 'jsonwebtoken';
+import { getCorsHeaders, withDB } from './utils/auth';
 
-let dbConnection: any = null;
-
-function getDB() {
-  if (dbConnection) return dbConnection;
-
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL environment variable is required');
-  }
-
-  dbConnection = postgres(databaseUrl, {
-    max: 1,
-    idle_timeout: 20,
-    connect_timeout: 10,
-    prepare: false,
-    keep_alive: false,
-  });
-
-  return dbConnection;
-}
 
 export const handler: Handler = async (event, context) => {
-  const headers = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  };
+  const headers = getCorsHeaders(event.headers.origin);
 
   if (event.httpMethod !== 'GET' && event.httpMethod !== 'POST') {
     return {
@@ -39,9 +15,7 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
-  console.log('Google OAuth callback triggered');
-  console.log('Method:', event.httpMethod);
-  console.log('Query params:', event.queryStringParameters);
+  // Google OAuth callback triggered - no sensitive data logging
 
   // Handle POST request (ID token verification from client-side)
   if (event.httpMethod === 'POST') {
@@ -57,56 +31,57 @@ export const handler: Handler = async (event, context) => {
         };
       }
 
-      console.log('Processing client-side Google login for:', profile.email);
+      // Processing client-side Google login
 
       // For client-side flow, we trust the ID token has been verified by Google's JS library
       // Create or find user in database
-      const sql = getDB();
-
-      // Check if user exists by email
-      let existingUser = await sql`
-        SELECT id, username, email, role FROM users
-        WHERE email = ${profile.email}
-        LIMIT 1
-      `;
+      let existingUser = await withDB(async (sql) => {
+        return await sql`
+          SELECT id, username, email, role FROM users
+          WHERE email = ${profile.email}
+          LIMIT 1
+        `;
+      });
 
       let userId;
       if (existingUser.length > 0) {
         userId = existingUser[0].id;
-        console.log('Existing user found:', userId);
+        // Existing user found
       } else {
         // Create new user
-        console.log('Creating new user for Google login');
-        const newUsers = await sql`
-          INSERT INTO users (username, email, role, created_at)
-          VALUES (${profile.email}, ${profile.email}, 'customer', NOW())
-          RETURNING id, username, email, role
-        `;
+        const newUsers = await withDB(async (sql) => {
+          return await sql`
+            INSERT INTO users (username, email, role, created_at)
+            VALUES (${profile.email}, ${profile.email}, 'customer', NOW())
+            RETURNING id, username, email, role
+          `;
+        });
 
         if (newUsers.length === 0) {
           throw new Error('Failed to create user');
         }
 
         userId = newUsers[0].id;
-        console.log('New user created:', userId);
+        // New user created
 
         // Initialize user points
         try {
-          await sql`
-            INSERT INTO user_points (user_id, points_earned, points_redeemed, transaction_type, description, created_at)
-            VALUES (${userId}, 0, 0, 'earned', 'Account created', NOW())
-          `;
-          console.log('User points initialized');
+          await withDB(async (sql) => {
+            await sql`
+              INSERT INTO user_points (user_id, points_earned, points_redeemed, transaction_type, description, created_at)
+              VALUES (${userId}, 0, 0, 'earned', 'Account created', NOW())
+            `;
+          });
+          // User points initialized
         } catch (pointsError) {
-          console.error('Failed to initialize points:', pointsError);
-          // Don't fail the login if points initialization fails
+          // Points initialization failed - continue with login
         }
       }
 
-      // Create JWT token
-      const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+      // Create JWT token with secure secret handling
+      const jwtSecret = process.env.JWT_SECRET;
       if (!jwtSecret) {
-        throw new Error('JWT_SECRET or SESSION_SECRET not configured');
+        throw new Error('JWT_SECRET not configured');
       }
 
       const payload = {
@@ -137,13 +112,12 @@ export const handler: Handler = async (event, context) => {
       };
 
     } catch (error: any) {
-      console.error('Google OAuth POST callback error:', error);
+      // OAuth POST callback error - no sensitive data logging
       return {
         statusCode: 500,
         headers,
         body: JSON.stringify({
-          error: 'Authentication failed',
-          details: error.message
+          error: 'Authentication failed'
         })
       };
     }
@@ -154,7 +128,7 @@ export const handler: Handler = async (event, context) => {
   const error = event.queryStringParameters?.error;
 
   if (error) {
-    console.error('OAuth error:', error);
+    // OAuth error occurred
     return {
       statusCode: 302,
       headers: {
@@ -196,7 +170,6 @@ export const handler: Handler = async (event, context) => {
     const callbackUrl = `${baseUrl}/api/auth/google/callback`;
 
     // Exchange code for tokens
-    console.log('Exchanging code for tokens...');
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
@@ -212,13 +185,11 @@ export const handler: Handler = async (event, context) => {
     });
 
     if (!tokenResponse.ok) {
-      const errorText = await tokenResponse.text();
-      console.error('Token exchange failed:', errorText);
       throw new Error('Failed to exchange code for token');
     }
 
     const tokenData = await tokenResponse.json();
-    console.log('Token exchange successful');
+    // Token exchange successful
 
     // Get user info from Google
     const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
@@ -232,57 +203,56 @@ export const handler: Handler = async (event, context) => {
     }
 
     const googleUser = await userResponse.json();
-    console.log('Google user info:', {
-      id: googleUser.id,
-      email: googleUser.email,
-      name: googleUser.name
-    });
+    // Google user info retrieved
 
     // Check if user exists by email
-    const sql = getDB();
-    let existingUser = await sql`
-      SELECT id, username, email, role FROM users
-      WHERE email = ${googleUser.email}
-      LIMIT 1
-    `;
+    let existingUser = await withDB(async (sql) => {
+      return await sql`
+        SELECT id, username, email, role FROM users
+        WHERE email = ${googleUser.email}
+        LIMIT 1
+      `;
+    });
 
     let userId;
     if (existingUser.length > 0) {
       userId = existingUser[0].id;
-      console.log('Existing user found:', userId);
+      // Existing user found
     } else {
       // Create new user
-      console.log('Creating new user for Google login');
-      const newUsers = await sql`
-        INSERT INTO users (username, email, role, created_at)
-        VALUES (${googleUser.email}, ${googleUser.email}, 'customer', NOW())
-        RETURNING id, username, email, role
-      `;
+      const newUsers = await withDB(async (sql) => {
+        return await sql`
+          INSERT INTO users (username, email, role, created_at)
+          VALUES (${googleUser.email}, ${googleUser.email}, 'customer', NOW())
+          RETURNING id, username, email, role
+        `;
+      });
 
       if (newUsers.length === 0) {
         throw new Error('Failed to create user');
       }
 
       userId = newUsers[0].id;
-      console.log('New user created:', userId);
+      // New user created
 
       // Initialize user points
       try {
-        await sql`
-          INSERT INTO user_points (user_id, points_earned, points_redeemed, transaction_type, description, created_at)
-          VALUES (${userId}, 0, 0, 'earned', 'Account created', NOW())
-        `;
-        console.log('User points initialized');
+        await withDB(async (sql) => {
+          await sql`
+            INSERT INTO user_points (user_id, points_earned, points_redeemed, transaction_type, description, created_at)
+            VALUES (${userId}, 0, 0, 'earned', 'Account created', NOW())
+          `;
+        });
+        // User points initialized
       } catch (pointsError) {
-        console.error('Failed to initialize points:', pointsError);
-        // Don't fail the login if points initialization fails
+        // Points initialization failed - continue with login
       }
     }
 
-    // Create JWT token
-    const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+    // Create JWT token with secure secret handling
+    const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
-      throw new Error('JWT_SECRET or SESSION_SECRET not configured');
+      throw new Error('JWT_SECRET not configured');
     }
 
     const payload = {
@@ -306,7 +276,7 @@ export const handler: Handler = async (event, context) => {
     };
 
   } catch (error: any) {
-    console.error('Google OAuth callback error:', error);
+    // Google OAuth callback error occurred
     return {
       statusCode: 302,
       headers: {

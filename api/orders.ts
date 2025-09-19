@@ -211,10 +211,14 @@ export const handler: Handler = async (event, context) => {
 
         console.log('✅ Orders API: Successfully retrieved order', orderId);
 
-        // Transform database fields to frontend expected format
+        // Transform database fields to frontend expected format with numeric conversion
         const transformedOrder = {
           ...order,
           orderType: order.order_type, // Transform snake_case to camelCase for frontend
+          total: parseFloat(order.total || '0'),
+          tax: parseFloat(order.tax || '0'),
+          delivery_fee: parseFloat(order.delivery_fee || '0'),
+          tip: parseFloat(order.tip || '0'),
           items: transformedItems,
           userContactInfo
         };
@@ -278,10 +282,28 @@ export const handler: Handler = async (event, context) => {
               } : null
             }));
             
-            return { ...order, items: transformedItems };
+            // Ensure numeric values are properly converted for frontend
+            const transformedOrder = {
+              ...order,
+              total: parseFloat(order.total || '0'),
+              tax: parseFloat(order.tax || '0'),
+              delivery_fee: parseFloat(order.delivery_fee || '0'),
+              tip: parseFloat(order.tip || '0'),
+              items: transformedItems
+            };
+
+            return transformedOrder;
           } catch (itemError) {
             console.error('❌ Error getting items for order', order.id, ':', itemError);
-            return { ...order, items: [] };
+            // Still ensure numeric conversion even on error
+            return {
+              ...order,
+              total: parseFloat(order.total || '0'),
+              tax: parseFloat(order.tax || '0'),
+              delivery_fee: parseFloat(order.delivery_fee || '0'),
+              tip: parseFloat(order.tip || '0'),
+              items: []
+            };
           }
         })
       );

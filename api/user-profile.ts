@@ -197,15 +197,15 @@ export const handler: Handler = async (event, context) => {
           console.log('✅ Created Supabase user account with points system');
         }
 
-        // Update Supabase user profile
+        // Update Supabase user profile - allow setting to empty values
         const updatedUser = await sql`
           UPDATE users
           SET
-            phone = COALESCE(NULLIF(${phone || ''}, ''), phone),
-            address = COALESCE(NULLIF(${address || ''}, ''), address),
-            city = COALESCE(NULLIF(${city || ''}, ''), city),
-            state = COALESCE(NULLIF(${state || ''}, ''), state),
-            zip_code = COALESCE(NULLIF(${zip_code || ''}, ''), zip_code),
+            phone = ${phone || ''},
+            address = ${address || ''},
+            city = ${city || ''},
+            state = ${state || ''},
+            zip_code = ${zip_code || ''},
             updated_at = NOW()
           WHERE supabase_user_id = ${authPayload.supabaseUserId}
           RETURNING id, username, email, phone, address, city, state, zip_code, role, created_at, updated_at, supabase_user_id
@@ -268,15 +268,15 @@ export const handler: Handler = async (event, context) => {
           console.log('✅ Created legacy user account with points system');
         }
 
-        // Update legacy user profile
+        // Update legacy user profile - allow setting to empty values
         const updatedUser = await sql`
           UPDATE users
           SET
-            phone = COALESCE(NULLIF(${phone || ''}, ''), phone),
-            address = COALESCE(NULLIF(${address || ''}, ''), address),
-            city = COALESCE(NULLIF(${city || ''}, ''), city),
-            state = COALESCE(NULLIF(${state || ''}, ''), state),
-            zip_code = COALESCE(NULLIF(${zip_code || ''}, ''), zip_code),
+            phone = ${phone || ''},
+            address = ${address || ''},
+            city = ${city || ''},
+            state = ${state || ''},
+            zip_code = ${zip_code || ''},
             updated_at = NOW()
           WHERE id = ${authPayload.userId}
           RETURNING id, username, email, phone, address, city, state, zip_code, role, created_at, updated_at
