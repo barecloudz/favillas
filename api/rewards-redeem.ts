@@ -262,11 +262,11 @@ export const handler: Handler = async (event, context) => {
           )
         `;
 
-        // Update user_points balance with simpler check - just ensure sufficient points
+        // Update user_points balance with safeguards against negative points
         const updateResult = await sql`
           UPDATE user_points
           SET
-            points = points - ${rewardData.points_required},
+            points = GREATEST(points - ${rewardData.points_required}, 0),
             total_redeemed = total_redeemed + ${rewardData.points_required},
             updated_at = NOW()
           WHERE supabase_user_id = ${authPayload.supabaseUserId}
@@ -292,11 +292,11 @@ export const handler: Handler = async (event, context) => {
           )
         `;
 
-        // Update user_points balance with simpler check - just ensure sufficient points
+        // Update user_points balance with safeguards against negative points
         const updateResult = await sql`
           UPDATE user_points
           SET
-            points = points - ${rewardData.points_required},
+            points = GREATEST(points - ${rewardData.points_required}, 0),
             total_redeemed = total_redeemed + ${rewardData.points_required},
             updated_at = NOW()
           WHERE user_id = ${authPayload.userId}
