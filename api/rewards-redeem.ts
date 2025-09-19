@@ -262,7 +262,7 @@ export const handler: Handler = async (event, context) => {
           )
         `;
 
-        // Update user_points balance with optimistic locking (check updated_at hasn't changed)
+        // Update user_points balance with simpler check - just ensure sufficient points
         const updateResult = await sql`
           UPDATE user_points
           SET
@@ -270,13 +270,12 @@ export const handler: Handler = async (event, context) => {
             total_redeemed = total_redeemed + ${rewardData.points_required},
             updated_at = NOW()
           WHERE supabase_user_id = ${authPayload.supabaseUserId}
-          AND updated_at = ${userPointsRecord.updated_at}
           AND points >= ${rewardData.points_required}
           RETURNING points, total_redeemed
         `;
 
         if (updateResult.length === 0) {
-          throw new Error('Points balance was modified by another transaction. Please try again.');
+          throw new Error('Insufficient points for this redemption.');
         }
 
         console.log('✅ Updated Supabase user points balance with optimistic locking:', updateResult[0]);
@@ -293,7 +292,7 @@ export const handler: Handler = async (event, context) => {
           )
         `;
 
-        // Update user_points balance with optimistic locking (check updated_at hasn't changed)
+        // Update user_points balance with simpler check - just ensure sufficient points
         const updateResult = await sql`
           UPDATE user_points
           SET
@@ -301,13 +300,12 @@ export const handler: Handler = async (event, context) => {
             total_redeemed = total_redeemed + ${rewardData.points_required},
             updated_at = NOW()
           WHERE user_id = ${authPayload.userId}
-          AND updated_at = ${userPointsRecord.updated_at}
           AND points >= ${rewardData.points_required}
           RETURNING points, total_redeemed
         `;
 
         if (updateResult.length === 0) {
-          throw new Error('Points balance was modified by another transaction. Please try again.');
+          throw new Error('Insufficient points for this redemption.');
         }
 
         console.log('✅ Updated legacy user points balance with optimistic locking:', updateResult[0]);
