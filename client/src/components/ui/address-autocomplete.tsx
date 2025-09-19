@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -37,37 +37,94 @@ const AddressForm = ({
   const [state, setState] = useState("");
   const [zipCode, setZipCode] = useState("");
 
-  const handleAddressChange = (field: string, value: string) => {
+  // Parse incoming address value and populate individual fields
+  useEffect(() => {
+    if (value && value.trim()) {
+      console.log('🏠 AddressForm: Parsing incoming address:', value);
+
+      // Simple address parsing - assumes format: "street, city, state, zipcode"
+      const parts = value.split(',').map(part => part.trim());
+
+      if (parts.length >= 4) {
+        // Full format: "123 Main St, New York, NY, 12345"
+        setStreet(parts[0] || '');
+        setCity(parts[1] || '');
+        setState(parts[2] || '');
+        setZipCode(parts[3] || '');
+        console.log('✅ AddressForm: Parsed 4-part address:', {
+          street: parts[0],
+          city: parts[1],
+          state: parts[2],
+          zipCode: parts[3]
+        });
+      } else if (parts.length === 3) {
+        // Format: "New York, NY, 12345" (city, state, zip)
+        setStreet('');
+        setCity(parts[0] || '');
+        setState(parts[1] || '');
+        setZipCode(parts[2] || '');
+        console.log('✅ AddressForm: Parsed 3-part address (no street):', {
+          city: parts[0],
+          state: parts[1],
+          zipCode: parts[2]
+        });
+      } else {
+        // Fallback: put entire value in street field
+        setStreet(value);
+        setCity('');
+        setState('');
+        setZipCode('');
+        console.log('⚠️ AddressForm: Using fallback - putting full address in street field');
+      }
+    } else {
+      // Clear fields if no value
+      setStreet('');
+      setCity('');
+      setState('');
+      setZipCode('');
+    }
+  }, [value]);
+
+  const handleAddressChange = (field: string, newValue: string) => {
+    let updatedStreet = street;
+    let updatedCity = city;
+    let updatedState = state;
+    let updatedZipCode = zipCode;
+
     switch (field) {
       case 'street':
-        setStreet(value);
+        setStreet(newValue);
+        updatedStreet = newValue;
         break;
       case 'city':
-        setCity(value);
+        setCity(newValue);
+        updatedCity = newValue;
         break;
       case 'state':
-        setState(value);
+        setState(newValue);
+        updatedState = newValue;
         break;
       case 'zipCode':
-        setZipCode(value);
+        setZipCode(newValue);
+        updatedZipCode = newValue;
         break;
     }
 
-    // Build full address
-    const fullAddress = [street, city, state, zipCode]
+    // Build full address using updated values
+    const fullAddress = [updatedStreet, updatedCity, updatedState, updatedZipCode]
       .filter(part => part.trim())
       .join(', ');
 
     onChange(fullAddress);
 
     // If we have all required fields, call onAddressSelect
-    if (street && city && state && zipCode && onAddressSelect) {
+    if (updatedStreet && updatedCity && updatedState && updatedZipCode && onAddressSelect) {
       onAddressSelect({
         fullAddress,
-        street: street.trim(),
-        city: city.trim(),
-        state: state.trim(),
-        zipCode: zipCode.trim()
+        street: updatedStreet.trim(),
+        city: updatedCity.trim(),
+        state: updatedState.trim(),
+        zipCode: updatedZipCode.trim()
       });
     }
   };
