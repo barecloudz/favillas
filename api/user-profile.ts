@@ -115,11 +115,20 @@ export const handler: Handler = async (event, context) => {
 
       if (authPayload.isSupabase) {
         console.log('📝 Getting Supabase user profile:', authPayload.supabaseUserId);
+
+        // Get the most recent user record in case of duplicates
         user = await sql`
-          SELECT id, username, email, phone, address, city, state, zip_code, role, created_at, supabase_user_id
+          SELECT id, username, email, phone, address, city, state, zip_code, role, created_at, supabase_user_id, first_name, last_name
           FROM users
           WHERE supabase_user_id = ${authPayload.supabaseUserId}
+          ORDER BY created_at DESC, id DESC
+          LIMIT 1
         `;
+
+        console.log('📝 Found user records count for supabase_user_id:', user.length);
+        if (user.length > 0) {
+          console.log('📝 Using user record:', { id: user[0].id, username: user[0].username, email: user[0].email });
+        }
       } else {
         console.log('📝 Getting legacy user profile:', authPayload.userId);
         user = await sql`
@@ -157,10 +166,22 @@ export const handler: Handler = async (event, context) => {
       });
 
       if (authPayload.isSupabase) {
-        // Handle Supabase user profile update
+        // Handle Supabase user profile update - get most recent record
         const existingSupabaseUser = await sql`
-          SELECT id FROM users WHERE supabase_user_id = ${authPayload.supabaseUserId}
+          SELECT id, username, email, first_name, last_name FROM users
+          WHERE supabase_user_id = ${authPayload.supabaseUserId}
+          ORDER BY created_at DESC, id DESC
+          LIMIT 1
         `;
+
+        console.log('🔍 PATCH: Found existing user records:', existingSupabaseUser.length);
+        if (existingSupabaseUser.length > 0) {
+          console.log('🔍 PATCH: Will update user record:', {
+            id: existingSupabaseUser[0].id,
+            currentUsername: existingSupabaseUser[0].username,
+            currentEmail: existingSupabaseUser[0].email
+          });
+        }
 
         if (existingSupabaseUser.length === 0) {
           console.log('⚠️ Supabase user not found, creating user account for:', authPayload.supabaseUserId);
@@ -248,7 +269,7 @@ export const handler: Handler = async (event, context) => {
             first_name = ${authPayload.firstName || (authPayload.fullName ? authPayload.fullName.split(' ')[0] : 'User')},
             last_name = ${authPayload.lastName || (authPayload.fullName ? authPayload.fullName.split(' ').slice(1).join(' ') : 'Google User')},
             updated_at = NOW()
-          WHERE supabase_user_id = ${authPayload.supabaseUserId}
+          WHERE id = ${existingSupabaseUser[0].id}
           RETURNING id, username, email, phone, address, city, state, zip_code, role, created_at, updated_at, supabase_user_id, first_name, last_name
         `;
 
