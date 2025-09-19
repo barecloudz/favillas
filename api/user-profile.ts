@@ -188,8 +188,8 @@ export const handler: Handler = async (event, context) => {
                 ${city || ''},
                 ${state || ''},
                 ${zip_code || ''},
-                ${authPayload.firstName || authPayload.fullName?.split(' ')[0] || 'User'},
-                ${authPayload.lastName || authPayload.fullName?.split(' ').slice(1).join(' ') || 'Google User'},
+                ${authPayload.firstName || (authPayload.fullName ? authPayload.fullName.split(' ')[0] : 'User')},
+                ${authPayload.lastName || (authPayload.fullName ? authPayload.fullName.split(' ').slice(1).join(' ') : 'Google User')},
                 'GOOGLE_USER',
                 NOW(),
                 NOW()
@@ -226,7 +226,7 @@ export const handler: Handler = async (event, context) => {
           }
         }
 
-        // Update Supabase user profile - allow setting to empty values
+        // Update Supabase user profile - include Google user data correction
         const updatedUser = await sql`
           UPDATE users
           SET
@@ -235,9 +235,12 @@ export const handler: Handler = async (event, context) => {
             city = ${city || ''},
             state = ${state || ''},
             zip_code = ${zip_code || ''},
+            email = ${authPayload.email || authPayload.username},
+            first_name = ${authPayload.firstName || (authPayload.fullName ? authPayload.fullName.split(' ')[0] : 'User')},
+            last_name = ${authPayload.lastName || (authPayload.fullName ? authPayload.fullName.split(' ').slice(1).join(' ') : 'Google User')},
             updated_at = NOW()
           WHERE supabase_user_id = ${authPayload.supabaseUserId}
-          RETURNING id, username, email, phone, address, city, state, zip_code, role, created_at, updated_at, supabase_user_id
+          RETURNING id, username, email, phone, address, city, state, zip_code, role, created_at, updated_at, supabase_user_id, first_name, last_name
         `;
 
         if (updatedUser.length === 0) {
