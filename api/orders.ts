@@ -501,19 +501,46 @@ export const handler: Handler = async (event, context) => {
           }
         }
 
-        // Calculate final totals
+        // Calculate final totals with potential voucher discount
         const deliveryFee = parseFloat(orderData.deliveryFee || '0');
         const tip = parseFloat(orderData.tip || '0');
-        const tax = calculatedSubtotal * 0.0825; // 8.25% tax rate
-        const finalTotal = calculatedSubtotal + tax + deliveryFee + tip;
+        let discountAmount = 0;
+        let discountedSubtotal = calculatedSubtotal;
+
+        // Apply voucher discount if provided
+        let voucherDiscountInfo = null;
+        if (orderData.voucherCode && orderData.voucherDiscount) {
+          voucherDiscountInfo = orderData.voucherDiscount;
+          if (voucherDiscountInfo.type === 'fixed') {
+            discountAmount = parseFloat(voucherDiscountInfo.amount);
+            discountedSubtotal = Math.max(0, calculatedSubtotal - discountAmount);
+          } else if (voucherDiscountInfo.type === 'percentage') {
+            discountAmount = calculatedSubtotal * (parseFloat(voucherDiscountInfo.amount) / 100);
+            discountedSubtotal = calculatedSubtotal - discountAmount;
+          } else if (voucherDiscountInfo.type === 'delivery_fee') {
+            // Delivery fee discount
+            discountAmount = Math.min(deliveryFee, parseFloat(voucherDiscountInfo.amount));
+            // Don't change subtotal for delivery fee discounts
+          }
+        }
+
+        const tax = discountedSubtotal * 0.0825; // 8.25% tax rate on discounted subtotal
+        const adjustedDeliveryFee = voucherDiscountInfo?.type === 'delivery_fee'
+          ? Math.max(0, deliveryFee - discountAmount)
+          : deliveryFee;
+        const finalTotal = discountedSubtotal + tax + adjustedDeliveryFee + tip;
 
         console.log('🧮 Orders API: Server-calculated totals:', {
-          subtotal: calculatedSubtotal.toFixed(2),
+          originalSubtotal: calculatedSubtotal.toFixed(2),
+          discountAmount: discountAmount.toFixed(2),
+          discountedSubtotal: discountedSubtotal.toFixed(2),
           tax: tax.toFixed(2),
           deliveryFee: deliveryFee.toFixed(2),
+          adjustedDeliveryFee: adjustedDeliveryFee.toFixed(2),
           tip: tip.toFixed(2),
           finalTotal: finalTotal.toFixed(2),
-          frontendTotal: orderData.total
+          frontendTotal: orderData.total,
+          voucherCode: orderData.voucherCode
         });
 
         // Use server-calculated values instead of frontend values
@@ -521,6 +548,9 @@ export const handler: Handler = async (event, context) => {
           ...orderData,
           total: finalTotal.toFixed(2),
           tax: tax.toFixed(2),
+          subtotal: discountedSubtotal.toFixed(2),
+          discountAmount: discountAmount.toFixed(2),
+          deliveryFee: adjustedDeliveryFee.toFixed(2),
           items: validItems // Use only valid items
         };
 
@@ -831,7 +861,8 @@ export const handler: Handler = async (event, context) => {
               // Store voucher details in order for confirmation display
               enhancedOrder.voucherUsed = {
                 code: voucher.voucher_code,
-                discountAmount: voucher.discount_amount,
+                discountAmount: discountAmount, // Use actual calculated discount
+                originalDiscountAmount: voucher.discount_amount, // Original voucher value
                 discountType: voucher.discount_type,
                 rewardName: voucher.reward_name || voucher.title
               };
