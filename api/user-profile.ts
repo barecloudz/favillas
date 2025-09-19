@@ -227,6 +227,15 @@ export const handler: Handler = async (event, context) => {
         }
 
         // Update Supabase user profile - include Google user data correction
+        console.log('🔍 UPDATE: Auth payload details for name correction:', {
+          firstName: authPayload.firstName,
+          lastName: authPayload.lastName,
+          fullName: authPayload.fullName,
+          email: authPayload.email,
+          calculatedFirstName: authPayload.firstName || (authPayload.fullName ? authPayload.fullName.split(' ')[0] : 'User'),
+          calculatedLastName: authPayload.lastName || (authPayload.fullName ? authPayload.fullName.split(' ').slice(1).join(' ') : 'Google User')
+        });
+
         const updatedUser = await sql`
           UPDATE users
           SET
