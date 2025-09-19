@@ -51,7 +51,8 @@ class ShipDayService {
 
     const url = `${this.baseUrl}${endpoint}`;
     const headers: Record<string, string> = {
-      'X-API-Key': this.apiKey,
+      'Authorization': `Basic ${this.apiKey}`,
+      'Accept': 'application/json',
       'Content-Type': 'application/json',
     };
 
@@ -87,6 +88,7 @@ class ShipDayService {
 
   async createDeliveryOrder(orderData: ShipDayOrderData): Promise<ShipDayResponse> {
     try {
+      // Use documented ShipDay API format
       const shipdayPayload = {
         orderItem: orderData.items.map(item => ({
           name: item.name,
@@ -95,36 +97,32 @@ class ShipDayService {
         })),
         pickup: {
           address: {
-            street: orderData.restaurantAddress,
-            city: "Asheville", // Restaurant city
-            state: "NC", // Restaurant state
-            zip: "28801" // Restaurant zip
+            street: "123 Main St", // Update with actual restaurant address
+            city: "Asheville",
+            state: "NC",
+            zip: "28801"
           },
           contactPerson: {
-            name: orderData.restaurantName,
-            phone: orderData.restaurantPhone
+            name: "Favillas NY Pizza", // Ensure proper restaurant name
+            phone: "5551234567" // Update with actual restaurant phone
           }
         },
         dropoff: {
           address: {
-            street: orderData.address.street,
+            street: orderData.address.street || orderData.address.fullAddress,
             city: orderData.address.city,
             state: orderData.address.state,
             zip: orderData.address.zipCode
           },
           contactPerson: {
             name: orderData.customerName,
-            phone: orderData.customerPhone,
+            phone: orderData.customerPhone.replace(/[^\d]/g, ''), // Clean phone number
             ...(orderData.customerEmail && { email: orderData.customerEmail })
           }
         },
-        ...(orderData.specialInstructions && { 
-          specialInstructions: orderData.specialInstructions 
-        }),
-        totalAmount: orderData.totalAmount,
         orderNumber: orderData.orderId,
-        deliveryInstruction: orderData.specialInstructions || '',
-        paymentMethod: 'cash' // or 'credit_card' based on your payment processing
+        totalAmount: orderData.totalAmount,
+        paymentMethod: 'credit_card' // Update based on your payment processing
       };
 
       log(`Sending ShipDay payload: ${JSON.stringify(shipdayPayload, null, 2)}`, 'ShipDay');
