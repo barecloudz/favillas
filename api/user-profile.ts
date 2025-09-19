@@ -43,11 +43,9 @@ function authenticateToken(event: any): { userId: number | null; supabaseUserId:
     // First try to decode as Supabase JWT token
     try {
       const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-      console.log('🔍 Supabase token payload:', payload);
 
       if (payload.iss && payload.iss.includes('supabase')) {
         const supabaseUserId = payload.sub;
-        console.log('✅ Supabase user ID:', supabaseUserId);
 
         return {
           userId: null, // No integer user ID for Supabase users

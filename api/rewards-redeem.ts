@@ -43,12 +43,10 @@ function authenticateToken(event: any): { userId: number | null; supabaseUserId:
     // First try to decode as Supabase JWT token
     try {
       const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-      console.log('🔍 Supabase token payload:', payload);
 
       if (payload.iss && payload.iss.includes('supabase')) {
         // This is a Supabase token, extract user ID
         const supabaseUserId = payload.sub;
-        console.log('✅ Supabase user ID:', supabaseUserId);
 
         // For Supabase users, return the UUID directly
         return {
@@ -132,13 +130,16 @@ export const handler: Handler = async (event, context) => {
       };
     }
 
-    // Start transaction
+    // Start atomic transaction with optimistic locking for race condition prevention
     const result = await sql.begin(async (sql: any) => {
-      // Get the reward details
+      console.log('🔒 Starting atomic transaction with optimistic locking for reward redemption');
+
+      // Get the reward details with FOR UPDATE lock to prevent concurrent modifications
       const reward = await sql`
         SELECT * FROM rewards
-        WHERE id = ${rewardId} AND is_active = true
+        WHERE id = ${rewardId} AND active = true
         AND (expires_at IS NULL OR expires_at > NOW())
+        FOR UPDATE
       `;
 
       if (reward.length === 0) {
@@ -147,39 +148,67 @@ export const handler: Handler = async (event, context) => {
 
       const rewardData = reward[0];
 
-      // Check if reward has usage limits
-      if (rewardData.max_uses && rewardData.times_used >= rewardData.max_uses) {
-        throw new Error('Reward usage limit reached');
-      }
-
-      // Get user's current points - handle both authentication types
+      // Get user's current points with row-level locking to prevent race conditions
       let currentPoints = 0;
+      let userPointsRecord;
 
       if (authPayload.isSupabase) {
-        // Supabase user - query using supabase_user_id
-        const userPointsRecord = await sql`
-          SELECT points FROM user_points WHERE supabase_user_id = ${authPayload.supabaseUserId}
+        // Supabase user - query using supabase_user_id with FOR UPDATE lock
+        const userPointsResult = await sql`
+          SELECT id, points, total_redeemed, updated_at FROM user_points
+          WHERE supabase_user_id = ${authPayload.supabaseUserId}
+          FOR UPDATE
         `;
-        currentPoints = userPointsRecord[0]?.points || 0;
-        console.log('🎁 Supabase user current points:', currentPoints);
+        userPointsRecord = userPointsResult[0];
+        currentPoints = userPointsRecord?.points || 0;
+        console.log('🎁 Supabase user current points (locked):', currentPoints);
       } else {
-        // Legacy user - query using user_id
-        const userPointsRecord = await sql`
-          SELECT points FROM user_points WHERE user_id = ${authPayload.userId}
+        // Legacy user - query using user_id with FOR UPDATE lock
+        const userPointsResult = await sql`
+          SELECT id, points, total_redeemed, updated_at FROM user_points
+          WHERE user_id = ${authPayload.userId}
+          FOR UPDATE
         `;
-        currentPoints = userPointsRecord[0]?.points || 0;
-        console.log('🎁 Legacy user current points:', currentPoints);
+        userPointsRecord = userPointsResult[0];
+        currentPoints = userPointsRecord?.points || 0;
+        console.log('🎁 Legacy user current points (locked):', currentPoints);
+      }
+
+      if (!userPointsRecord) {
+        throw new Error('User points record not found');
       }
 
       console.log('🔍 User auth info:', {
         isSupabase: authPayload.isSupabase,
         userId: authPayload.userId,
         supabaseUserId: authPayload.supabaseUserId,
-        currentPoints
+        currentPoints,
+        recordId: userPointsRecord.id
       });
 
       if (currentPoints < rewardData.points_required) {
         throw new Error(`Insufficient points. You need ${rewardData.points_required} points but have ${currentPoints}`);
+      }
+
+      // Check for duplicate redemption attempts using optimistic concurrency
+      const existingRedemption = authPayload.isSupabase
+        ? await sql`
+            SELECT id FROM user_points_redemptions
+            WHERE supabase_user_id = ${authPayload.supabaseUserId}
+            AND reward_id = ${rewardId}
+            AND is_used = false
+            AND created_at > NOW() - INTERVAL '1 minute'
+          `
+        : await sql`
+            SELECT id FROM user_points_redemptions
+            WHERE user_id = ${authPayload.userId}
+            AND reward_id = ${rewardId}
+            AND is_used = false
+            AND created_at > NOW() - INTERVAL '1 minute'
+          `;
+
+      if (existingRedemption.length > 0) {
+        throw new Error('Duplicate redemption attempt detected. Please wait before trying again.');
       }
 
       // Create redemption record - handle both authentication types
@@ -219,7 +248,7 @@ export const handler: Handler = async (event, context) => {
         console.log('✅ Created legacy user redemption record');
       }
 
-      // Record points transaction and update user_points balance
+      // Record points transaction and update user_points balance with optimistic concurrency control
       if (authPayload.isSupabase) {
         // Supabase user transaction
         await sql`
@@ -233,17 +262,24 @@ export const handler: Handler = async (event, context) => {
           )
         `;
 
-        // Update user_points balance
-        await sql`
+        // Update user_points balance with optimistic locking (check updated_at hasn't changed)
+        const updateResult = await sql`
           UPDATE user_points
           SET
             points = points - ${rewardData.points_required},
             total_redeemed = total_redeemed + ${rewardData.points_required},
             updated_at = NOW()
           WHERE supabase_user_id = ${authPayload.supabaseUserId}
+          AND updated_at = ${userPointsRecord.updated_at}
+          AND points >= ${rewardData.points_required}
+          RETURNING points, total_redeemed
         `;
 
-        console.log('✅ Updated Supabase user points balance');
+        if (updateResult.length === 0) {
+          throw new Error('Points balance was modified by another transaction. Please try again.');
+        }
+
+        console.log('✅ Updated Supabase user points balance with optimistic locking:', updateResult[0]);
       } else {
         // Legacy user transaction
         await sql`
@@ -257,17 +293,24 @@ export const handler: Handler = async (event, context) => {
           )
         `;
 
-        // Update user_points balance
-        await sql`
+        // Update user_points balance with optimistic locking (check updated_at hasn't changed)
+        const updateResult = await sql`
           UPDATE user_points
           SET
             points = points - ${rewardData.points_required},
             total_redeemed = total_redeemed + ${rewardData.points_required},
             updated_at = NOW()
           WHERE user_id = ${authPayload.userId}
+          AND updated_at = ${userPointsRecord.updated_at}
+          AND points >= ${rewardData.points_required}
+          RETURNING points, total_redeemed
         `;
 
-        console.log('✅ Updated legacy user points balance');
+        if (updateResult.length === 0) {
+          throw new Error('Points balance was modified by another transaction. Please try again.');
+        }
+
+        console.log('✅ Updated legacy user points balance with optimistic locking:', updateResult[0]);
       }
 
       // Note: Reward usage tracking removed since times_used column doesn't exist
