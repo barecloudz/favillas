@@ -4404,6 +4404,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Order tracking endpoint - get delivery status for customer
+  app.get("/api/orders/:orderId/tracking", async (req, res) => {
+    try {
+      const orderId = parseInt(req.params.orderId);
+
+      if (isNaN(orderId)) {
+        return res.status(400).json({ error: 'Invalid order ID' });
+      }
+
+      // Get order from database to check if it has ShipDay tracking
+      const order = await storage.getOrder(orderId);
+      if (!order) {
+        return res.status(404).json({ error: 'Order not found' });
+      }
+
+      // Check if order has ShipDay integration
+      if (!order.shipdayOrderId) {
+        return res.json({
+          status: 'no_tracking',
+          statusDisplay: 'Tracking not available',
+          progress: {
+            ordered: true,
+            preparing: order.status === 'pending' || order.status === 'confirmed',
+            pickedUp: false,
+            onTheWay: false,
+            delivered: order.status === 'completed'
+          }
+        });
+      }
+
+      // Get tracking info from ShipDay
+      const trackingInfo = await shipdayService.getOrderTracking(order.shipdayOrderId);
+
+      res.json(trackingInfo);
+    } catch (error: any) {
+      log(`Error getting order tracking: ${error.message}`, 'API');
+      res.status(500).json({ error: 'Failed to get tracking information' });
+    }
+  });
+
+  // Admin endpoint to get ShipDay order status
+  app.get("/api/admin/orders/:orderId/shipday-status", requireAuth, async (req, res) => {
+    try {
+      const orderId = parseInt(req.params.orderId);
+
+      if (isNaN(orderId)) {
+        return res.status(400).json({ error: 'Invalid order ID' });
+      }
+
+      const order = await storage.getOrder(orderId);
+      if (!order) {
+        return res.status(404).json({ error: 'Order not found' });
+      }
+
+      if (!order.shipdayOrderId) {
+        return res.status(404).json({ error: 'Order does not have ShipDay tracking' });
+      }
+
+      const status = await shipdayService.getOrderStatus(order.shipdayOrderId);
+      res.json(status);
+    } catch (error: any) {
+      log(`Error getting ShipDay status: ${error.message}`, 'API');
+      res.status(500).json({ error: 'Failed to get ShipDay status' });
+    }
+  });
+
   // ShipDay webhook endpoint
   app.post("/api/shipday/webhook", express.json(), async (req, res) => {
     try {

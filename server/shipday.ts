@@ -35,6 +35,18 @@ interface ShipDayResponse {
   error?: string;
 }
 
+interface ShipDayOrderStatus {
+  orderId: string;
+  orderStatus: string;
+  trackingLink?: string;
+  estimatedDeliveryTime?: string;
+  carrier?: {
+    name: string;
+    phone?: string;
+  };
+  lastUpdate?: string;
+}
+
 class ShipDayService {
   private apiKey: string;
   private baseUrl: string;
@@ -162,12 +174,89 @@ class ShipDayService {
     }
   }
 
-  async getOrderStatus(shipdayOrderId: string): Promise<any> {
+  async getOrderStatus(shipdayOrderId: string): Promise<ShipDayOrderStatus> {
     try {
       const response = await this.makeRequest(`/orders/${shipdayOrderId}`);
-      return response;
+
+      // Extract relevant tracking information from response
+      const orderStatus: ShipDayOrderStatus = {
+        orderId: response.orderId || shipdayOrderId,
+        orderStatus: response.orderStatus || 'unknown',
+        trackingLink: response.trackingLink,
+        estimatedDeliveryTime: response.estimatedDeliveryTime,
+        carrier: response.carrier ? {
+          name: response.carrier.name,
+          phone: response.carrier.phone
+        } : undefined,
+        lastUpdate: new Date().toISOString()
+      };
+
+      log(`ShipDay order status for ${shipdayOrderId}: ${orderStatus.orderStatus}`, 'ShipDay');
+      return orderStatus;
     } catch (error: any) {
       log(`Failed to get ShipDay order status: ${error.message}`, 'ShipDay');
+      throw error;
+    }
+  }
+
+  // Get detailed tracking information for customer
+  async getOrderTracking(orderNumber: string): Promise<{
+    status: string;
+    statusDisplay: string;
+    trackingLink?: string;
+    estimatedDelivery?: string;
+    carrier?: {
+      name: string;
+      phone?: string;
+    };
+    progress: {
+      ordered: boolean;
+      preparing: boolean;
+      pickedUp: boolean;
+      onTheWay: boolean;
+      delivered: boolean;
+    };
+  }> {
+    try {
+      const response = await this.makeRequest(`/orders/${orderNumber}`);
+
+      const status = response.orderStatus || 'unknown';
+
+      // Map ShipDay statuses to customer-friendly display text
+      const statusDisplayMap: Record<string, string> = {
+        'NOT_ASSIGNED': 'Order Confirmed',
+        'NOT_ACCEPTED': 'Finding Driver',
+        'NOT_STARTED_YET': 'Driver Assigned',
+        'STARTED': 'Driver En Route to Restaurant',
+        'PICKED_UP': 'Order Picked Up',
+        'READY_TO_DELIVER': 'Out for Delivery',
+        'ALREADY_DELIVERED': 'Delivered',
+        'INCOMPLETE': 'Delivery Issue',
+        'FAILED_DELIVERY': 'Delivery Failed'
+      };
+
+      // Track delivery progress
+      const progress = {
+        ordered: true,
+        preparing: ['NOT_ASSIGNED', 'NOT_ACCEPTED', 'NOT_STARTED_YET', 'STARTED', 'PICKED_UP', 'READY_TO_DELIVER', 'ALREADY_DELIVERED'].includes(status),
+        pickedUp: ['PICKED_UP', 'READY_TO_DELIVER', 'ALREADY_DELIVERED'].includes(status),
+        onTheWay: ['READY_TO_DELIVER', 'ALREADY_DELIVERED'].includes(status),
+        delivered: status === 'ALREADY_DELIVERED'
+      };
+
+      return {
+        status,
+        statusDisplay: statusDisplayMap[status] || status,
+        trackingLink: response.trackingLink,
+        estimatedDelivery: response.estimatedDeliveryTime,
+        carrier: response.carrier ? {
+          name: response.carrier.name,
+          phone: response.carrier.phone
+        } : undefined,
+        progress
+      };
+    } catch (error: any) {
+      log(`Failed to get order tracking for ${orderNumber}: ${error.message}`, 'ShipDay');
       throw error;
     }
   }
@@ -245,4 +334,4 @@ class ShipDayService {
 }
 
 export const shipdayService = new ShipDayService();
-export type { ShipDayAddress, ShipDayOrderData, ShipDayResponse };
+export type { ShipDayAddress, ShipDayOrderData, ShipDayResponse, ShipDayOrderStatus };
