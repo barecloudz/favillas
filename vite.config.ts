@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
       ...(isDev ? [runtimeErrorOverlay()] : []),
     ],
     server: {
-      port: 3000,
+      port: 5173,
       host: true,
       proxy: {
         '/.netlify/functions': {

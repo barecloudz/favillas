@@ -13,8 +13,9 @@ Pizza rewards application with Google OAuth authentication using Supabase for us
 - Updated OAuth callback URLs to include localhost:8888
 
 ## Development Commands
-- `npm run dev` - Starts client on port 5173
+- `npm run dev` - Starts client on port 5173 (always use this port)
 - Development server runs on http://localhost:5173
+- Note: Must use port 5173 for OAuth callbacks to work properly
 
 ## Authentication
 - Uses Supabase for Google OAuth authentication
