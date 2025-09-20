@@ -37,10 +37,13 @@ const AddressForm = ({
   const [state, setState] = useState("");
   const [zipCode, setZipCode] = useState("");
 
-  // Parse incoming address value and populate individual fields
+  // Parse incoming address value and populate individual fields - only on initial load
+  const [hasInitialized, setHasInitialized] = useState(false);
+
   useEffect(() => {
-    if (value && value.trim()) {
-      console.log('🏠 AddressForm: Parsing incoming address:', value);
+    // Only parse the incoming value if we haven't initialized yet, or if it's a significant change
+    if (value && value.trim() && !hasInitialized) {
+      console.log('🏠 AddressForm: Initial parsing of incoming address:', value);
 
       // Simple address parsing - assumes format: "street, city, state, zipcode"
       const parts = value.split(',').map(part => part.trim());
@@ -76,14 +79,16 @@ const AddressForm = ({
         setZipCode('');
         console.log('⚠️ AddressForm: Using fallback - putting full address in street field');
       }
-    } else {
-      // Clear fields if no value
+      setHasInitialized(true);
+    } else if (!value || !value.trim()) {
+      // Clear fields if no value and reset initialization flag
       setStreet('');
       setCity('');
       setState('');
       setZipCode('');
+      setHasInitialized(false);
     }
-  }, [value]);
+  }, [value, hasInitialized]);
 
   const handleAddressChange = (field: string, newValue: string) => {
     let updatedStreet = street;

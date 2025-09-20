@@ -328,9 +328,9 @@ const CheckoutPage = () => {
       setOrderId(data.id);
 
       // Save contact information to user profile for future orders
-      if (user && (phone || address || city || state || zipCode)) {
+      if (user && (phone || address || addressData?.city || addressData?.state || addressData?.zipCode)) {
         try {
-          console.log('💾 Saving contact information to user profile:', { phone, address, city, state, zipCode });
+          console.log('💾 Saving contact information to user profile:', { phone, address, addressData });
 
           // Extract address components if we have addressData
           const contactData: { phone?: string; address?: string; city?: string; state?: string; zip_code?: string } = {};
