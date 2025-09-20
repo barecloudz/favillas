@@ -29,7 +29,8 @@ export const handler: Handler = async (event, context) => {
         service: 'pizza-spin-rewards-api',
         timestamp: new Date().toISOString(),
         environment: process.env.NODE_ENV || 'production',
-        version: process.env.BUILD_ID || 'unknown'
+        version: process.env.BUILD_ID || 'unknown',
+        databaseConfigured: !!process.env.DATABASE_URL
       })
     };
   }
