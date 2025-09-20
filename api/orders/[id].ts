@@ -259,10 +259,141 @@ export const handler: Handler = async (event, context) => {
           };
         }
 
+        const updatedOrder = updatedOrders[0];
+
+        // ShipDay integration - trigger when payment is confirmed
+        if (patchData.paymentStatus === 'completed' || patchData.paymentStatus === 'succeeded') {
+          if (updatedOrder.order_type === 'delivery' && updatedOrder.address_data && process.env.SHIPDAY_API_KEY) {
+            try {
+              console.log('📦 Order Update API: Triggering ShipDay integration after payment confirmation');
+
+              let addressData;
+              try {
+                addressData = JSON.parse(updatedOrder.address_data);
+              } catch (parseError) {
+                console.error('📦 Order Update API: Failed to parse address_data:', parseError);
+                addressData = null;
+              }
+
+              if (addressData) {
+                // Get order items for ShipDay
+                const orderItems = await sql`
+                  SELECT oi.*, mi.name as menu_item_name, mi.base_price as menu_item_price
+                  FROM order_items oi
+                  LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+                  WHERE oi.order_id = ${orderId}
+                `;
+
+                // Get user info for contact details
+                let userContactInfo = null;
+                if (updatedOrder.supabase_user_id) {
+                  const userQuery = await sql`SELECT * FROM users WHERE supabase_user_id = ${updatedOrder.supabase_user_id}`;
+                  if (userQuery.length > 0) userContactInfo = userQuery[0];
+                } else if (updatedOrder.user_id) {
+                  const userQuery = await sql`SELECT * FROM users WHERE id = ${updatedOrder.user_id}`;
+                  if (userQuery.length > 0) userContactInfo = userQuery[0];
+                }
+
+                const customerName = userContactInfo?.first_name && userContactInfo?.last_name
+                  ? `${userContactInfo.first_name} ${userContactInfo.last_name}`.trim()
+                  : (userContactInfo?.username || "Customer");
+
+                const customerEmail = userContactInfo?.email || "";
+                const customerPhone = updatedOrder.phone || userContactInfo?.phone || "";
+
+                // Create ShipDay order payload
+                const shipdayPayload = {
+                  orderItems: orderItems.map(item => ({
+                    name: item.name || item.menu_item_name || "Menu Item",
+                    unitPrice: parseFloat(item.price || item.menu_item_price || "0"),
+                    quantity: parseInt(item.quantity || "1")
+                  })),
+                  pickup: {
+                    address: {
+                      street: "123 Main St", // Update with actual restaurant address
+                      city: "Asheville",
+                      state: "NC",
+                      zip: "28801",
+                      country: "United States"
+                    },
+                    contactPerson: {
+                      name: "Favillas NY Pizza",
+                      phone: "5551234567" // Update with actual restaurant phone
+                    }
+                  },
+                  dropoff: {
+                    address: {
+                      street: addressData.street || addressData.fullAddress,
+                      city: addressData.city,
+                      state: addressData.state,
+                      zip: addressData.zipCode,
+                      country: "United States"
+                    },
+                    contactPerson: {
+                      name: customerName && customerName.trim() !== "" ? customerName.trim() : "Customer",
+                      phone: customerPhone.replace(/[^\d]/g, ''),
+                      ...(customerEmail && { email: customerEmail })
+                    }
+                  },
+                  orderNumber: `FAV-${updatedOrder.id}`,
+                  totalOrderCost: parseFloat(updatedOrder.total),
+                  paymentMethod: 'credit_card',
+                  // Required customer fields at root level
+                  customerName: customerName && customerName.trim() !== "" ? customerName.trim() : "Customer",
+                  customerPhoneNumber: customerPhone.replace(/[^\d]/g, ''),
+                  customerAddress: `${addressData.street || addressData.fullAddress}, ${addressData.city}, ${addressData.state} ${addressData.zipCode}`,
+                  ...(customerEmail && { customerEmail: customerEmail })
+                };
+
+                console.log('📦 Order Update API: Sending ShipDay payload after payment confirmation');
+
+                // Call ShipDay API
+                const shipdayResponse = await fetch('https://api.shipday.com/orders', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Basic ${process.env.SHIPDAY_API_KEY}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(shipdayPayload)
+                });
+
+                const shipdayResult = await shipdayResponse.text();
+                console.log(`📦 Order Update API: ShipDay response status: ${shipdayResponse.status}`);
+                console.log(`📦 Order Update API: ShipDay response body: ${shipdayResult}`);
+
+                if (shipdayResponse.ok) {
+                  const parsedResult = JSON.parse(shipdayResult);
+                  if (parsedResult.success) {
+                    console.log(`✅ Order Update API: ShipDay order created successfully for order #${updatedOrder.id}: ${parsedResult.orderId}`);
+
+                    // Update order with ShipDay info
+                    await sql`
+                      UPDATE orders
+                      SET shipday_order_id = ${parsedResult.orderId}, shipday_status = 'pending'
+                      WHERE id = ${updatedOrder.id}
+                    `;
+
+                    updatedOrder.shipday_order_id = parsedResult.orderId;
+                    updatedOrder.shipday_status = 'pending';
+                  } else {
+                    console.error(`❌ Order Update API: ShipDay order creation failed for order #${updatedOrder.id}: ${parsedResult.response || 'Unknown error'}`);
+                  }
+                } else {
+                  console.error(`❌ Order Update API: ShipDay API error for order #${updatedOrder.id}: ${shipdayResponse.status} - ${shipdayResult}`);
+                }
+              }
+            } catch (shipdayError: any) {
+              console.error(`❌ Order Update API: ShipDay integration error for order #${updatedOrder.id}:`, shipdayError.message);
+              // Don't fail the order update if ShipDay fails
+            }
+          }
+        }
+
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify(updatedOrders[0])
+          body: JSON.stringify(updatedOrder)
         };
 
       case 'DELETE':

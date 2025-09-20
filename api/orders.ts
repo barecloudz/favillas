@@ -986,8 +986,8 @@ export const handler: Handler = async (event, context) => {
           }
         }
 
-        // ShipDay integration for delivery orders
-        if (orderData.orderType === "delivery" && orderData.addressData && process.env.SHIPDAY_API_KEY) {
+        // ShipDay integration for delivery orders (only after payment confirmation)
+        if (orderData.orderType === "delivery" && orderData.addressData && process.env.SHIPDAY_API_KEY && (orderData.paymentStatus === 'completed' || orderData.paymentStatus === 'succeeded')) {
           try {
             console.log('📦 Orders API: Starting ShipDay integration for delivery order');
 
