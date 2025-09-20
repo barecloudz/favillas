@@ -986,6 +986,105 @@ export const handler: Handler = async (event, context) => {
           }
         }
 
+        // ShipDay integration for delivery orders
+        if (orderData.orderType === "delivery" && orderData.addressData && process.env.SHIPDAY_API_KEY) {
+          try {
+            console.log('📦 Orders API: Starting ShipDay integration for delivery order');
+
+            const customerName = userContactInfo?.first_name && userContactInfo?.last_name
+              ? `${userContactInfo.first_name} ${userContactInfo.last_name}`.trim()
+              : (userContactInfo?.username || "Customer");
+
+            const customerEmail = userContactInfo?.email || "";
+            const customerPhone = orderData.phone || userContactInfo?.phone || "";
+
+            // Create ShipDay order payload with correct format
+            const shipdayPayload = {
+              orderItems: transformedItems.map(item => ({
+                name: item.name || item.menu_item_name || "Menu Item",
+                unitPrice: parseFloat(item.price || item.menu_item_price || "0"),
+                quantity: parseInt(item.quantity || "1")
+              })),
+              pickup: {
+                address: {
+                  street: "123 Main St", // Update with actual restaurant address
+                  city: "Asheville",
+                  state: "NC",
+                  zip: "28801",
+                  country: "United States"
+                },
+                contactPerson: {
+                  name: "Favillas NY Pizza",
+                  phone: "5551234567" // Update with actual restaurant phone
+                }
+              },
+              dropoff: {
+                address: {
+                  street: orderData.addressData.street || orderData.addressData.fullAddress,
+                  city: orderData.addressData.city,
+                  state: orderData.addressData.state,
+                  zip: orderData.addressData.zipCode,
+                  country: "United States"
+                },
+                contactPerson: {
+                  name: customerName && customerName.trim() !== "" ? customerName.trim() : "Customer",
+                  phone: customerPhone.replace(/[^\d]/g, ''),
+                  ...(customerEmail && { email: customerEmail })
+                }
+              },
+              orderNumber: `FAV-${newOrder.id}`,
+              totalOrderCost: parseFloat(newOrder.total),
+              paymentMethod: 'credit_card',
+              // Required customer fields at root level
+              customerName: customerName && customerName.trim() !== "" ? customerName.trim() : "Customer",
+              customerPhoneNumber: customerPhone.replace(/[^\d]/g, ''),
+              customerAddress: `${orderData.addressData.street || orderData.addressData.fullAddress}, ${orderData.addressData.city}, ${orderData.addressData.state} ${orderData.addressData.zipCode}`,
+              ...(customerEmail && { customerEmail: customerEmail })
+            };
+
+            console.log('📦 Orders API: Sending ShipDay payload:', JSON.stringify(shipdayPayload, null, 2));
+
+            // Call ShipDay API
+            const shipdayResponse = await fetch('https://api.shipday.com/orders', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Basic ${process.env.SHIPDAY_API_KEY}`,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(shipdayPayload)
+            });
+
+            const shipdayResult = await shipdayResponse.text();
+            console.log(`📦 Orders API: ShipDay response status: ${shipdayResponse.status}`);
+            console.log(`📦 Orders API: ShipDay response body: ${shipdayResult}`);
+
+            if (shipdayResponse.ok) {
+              const parsedResult = JSON.parse(shipdayResult);
+              if (parsedResult.success) {
+                console.log(`✅ Orders API: ShipDay order created successfully for order #${newOrder.id}: ${parsedResult.orderId}`);
+
+                // Update order with ShipDay info
+                await sql`
+                  UPDATE orders
+                  SET shipday_order_id = ${parsedResult.orderId}, shipday_status = 'pending'
+                  WHERE id = ${newOrder.id}
+                `;
+
+                enhancedOrder.shipdayOrderId = parsedResult.orderId;
+                enhancedOrder.shipdayStatus = 'pending';
+              } else {
+                console.error(`❌ Orders API: ShipDay order creation failed for order #${newOrder.id}: ${parsedResult.response || 'Unknown error'}`);
+              }
+            } else {
+              console.error(`❌ Orders API: ShipDay API error for order #${newOrder.id}: ${shipdayResponse.status} - ${shipdayResult}`);
+            }
+          } catch (shipdayError: any) {
+            console.error(`❌ Orders API: ShipDay integration error for order #${newOrder.id}:`, shipdayError.message);
+            // Don't fail the order if ShipDay fails
+          }
+        }
+
         console.log('✅ Orders API: Order creation completed successfully');
 
         return {
