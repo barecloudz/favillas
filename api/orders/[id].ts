@@ -301,13 +301,18 @@ export const handler: Handler = async (event, context) => {
                 const customerEmail = userContactInfo?.email || "";
                 const customerPhone = updatedOrder.phone || userContactInfo?.phone || "";
 
-                // Create ShipDay order payload
+                // Create ShipDay order payload - format according to ShipDay API docs
+                const orderItemsFormatted = orderItems.map(item => ({
+                  name: item.name || item.menu_item_name || "Menu Item",
+                  unitPrice: parseFloat(item.price || item.menu_item_price || "0"),
+                  quantity: parseInt(item.quantity || "1")
+                }));
+
                 const shipdayPayload = {
-                  orderItems: orderItems.map(item => ({
-                    name: item.name || item.menu_item_name || "Menu Item",
-                    unitPrice: parseFloat(item.price || item.menu_item_price || "0"),
-                    quantity: parseInt(item.quantity || "1")
-                  })),
+                  orderItem: JSON.stringify(orderItemsFormatted), // ShipDay expects stringified JSON array
+                  tip: parseFloat(updatedOrder.delivery_tip || "0"), // Add delivery tip
+                  orderTotal: parseFloat(updatedOrder.subtotal || updatedOrder.total),
+                  deliveryFee: parseFloat(updatedOrder.delivery_fee || "0"),
                   pickup: {
                     address: {
                       street: "123 Main St", // Update with actual restaurant address

@@ -482,8 +482,11 @@ const CheckoutPage = () => {
       tipAmount = parseFloat(customTip) || 0;
     }
     
-    const finalTotal = finalSubtotal + taxAmount + tipAmount;
-    
+    // Add delivery fee for delivery orders
+    const deliveryFee = orderType === "delivery" ? 3.99 : 0;
+
+    const finalTotal = finalSubtotal + taxAmount + tipAmount + deliveryFee;
+
     return {
       subtotal,
       tax: taxAmount,
@@ -491,6 +494,7 @@ const CheckoutPage = () => {
       voucherDiscount: voucherDiscountAmount,
       totalDiscount: totalDiscountAmount,
       tip: tipAmount,
+      deliveryFee,
       finalSubtotal,
       finalTotal
     };
@@ -875,6 +879,12 @@ const CheckoutPage = () => {
                       <span>Tax</span>
                       <span>${formatPrice(totals.tax)}</span>
                     </div>
+                    {totals.deliveryFee > 0 && (
+                      <div className="flex justify-between">
+                        <span>Delivery Fee</span>
+                        <span>${formatPrice(totals.deliveryFee)}</span>
+                      </div>
+                    )}
                     {totals.tip > 0 && (
                       <div className="flex justify-between">
                         <span>Tip</span>
