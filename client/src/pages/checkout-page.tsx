@@ -122,6 +122,60 @@ const CheckoutPage = () => {
     }
     return price.toFixed(2);
   };
+
+  // Calculate delivery fee based on address
+  const calculateDeliveryFee = async (addressInfo: any) => {
+    if (orderType !== "delivery" || !addressInfo) {
+      setDeliveryFee(0);
+      setDeliveryError("");
+      setDeliveryZoneInfo(null);
+      return;
+    }
+
+    setDeliveryCalculating(true);
+    setDeliveryError("");
+
+    try {
+      const payload = {
+        address: addressInfo.fullAddress,
+        latitude: addressInfo.latitude,
+        longitude: addressInfo.longitude,
+        zipCode: addressInfo.zipCode
+      };
+
+      const response = await fetch('/api/calculate-delivery-fee', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to calculate delivery fee');
+      }
+
+      if (!result.canDeliver) {
+        setDeliveryError(result.message);
+        setDeliveryFee(0);
+        setDeliveryZoneInfo(null);
+      } else {
+        setDeliveryFee(result.deliveryFee);
+        setDeliveryZoneInfo(result);
+        setDeliveryError("");
+      }
+
+    } catch (error: any) {
+      console.error('❌ Delivery fee calculation error:', error);
+      setDeliveryError('Unable to calculate delivery fee. Using standard rate.');
+      setDeliveryFee(3.99); // Fallback to default
+      setDeliveryZoneInfo(null);
+    } finally {
+      setDeliveryCalculating(false);
+    }
+  };
   
   const [orderType, setOrderType] = useState("pickup");
   const [fulfillmentTime, setFulfillmentTime] = useState("asap");
@@ -150,6 +204,12 @@ const CheckoutPage = () => {
   const [tipType, setTipType] = useState<"percentage" | "amount">("percentage");
   const [customTip, setCustomTip] = useState("");
   const [contactInfoLoaded, setContactInfoLoaded] = useState(false);
+
+  // Delivery fee calculation state
+  const [deliveryFee, setDeliveryFee] = useState(3.99); // Default fallback
+  const [deliveryCalculating, setDeliveryCalculating] = useState(false);
+  const [deliveryError, setDeliveryError] = useState("");
+  const [deliveryZoneInfo, setDeliveryZoneInfo] = useState<any>(null);
 
   // Auto-populate contact information when user data is available
   useEffect(() => {
@@ -228,6 +288,17 @@ const CheckoutPage = () => {
   useEffect(() => {
     setContactInfoLoaded(false);
   }, [user?.id]);
+
+  // Calculate delivery fee when address changes
+  useEffect(() => {
+    if (orderType === "delivery" && addressData) {
+      calculateDeliveryFee(addressData);
+    } else if (orderType === "pickup") {
+      setDeliveryFee(0);
+      setDeliveryError("");
+      setDeliveryZoneInfo(null);
+    }
+  }, [addressData, orderType]);
 
   // Store hours validation
   const isStoreOpen = () => {
@@ -482,10 +553,10 @@ const CheckoutPage = () => {
       tipAmount = parseFloat(customTip) || 0;
     }
     
-    // Add delivery fee for delivery orders
-    const deliveryFee = orderType === "delivery" ? 3.99 : 0;
+    // Use dynamic delivery fee (calculated based on distance)
+    const currentDeliveryFee = orderType === "delivery" ? deliveryFee : 0;
 
-    const finalTotal = finalSubtotal + taxAmount + tipAmount + deliveryFee;
+    const finalTotal = finalSubtotal + taxAmount + tipAmount + currentDeliveryFee;
 
     return {
       subtotal,
@@ -494,7 +565,7 @@ const CheckoutPage = () => {
       voucherDiscount: voucherDiscountAmount,
       totalDiscount: totalDiscountAmount,
       tip: tipAmount,
-      deliveryFee,
+      deliveryFee: currentDeliveryFee,
       finalSubtotal,
       finalTotal
     };
@@ -591,6 +662,26 @@ const CheckoutPage = () => {
         return;
       }
     }
+
+    // Validate delivery zone
+    if (orderType === "delivery" && deliveryError) {
+      toast({
+        title: "Delivery Not Available",
+        description: deliveryError,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Don't allow ordering if delivery fee calculation is in progress
+    if (orderType === "delivery" && deliveryCalculating) {
+      toast({
+        title: "Calculating Delivery Fee",
+        description: "Please wait while we calculate your delivery fee.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     // Validate fulfillment time
     if (fulfillmentTime === "asap" && !isStoreOpen()) {
@@ -643,7 +734,7 @@ const CheckoutPage = () => {
       total: totals.finalTotal.toString(), // Store the final total (what customer actually pays)
       tax: tax.toString(),
       tip: totals.tip.toString(),
-      deliveryFee: orderType === "delivery" ? "3.99" : "0", // Add delivery fee for delivery orders
+      deliveryFee: orderType === "delivery" ? deliveryFee.toString() : "0", // Dynamic delivery fee based on distance
       orderType,
       paymentStatus: "pending",
       specialInstructions,
@@ -879,10 +970,23 @@ const CheckoutPage = () => {
                       <span>Tax</span>
                       <span>${formatPrice(totals.tax)}</span>
                     </div>
-                    {totals.deliveryFee > 0 && (
+                    {orderType === "delivery" && (
                       <div className="flex justify-between">
-                        <span>Delivery Fee</span>
+                        <span className="flex items-center">
+                          Delivery Fee
+                          {deliveryCalculating && <Loader2 className="h-3 w-3 animate-spin ml-1" />}
+                          {deliveryZoneInfo && (
+                            <span className="text-xs text-gray-500 ml-1">
+                              ({deliveryZoneInfo.distance} mi)
+                            </span>
+                          )}
+                        </span>
                         <span>${formatPrice(totals.deliveryFee)}</span>
+                      </div>
+                    )}
+                    {deliveryError && (
+                      <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                        {deliveryError}
                       </div>
                     )}
                     {totals.tip > 0 && (
