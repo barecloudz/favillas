@@ -154,18 +154,24 @@ const OrderSuccessPage = () => {
   // Calculate estimated pickup/delivery time
   const getEstimatedTime = () => {
     if (!order) return null;
-    
+
+    // If we have ShipDay estimated delivery time, use that
+    if (order.estimated_delivery_time) {
+      const estimatedTime = new Date(order.estimated_delivery_time);
+      return estimatedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
     // If it's a scheduled order, show the scheduled time
     if (order.fulfillmentTime === "scheduled" && order.scheduledTime) {
       const scheduledDate = new Date(order.scheduledTime);
       return scheduledDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
-    
+
     // For ASAP orders, calculate based on order time
     const now = new Date();
     if (!order.createdAt) return null;
     const orderTime = new Date(order.createdAt);
-    
+
     if (order.orderType === 'pickup') {
       // Pickup: 15-25 minutes
       const pickupTime = new Date(orderTime.getTime() + (20 * 60 * 1000)); // 20 minutes
@@ -545,35 +551,55 @@ Thank you for choosing Favilla's NY Pizza!
 
                     <div className="flex items-center space-x-3">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        ['ready', 'completed'].includes(order.status) 
-                          ? 'bg-green-100' 
+                        ['ready', 'completed'].includes(order.status) || ['picked_up', 'out_for_delivery', 'delivered'].includes(order.shipday_status)
+                          ? 'bg-green-100'
                           : 'bg-gray-100'
                       }`}>
                         {order.orderType === 'pickup' ? (
                           <Store className={`h-4 w-4 ${
-                            ['ready', 'completed'].includes(order.status) 
-                              ? 'text-green-600' 
+                            ['ready', 'completed'].includes(order.status)
+                              ? 'text-green-600'
                               : 'text-gray-400'
                           }`} />
                         ) : (
                           <Truck className={`h-4 w-4 ${
-                            ['ready', 'completed'].includes(order.status) 
-                              ? 'text-green-600' 
+                            ['ready', 'completed'].includes(order.status) || ['picked_up', 'out_for_delivery', 'delivered'].includes(order.shipday_status)
+                              ? 'text-green-600'
                               : 'text-gray-400'
                           }`} />
                         )}
                       </div>
                       <div className="flex-1">
                         <p className="font-medium">
-                          {order.orderType === 'pickup' ? 'Ready for Pickup' : 'Out for Delivery'}
+                          {order.orderType === 'pickup' ? 'Ready for Pickup' :
+                           order.shipday_status === 'delivered' ? 'Delivered' :
+                           order.shipday_status === 'out_for_delivery' ? 'Out for Delivery' :
+                           order.shipday_status === 'picked_up' ? 'Picked Up by Driver' :
+                           'Out for Delivery'}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {['ready', 'completed'].includes(order.status) 
-                            ? 'Your order is ready!' 
-                            : 'Will be ready soon'}
+                          {order.shipday_status === 'delivered' ? 'Your order has been delivered!' :
+                           order.shipday_status === 'out_for_delivery' ? 'Driver is on the way to you' :
+                           order.shipday_status === 'picked_up' ? 'Driver has picked up your order' :
+                           ['ready', 'completed'].includes(order.status)
+                             ? 'Your order is ready!'
+                             : 'Will be ready soon'}
                         </p>
                       </div>
                     </div>
+
+                    {/* Additional delivery status if we have ShipDay info */}
+                    {order.orderType === 'delivery' && order.shipday_status === 'delivered' && (
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-green-600">Order Delivered!</p>
+                          <p className="text-sm text-gray-500">Your order has been successfully delivered</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
                 </Card>
@@ -594,15 +620,66 @@ Thank you for choosing Favilla's NY Pizza!
                 <CardContent>
                   <p className="text-2xl font-bold text-gray-900">{getEstimatedTime()}</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    {order.fulfillmentTime === "scheduled" 
-                      ? `Scheduled for ${order.scheduledTime ? new Date(order.scheduledTime).toLocaleDateString() : 'scheduled time'}`
-                      : order.orderType === 'pickup' 
-                        ? 'Your order will be ready for pickup' 
-                        : 'Your order will be delivered to your door'
+                    {order.estimated_delivery_time
+                      ? "Live estimate from delivery service"
+                      : order.fulfillmentTime === "scheduled"
+                        ? `Scheduled for ${order.scheduledTime ? new Date(order.scheduledTime).toLocaleDateString() : 'scheduled time'}`
+                        : order.orderType === 'pickup'
+                          ? 'Your order will be ready for pickup'
+                          : 'Your order will be delivered to your door'
                     }
                   </p>
                 </CardContent>
               </Card>
+
+              {/* ShipDay Delivery Tracking - only show for delivery orders with tracking */}
+              {order.orderType === 'delivery' && (order.tracking_url || order.shipday_status) && (
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-blue-800">
+                      <Truck className="h-5 w-5 mr-2" />
+                      Live Delivery Tracking
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {order.shipday_status && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Delivery Status:</span>
+                        <Badge className={`${
+                          order.shipday_status === 'delivered' ? 'bg-green-100 text-green-800' :
+                          order.shipday_status === 'out_for_delivery' ? 'bg-blue-100 text-blue-800' :
+                          order.shipday_status === 'picked_up' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {order.shipday_status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        </Badge>
+                      </div>
+                    )}
+
+                    {order.driver_location && (
+                      <div className="text-sm text-blue-700">
+                        <p className="font-medium">Driver Location Updated</p>
+                        <p className="text-xs">{new Date().toLocaleTimeString()}</p>
+                      </div>
+                    )}
+
+                    {order.tracking_url && (
+                      <Button
+                        variant="outline"
+                        className="w-full border-blue-300 text-blue-700 hover:bg-blue-100"
+                        onClick={() => window.open(order.tracking_url, '_blank')}
+                      >
+                        <MapPin className="h-4 w-4 mr-2" />
+                        Track Your Delivery Live
+                      </Button>
+                    )}
+
+                    <p className="text-xs text-blue-600">
+                      🚚 Your order is being handled by our delivery partner for real-time tracking
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Contact Information */}
               <Card>

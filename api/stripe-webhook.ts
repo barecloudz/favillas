@@ -158,6 +158,24 @@ export const handler: Handler = async (event, context) => {
               quantity: parseInt(item.quantity || "1")
             }));
 
+            // Handle scheduled delivery if order has scheduled time
+            let scheduledFields = {};
+            let isScheduled = false;
+
+            if (order.fulfillment_time === 'scheduled' && order.scheduled_time) {
+              isScheduled = true;
+              const scheduledDate = new Date(order.scheduled_time);
+
+              scheduledFields = {
+                schedule: true,
+                activityLog: {
+                  expectedPickupTime: "12:00", // Default pickup time - could be customized
+                  expectedDeliveryDate: scheduledDate.toISOString().split('T')[0], // YYYY-MM-DD format
+                  expectedDeliveryTime: scheduledDate.toTimeString().split(' ')[0].slice(0, 5) // HH:MM format
+                }
+              };
+            }
+
             const shipdayPayload = {
               orderItem: JSON.stringify(orderItemsFormatted), // ShipDay expects stringified JSON array
               tip: parseFloat(order.delivery_tip || "0"), // Add delivery tip
@@ -197,7 +215,9 @@ export const handler: Handler = async (event, context) => {
               customerName: customerName && customerName.trim() !== "" ? customerName.trim() : "Customer",
               customerPhoneNumber: customerPhone.replace(/[^\d]/g, ''),
               customerAddress: `${addressData.street || addressData.fullAddress}, ${addressData.city}, ${addressData.state} ${addressData.zipCode}`,
-              ...(customerEmail && { customerEmail: customerEmail })
+              ...(customerEmail && { customerEmail: customerEmail }),
+              // Add scheduled delivery fields if it's a scheduled order
+              ...scheduledFields
             };
 
             console.log('📦 Stripe Webhook: Sending ShipDay payload after payment confirmation');
