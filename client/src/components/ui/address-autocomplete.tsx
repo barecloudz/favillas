@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,8 @@ const AddressForm = ({
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [zipCode, setZipCode] = useState("");
+  const [autocompleteInstance, setAutocompleteInstance] = useState<any>(null);
+  const streetInputRef = useRef<HTMLInputElement>(null);
 
   // Parse incoming address value and populate individual fields - only on initial load
   const [hasInitialized, setHasInitialized] = useState(false);
@@ -89,6 +91,172 @@ const AddressForm = ({
       setHasInitialized(false);
     }
   }, [value, hasInitialized]);
+
+  // Initialize Google Places Autocomplete
+  useEffect(() => {
+    const initializeAutocomplete = () => {
+      if (!streetInputRef.current || !window.google?.maps?.places) {
+        console.log('Google Maps API not loaded yet');
+        return;
+      }
+
+      try {
+        const autocomplete = new window.google.maps.places.Autocomplete(
+          streetInputRef.current,
+          {
+            types: ['address'],
+            componentRestrictions: { country: 'us' },
+            fields: ['address_components', 'formatted_address', 'geometry']
+          }
+        );
+
+        autocomplete.addListener('place_changed', () => {
+          const place = autocomplete.getPlace();
+
+          if (!place.address_components) {
+            console.warn('No address components found');
+            return;
+          }
+
+          // Parse Google Places response
+          let streetNumber = '';
+          let route = '';
+          let locality = '';
+          let administrativeAreaLevel1 = '';
+          let postalCode = '';
+          let coordinates = null;
+
+          place.address_components.forEach((component: any) => {
+            const componentType = component.types[0];
+
+            switch (componentType) {
+              case 'street_number':
+                streetNumber = component.long_name;
+                break;
+              case 'route':
+                route = component.long_name;
+                break;
+              case 'locality':
+                locality = component.long_name;
+                break;
+              case 'administrative_area_level_1':
+                administrativeAreaLevel1 = component.short_name;
+                break;
+              case 'postal_code':
+                postalCode = component.long_name;
+                break;
+            }
+          });
+
+          // Get coordinates if available
+          if (place.geometry?.location) {
+            coordinates = {
+              lat: place.geometry.location.lat(),
+              lng: place.geometry.location.lng()
+            };
+          }
+
+          // Combine street number and route
+          const fullStreet = [streetNumber, route].filter(Boolean).join(' ');
+
+          // Update state
+          setStreet(fullStreet);
+          setCity(locality);
+          setState(administrativeAreaLevel1);
+          setZipCode(postalCode);
+
+          // Build full address
+          const fullAddress = [fullStreet, locality, administrativeAreaLevel1, postalCode]
+            .filter(Boolean)
+            .join(', ');
+
+          onChange(fullAddress);
+
+          // Call onAddressSelect with coordinates
+          if (onAddressSelect && fullStreet && locality && administrativeAreaLevel1 && postalCode) {
+            onAddressSelect({
+              fullAddress,
+              street: fullStreet,
+              city: locality,
+              state: administrativeAreaLevel1,
+              zipCode: postalCode,
+              latitude: coordinates?.lat,
+              longitude: coordinates?.lng
+            });
+          }
+
+          console.log('✅ Google Places address selected:', {
+            street: fullStreet,
+            city: locality,
+            state: administrativeAreaLevel1,
+            zipCode: postalCode,
+            coordinates
+          });
+        });
+
+        setAutocompleteInstance(autocomplete);
+        console.log('✅ Google Places Autocomplete initialized');
+      } catch (error) {
+        console.error('Failed to initialize Google Places Autocomplete:', error);
+      }
+    };
+
+    // Check if Google Maps is already loaded
+    if (window.google?.maps?.places) {
+      initializeAutocomplete();
+    } else {
+      // Wait for Google Maps to load
+      const checkGoogle = setInterval(() => {
+        if (window.google?.maps?.places) {
+          clearInterval(checkGoogle);
+          initializeAutocomplete();
+        }
+      }, 100);
+
+      // Clean up interval after 10 seconds
+      setTimeout(() => clearInterval(checkGoogle), 10000);
+    }
+
+    // Cleanup
+    return () => {
+      if (autocompleteInstance) {
+        window.google?.maps?.event?.clearInstanceListeners(autocompleteInstance);
+      }
+    };
+  }, [streetInputRef.current]);
+
+  // Load Google Maps API script
+  useEffect(() => {
+    const loadGoogleMapsScript = () => {
+      // Check if script is already loaded
+      if (window.google?.maps?.places) {
+        return;
+      }
+
+      const existingScript = document.querySelector('#google-maps-script');
+      if (existingScript) {
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.id = 'google-maps-script';
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
+      script.async = true;
+      script.defer = true;
+
+      script.onload = () => {
+        console.log('✅ Google Maps API loaded');
+      };
+
+      script.onerror = () => {
+        console.error('❌ Failed to load Google Maps API');
+      };
+
+      document.head.appendChild(script);
+    };
+
+    loadGoogleMapsScript();
+  }, []);
 
   const handleAddressChange = (field: string, newValue: string) => {
     let updatedStreet = street;
@@ -150,9 +318,10 @@ const AddressForm = ({
             Street Address *
           </Label>
           <Input
+            ref={streetInputRef}
             id="street-address"
             type="text"
-            placeholder="123 Main Street"
+            placeholder="Start typing your address..."
             value={street}
             onChange={(e) => handleAddressChange('street', e.target.value)}
             className={cn(

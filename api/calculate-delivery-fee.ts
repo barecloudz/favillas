@@ -40,18 +40,42 @@ function toRadians(degrees: number): number {
   return degrees * (Math.PI / 180);
 }
 
-// Get coordinates from address using a geocoding service
+// Get coordinates from address using OpenStreetMap Nominatim (free alternative to Google)
 async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
   try {
-    // For production, you'd use Google Geocoding API, MapBox, or similar
-    // For now, we'll use a simple regex to extract coordinates if they're provided
-    // or return null to indicate we need coordinates from the frontend
-
-    // This is a fallback - in production you'd implement proper geocoding
     console.log(`🗺️ Geocoding address: ${address}`);
-    return null; // Frontend should provide coordinates
+
+    // Use Nominatim (OpenStreetMap) free geocoding service
+    // This is a free alternative to Google Geocoding API
+    const encodedAddress = encodeURIComponent(address);
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodedAddress}`;
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Favillas-Pizza-Delivery-System/1.0'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Geocoding API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data && data.length > 0) {
+      const result = data[0];
+      console.log(`✅ Geocoded "${address}" to: ${result.lat}, ${result.lon}`);
+
+      return {
+        lat: parseFloat(result.lat),
+        lng: parseFloat(result.lon)
+      };
+    } else {
+      console.warn(`⚠️ No geocoding results found for: ${address}`);
+      return null;
+    }
   } catch (error) {
-    console.error('Geocoding error:', error);
+    console.error('❌ Geocoding error:', error);
     return null;
   }
 }

@@ -36,16 +36,16 @@ CREATE TABLE IF NOT EXISTS delivery_blackouts (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Insert default store location (Asheville, NC - update with actual coordinates)
+-- Insert actual store location
 INSERT INTO store_settings (store_name, address, latitude, longitude, phone) VALUES
-('Favillas NY Pizza', '123 Main St, Asheville, NC 28801', 35.5951, -82.5515, '(555) 123-PIZZA')
+('Favillas NY Pizza', '5 Regent Park Blvd #107, Asheville, NC 28806', 35.59039, -82.58198, '(828) 225-2885')
 ON CONFLICT DO NOTHING;
 
 -- Insert default delivery zones
 INSERT INTO delivery_zones (zone_name, min_distance_miles, max_distance_miles, delivery_fee, estimated_time_minutes) VALUES
-('Local Zone', 0.0, 3.0, 2.99, 25),
-('Standard Zone', 3.0, 6.0, 3.99, 35),
-('Extended Zone', 6.0, 10.0, 5.99, 45)
+('Close Zone', 0.0, 5.0, 6.99, 30),
+('Medium Zone', 5.0, 8.0, 9.49, 40),
+('Far Zone', 8.0, 10.0, 11.99, 50)
 ON CONFLICT DO NOTHING;
 
 -- Add indexes for performance
