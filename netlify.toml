@@ -212,6 +212,12 @@
   to = "/.netlify/functions/image-upload-test"
   status = 200
 
+# Image upload endpoint (no auth for testing)
+[[redirects]]
+  from = "/api/image-upload-test-no-auth"
+  to = "/.netlify/functions/image-upload-test-no-auth"
+  status = 200
+
 # Storage setup endpoint
 [[redirects]]
   from = "/api/setup-storage"

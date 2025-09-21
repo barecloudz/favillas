@@ -54,7 +54,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await fetch('/api/image-upload-test', {
+      const response = await fetch('/api/image-upload-test-no-auth', {
         method: 'POST',
         body: formData,
         credentials: 'include', // Include cookies for authentication
