@@ -45,9 +45,20 @@ export function authenticateToken(event: NetlifyEvent): AuthPayload | null {
   if (!token) {
     const cookies = event.headers.cookie;
     if (cookies) {
-      const authCookie = cookies.split(';').find((c: string) => c.trim().startsWith('auth-token='));
-      if (authCookie) {
-        token = authCookie.split('=')[1];
+      // Try multiple cookie names for backwards compatibility
+      const cookiesToTry = ['auth-token=', 'token=', 'jwt=', 'session='];
+
+      for (const cookieName of cookiesToTry) {
+        const authCookie = cookies.split(';').find((c: string) => c.trim().startsWith(cookieName));
+        if (authCookie) {
+          token = authCookie.split('=')[1];
+          console.log(`🔍 Found token in cookie: ${cookieName.slice(0, -1)}`);
+          break;
+        }
+      }
+
+      if (!token) {
+        console.log('❌ No auth token found in cookies:', cookies.split(';').map(c => c.trim().split('=')[0]));
       }
     }
   }
