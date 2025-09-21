@@ -21,6 +21,11 @@
   headers = {Cache-Control = "public, max-age=60, s-maxage=60"}
 
 [[redirects]]
+  from = "/api/create-superadmin"
+  to = "/.netlify/functions/create-superadmin"
+  status = 200
+
+[[redirects]]
   from = "/api/debug-orders"
   to = "/.netlify/functions/debug-orders"
   status = 200
