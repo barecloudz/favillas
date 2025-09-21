@@ -211,6 +211,76 @@ export const handler: Handler = async (event, context) => {
       }
     }
 
+    // Fix superadmin password if ?fix_superadmin_password=true is passed
+    if (event.queryStringParameters?.fix_superadmin_password === 'true') {
+      try {
+        const databaseUrl = process.env.DATABASE_URL;
+        if (!databaseUrl) {
+          throw new Error('DATABASE_URL not configured');
+        }
+
+        const sql = postgres(databaseUrl, {
+          max: 1,
+          idle_timeout: 20,
+          connect_timeout: 10,
+          prepare: false,
+          keep_alive: false,
+        });
+
+        // Import crypto functions for proper password hashing
+        const crypto = await import('crypto');
+        const { promisify } = await import('util');
+        const scryptAsync = promisify(crypto.scrypt);
+
+        // Generate proper password hash for "superadmin123"
+        const password = "superadmin123";
+        const salt = crypto.randomBytes(16).toString('hex');
+        const hashedPassword = (await scryptAsync(password, salt, 64)) as Buffer;
+        const passwordHash = `${hashedPassword.toString('hex')}.${salt}`;
+
+        // Update the superadmin user's password
+        const result = await sql`
+          UPDATE users
+          SET password = ${passwordHash}
+          WHERE username = 'superadmin'
+          RETURNING id, username, email
+        `;
+
+        await sql.end();
+
+        if (result.length > 0) {
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              status: 'password-updated',
+              message: 'Superadmin password updated successfully',
+              user: result[0]
+            })
+          };
+        } else {
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({
+              status: 'user-not-found',
+              message: 'Superadmin user not found'
+            })
+          };
+        }
+
+      } catch (error: any) {
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({
+            status: 'password-update-failed',
+            error: error.message
+          })
+        };
+      }
+    }
+
     // Basic health check
     return {
       statusCode: 200,
