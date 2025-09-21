@@ -99,9 +99,9 @@ export const handler: Handler = async (event, context) => {
     `;
 
     const user = users[0];
-    await sql.end();
 
     if (!user) {
+      await sql.end();
       return {
         statusCode: 401,
         headers,
@@ -115,11 +115,12 @@ export const handler: Handler = async (event, context) => {
     const isValidPassword = await comparePasswords(password, user.password);
     
     if (!isValidPassword) {
+      await sql.end();
       return {
         statusCode: 401,
         headers,
-        body: JSON.stringify({ 
-          message: 'Invalid credentials' 
+        body: JSON.stringify({
+          message: 'Invalid credentials'
         })
       };
     }
@@ -169,7 +170,9 @@ export const handler: Handler = async (event, context) => {
     // Set token as HTTP-only cookie
     const isProduction = process.env.NODE_ENV === 'production';
     const cookieHeader = `auth-token=${token}; HttpOnly; Secure=${isProduction}; SameSite=${isProduction ? 'Strict' : 'Lax'}; Path=/; Max-Age=${7 * 24 * 60 * 60}`;
-    
+
+    await sql.end();
+
     return {
       statusCode: 200,
       headers: {
