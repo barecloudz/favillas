@@ -454,6 +454,56 @@ export const handler: Handler = async (event, context) => {
       }
     }
 
+    // Test JWT generation if ?test_jwt=true is passed
+    if (event.queryStringParameters?.test_jwt === 'true') {
+      try {
+        const jwt = await import('jsonwebtoken');
+        const secret = process.env.JWT_SECRET;
+        if (!secret) {
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              status: 'jwt-test-failed',
+              error: 'JWT_SECRET not configured'
+            })
+          };
+        }
+
+        const token = jwt.sign(
+          {
+            userId: 5,
+            username: 'superadmin',
+            role: 'admin',
+            isAdmin: true
+          },
+          secret,
+          { expiresIn: '7d' }
+        );
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            status: 'jwt-test-success',
+            hasSecret: !!secret,
+            tokenGenerated: !!token,
+            tokenLength: token ? token.length : 0
+          })
+        };
+
+      } catch (error: any) {
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            status: 'jwt-test-error',
+            error: error.message
+          })
+        };
+      }
+    }
+
     // Basic health check
     return {
       statusCode: 200,
