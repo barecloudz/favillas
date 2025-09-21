@@ -12,19 +12,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { 
-  CheckCircle, 
-  Clock, 
-  MapPin, 
-  Phone, 
-  Pizza, 
-  Receipt, 
-  Share2, 
+import {
+  CheckCircle,
+  Clock,
+  MapPin,
+  Phone,
+  Pizza,
+  Receipt,
+  Share2,
   Download,
   Star,
   Gift,
   Truck,
-  Store
+  Store,
+  AlertCircle,
+  UserPlus
 } from "lucide-react";
 
 const OrderSuccessPage = () => {
@@ -770,6 +772,59 @@ Thank you for choosing Favilla's NY Pizza!
             ) : (
               // Guest user sidebar
               <div className="space-y-6">
+                {/* Missed Points Promotional Card */}
+                <Card className="border-red-200 bg-red-50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-red-800">
+                      <AlertCircle className="h-5 w-5 mr-2" />
+                      You Could Have Earned Points!
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-red-600">
+                        {(() => {
+                          // Calculate points from order total
+                          const orderTotal = orderId ? parseFloat(order?.total || '0') :
+                            (typeof URLSearchParams !== 'undefined' ?
+                              parseFloat(new URLSearchParams(window.location.search).get('total') || '0') : 0);
+                          return Math.floor(orderTotal || 0);
+                        })()} Points
+                      </p>
+                      <p className="text-sm text-red-700 mb-3">
+                        Sign up for an account and earn 1 point for every dollar spent!
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 text-sm text-red-700">
+                      <div className="flex items-center space-x-2">
+                        <Star className="h-4 w-4" />
+                        <span>Earn points on every order</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Gift className="h-4 w-4" />
+                        <span>Redeem for free food & discounts</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Pizza className="h-4 w-4" />
+                        <span>Exclusive member-only deals</span>
+                      </div>
+                    </div>
+
+                    <Button
+                      className="w-full bg-red-600 hover:bg-red-700 text-white"
+                      onClick={() => navigate("/auth?tab=register")}
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Create Account & Start Earning
+                    </Button>
+
+                    <p className="text-xs text-red-600 text-center">
+                      Join thousands of happy customers earning rewards!
+                    </p>
+                  </CardContent>
+                </Card>
+
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center">
