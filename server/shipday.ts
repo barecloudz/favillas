@@ -26,6 +26,8 @@ interface ShipDayOrderData {
   restaurantName: string;
   restaurantPhone: string;
   restaurantAddress: string;
+  fulfillmentTime?: string; // "asap" or "scheduled"
+  scheduledTime?: string; // ISO date string for scheduled deliveries
 }
 
 interface ShipDayResponse {
@@ -146,7 +148,12 @@ class ShipDayService {
         customerName: customerName,
         customerPhoneNumber: customerPhone,
         customerAddress: customerAddress,
-        ...(customerEmail && { customerEmail: customerEmail })
+        ...(customerEmail && { customerEmail: customerEmail }),
+        // Add scheduling information
+        ...(orderData.fulfillmentTime === 'scheduled' && orderData.scheduledTime && {
+          deliveryType: 'scheduled',
+          scheduledDeliveryTime: orderData.scheduledTime
+        })
       };
 
       log(`Sending ShipDay payload: ${JSON.stringify(shipdayPayload, null, 2)}`, 'ShipDay');

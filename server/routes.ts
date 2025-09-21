@@ -1372,7 +1372,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             specialInstructions: req.body.specialInstructions || "",
             restaurantName: "Favilla's NY Pizza",
             restaurantPhone: "(828) 555-0123",
-            restaurantAddress: "123 Main St, Asheville, NC 28801"
+            restaurantAddress: "123 Main St, Asheville, NC 28801",
+            fulfillmentTime: completedOrder.fulfillmentTime || "asap",
+            scheduledTime: completedOrder.scheduledTime ? completedOrder.scheduledTime.toISOString() : undefined
           };
 
           log(`Creating ShipDay delivery order: ${JSON.stringify(shipdayOrderData, null, 2)}`, 'ShipDay');

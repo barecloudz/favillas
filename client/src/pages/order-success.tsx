@@ -64,11 +64,11 @@ const OrderSuccessPage = () => {
     }
   }, [navigate, user, cartCleared, clearCart, toast]);
 
-  // Add timeout to prevent infinite loading
+  // Add timeout to prevent infinite loading and handle guest users
   useEffect(() => {
     const timeout = setTimeout(() => {
-      if (isLoading && user && orderId) {
-        console.warn('Order details fetch timeout - showing success page anyway');
+      if (isLoading && orderId) {
+        console.warn('Order details fetch timeout or guest user - showing success page');
         setIsLoading(false);
 
         if (!cartCleared) {
@@ -76,11 +76,13 @@ const OrderSuccessPage = () => {
           setCartCleared(true);
           toast({
             title: "Order Placed Successfully!",
-            description: "Your order has been placed. We couldn't load order details, but your order is being processed.",
+            description: user
+              ? "Your order has been placed. We couldn't load order details, but your order is being processed."
+              : "Your order has been placed successfully! Check your phone for updates.",
           });
         }
       }
-    }, 10000); // 10 second timeout
+    }, user ? 10000 : 2000); // Shorter timeout for guest users (2 seconds)
 
     return () => clearTimeout(timeout);
   }, [isLoading, user, orderId, cartCleared, clearCart, toast]);
