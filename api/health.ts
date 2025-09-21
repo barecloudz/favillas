@@ -281,6 +281,70 @@ export const handler: Handler = async (event, context) => {
       }
     }
 
+    // Debug login if ?debug_login=true is passed
+    if (event.queryStringParameters?.debug_login === 'true') {
+      try {
+        const databaseUrl = process.env.DATABASE_URL;
+        if (!databaseUrl) {
+          throw new Error('DATABASE_URL not configured');
+        }
+
+        const sql = postgres(databaseUrl, {
+          max: 1,
+          idle_timeout: 20,
+          connect_timeout: 10,
+          prepare: false,
+          keep_alive: false,
+        });
+
+        // Test database connection
+        const dbTest = await sql`SELECT NOW() as current_time`;
+
+        // Test user lookup
+        const user = await sql`
+          SELECT id, username, password, email, first_name, last_name, is_admin, is_active
+          FROM users
+          WHERE username = 'superadmin'
+          LIMIT 1
+        `;
+
+        await sql.end();
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            status: 'debug-login',
+            dbConnection: 'success',
+            currentTime: dbTest[0]?.current_time,
+            userFound: user.length > 0,
+            userDetails: user[0] ? {
+              id: user[0].id,
+              username: user[0].username,
+              email: user[0].email,
+              firstName: user[0].first_name,
+              lastName: user[0].last_name,
+              isAdmin: user[0].is_admin,
+              isActive: user[0].is_active,
+              hasPassword: !!user[0].password,
+              passwordFormat: user[0].password ? 'hash.salt format' : 'no password'
+            } : null
+          })
+        };
+
+      } catch (error: any) {
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({
+            status: 'debug-login-failed',
+            error: error.message,
+            stack: error.stack
+          })
+        };
+      }
+    }
+
     // Basic health check
     return {
       statusCode: 200,
