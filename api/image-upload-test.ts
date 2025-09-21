@@ -194,17 +194,39 @@ export const handler: Handler = async (event, context) => {
     console.log('=== IMAGE UPLOAD ENDPOINT HIT ===');
     console.log('Request method:', event.httpMethod);
     console.log('Content-Type:', event.headers['content-type']);
+    console.log('Authorization header:', event.headers.authorization ? 'Present' : 'Missing');
+    console.log('Cookie header:', event.headers.cookie ? 'Present' : 'Missing');
+
+    // Log all cookies for debugging
+    if (event.headers.cookie) {
+      const cookies = event.headers.cookie.split(';').map(c => c.trim());
+      console.log('All cookies:', cookies);
+
+      // Look for any token-like cookies
+      const tokenCookies = cookies.filter(c =>
+        c.includes('token') || c.includes('auth') || c.includes('jwt')
+      );
+      console.log('Token-like cookies:', tokenCookies);
+    }
 
     // Authenticate the request
     const authPayload = authenticateToken(event);
+    console.log('Authentication result:', authPayload ? 'Success' : 'Failed');
+
     if (!authPayload) {
-      console.log('Authentication failed - no valid token');
+      console.log('Authentication failed - no valid token found');
+      console.log('Headers available:', Object.keys(event.headers));
       return {
         statusCode: 401,
         headers,
         body: JSON.stringify({
           success: false,
-          error: 'Authentication required'
+          error: 'Authentication required',
+          debug: process.env.NODE_ENV === 'development' ? {
+            hasAuthHeader: !!event.headers.authorization,
+            hasCookies: !!event.headers.cookie,
+            headerKeys: Object.keys(event.headers)
+          } : undefined
         })
       };
     }
