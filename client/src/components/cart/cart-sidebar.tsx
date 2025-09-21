@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ShoppingCart, X, Trash2, Plus, Minus, Pizza, Edit } from "lucide-react";
 import { Link } from "wouter";
+import CheckoutPromptModal from "@/components/auth/checkout-prompt-modal";
+import LoginModal from "@/components/auth/login-modal";
 
 const CartSidebar: React.FC = () => {
   const {
@@ -21,7 +23,6 @@ const CartSidebar: React.FC = () => {
     updateItemQuantity,
     removeItem,
     clearCart,
-    showLoginModal,
     addItem
   } = useCart();
 
@@ -65,6 +66,9 @@ const CartSidebar: React.FC = () => {
     price: number;
   }>>([]);
   const [editedInstructions, setEditedInstructions] = useState("");
+  const [showCheckoutPrompt, setShowCheckoutPrompt] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
   
   // Close cart when clicking outside
   useEffect(() => {
@@ -149,6 +153,43 @@ const CartSidebar: React.FC = () => {
     setEditingItem(null);
     setEditedOptions([]);
     setEditedInstructions("");
+  };
+
+  // Handle checkout button click
+  const handleCheckoutClick = () => {
+    if (user) {
+      // User is logged in, proceed to checkout
+      toggleCart();
+      navigate("/checkout");
+    } else {
+      // User is not logged in, show checkout prompt
+      setShowCheckoutPrompt(true);
+    }
+  };
+
+  // Handle checkout prompt modal actions
+  const handleSignIn = () => {
+    setShowCheckoutPrompt(false);
+    setAuthMode("login");
+    setShowAuthModal(true);
+  };
+
+  const handleSignUp = () => {
+    setShowCheckoutPrompt(false);
+    setAuthMode("register");
+    setShowAuthModal(true);
+  };
+
+  const handleContinueAsGuest = () => {
+    setShowCheckoutPrompt(false);
+    toggleCart();
+    navigate("/checkout");
+  };
+
+  const handleLoginSuccess = () => {
+    setShowAuthModal(false);
+    toggleCart();
+    navigate("/checkout");
   };
   
   return (
@@ -348,12 +389,9 @@ const CartSidebar: React.FC = () => {
                 >
                   Clear Cart
                 </Button>
-                <Button 
+                <Button
                   className="w-full bg-[#d73a31] hover:bg-[#c73128] text-white"
-                  onClick={() => {
-                    toggleCart();
-                    navigate("/checkout");
-                  }}
+                  onClick={handleCheckoutClick}
                 >
                   Checkout
                 </Button>
@@ -423,6 +461,23 @@ const CartSidebar: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Checkout Prompt Modal */}
+      <CheckoutPromptModal
+        isOpen={showCheckoutPrompt}
+        onClose={() => setShowCheckoutPrompt(false)}
+        onSignIn={handleSignIn}
+        onSignUp={handleSignUp}
+        onContinueAsGuest={handleContinueAsGuest}
+      />
+
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleLoginSuccess}
+        mode={authMode}
+      />
     </>
   );
 };
