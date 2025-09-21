@@ -398,6 +398,33 @@ const CheckoutPage = () => {
     onSuccess: async (data) => {
       setOrderId(data.id);
 
+      // For guest users, store order details in localStorage for the confirmation page
+      if (!user) {
+        const guestOrderData = {
+          ...data,
+          items: items,
+          orderType: orderType,
+          fulfillmentTime: fulfillmentTime,
+          scheduledTime: scheduledTime,
+          phone: phone,
+          address: address,
+          addressData: addressData,
+          specialInstructions: specialInstructions,
+          total: totals.finalTotal.toString(),
+          tax: totals.tax.toString(),
+          tip: totals.tip.toString(),
+          deliveryFee: orderType === 'delivery' ? deliveryFee.toString() : '0',
+          appliedPromoCode: appliedPromoCode,
+          appliedVoucher: appliedVoucher,
+          createdAt: new Date().toISOString(),
+          status: 'pending'
+        };
+
+        const guestOrderKey = `guestOrder_${data.id}`;
+        localStorage.setItem(guestOrderKey, JSON.stringify(guestOrderData));
+        console.log('💾 Stored guest order details in localStorage:', guestOrderData);
+      }
+
       // Save contact information to user profile for future orders
       if (user && (phone || address || addressData?.city || addressData?.state || addressData?.zipCode)) {
         try {
@@ -478,16 +505,29 @@ const CheckoutPage = () => {
     mutationFn: async (code: string) => {
       try {
         const res = await apiRequest("POST", "/api/promo-codes/validate", { code });
+
+        if (!res.ok) {
+          // Handle HTTP error responses
+          let errorMessage = "Invalid promo code";
+          try {
+            const errorData = await res.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch {
+            // If response isn't JSON, use status text
+            errorMessage = res.statusText || errorMessage;
+          }
+          throw new Error(errorMessage);
+        }
+
         return await res.json();
       } catch (error: any) {
-        // Try to parse the error message from JSON
+        // Clean error handling - avoid HTML responses
         let errorMessage = "Invalid promo code";
-        try {
-          const errorData = JSON.parse(error.message);
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-          errorMessage = error.message || errorMessage;
+
+        if (error.message && !error.message.includes('<html')) {
+          errorMessage = error.message;
         }
+
         throw new Error(errorMessage);
       }
     },

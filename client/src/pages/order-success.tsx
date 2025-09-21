@@ -98,6 +98,34 @@ const OrderSuccessPage = () => {
     staleTime: 0, // Always fetch fresh data
   });
 
+  // For guest users, try to get order details from localStorage
+  useEffect(() => {
+    if (!user && orderId && !order) {
+      const guestOrderKey = `guestOrder_${orderId}`;
+      const storedOrder = localStorage.getItem(guestOrderKey);
+      if (storedOrder) {
+        try {
+          const parsedOrder = JSON.parse(storedOrder);
+          console.log('📝 Retrieved guest order from localStorage:', parsedOrder);
+          setOrder(parsedOrder);
+          setIsLoading(false);
+
+          // Clean up old guest orders from localStorage (keep only last 5)
+          const allKeys = Object.keys(localStorage);
+          const guestOrderKeys = allKeys.filter(key => key.startsWith('guestOrder_'));
+          if (guestOrderKeys.length > 5) {
+            // Remove oldest guest orders
+            guestOrderKeys.sort().slice(0, -5).forEach(key => {
+              localStorage.removeItem(key);
+            });
+          }
+        } catch (error) {
+          console.error('Error parsing guest order from localStorage:', error);
+        }
+      }
+    }
+  }, [user, orderId, order]);
+
   useEffect(() => {
     if (orderData) {
       setOrder(orderData);

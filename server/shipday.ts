@@ -160,6 +160,9 @@ class ShipDayService {
           const pickupTime = pickupDate.toTimeString().split(' ')[0]; // HH:MM:SS format
 
           return {
+            // Use the more direct requestedDeliveryTime ISO format
+            requestedDeliveryTime: scheduledDate.toISOString(),
+            // Also include the other fields for compatibility
             expectedDeliveryDate: deliveryDate,
             expectedDeliveryTime: deliveryTime,
             expectedPickupTime: pickupTime

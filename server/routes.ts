@@ -1363,11 +1363,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
               state: req.body.addressData.state,
               zipCode: req.body.addressData.zipCode
             },
-            items: req.body.items.map((item: any) => ({
-              name: menuItemNames.get(item.menuItemId) || `Item #${item.menuItemId}`,
-              quantity: item.quantity,
-              price: parseFloat(item.price)
-            })),
+            items: req.body.items.map((item: any) => {
+              // Build detailed item name with add-ons and customizations
+              let itemName = menuItemNames.get(item.menuItemId) || `Item #${item.menuItemId}`;
+
+              // Add selected options to item name for ShipDay clarity
+              if (item.options && Array.isArray(item.options) && item.options.length > 0) {
+                const optionsText = item.options
+                  .map((opt: any) => `${opt.groupName}: ${opt.itemName}`)
+                  .join(', ');
+                itemName += ` (${optionsText})`;
+              }
+
+              // Also check selectedOptions format
+              if (item.selectedOptions) {
+                const selectedOptionsText = [];
+                if (item.selectedOptions.size) selectedOptionsText.push(`Size: ${item.selectedOptions.size}`);
+                if (item.selectedOptions.toppings && item.selectedOptions.toppings.length > 0) {
+                  selectedOptionsText.push(`Toppings: ${item.selectedOptions.toppings.join(', ')}`);
+                }
+                if (item.selectedOptions.extras && item.selectedOptions.extras.length > 0) {
+                  selectedOptionsText.push(`Extras: ${item.selectedOptions.extras.join(', ')}`);
+                }
+                if (item.selectedOptions.addOns && item.selectedOptions.addOns.length > 0) {
+                  selectedOptionsText.push(`Add-ons: ${item.selectedOptions.addOns.join(', ')}`);
+                }
+
+                if (selectedOptionsText.length > 0) {
+                  itemName += ` (${selectedOptionsText.join(', ')})`;
+                }
+              }
+
+              // Add special instructions if present
+              if (item.specialInstructions && item.specialInstructions.trim()) {
+                itemName += ` - Special: ${item.specialInstructions.trim()}`;
+              }
+
+              return {
+                name: itemName,
+                quantity: item.quantity,
+                price: parseFloat(item.price)
+              };
+            }),
             totalAmount: parseFloat(req.body.total),
             specialInstructions: req.body.specialInstructions || "",
             restaurantName: "Favilla's NY Pizza",
