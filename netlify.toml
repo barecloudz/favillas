@@ -224,6 +224,12 @@
   to = "/.netlify/functions/setup-storage"
   status = 200
 
+# Storage setup endpoint (no auth)
+[[redirects]]
+  from = "/api/setup-storage-no-auth"
+  to = "/.netlify/functions/setup-storage-no-auth"
+  status = 200
+
 # Menu endpoints (cacheable for GET requests)
 [[redirects]]
   from = "/api/menu-items"
