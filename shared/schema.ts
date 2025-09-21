@@ -78,6 +78,14 @@ export const insertUserSchema = createInsertSchema(users).pick({
   isActive: true,
   createdBy: true,
   marketingOptIn: true,
+}).partial({
+  isAdmin: true,
+  createdBy: true,
+  phone: true,
+  address: true,
+  city: true,
+  state: true,
+  zipCode: true,
 }).extend({
   // Set default values for registration
   role: z.string().default("customer"),

@@ -67,7 +67,7 @@ export const handler: Handler = async (event, context) => {
       return await sql.begin(async (sql: any) => {
       // Create user
       const userResult = await sql`
-        INSERT INTO users (first_name, last_name, email, phone, address, password_hash, role, is_active, rewards, created_at, updated_at)
+        INSERT INTO users (first_name, last_name, email, phone, address, password, role, is_active, rewards, created_at, updated_at)
         VALUES (${firstName}, ${lastName}, ${email}, ${phone || ''}, ${address || ''}, ${passwordHash}, 'customer', true, 0, NOW(), NOW())
         RETURNING id, first_name, last_name, email, phone, address, role, is_active, created_at
       `;
