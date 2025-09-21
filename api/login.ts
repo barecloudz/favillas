@@ -152,26 +152,35 @@ export const handler: Handler = async (event, context) => {
     
     // Create JWT token with secure secret handling
     const secret = process.env.JWT_SECRET;
+
+    await sql.end();
+
+    // If JWT_SECRET is not configured, return basic login without token
     if (!secret) {
-      throw new Error('JWT_SECRET not configured');
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          ...safeUser,
+          note: 'Login successful - JWT_SECRET not configured in production'
+        })
+      };
     }
-    
+
     const token = jwt.sign(
-      { 
+      {
         userId: safeUser.id,
         username: safeUser.username,
         role: safeUser.role,
-        isAdmin: safeUser.isAdmin 
+        isAdmin: safeUser.isAdmin
       },
       secret,
       { expiresIn: '7d' } // Token expires in 7 days
     );
-    
+
     // Set token as HTTP-only cookie
     const isProduction = process.env.NODE_ENV === 'production';
     const cookieHeader = `auth-token=${token}; HttpOnly; Secure=${isProduction}; SameSite=${isProduction ? 'Strict' : 'Lax'}; Path=/; Max-Age=${7 * 24 * 60 * 60}`;
-
-    await sql.end();
 
     return {
       statusCode: 200,
