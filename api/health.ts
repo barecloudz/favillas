@@ -345,6 +345,115 @@ export const handler: Handler = async (event, context) => {
       }
     }
 
+    // Test login flow if ?test_login=true is passed
+    if (event.queryStringParameters?.test_login === 'true') {
+      try {
+        const databaseUrl = process.env.DATABASE_URL;
+        if (!databaseUrl) {
+          throw new Error('DATABASE_URL not configured');
+        }
+
+        const sql = postgres(databaseUrl, {
+          max: 1,
+          idle_timeout: 20,
+          connect_timeout: 10,
+          prepare: false,
+          keep_alive: false,
+        });
+
+        // Step 1: Test user lookup
+        const user = await sql`
+          SELECT id, username, password, email, first_name, last_name, is_admin, is_active
+          FROM users
+          WHERE username = 'superadmin'
+          LIMIT 1
+        `;
+
+        if (!user || user.length === 0) {
+          await sql.end();
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              status: 'test-login-failed',
+              step: 'user-lookup',
+              error: 'User not found'
+            })
+          };
+        }
+
+        // Step 2: Test password comparison
+        const { scrypt, timingSafeEqual } = await import('crypto');
+        const { promisify } = await import('util');
+        const scryptAsync = promisify(scrypt);
+
+        const supplied = "superadmin123";
+        const stored = user[0].password;
+
+        if (!stored) {
+          await sql.end();
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              status: 'test-login-failed',
+              step: 'password-check',
+              error: 'No password stored'
+            })
+          };
+        }
+
+        const [hashed, salt] = stored.split(".");
+        if (!hashed || !salt) {
+          await sql.end();
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              status: 'test-login-failed',
+              step: 'password-format',
+              error: 'Invalid password format',
+              passwordFormat: stored
+            })
+          };
+        }
+
+        const hashedBuf = Buffer.from(hashed, "hex");
+        const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+        const isValid = timingSafeEqual(hashedBuf, suppliedBuf);
+
+        await sql.end();
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            status: 'test-login-success',
+            userFound: true,
+            passwordValid: isValid,
+            userDetails: {
+              id: user[0].id,
+              username: user[0].username,
+              email: user[0].email,
+              isAdmin: user[0].is_admin,
+              isActive: user[0].is_active
+            }
+          })
+        };
+
+      } catch (error: any) {
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({
+            status: 'test-login-error',
+            error: error.message,
+            stack: error.stack
+          })
+        };
+      }
+    }
+
     // Basic health check
     return {
       statusCode: 200,
