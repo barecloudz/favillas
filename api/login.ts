@@ -3,7 +3,7 @@ import postgres from 'postgres';
 import { scrypt, timingSafeEqual } from 'crypto';
 import { promisify } from 'util';
 import jwt from 'jsonwebtoken';
-import { getCorsHeaders, validateInput, loginSchema, withDB } from './utils/auth';
+import { getCorsHeaders, validateInput, loginSchema } from './utils/auth';
 
 const scryptAsync = promisify(scrypt);
 
@@ -59,34 +59,47 @@ export const handler: Handler = async (event, context) => {
       };
     }
 
-    // Query user data
-    const user = await withDB(async (sql) => {
-      const users = await sql`
-        SELECT
-          id,
-          username,
-          password,
-          email,
-          first_name,
-          last_name,
-          phone,
-          address,
-          city,
-          state,
-          zip_code,
-          role,
-          is_admin,
-          is_active,
-          rewards,
-          stripe_customer_id,
-          marketing_opt_in,
-          created_at
-        FROM users
-        WHERE username = ${username}
-        LIMIT 1
-      `;
-      return users[0];
+    // Query user data - direct connection to avoid withDB issues
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error('DATABASE_URL not configured');
+    }
+
+    const sql = postgres(databaseUrl, {
+      max: 1,
+      idle_timeout: 20,
+      connect_timeout: 10,
+      prepare: false,
+      keep_alive: false,
     });
+
+    const users = await sql`
+      SELECT
+        id,
+        username,
+        password,
+        email,
+        first_name,
+        last_name,
+        phone,
+        address,
+        city,
+        state,
+        zip_code,
+        role,
+        is_admin,
+        is_active,
+        rewards,
+        stripe_customer_id,
+        marketing_opt_in,
+        created_at
+      FROM users
+      WHERE username = ${username}
+      LIMIT 1
+    `;
+
+    const user = users[0];
+    await sql.end();
 
     if (!user) {
       return {
