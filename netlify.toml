@@ -200,6 +200,12 @@
   to = "/.netlify/functions/debug-token-simple"
   status = 200
 
+# Debug upload auth endpoint
+[[redirects]]
+  from = "/api/debug-upload-auth"
+  to = "/.netlify/functions/debug-upload-auth"
+  status = 200
+
 # Image upload endpoint
 [[redirects]]
   from = "/api/image-upload-test"
