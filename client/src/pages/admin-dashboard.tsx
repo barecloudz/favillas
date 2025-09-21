@@ -418,9 +418,9 @@ const AdminDashboard = () => {
   
   // Queries for different data
   const { data: orders, isLoading: ordersLoading } = useQuery({
-    queryKey: ["/api/kitchen/orders"],
-    refetchInterval: false,
-    enabled: false,
+    queryKey: ["/api/orders"],
+    refetchInterval: 30000, // Refresh every 30 seconds
+    enabled: true, // Enable orders query for admin dashboard
   });
 
   const { data: menuItems, isLoading: menuLoading } = useQuery({
@@ -429,8 +429,9 @@ const AdminDashboard = () => {
 
   const { data: analytics, isLoading: analyticsLoading, error: analyticsError } = useQuery({
     queryKey: ["/api/orders-analytics"],
-    enabled: false,
+    enabled: true, // Enable analytics query for admin dashboard
     retry: 3,
+    refetchInterval: 60000, // Refresh every minute
     onError: (error) => {
       console.error('Analytics query failed:', error);
     }
