@@ -17,6 +17,7 @@ const CartSidebar: React.FC = () => {
   const {
     isOpen,
     toggleCart,
+    closeCart,
     items,
     total,
     tax,
@@ -182,13 +183,13 @@ const CartSidebar: React.FC = () => {
 
   const handleContinueAsGuest = () => {
     setShowCheckoutPrompt(false);
-    toggleCart();
+    closeCart();
     navigate("/checkout");
   };
 
   const handleLoginSuccess = () => {
     setShowAuthModal(false);
-    toggleCart();
+    closeCart();
     navigate("/checkout");
   };
   

@@ -24,6 +24,7 @@ export interface CartItem {
 interface CartContextType {
   isOpen: boolean;
   toggleCart: () => void;
+  closeCart: () => void;
   items: CartItem[];
   total: number;
   tax: number;
@@ -160,7 +161,8 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   
   // Toggle cart sidebar
   const toggleCart = () => setIsOpen(prev => !prev);
-  
+  const closeCart = () => setIsOpen(false);
+
   // Login modal functions
   const showLoginModal = () => setIsLoginModalOpen(true);
   const hideLoginModal = () => setIsLoginModalOpen(false);
@@ -318,6 +320,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       value={{
         isOpen,
         toggleCart,
+        closeCart,
         items: validItems, // Always provide clean items
         total,
         tax,
