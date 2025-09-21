@@ -112,32 +112,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(mappedUser);
           }
         } else {
-          // If no Supabase session, check for legacy JWT cookie
-          console.log('🔄 No Supabase session, checking for legacy JWT cookie');
-          try {
-            const response = await apiRequest('GET', '/api/user');
-            const userData = await response.json();
+          // If no Supabase session, check for legacy JWT cookie only if we have evidence of one
+          const hasJwtCookie = document.cookie.includes('jwt') || document.cookie.includes('token');
 
-            if (userData && userData.id) {
-              console.log('🔑 Found legacy JWT session:', userData.username);
-              const mappedUser: MappedUser = {
-                id: userData.id?.toString() || '',
-                email: userData.email || userData.username || '',
-                firstName: userData.firstName || userData.username || 'User',
-                lastName: userData.lastName || '',
-                phone: userData.phone || '',
-                address: userData.address || '',
-                role: userData.role || 'customer',
-                isAdmin: userData.role === 'admin' || userData.role === 'superadmin' || userData.username === 'superadmin',
-                isGoogleUser: false
-              };
-              setUser(mappedUser);
-              console.log('✅ Legacy session restored');
-            } else {
-              console.log('❌ No valid authentication found');
+          if (hasJwtCookie) {
+            console.log('🔄 No Supabase session, checking for legacy JWT cookie');
+            try {
+              const response = await apiRequest('GET', '/api/user');
+              const userData = await response.json();
+
+              if (userData && userData.id) {
+                console.log('🔑 Found legacy JWT session:', userData.username);
+                const mappedUser: MappedUser = {
+                  id: userData.id?.toString() || '',
+                  email: userData.email || userData.username || '',
+                  firstName: userData.firstName || userData.username || 'User',
+                  lastName: userData.lastName || '',
+                  phone: userData.phone || '',
+                  address: userData.address || '',
+                  role: userData.role || 'customer',
+                  isAdmin: userData.role === 'admin' || userData.role === 'superadmin' || userData.username === 'superadmin',
+                  isGoogleUser: false
+                };
+                setUser(mappedUser);
+                console.log('✅ Legacy session restored');
+              } else {
+                console.log('❌ No valid authentication found');
+              }
+            } catch (authError) {
+              console.log('❌ No legacy JWT session found');
             }
-          } catch (authError) {
-            console.log('❌ No legacy JWT session found');
+          } else {
+            console.log('🔍 No authentication cookies found, skipping legacy JWT check');
           }
         }
       } catch (error) {

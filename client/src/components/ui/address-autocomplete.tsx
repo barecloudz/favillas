@@ -92,28 +92,43 @@ const AddressForm = ({
     }
   }, [value, hasInitialized]);
 
-  // Initialize Google Places Autocomplete
+  // Initialize Google Places Autocomplete Element
   useEffect(() => {
     const initializeAutocomplete = () => {
-      if (!streetInputRef.current || !window.google?.maps?.places) {
+      if (!streetInputRef.current || !window.google?.maps?.places?.PlaceAutocompleteElement) {
         console.log('Google Maps API not loaded yet');
         return;
       }
 
       try {
-        const autocomplete = new window.google.maps.places.Autocomplete(
-          streetInputRef.current,
-          {
-            types: ['address'],
-            componentRestrictions: { country: 'us' },
-            fields: ['address_components', 'formatted_address', 'geometry']
-          }
-        );
+        const autocompleteElement = new window.google.maps.places.PlaceAutocompleteElement({
+          locationRestriction: { country: 'us' },
+          requestedLanguage: 'en',
+          requestedRegion: 'us'
+        });
 
-        autocomplete.addListener('place_changed', () => {
-          const place = autocomplete.getPlace();
+        autocompleteElement.id = 'places-autocomplete';
 
-          if (!place.address_components) {
+        // Style the autocomplete element to match our input
+        autocompleteElement.style.width = '100%';
+        autocompleteElement.style.height = '40px';
+        autocompleteElement.style.border = '1px solid #d1d5db';
+        autocompleteElement.style.borderRadius = '6px';
+        autocompleteElement.style.padding = '8px 12px';
+        autocompleteElement.style.fontSize = '14px';
+        autocompleteElement.style.outline = 'none';
+        autocompleteElement.placeholder = 'Start typing your address...';
+
+        // Replace the input with the autocomplete element
+        if (streetInputRef.current?.parentNode) {
+          streetInputRef.current.parentNode.insertBefore(autocompleteElement, streetInputRef.current);
+          streetInputRef.current.style.display = 'none';
+        }
+
+        autocompleteElement.addEventListener('gmp-placeselect', (event: any) => {
+          const place = event.place;
+
+          if (!place.addressComponents) {
             console.warn('No address components found');
             return;
           }
@@ -126,33 +141,33 @@ const AddressForm = ({
           let postalCode = '';
           let coordinates = null;
 
-          place.address_components.forEach((component: any) => {
+          place.addressComponents.forEach((component: any) => {
             const componentType = component.types[0];
 
             switch (componentType) {
               case 'street_number':
-                streetNumber = component.long_name;
+                streetNumber = component.longText;
                 break;
               case 'route':
-                route = component.long_name;
+                route = component.longText;
                 break;
               case 'locality':
-                locality = component.long_name;
+                locality = component.longText;
                 break;
               case 'administrative_area_level_1':
-                administrativeAreaLevel1 = component.short_name;
+                administrativeAreaLevel1 = component.shortText;
                 break;
               case 'postal_code':
-                postalCode = component.long_name;
+                postalCode = component.longText;
                 break;
             }
           });
 
           // Get coordinates if available
-          if (place.geometry?.location) {
+          if (place.location) {
             coordinates = {
-              lat: place.geometry.location.lat(),
-              lng: place.geometry.location.lng()
+              lat: place.location.lat(),
+              lng: place.location.lng()
             };
           }
 
@@ -194,20 +209,24 @@ const AddressForm = ({
           });
         });
 
-        setAutocompleteInstance(autocomplete);
-        console.log('✅ Google Places Autocomplete initialized');
+        setAutocompleteInstance(autocompleteElement);
+        console.log('✅ Google Places PlaceAutocompleteElement initialized');
       } catch (error) {
-        console.error('Failed to initialize Google Places Autocomplete:', error);
+        console.error('Failed to initialize Google Places PlaceAutocompleteElement:', error);
+        // Fallback to regular input if new API fails
+        if (streetInputRef.current) {
+          streetInputRef.current.style.display = 'block';
+        }
       }
     };
 
     // Check if Google Maps is already loaded
-    if (window.google?.maps?.places) {
+    if (window.google?.maps?.places?.PlaceAutocompleteElement) {
       initializeAutocomplete();
     } else {
       // Wait for Google Maps to load
       const checkGoogle = setInterval(() => {
-        if (window.google?.maps?.places) {
+        if (window.google?.maps?.places?.PlaceAutocompleteElement) {
           clearInterval(checkGoogle);
           initializeAutocomplete();
         }
@@ -219,8 +238,8 @@ const AddressForm = ({
 
     // Cleanup
     return () => {
-      if (autocompleteInstance) {
-        window.google?.maps?.event?.clearInstanceListeners(autocompleteInstance);
+      if (autocompleteInstance && autocompleteInstance.remove) {
+        autocompleteInstance.remove();
       }
     };
   }, [streetInputRef.current]);
