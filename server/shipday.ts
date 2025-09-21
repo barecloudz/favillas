@@ -149,11 +149,22 @@ class ShipDayService {
         customerPhoneNumber: customerPhone,
         customerAddress: customerAddress,
         ...(customerEmail && { customerEmail: customerEmail }),
-        // Add scheduling information
-        ...(orderData.fulfillmentTime === 'scheduled' && orderData.scheduledTime && {
-          deliveryType: 'scheduled',
-          scheduledDeliveryTime: orderData.scheduledTime
-        })
+        // Add scheduling information for ShipDay
+        ...(orderData.fulfillmentTime === 'scheduled' && orderData.scheduledTime && (() => {
+          const scheduledDate = new Date(orderData.scheduledTime);
+          const deliveryDate = scheduledDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+          const deliveryTime = scheduledDate.toTimeString().split(' ')[0]; // HH:MM:SS format
+
+          // Calculate pickup time (30 minutes before delivery for preparation)
+          const pickupDate = new Date(scheduledDate.getTime() - 30 * 60 * 1000);
+          const pickupTime = pickupDate.toTimeString().split(' ')[0]; // HH:MM:SS format
+
+          return {
+            expectedDeliveryDate: deliveryDate,
+            expectedDeliveryTime: deliveryTime,
+            expectedPickupTime: pickupTime
+          };
+        })())
       };
 
       log(`Sending ShipDay payload: ${JSON.stringify(shipdayPayload, null, 2)}`, 'ShipDay');
