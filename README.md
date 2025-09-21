@@ -3,6 +3,7 @@
 A comprehensive restaurant management system with automatic thermal printer integration, inspired by GloriaFoods functionality.
 
 ## ✨ Features
+<!-- Fix: Updated SUPABASE_URL environment variable with https:// protocol -->
 
 ### 🖨️ **Automatic Thermal Printer Integration**
 - **Epson TM-M30II** thermal printer support
