@@ -1,9 +1,11 @@
-import React, { useState, useEffect, lazy, Suspense } from "react";
+import React, { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-supabase-auth";
+import { useAdminWebSocket } from "@/hooks/use-admin-websocket";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Helmet } from "react-helmet";
+import { DeliverySettings } from "@/components/admin/delivery-settings";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -98,7 +100,6 @@ import {
   Wifi,
   ArrowLeft,
   Pause,
-  ImageIcon,
   ExternalLink,
   AlertTriangle,
   Percent as PercentIcon
@@ -106,12 +107,92 @@ import {
 import PayrollDashboard from "@/components/admin/payroll-dashboard";
 import ScheduleCreator from "@/components/admin/schedule-creator";
 import { TemplateEditor } from "@/components/admin/template-editor";
-import { SystemSettings } from "@/components/admin/system-settings";
+import { RestaurantSettings } from "@/components/admin/restaurant-settings";
 import FrontendCustomization from "@/components/admin/frontend-customization";
 
 const AdminDashboard = () => {
   const { user, logoutMutation, isLoading } = useAuth();
   const { toast } = useToast();
+
+  // Sound notification settings
+  const [soundNotificationsEnabled, setSoundNotificationsEnabled] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('adminSoundNotifications');
+      return saved !== null ? JSON.parse(saved) : true;
+    }
+    return true;
+  });
+
+  const [soundType, setSoundType] = useState<'chime' | 'bell' | 'ding' | 'beep'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('adminSoundType');
+      return saved ? JSON.parse(saved) : 'chime';
+    }
+    return 'chime';
+  });
+
+  const [soundVolume, setSoundVolume] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('adminSoundVolume');
+      return saved !== null ? JSON.parse(saved) : 0.3;
+    }
+    return 0.3;
+  });
+
+  // Save sound preferences to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('adminSoundNotifications', JSON.stringify(soundNotificationsEnabled));
+      localStorage.setItem('adminSoundType', JSON.stringify(soundType));
+      localStorage.setItem('adminSoundVolume', JSON.stringify(soundVolume));
+    }
+  }, [soundNotificationsEnabled, soundType, soundVolume]);
+
+  // Get custom sound settings from localStorage for main component
+  const [mainCustomSoundUrl, setMainCustomSoundUrl] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('adminCustomSoundUrl') || '';
+    }
+    return '';
+  });
+
+  // Listen for localStorage changes to sync custom sound (reduced frequency)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      if (typeof window !== 'undefined') {
+        const newUrl = localStorage.getItem('adminCustomSoundUrl') || '';
+        if (newUrl !== mainCustomSoundUrl) {
+          setMainCustomSoundUrl(newUrl);
+        }
+      }
+    };
+
+    // Check for changes every 5 seconds instead of every second to reduce overhead
+    const interval = setInterval(handleStorageChange, 5000);
+    return () => clearInterval(interval);
+  }, [mainCustomSoundUrl]);
+
+  // Admin WebSocket for order notifications
+  const { playTestSound } = useAdminWebSocket({
+    enableSounds: soundNotificationsEnabled,
+    soundType: soundType,
+    volume: soundVolume,
+    customSoundUrl: mainCustomSoundUrl,
+    onNewOrder: (order) => {
+      toast({
+        title: "🔔 New Order Received!",
+        description: `Order #${order.id} from ${order.customerName || 'Customer'}`,
+        duration: 5000,
+      });
+    },
+    onOrderUpdate: (order) => {
+      toast({
+        title: "📋 Order Updated",
+        description: `Order #${order.id} status changed to ${order.status}`,
+        duration: 3000,
+      });
+    }
+  });
   
   // Ensure no undefined id variables
   if (typeof window !== 'undefined') {
@@ -119,6 +200,7 @@ const AdminDashboard = () => {
     window.id = null;
   }
   const [activeTab, setActiveTab] = useState("dashboard");
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     // Start collapsed on mobile, expanded on desktop
     if (typeof window !== 'undefined') {
@@ -419,19 +501,26 @@ const AdminDashboard = () => {
   // Queries for different data
   const { data: orders, isLoading: ordersLoading } = useQuery({
     queryKey: ["/api/orders"],
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: false, // Disabled auto-refresh for menu editing
     enabled: true, // Enable orders query for admin dashboard
   });
 
   const { data: menuItems, isLoading: menuLoading } = useQuery({
     queryKey: ["/api/menu"],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/menu');
+      if (!response.ok) {
+        throw new Error('Failed to fetch menu items');
+      }
+      return await response.json();
+    }
   });
 
   const { data: analytics, isLoading: analyticsLoading, error: analyticsError } = useQuery({
     queryKey: ["/api/orders-analytics"],
     enabled: true, // Enable analytics query for admin dashboard
     retry: 3,
-    refetchInterval: 60000, // Refresh every minute
+    refetchInterval: false, // Disabled auto-refresh for menu editing
     onError: (error) => {
       console.error('Analytics query failed:', error);
     }
@@ -459,14 +548,14 @@ const AdminDashboard = () => {
     const primaryTabsHrefs = ["dashboard", "orders"];
     const categoryTabsHrefs = [
       "analytics", "reports", 
-      "menu-editor", "menu-images", "pricing", "out-of-stock", "multi-location",
+      "menu-editor", "pricing", "out-of-stock", "multi-location",
       "frontend", "qr-codes", "widget", "smart-links", "printer", "receipt-templates", "scheduling", "reservations", 
       "vacation-mode", "delivery", "taxation",
-      "promotions", "coupons", "promo-codes", "rewards", "kickstarter", "email-campaigns", "sms-marketing", "local-seo",
+      "promo-codes", "rewards", "kickstarter", "email-campaigns", "sms-marketing", "local-seo",
       "customers", "users", "reviews",
       "employee-schedules", "payroll", "tip-settings",
       "api", "pos-integration", "integrations", "webhooks",
-      "settings", "backup", "help"
+      "restaurant-info", "system-settings", "backup", "help"
     ];
     const allValidTabs = [...primaryTabsHrefs, ...categoryTabsHrefs];
     
@@ -509,8 +598,22 @@ const AdminDashboard = () => {
     );
   }
 
+  // Check for admin access (either main auth or localStorage admin session)
+  const hasAdminAccess = user?.isAdmin || (() => {
+    try {
+      const adminUser = localStorage.getItem('admin-user');
+      if (adminUser) {
+        const admin = JSON.parse(adminUser);
+        return admin.role === 'admin' && admin.isAdmin;
+      }
+    } catch (error) {
+      console.error('Error checking admin session:', error);
+    }
+    return false;
+  })();
+
   // Redirect if not admin after authentication is complete
-  if (!user?.isAdmin) {
+  if (!hasAdminAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="text-center">
@@ -521,14 +624,14 @@ const AdminDashboard = () => {
     );
   }
 
-  // Only block loading for essential data, not analytics
-  if (ordersLoading || menuLoading || usersLoading || printerLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  // Temporarily disable loading checks to bypass API issues
+  // if (ordersLoading || menuLoading || usersLoading || printerLoading) {
+  //   return (
+  //     <div className="min-h-screen flex items-center justify-center bg-gray-100">
+  //       <Loader2 className="h-8 w-8 animate-spin text-primary" />
+  //     </div>
+  //   );
+  // }
 
   // Calculate statistics
   const totalOrders = (analytics as any)?.totalOrders || (orders as any[])?.length || 0;
@@ -536,9 +639,53 @@ const AdminDashboard = () => {
   const processingOrders = (orders as any[])?.filter((o: any) => o.status === "processing").length || 0;
   const completedOrders = (orders as any[])?.filter((o: any) => o.status === "completed").length || 0;
   const totalMenuItems = (menuItems as any[])?.length || 0;
-  const totalRevenue = (analytics as any)?.totalRevenue || "0.00";
-  const averageOrderValue = (analytics as any)?.averageOrderValue || "0.00";
-  const totalCustomers = (users as any[])?.filter((u: any) => u.role === "customer").length || 0;
+  // Calculate revenue directly from orders since analytics API returns NaN
+  const calculatedRevenue = orders ? (orders as any[]).reduce((sum: number, order: any) => {
+    const orderTotal = parseFloat(order.total || order.totalAmount || 0);
+    // Skip NaN values
+    if (isNaN(orderTotal)) {
+      console.log('⚠️ Skipping order with invalid total:', order.id, order.total);
+      return sum;
+    }
+    return sum + orderTotal;
+  }, 0) : 0;
+
+  const calculatedAvgOrderValue = orders && orders.length > 0 ? calculatedRevenue / orders.length : 0;
+
+  const totalRevenue = ((analytics as any)?.totalRevenue && !isNaN(parseFloat((analytics as any)?.totalRevenue)))
+    ? parseFloat((analytics as any)?.totalRevenue).toFixed(2)
+    : calculatedRevenue.toFixed(2);
+
+  const averageOrderValue = ((analytics as any)?.averageOrderValue && !isNaN(parseFloat((analytics as any)?.averageOrderValue)))
+    ? parseFloat((analytics as any)?.averageOrderValue).toFixed(2)
+    : calculatedAvgOrderValue.toFixed(2);
+
+  // Debug sample order totals
+  const sampleOrderTotals = orders ? (orders as any[]).slice(0, 5).map((order: any) => ({
+    id: order.id,
+    total: order.total,
+    totalAmount: order.totalAmount,
+    parsed: parseFloat(order.total || order.totalAmount || 0),
+    isNaN: isNaN(parseFloat(order.total || order.totalAmount || 0))
+  })) : [];
+
+  console.log('💰 Revenue debug:', {
+    analyticsRevenue: (analytics as any)?.totalRevenue,
+    calculatedRevenue,
+    finalRevenue: totalRevenue,
+    analyticsAvgOrder: (analytics as any)?.averageOrderValue,
+    calculatedAvgOrder: calculatedAvgOrderValue,
+    finalAvgOrder: averageOrderValue,
+    ordersCount: orders ? orders.length : 0,
+    sampleOrderTotals
+  });
+  // Calculate unique customers from orders instead of users query
+  const totalCustomers = orders ? new Set((orders as any[]).map((order: any) => {
+    const customerId = order.userId || order.user_id || order.customerEmail || order.customer_email;
+    return customerId;
+  }).filter(Boolean)).size : 0;
+
+  console.log('👥 Total unique customers calculated:', totalCustomers);
   const totalEmployees = (users as any[])?.filter((u: any) => u.role === "employee").length || 0;
 
   // Primary tabs always visible
@@ -562,7 +709,6 @@ const AdminDashboard = () => {
       icon: Menu,
       items: [
         { name: "Menu Editor", icon: Menu, href: "menu-editor" },
-        { name: "Menu Images", icon: Image, href: "menu-images" },
         { name: "Pricing", icon: DollarSign, href: "pricing" },
         { name: "Out of Stock", icon: Package, href: "out-of-stock" },
         { name: "Multi-location", icon: Store, href: "multi-location" },
@@ -588,8 +734,6 @@ const AdminDashboard = () => {
       title: "Marketing",
       icon: Target,
       items: [
-        { name: "Promotions", icon: Gift, href: "promotions" },
-        { name: "Coupons", icon: Tag, href: "coupons" },
         { name: "Promo Codes", icon: Tag, href: "promo-codes" },
         { name: "Rewards System", icon: Star, href: "rewards" },
         { name: "Kickstarter Marketing", icon: Target, href: "kickstarter" },
@@ -630,7 +774,8 @@ const AdminDashboard = () => {
       title: "System",
       icon: Settings,
       items: [
-        { name: "Settings", icon: Settings, href: "settings" },
+        { name: "Restaurant Info", icon: Store, href: "restaurant-info" },
+        { name: "System Settings", icon: Settings, href: "system-settings" },
         { name: "Backup & Export", icon: Download, href: "backup" },
         { name: "Help & Support", icon: HelpCircle, href: "help" },
       ]
@@ -810,9 +955,9 @@ const AdminDashboard = () => {
                 processingOrders={(orders as any[])?.filter((o: any) => o.status === "processing").length || 0}
                 completedOrders={(orders as any[])?.filter((o: any) => o.status === "completed").length || 0}
                 totalMenuItems={(menuItems as any[])?.length || 0}
-                totalRevenue={(analytics as any)?.totalRevenue || 0}
-                averageOrderValue={(analytics as any)?.averageOrderValue || 0}
-                totalCustomers={(users as any[])?.filter((u: any) => u.role === "customer").length || 0}
+                totalRevenue={totalRevenue}
+                averageOrderValue={averageOrderValue}
+                totalCustomers={totalCustomers}
                 totalEmployees={(users as any[])?.filter((u: any) => u.role === "employee").length || 0}
                 analytics={analytics}
                 orders={orders}
@@ -892,14 +1037,6 @@ const AdminDashboard = () => {
               <TaxationAndCurrency />
             )}
             
-            {activeTab === "promotions" && (
-              <PromotionsManagement />
-            )}
-            
-            {activeTab === "coupons" && (
-              <CouponsManagement />
-            )}
-            
             {activeTab === "promo-codes" && (
               <PromoCodesManagement />
             )}
@@ -921,15 +1058,14 @@ const AdminDashboard = () => {
               <TemplateEditor />
             )}
 
-            {activeTab === "settings" && (
-              <SystemSettings />
+            {activeTab === "restaurant-info" && (
+              <Suspense fallback={<div>Loading Restaurant Settings...</div>}>
+                <RestaurantSettings />
+              </Suspense>
             )}
             
 
             
-            {activeTab === "menu-images" && (
-              <MenuImagesTab menuItems={menuItems} />
-            )}
             
             {activeTab === "pricing" && (
               <PricingTab menuItems={menuItems} />
@@ -979,8 +1115,10 @@ const AdminDashboard = () => {
               <HelpSupportTab />
             )}
 
-            {activeTab === "settings" && (
-              <SettingsPanel />
+            {activeTab === "system-settings" && (
+              <Suspense fallback={<div>Loading System Settings...</div>}>
+                <SettingsPanel />
+              </Suspense>
             )}
           </main>
         </div>
@@ -1003,25 +1141,111 @@ const DashboardOverview = ({
   analytics,
   orders 
 }: any) => {
-  // Use real analytics data or fallback to default
+  // Use real analytics data or calculate from orders
   const analyticsData = React.useMemo(() => {
-    if (!analytics || !orders) {
+    console.log('📊 DashboardOverview - Analytics Data Debug:', {
+      hasAnalytics: !!analytics,
+      hasOrders: !!orders,
+      analyticsKeys: analytics ? Object.keys(analytics) : [],
+      ordersLength: orders ? orders.length : 0,
+      totalCustomers,
+      totalRevenue,
+      averageOrderValue
+    });
+
+    if (!orders || orders.length === 0) {
+      console.log('❌ No orders data available for charts');
       return {
-        revenue: { total: 0, change: 0, trend: "up", daily: [100,200,150,300,250,400,350] },
-        orders: { total: 0, change: 0, trend: "up", daily: [10,20,15,30,25,40,35] },
-        customers: { total: 0, change: 0, trend: "up", daily: [5,8,6,12,10,15,14] },
-        averageOrder: { total: 0, change: 0, trend: "up", daily: [10,25,25,25,25,27,25] }
+        revenue: { total: 0, change: 0, trend: "up", daily: [0,0,0,0,0,0,0] },
+        orders: { total: 0, change: 0, trend: "up", daily: [0,0,0,0,0,0,0] },
+        customers: { total: 0, change: 0, trend: "up", daily: [0,0,0,0,0,0,0] },
+        averageOrder: { total: 0, change: 0, trend: "up", daily: [0,0,0,0,0,0,0] }
       };
     }
 
-    // Use real analytics data if available
-    return analytics.dailyData || {
-      revenue: { total: analytics.totalRevenue || 0, change: 5, trend: "up", daily: [100,200,150,300,250,400,350] },
-      orders: { total: orders.length || 0, change: 8, trend: "up", daily: [10,20,15,30,25,40,35] },
-      customers: { total: totalCustomers || 0, change: 3, trend: "up", daily: [5,8,6,12,10,15,14] },
-      averageOrder: { total: averageOrderValue || 0, change: 2, trend: "up", daily: [10,25,25,25,25,27,25] }
+    // Debug: Show sample order dates first
+    const sampleOrderDates = orders.slice(0, 5).map((order: any) => ({
+      id: order.id,
+      createdAt: order.createdAt || order.created_at,
+      formattedDate: new Date(order.createdAt || order.created_at).toISOString().split('T')[0],
+      userId: order.userId || order.user_id,
+      total: order.total || order.totalAmount
+    }));
+    console.log('📅 Sample order dates and data:', sampleOrderDates);
+
+    // Get all unique dates from orders and use the most recent 7 days that have data
+    const allOrderDates = orders.map((order: any) =>
+      new Date(order.createdAt || order.created_at).toISOString().split('T')[0]
+    );
+    const uniqueDates = [...new Set(allOrderDates)].sort().slice(-7); // Last 7 unique dates with orders
+
+    console.log('📅 Using actual order dates for charts:', uniqueDates);
+
+    const dailyData = uniqueDates.map(date => {
+      const dayOrders = orders.filter((order: any) => {
+        const orderDate = new Date(order.createdAt || order.created_at).toISOString().split('T')[0];
+        return orderDate === date;
+      });
+
+      console.log(`📅 ${date}: ${dayOrders.length} orders`);
+
+      const dayRevenue = dayOrders.reduce((sum: number, order: any) => {
+        const total = parseFloat(order.total || order.totalAmount || 0);
+        return sum + total;
+      }, 0);
+
+      const uniqueCustomers = new Set(dayOrders.map((order: any) => order.userId || order.user_id)).size;
+
+      return {
+        date,
+        orders: dayOrders.length,
+        revenue: dayRevenue,
+        customers: uniqueCustomers,
+        avgOrderValue: dayOrders.length > 0 ? dayRevenue / dayOrders.length : 0
+      };
+    });
+
+    console.log('📈 Calculated daily data:', dailyData);
+
+    const totalOrdersCount = orders.length;
+    const totalRevenueAmount = parseFloat(totalRevenue) || 0;
+    const avgOrderValueAmount = parseFloat(averageOrderValue) || 0;
+
+    // Ensure we always have 7 data points for consistent chart display
+    const chartData = Array.from({ length: 7 }, (_, i) => {
+      return dailyData[i] || { date: '', orders: 0, revenue: 0, customers: 0, avgOrderValue: 0 };
+    });
+
+    const result = {
+      revenue: {
+        total: totalRevenueAmount,
+        change: 0, // TODO: Calculate based on previous period
+        trend: "up" as const,
+        daily: chartData.map(d => d.revenue)
+      },
+      orders: {
+        total: totalOrdersCount,
+        change: 0, // TODO: Calculate based on previous period
+        trend: "up" as const,
+        daily: chartData.map(d => d.orders)
+      },
+      customers: {
+        total: totalCustomers || 0,
+        change: 0, // TODO: Calculate based on previous period
+        trend: "up" as const,
+        daily: chartData.map(d => d.customers)
+      },
+      averageOrder: {
+        total: avgOrderValueAmount,
+        change: 0, // TODO: Calculate based on previous period
+        trend: "up" as const,
+        daily: chartData.map(d => d.avgOrderValue)
+      }
     };
-  }, [analytics, orders, totalCustomers, averageOrderValue]);
+
+    console.log('✅ Final analytics data:', result);
+    return result;
+  }, [analytics, orders, totalCustomers, totalRevenue, averageOrderValue]);
 
   return (
     <div className="space-y-6">
@@ -1772,20 +1996,39 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
 
   // Use real analytics data or fallback to default
   const analyticsData = React.useMemo(() => {
-    if (!analytics || !orders) {
+    console.log('📊 AnalyticsDashboard - Data Debug:', {
+      hasAnalytics: !!analytics,
+      hasOrders: !!orders,
+      ordersLength: orders ? orders.length : 0,
+      timeRange,
+      selectedMetric
+    });
+
+    if (!orders || orders.length === 0) {
+      console.log('❌ No orders data for AnalyticsDashboard');
       return {
-        revenue: { total: 0, change: 0, trend: "up", daily: [0,0,0,0,0,0,0] },
-        orders: { total: 0, change: 0, trend: "up", daily: [0,0,0,0,0,0,0] },
-        customers: { total: 0, change: 0, trend: "up", daily: [0,0,0,0,0,0,0] },
-        averageOrder: { total: 0, change: 0, trend: "up", daily: [0,0,0,0,0,0,0] }
+        revenue: { total: 0, change: 0, trend: "up", daily: [0,0,0,0,0,0,0], maxValue: 0 },
+        orders: { total: 0, change: 0, trend: "up", daily: [0,0,0,0,0,0,0], maxValue: 0 },
+        customers: { total: 0, change: 0, trend: "up", daily: [0,0,0,0,0,0,0], maxValue: 0 },
+        averageOrder: { total: 0, change: 0, trend: "up", daily: [0,0,0,0,0,0,0], maxValue: 0 },
+        topSellingItems: [],
+        customerInsights: {
+          totalCustomers: 0,
+          repeatCustomerPercentage: 0,
+          avgOrdersPerCustomer: 0
+        }
       };
     }
 
-    // Calculate daily data from orders
+    // Calculate daily data from orders based on selected time range
     const now = new Date();
-    const dailyData = Array.from({ length: 7 }, (_, i) => {
+    const daysToShow = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : timeRange === "90d" ? 90 : 7;
+
+    console.log('📅 AnalyticsDashboard filtering for:', timeRange, 'showing', daysToShow, 'days');
+
+    const dailyData = Array.from({ length: daysToShow }, (_, i) => {
       const date = new Date(now);
-      date.setDate(date.getDate() - (6 - i));
+      date.setDate(date.getDate() - (daysToShow - 1 - i));
       const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
       const dayEnd = new Date(dayStart);
       dayEnd.setDate(dayEnd.getDate() + 1);
@@ -1795,45 +2038,160 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
         return orderDate >= dayStart && orderDate < dayEnd;
       });
       
+      const dayRevenue = dayOrders.reduce((sum: number, order: any) => {
+        const orderTotal = parseFloat(order.total || order.totalAmount || 0);
+        if (isNaN(orderTotal)) return sum; // Skip invalid totals
+        return sum + orderTotal;
+      }, 0);
+
       return {
         orders: dayOrders.length,
-        revenue: (dayOrders || []).reduce((sum: number, order: any) => sum + parseFloat(order.total || 0), 0),
-        customers: new Set(dayOrders.map((order: any) => order.userId)).size
+        revenue: dayRevenue,
+        customers: new Set(dayOrders.map((order: any) => order.userId || order.user_id).filter(Boolean)).size
       };
     });
 
-    const totalRevenue = parseFloat(analytics.totalRevenue || 0);
-    const totalOrders = parseInt(analytics.totalOrders || 0);
-    const avgOrderValue = parseFloat(analytics.averageOrderValue || 0);
-    const uniqueCustomers = new Set(orders.map((order: any) => order.userId)).size;
+    // Filter orders to selected time range
+    const cutoffDate = new Date(now);
+    cutoffDate.setDate(cutoffDate.getDate() - daysToShow);
+
+    const filteredOrders = orders.filter((order: any) => {
+      const orderDate = new Date(order.createdAt || order.created_at);
+      return orderDate >= cutoffDate;
+    });
+
+    console.log('📊 Filtered orders:', {
+      totalOrders: orders.length,
+      filteredOrders: filteredOrders.length,
+      timeRange,
+      daysToShow,
+      cutoffDate: cutoffDate.toISOString().split('T')[0],
+      sampleOrderDates: orders.slice(0, 3).map((order: any) => ({
+        id: order.id,
+        date: new Date(order.createdAt || order.created_at).toISOString().split('T')[0]
+      }))
+    });
+
+    // If no orders in selected range but we have orders, expand to show all orders for now
+    const ordersToUse = filteredOrders.length > 0 ? filteredOrders : orders;
+
+    // Calculate totals directly from filtered orders since analytics API returns NaN
+    const calculatedRevenue = ordersToUse.reduce((sum: number, order: any) => {
+      const orderTotal = parseFloat(order.total || order.totalAmount || 0);
+      if (isNaN(orderTotal)) return sum; // Skip invalid totals
+      return sum + orderTotal;
+    }, 0);
+
+    const totalRevenue = calculatedRevenue;
+    const totalOrders = ordersToUse.length;
+    const avgOrderValue = totalOrders > 0 ? calculatedRevenue / totalOrders : 0;
+    const uniqueCustomers = new Set(ordersToUse.map((order: any) => order.userId || order.user_id).filter(Boolean)).size;
+
+    // Calculate top selling items from order items
+    const itemCounts = new Map();
+
+    ordersToUse.forEach((order: any) => {
+      if (order.items && Array.isArray(order.items)) {
+        order.items.forEach((item: any) => {
+          const itemId = item.menuItemId || item.menu_item_id;
+          const itemName = item.name || item.menuItem?.name || `Item ${itemId}`;
+          const quantity = parseInt(item.quantity) || 1;
+          const price = parseFloat(item.price) || 0;
+
+          if (!itemCounts.has(itemId)) {
+            itemCounts.set(itemId, {
+              id: itemId,
+              name: itemName,
+              sales: 0,
+              revenue: 0
+            });
+          }
+
+          const existing = itemCounts.get(itemId);
+          existing.sales += quantity;
+          existing.revenue += (price * quantity);
+        });
+      }
+    });
+
+    const topSellingItems = Array.from(itemCounts.values())
+      .sort((a, b) => b.sales - a.sales)
+      .slice(0, 5); // Top 5 items
+
+    // Calculate customer insights
+    const customerOrderCounts = new Map();
+
+    ordersToUse.forEach((order: any) => {
+      const customerId = order.userId || order.user_id;
+      if (customerId) {
+        customerOrderCounts.set(customerId, (customerOrderCounts.get(customerId) || 0) + 1);
+      }
+    });
+
+    const totalUniqueCustomers = customerOrderCounts.size;
+    const repeatCustomers = Array.from(customerOrderCounts.values()).filter(count => count > 1).length;
+    const repeatCustomerPercentage = totalUniqueCustomers > 0 ? Math.round((repeatCustomers / totalUniqueCustomers) * 100) : 0;
+    const avgOrdersPerCustomer = totalUniqueCustomers > 0 ? Math.round((ordersToUse.length / totalUniqueCustomers) * 10) / 10 : 0;
+
+    const customerInsights = {
+      totalCustomers: totalUniqueCustomers,
+      repeatCustomerPercentage,
+      avgOrdersPerCustomer
+    };
+
+    // Calculate max values for chart scaling
+    const revenueDaily = dailyData.map(d => d.revenue);
+    const ordersDaily = dailyData.map(d => d.orders);
+    const customersDaily = dailyData.map(d => d.customers);
+    const avgOrderDaily = dailyData.map(d => d.orders > 0 ? d.revenue / d.orders : 0);
+
+    const maxRevenue = Math.max(...revenueDaily, 1);
+    const maxOrders = Math.max(...ordersDaily, 1);
+    const maxCustomers = Math.max(...customersDaily, 1);
+    const maxAvgOrder = Math.max(...avgOrderDaily, 1);
+
+    console.log('📊 AnalyticsDashboard calculated totals:', {
+      totalRevenue,
+      totalOrders,
+      avgOrderValue,
+      uniqueCustomers,
+      topSellingItemsCount: topSellingItems.length,
+      customerInsights
+    });
 
     return {
       revenue: {
         total: totalRevenue,
         change: 0, // TODO: Calculate change from previous period
         trend: "up",
-        daily: dailyData.map(d => d.revenue)
+        daily: revenueDaily,
+        maxValue: maxRevenue
       },
       orders: {
         total: totalOrders,
         change: 0, // TODO: Calculate change from previous period
         trend: "up",
-        daily: dailyData.map(d => d.orders)
+        daily: ordersDaily,
+        maxValue: maxOrders
       },
       customers: {
         total: uniqueCustomers,
         change: 0, // TODO: Calculate change from previous period
         trend: "up",
-        daily: dailyData.map(d => d.customers)
+        daily: customersDaily,
+        maxValue: maxCustomers
       },
       averageOrder: {
         total: avgOrderValue,
         change: 0, // TODO: Calculate change from previous period
         trend: "up",
-        daily: dailyData.map(d => d.orders > 0 ? d.revenue / d.orders : 0)
-      }
+        daily: avgOrderDaily,
+        maxValue: maxAvgOrder
+      },
+      topSellingItems,
+      customerInsights
     };
-  }, [analytics, orders]);
+  }, [analytics, orders, timeRange]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
@@ -1845,6 +2203,57 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
 
   const getTrendColor = (trend: string) => {
     return trend === "up" ? "text-green-600" : "text-red-600";
+  };
+
+  const handleExportAnalytics = (orders: any[], timeRange: string, analyticsData: any) => {
+    try {
+      // Create summary data
+      const summaryData = {
+        reportDate: new Date().toISOString().split('T')[0],
+        timeRange: timeRange,
+        totalOrders: analyticsData.orders.total,
+        totalRevenue: `$${analyticsData.revenue.total.toFixed(2)}`,
+        averageOrderValue: `$${analyticsData.averageOrder.total.toFixed(2)}`,
+        totalCustomers: analyticsData.customers.total
+      };
+
+      // Create CSV content with summary and detailed order data
+      const headers = ['Order ID', 'Date', 'Customer ID', 'Total Amount', 'Status', 'Type'];
+      const orderRows = orders.map(order => [
+        order.id,
+        new Date(order.createdAt || order.created_at).toLocaleDateString(),
+        order.userId || order.user_id,
+        `$${parseFloat(order.total || 0).toFixed(2)}`,
+        order.status,
+        order.order_type || order.orderType || order.type || 'N/A'
+      ]);
+
+      // Combine summary and detail data
+      let csvContent = "Analytics Report Summary\n";
+      csvContent += `Report Date,${summaryData.reportDate}\n`;
+      csvContent += `Time Range,${summaryData.timeRange}\n`;
+      csvContent += `Total Orders,${summaryData.totalOrders}\n`;
+      csvContent += `Total Revenue,${summaryData.totalRevenue}\n`;
+      csvContent += `Average Order Value,${summaryData.averageOrderValue}\n`;
+      csvContent += `Total Customers,${summaryData.totalCustomers}\n\n`;
+      csvContent += "Detailed Order Data\n";
+      csvContent += headers.join(',') + '\n';
+      csvContent += orderRows.map(row => row.join(',')).join('\n');
+
+      // Download the file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `analytics-${timeRange}-${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      console.log('📁 Analytics exported successfully');
+    } catch (error) {
+      console.error('❌ Export failed:', error);
+    }
   };
 
   return (
@@ -1869,7 +2278,16 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
             </SelectContent>
           </Select>
           
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => {
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - (timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : timeRange === "90d" ? 90 : 7));
+            const filteredForExport = orders.filter((order: any) => {
+              const orderDate = new Date(order.createdAt || order.created_at);
+              return orderDate >= cutoffDate;
+            });
+            const exportOrders = filteredForExport.length > 0 ? filteredForExport : orders;
+            handleExportAnalytics(exportOrders, timeRange, analyticsData);
+          }}>
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
@@ -1964,11 +2382,17 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
           </CardHeader>
           <CardContent>
             <div className="h-64 flex items-end justify-between space-x-2">
-              {analyticsData.revenue.daily.map((value, index) => (
-                <div key={index} className="flex-1 bg-blue-100 rounded-t" style={{ height: `${(value / 2000) * 100}%` }}>
-                  <div className="bg-blue-600 h-full rounded-t"></div>
-                </div>
-              ))}
+              {analyticsData.revenue.daily.map((value, index) => {
+                const height = analyticsData.revenue.maxValue > 0 ? (value / analyticsData.revenue.maxValue) * 100 : 0;
+                return (
+                  <div key={index} className="flex-1 bg-blue-100 rounded-t relative group" style={{ height: `${Math.max(height, 2)}%` }}>
+                    <div className="bg-blue-600 h-full rounded-t"></div>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      ${value.toFixed(0)}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             <div className="flex justify-between text-xs text-gray-500 mt-2">
               <span>Mon</span>
@@ -1989,11 +2413,17 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
           </CardHeader>
           <CardContent>
             <div className="h-64 flex items-end justify-between space-x-2">
-              {analyticsData.orders.daily.map((value, index) => (
-                <div key={index} className="flex-1 bg-green-100 rounded-t" style={{ height: `${(value / 80) * 100}%` }}>
-                  <div className="bg-green-600 h-full rounded-t"></div>
-                </div>
-              ))}
+              {analyticsData.orders.daily.map((value, index) => {
+                const height = analyticsData.orders.maxValue > 0 ? (value / analyticsData.orders.maxValue) * 100 : 0;
+                return (
+                  <div key={index} className="flex-1 bg-green-100 rounded-t relative group" style={{ height: `${Math.max(height, 2)}%` }}>
+                    <div className="bg-green-600 h-full rounded-t"></div>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      {value} orders
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             <div className="flex justify-between text-xs text-gray-500 mt-2">
               <span>Mon</span>
@@ -2017,8 +2447,8 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {analytics?.topSellingItems && analytics.topSellingItems.length > 0 ? (
-                analytics.topSellingItems.map((item: any, index: number) => (
+              {analyticsData.topSellingItems && analyticsData.topSellingItems.length > 0 ? (
+                analyticsData.topSellingItems.map((item: any, index: number) => (
                   <div key={index} className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -2048,7 +2478,7 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
             <CardTitle>Customer Insights</CardTitle>
           </CardHeader>
           <CardContent>
-            {analytics?.customerInsights && analytics.customerInsights.totalCustomers > 0 ? (
+            {analyticsData.customerInsights && analyticsData.customerInsights.totalCustomers > 0 ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-3 bg-blue-50 rounded">
                   <div>
@@ -2056,29 +2486,29 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
                     <p className="text-sm text-gray-600">Customers who ordered more than once</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-bold text-blue-600">{analytics.customerInsights.repeatCustomerPercentage}%</p>
+                    <p className="text-2xl font-bold text-blue-600">{analyticsData.customerInsights.repeatCustomerPercentage}%</p>
                     <p className="text-sm text-gray-500">of total customers</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-between p-3 bg-green-50 rounded">
                   <div>
                     <p className="font-medium">Total Customers</p>
                     <p className="text-sm text-gray-600">Unique customers who have ordered</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-bold text-green-600">{analytics.customerInsights.totalCustomers}</p>
+                    <p className="text-2xl font-bold text-green-600">{analyticsData.customerInsights.totalCustomers}</p>
                     <p className="text-sm text-gray-500">customers</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-between p-3 bg-purple-50 rounded">
                   <div>
                     <p className="font-medium">Average Orders per Customer</p>
                     <p className="text-sm text-gray-600">Average orders placed per customer</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-bold text-purple-600">{analytics.customerInsights.avgOrdersPerCustomer}</p>
+                    <p className="text-2xl font-bold text-purple-600">{analyticsData.customerInsights.avgOrdersPerCustomer}</p>
                     <p className="text-sm text-gray-500">orders/customer</p>
                   </div>
                 </div>
@@ -2766,8 +3196,11 @@ const MenuEditor = ({ menuItems }: any) => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Average Price</p>
                 <p className="text-2xl font-bold text-purple-600">
-                  {menuItems?.length > 0 
-                    ? formatCurrency((menuItems || []).reduce((sum: number, item: any) => sum + (item.basePrice || 0), 0) / menuItems.length)
+                  {menuItems?.length > 0
+                    ? formatCurrency((menuItems || []).reduce((sum: number, item: any) => {
+                        const price = parseFloat(item.basePrice || item.price || 0);
+                        return sum + (isNaN(price) ? 0 : price);
+                      }, 0) / menuItems.length)
                     : "$0.00"
                   }
                 </p>
@@ -3806,254 +4239,65 @@ const VacationMode = () => (
   </Card>
 );
 
-const OutOfStockManagement = ({ menuItems }: any) => (
-  <Card>
-    <CardHeader>
-      <CardTitle>Out-of-Stock Management</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <p className="text-gray-500">Mark menu items or add-ons as unavailable for a set period.</p>
-    </CardContent>
-  </Card>
-);
-
-const DeliveryOptions = () => (
-  <Card>
-    <CardHeader>
-      <CardTitle>Contactless Delivery & Curbside Pickup</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <p className="text-gray-500">Offer safe fulfillment modes with contactless delivery and curbside pickup options.</p>
-    </CardContent>
-  </Card>
-);
-
-const PromotionsManagement = () => {
+const OutOfStockManagement = ({ menuItems }: any) => {
   const { toast } = useToast();
-  
-  // Fetch promo codes from API
-  const { data: promoCodes = [], isLoading, refetch } = useQuery({
-    queryKey: ["/api/promo-codes"],
-    queryFn: async () => {
-      const response = await fetch("/api/promo-codes", {
-        credentials: "include",
+  const queryClient = useQueryClient();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all"); // all, available, unavailable
+
+  // Get unique categories
+  const categories = Array.from(new Set(menuItems?.map((item: any) => item.category) || []));
+
+  // Filter menu items based on search and filters
+  const filteredItems = menuItems?.filter((item: any) => {
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         item.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === "all" || item.category === categoryFilter;
+    const matchesStatus = statusFilter === "all" ||
+                         (statusFilter === "available" && item.isAvailable !== false) ||
+                         (statusFilter === "unavailable" && item.isAvailable === false);
+
+    return matchesSearch && matchesCategory && matchesStatus;
+  }) || [];
+
+  // Separate available and unavailable items for display
+  const availableItems = filteredItems.filter((item: any) => item.isAvailable !== false);
+  const unavailableItems = filteredItems.filter((item: any) => item.isAvailable === false);
+
+  // Mutation to toggle item availability
+  const toggleAvailabilityMutation = useMutation({
+    mutationFn: async ({ itemId, isAvailable }: { itemId: number, isAvailable: boolean }) => {
+      const response = await apiRequest("PATCH", `/api/menu/${itemId}`, {
+        isAvailable: isAvailable
       });
-      if (!response.ok) {
-        throw new Error("Failed to fetch promo codes");
-      }
       return response.json();
     },
-  });
-
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [editingPromotion, setEditingPromotion] = useState<any>(null);
-
-  const createPromotionMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await fetch("/api/promo-codes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.log("Server error response:", errorData);
-        
-        // Handle different error response formats
-        let errorMessage = "Failed to create promo code";
-        if (errorData.message) {
-          if (typeof errorData.message === 'string') {
-            errorMessage = errorData.message;
-          } else if (Array.isArray(errorData.message)) {
-            errorMessage = errorData.message.map((err: any) => 
-              typeof err === 'string' ? err : err.message || JSON.stringify(err)
-            ).join(', ');
-          } else {
-            errorMessage = errorData.message.message || JSON.stringify(errorData.message);
-          }
-        }
-        
-        throw new Error(errorMessage);
-      }
-      return response.json();
-    },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/menu"] });
       toast({
-        title: "Promo code created",
-        description: "Promo code has been created successfully.",
+        title: "Success",
+        description: `Item ${variables.isAvailable ? 'marked as available' : 'marked as out of stock'}`,
       });
-      refetch();
-      setIsCreateDialogOpen(false);
     },
     onError: (error: any) => {
-      console.log("Error object:", error);
-      console.log("Error message:", error.message);
-      console.log("Error message type:", typeof error.message);
-      console.log("Error message stringified:", JSON.stringify(error.message));
-      
-      let errorMessage = "Failed to create promo code";
-      
-      // Extract error message from various possible formats
-      if (error?.message) {
-        if (typeof error.message === 'string') {
-          errorMessage = error.message;
-        } else if (Array.isArray(error.message)) {
-          // Handle array of validation errors
-          errorMessage = error.message.map((err: any) => 
-            typeof err === 'string' ? err : err.message || JSON.stringify(err)
-          ).join(', ');
-        } else {
-          // If it's an object, try to get the message property or stringify it
-          errorMessage = error.message.message || JSON.stringify(error.message);
-        }
-      }
-      
-      // Clean up the error message - remove any [object Object] patterns
-      errorMessage = errorMessage.replace(/\[object Object\]/g, 'Invalid data');
-      
       toast({
         title: "Error",
-        description: errorMessage,
+        description: error.message || "Failed to update item availability",
         variant: "destructive",
       });
     },
   });
 
-  const updatePromotionMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const response = await fetch(`/api/promo-codes/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.log("Server error response (update):", errorData);
-        
-        // Handle different error response formats
-        let errorMessage = "Failed to update promo code";
-        if (errorData.message) {
-          if (typeof errorData.message === 'string') {
-            errorMessage = errorData.message;
-          } else if (Array.isArray(errorData.message)) {
-            errorMessage = errorData.message.map((err: any) => 
-              typeof err === 'string' ? err : err.message || JSON.stringify(err)
-            ).join(', ');
-          } else {
-            errorMessage = errorData.message.message || JSON.stringify(errorData.message);
-          }
-        }
-        
-        throw new Error(errorMessage);
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Promo code updated",
-        description: "Promo code has been updated successfully.",
-      });
-      refetch();
-      setEditingPromotion(null);
-    },
-    onError: (error: any) => {
-      console.log("Update error object:", error);
-      console.log("Update error message:", error.message);
-      
-      let errorMessage = "Failed to update promo code";
-      
-      // Extract error message from various possible formats
-      if (error?.message) {
-        if (typeof error.message === 'string') {
-          errorMessage = error.message;
-        } else if (Array.isArray(error.message)) {
-          // Handle array of validation errors
-          errorMessage = error.message.map((err: any) => 
-            typeof err === 'string' ? err : err.message || JSON.stringify(err)
-          ).join(', ');
-        } else {
-          // If it's an object, try to get the message property or stringify it
-          errorMessage = error.message.message || JSON.stringify(error.message);
-        }
-      }
-      
-      // Clean up the error message - remove any [object Object] patterns
-      errorMessage = errorMessage.replace(/\[object Object\]/g, 'Invalid data');
-      
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deletePromotionMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const response = await fetch(`/api/promo-codes/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to delete promo code");
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Promo code deleted",
-        description: "Promo code has been deleted successfully.",
-      });
-      refetch();
-    },
-    onError: (error: any) => {
-      let errorMessage = "Failed to delete promo code";
-      
-      // Extract error message from various possible formats
-      if (error?.message) {
-        if (typeof error.message === 'string') {
-          errorMessage = error.message;
-        } else {
-          // If it's an object, try to get the message property or stringify it
-          errorMessage = error.message.message || error.message.toString();
-        }
-      }
-      
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleCreatePromotion = (data: any) => {
-    createPromotionMutation.mutate(data);
+  const handleToggleAvailability = (itemId: number, currentlyAvailable: boolean) => {
+    toggleAvailabilityMutation.mutate({
+      itemId,
+      isAvailable: !currentlyAvailable
+    });
   };
 
-  const handleUpdatePromotion = (id: number, data: any) => {
-    updatePromotionMutation.mutate({ id, data });
-  };
-
-  const handleDeletePromotion = (id: number) => {
-    deletePromotionMutation.mutate(id);
-  };
-
-  const togglePromotionStatus = (id: number) => {
-    const promo = promoCodes.find((p: any) => p.id === id);
-    if (promo) {
-      updatePromotionMutation.mutate({ 
-        id, 
-        data: { isActive: !promo.isActive } 
-      });
-    }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  const formatPrice = (price: number | string) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(price));
   };
 
   return (
@@ -4061,223 +4305,173 @@ const PromotionsManagement = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Promotions & Coupons</h2>
-          <p className="text-gray-600">Create and manage promotional offers to drive sales</p>
+          <h2 className="text-2xl font-bold text-gray-900">Out of Stock Management</h2>
+          <p className="text-gray-600">Manage item availability and track out-of-stock items</p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Promotion
-        </Button>
-      </div>          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Promotions</p>
-                    <p className="text-2xl font-bold text-gray-900">{promoCodes.length}</p>
-                  </div>
-                  <Gift className="h-8 w-8 text-blue-600" />
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Active</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      {promoCodes.filter((p: any) => p.isActive).length}
-                    </p>
-                  </div>
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Usage</p>
-                    <p className="text-2xl font-bold text-purple-600">
-                      {(promoCodes || []).reduce((sum: number, p: any) => sum + (p.currentUses || 0), 0)}
-                    </p>
-                  </div>
-                  <Users className="h-8 w-8 text-purple-600" />
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Revenue Impact</p>
-                    <p className="text-2xl font-bold text-orange-600">$2,450</p>
-                  </div>
-                  <TrendingUp className="h-8 w-8 text-orange-600" />
-                </div>
-              </CardContent>
-            </Card>
+        <div className="flex items-center space-x-2 text-sm text-gray-500">
+          <span className="flex items-center">
+            <div className="w-3 h-3 bg-red-500 rounded-full mr-1"></div>
+            {unavailableItems.length} Out of Stock
+          </span>
+          <span className="flex items-center ml-4">
+            <div className="w-3 h-3 bg-green-500 rounded-full mr-1"></div>
+            {availableItems.length} Available
+          </span>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="search">Search Items</Label>
+              <Input
+                id="search"
+                placeholder="Search by name or description..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="category">Category</Label>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="status">Availability Status</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Items</SelectItem>
+                  <SelectItem value="available">Available Only</SelectItem>
+                  <SelectItem value="unavailable">Out of Stock Only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* Promotions Table */}
-          <Card>
-            <CardHeader className="flex justify-between items-center">
-              <CardTitle>Active Promotions</CardTitle>
-              <Button onClick={() => setIsCreateDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Promotion
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {promoCodes.length === 0 ? (
-                <div className="text-center py-12">
-                  <Gift className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No promotions yet</h3>
-                  <p className="text-gray-500 mb-6">Create your first promotion to start driving sales and attracting customers.</p>
-                  <Button onClick={() => setIsCreateDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Your First Promotion
-                  </Button>
-                </div>
-              ) : (
-                <div className="overflow-x-auto mobile-scroll-container touch-pan-x">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-3 px-4 font-medium">Name</th>
-                        <th className="text-left py-3 px-4 font-medium">Code</th>
-                        <th className="text-left py-3 px-4 font-medium">Discount</th>
-                        <th className="text-left py-3 px-4 font-medium">Min Order</th>
-                        <th className="text-left py-3 px-4 font-medium">Usage</th>
-                        <th className="text-left py-3 px-4 font-medium">Status</th>
-                        <th className="text-left py-3 px-4 font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {promoCodes.map((promotion: any) => (
-                        <tr key={promotion.id} className="border-b hover:bg-gray-50">
-                          <td className="py-3 px-4">
-                            <div>
-                              <p className="font-medium">{promotion.name}</p>
-                              <p className="text-sm text-gray-500">
-                                {new Date(promotion.startDate).toLocaleDateString()} - {new Date(promotion.endDate).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <code className="bg-gray-100 px-2 py-1 rounded text-sm">{promotion.code}</code>
-                          </td>
-                                                  <td className="py-3 px-4">
-                          <span className="font-medium">
-                            {promotion.discountType === "percentage" ? `${promotion.discount}%` : formatCurrency(Number(promotion.discount))}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          {formatCurrency(Number(promotion.minOrderAmount))}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div>
-                            <p className="font-medium">{promotion.currentUses || 0}/{promotion.maxUses}</p>
-                            <div className="w-20 bg-gray-200 rounded-full h-2 mt-1">
-                              <div 
-                                className="bg-blue-600 h-2 rounded-full" 
-                                style={{ width: `${((promotion.currentUses || 0) / promotion.maxUses) * 100}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        </td>
-                          <td className="py-3 px-4">
-                            <Badge variant={promotion.isActive ? "default" : "secondary"}>
-                              {promotion.isActive ? "Active" : "Inactive"}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setEditingPromotion(promotion)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => togglePromotionStatus(promotion.id)}
-                              >
-                                {promotion.isActive ? "Deactivate" : "Activate"}
-                              </Button>
-                              
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDeletePromotion(promotion.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+      {/* Out of Stock Items (Priority Section) */}
+      {unavailableItems.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
+              Out of Stock Items ({unavailableItems.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {unavailableItems.map((item) => (
+                <Card key={item.id} className="border-red-200 bg-red-50">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h4 className="font-medium text-lg">{item.name}</h4>
+                        <p className="text-sm text-gray-600">{item.category}</p>
+                      </div>
+                      <Badge variant="secondary" className="bg-red-100 text-red-800">
+                        Out of Stock
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">{item.description}</p>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-green-600">{formatPrice(item.basePrice || 0)}</span>
+                      <Button
+                        size="sm"
+                        onClick={() => handleToggleAvailability(item.id, false)}
+                        disabled={toggleAvailabilityMutation.isPending}
+                      >
+                        Mark Available
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
+      {/* Available Items */}
+      {availableItems.length > 0 && (statusFilter === "all" || statusFilter === "available") && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Package className="h-5 w-5 text-green-500 mr-2" />
+              Available Items ({availableItems.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {availableItems.map((item) => (
+                <Card key={item.id} className="border-green-200 bg-green-50">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h4 className="font-medium text-lg">{item.name}</h4>
+                        <p className="text-sm text-gray-600">{item.category}</p>
+                      </div>
+                      <Badge variant="default" className="bg-green-100 text-green-800">
+                        Available
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">{item.description}</p>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-green-600">{formatPrice(item.basePrice || 0)}</span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleToggleAvailability(item.id, true)}
+                        disabled={toggleAvailabilityMutation.isPending}
+                      >
+                        Mark Out of Stock
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Create Promotion Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Create New Promotion</DialogTitle>
-          </DialogHeader>
-          
-          <CreatePromotionForm
-            onSubmit={handleCreatePromotion}
-            onCancel={() => setIsCreateDialogOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Promotion Dialog */}
-      <Dialog open={!!editingPromotion} onOpenChange={() => setEditingPromotion(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Promotion</DialogTitle>
-          </DialogHeader>
-          
-          {editingPromotion && (
-            <EditPromotionForm
-              promotion={editingPromotion}
-              onSubmit={(data) => handleUpdatePromotion(editingPromotion.id, data)}
-              onCancel={() => setEditingPromotion(null)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-
+      {/* No Items Found */}
+      {filteredItems.length === 0 && (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No items found</h3>
+            <p className="text-gray-500">
+              {searchTerm || categoryFilter !== "all" || statusFilter !== "all"
+                ? "Try adjusting your filters to see more items"
+                : "No menu items available. Add items in the Menu Editor first."}
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
 
-const CouponsManagement = () => (
-  <Card>
-    <CardHeader>
-      <CardTitle>Coupons & Discounts</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <p className="text-gray-500">Manage coupon codes, percentage discounts, and promotional offers.</p>
-    </CardContent>
-  </Card>
-);
+const DeliveryOptions = () => <DeliverySettings />;
+
+
 
 const KickstarterMarketing = () => (
   <Card>
@@ -4666,6 +4860,220 @@ const PrinterManagement = ({
 };
 
 const SettingsPanel = () => {
+  const { toast } = useToast();
+
+  // Sound notification settings
+  const [soundNotificationsEnabled, setSoundNotificationsEnabled] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('adminSoundNotifications');
+      return saved !== null ? JSON.parse(saved) : true;
+    }
+    return true;
+  });
+
+  const [soundType, setSoundType] = useState<'chime' | 'bell' | 'ding' | 'beep' | 'custom'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('adminSoundType');
+      return saved ? JSON.parse(saved) : 'chime';
+    }
+    return 'chime';
+  });
+
+  const [customSoundUrl, setCustomSoundUrl] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('adminCustomSoundUrl');
+      return saved || '';
+    }
+    return '';
+  });
+
+  const [customSoundName, setCustomSoundName] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('adminCustomSoundName');
+      return saved || '';
+    }
+    return '';
+  });
+
+  const [soundVolume, setSoundVolume] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('adminSoundVolume');
+      return saved !== null ? JSON.parse(saved) : 0.3;
+    }
+    return 0.3;
+  });
+
+  // Save sound preferences to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('adminSoundNotifications', JSON.stringify(soundNotificationsEnabled));
+      localStorage.setItem('adminSoundType', JSON.stringify(soundType));
+      localStorage.setItem('adminSoundVolume', JSON.stringify(soundVolume));
+      localStorage.setItem('adminCustomSoundUrl', customSoundUrl);
+      localStorage.setItem('adminCustomSoundName', customSoundName);
+    }
+  }, [soundNotificationsEnabled, soundType, soundVolume, customSoundUrl, customSoundName]);
+
+  // Handle custom sound file upload
+  const handleCustomSoundUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('audio/')) {
+      alert('Please select an audio file (MP3, WAV, OGG, etc.)');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB');
+      return;
+    }
+
+    // Convert file to base64 for persistent storage
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64String = e.target?.result as string;
+      setCustomSoundUrl(base64String);
+      setCustomSoundName(file.name);
+      setSoundType('custom');
+
+      // Test the uploaded sound
+      const audio = new Audio(base64String);
+      audio.volume = soundVolume;
+      audio.play().catch(error => {
+        console.warn('Failed to play uploaded sound:', error);
+      });
+    };
+
+    reader.onerror = () => {
+      alert('Failed to read the audio file. Please try again.');
+    };
+
+    // Read file as data URL (base64)
+    reader.readAsDataURL(file);
+  }, [soundVolume]);
+
+  // Create a test sound function for this component
+  const playTestSound = useCallback(async () => {
+    if (!soundNotificationsEnabled) return;
+
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+
+      const volume = soundVolume;
+      const gainNode = audioContext.createGain();
+      gainNode.connect(audioContext.destination);
+
+      if (soundType === 'chime') {
+        const oscillator1 = audioContext.createOscillator();
+        const oscillator2 = audioContext.createOscillator();
+        oscillator1.connect(gainNode);
+        oscillator2.connect(gainNode);
+        oscillator1.frequency.setValueAtTime(800, audioContext.currentTime);
+        oscillator2.frequency.setValueAtTime(1200, audioContext.currentTime + 0.15);
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(volume, audioContext.currentTime + 0.05);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+        oscillator1.start(audioContext.currentTime);
+        oscillator1.stop(audioContext.currentTime + 0.15);
+        oscillator2.start(audioContext.currentTime + 0.15);
+        oscillator2.stop(audioContext.currentTime + 0.4);
+      } else if (soundType === 'bell') {
+        const fundamental = audioContext.createOscillator();
+        const harmonic2 = audioContext.createOscillator();
+        const harmonic3 = audioContext.createOscillator();
+        fundamental.connect(gainNode);
+        harmonic2.connect(gainNode);
+        harmonic3.connect(gainNode);
+        fundamental.frequency.setValueAtTime(523, audioContext.currentTime);
+        harmonic2.frequency.setValueAtTime(659, audioContext.currentTime);
+        harmonic3.frequency.setValueAtTime(784, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(volume, audioContext.currentTime + 0.05);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1.0);
+        fundamental.start(audioContext.currentTime);
+        harmonic2.start(audioContext.currentTime);
+        harmonic3.start(audioContext.currentTime);
+        fundamental.stop(audioContext.currentTime + 1.0);
+        harmonic2.stop(audioContext.currentTime + 1.0);
+        harmonic3.stop(audioContext.currentTime + 1.0);
+      } else if (soundType === 'ding') {
+        const oscillator = audioContext.createOscillator();
+        oscillator.connect(gainNode);
+        oscillator.frequency.setValueAtTime(1480, audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(1480 * 0.8, audioContext.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(volume, audioContext.currentTime + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+      } else if (soundType === 'beep') {
+        const oscillator = audioContext.createOscillator();
+        oscillator.connect(gainNode);
+        oscillator.type = 'square';
+        oscillator.frequency.setValueAtTime(1000, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(volume, audioContext.currentTime + 0.01);
+        gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.15);
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.15);
+      } else if (soundType === 'custom' && customSoundUrl) {
+        // Play custom uploaded audio file (base64 data URL)
+        try {
+          const audio = new Audio(customSoundUrl);
+          audio.volume = soundVolume;
+
+          // Ensure audio can load and play
+          audio.addEventListener('canplay', () => {
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+              playPromise.catch(error => {
+                console.warn('Failed to play custom sound:', error);
+              });
+            }
+          });
+
+          audio.addEventListener('error', (error) => {
+            console.warn('Custom audio error:', error);
+          });
+
+          // If already can play, play immediately
+          if (audio.readyState >= 2) {
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+              playPromise.catch(error => {
+                console.warn('Failed to play custom sound:', error);
+              });
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to create custom audio:', error);
+        }
+        return; // Exit early since we're using HTML5 Audio instead of Web Audio API
+      }
+    } catch (error) {
+      console.warn('Failed to play test sound:', error);
+    }
+  }, [soundNotificationsEnabled, soundType, soundVolume, customSoundUrl]);
+
+  // Fetch restaurant settings from the same API as Restaurant Info tab
+  const { data: restaurantData, isLoading: restaurantLoading } = useQuery({
+    queryKey: ['/api/restaurant-settings'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/restaurant-settings');
+      if (!response.ok) {
+        throw new Error('Failed to fetch restaurant settings');
+      }
+      return await response.json();
+    }
+  });
+
   const [settings, setSettings] = useState({
     restaurantName: "Favilla's NY Pizza",
     address: "123 Main Street, New York, NY 10001",
@@ -4697,15 +5105,63 @@ const SettingsPanel = () => {
     }
   });
 
+  // Update settings when restaurant data is loaded
+  useEffect(() => {
+    if (restaurantData) {
+      setSettings(prevSettings => ({
+        ...prevSettings,
+        restaurantName: restaurantData.restaurantName || prevSettings.restaurantName,
+        address: restaurantData.address || prevSettings.address,
+        phone: restaurantData.phone || prevSettings.phone,
+        email: restaurantData.email || prevSettings.email,
+        website: restaurantData.website || prevSettings.website,
+        currency: restaurantData.currency || prevSettings.currency,
+        timezone: restaurantData.timezone || prevSettings.timezone,
+        deliveryFee: restaurantData.deliveryFee || prevSettings.deliveryFee,
+        minimumOrder: restaurantData.minimumOrder || prevSettings.minimumOrder,
+        autoAcceptOrders: restaurantData.autoAcceptOrders !== undefined ? restaurantData.autoAcceptOrders : prevSettings.autoAcceptOrders,
+        sendOrderNotifications: restaurantData.sendOrderNotifications !== undefined ? restaurantData.sendOrderNotifications : prevSettings.sendOrderNotifications,
+        sendCustomerNotifications: restaurantData.sendCustomerNotifications !== undefined ? restaurantData.sendCustomerNotifications : prevSettings.sendCustomerNotifications
+      }));
+    }
+  }, [restaurantData]);
+
   const [activeSection, setActiveSection] = useState("general");
 
   const handleSettingChange = (key: string, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 
+  // Mutation to update restaurant settings
+  const updateRestaurantSettingsMutation = useMutation({
+    mutationFn: async (updatedSettings: any) => {
+      const response = await apiRequest('PUT', '/api/restaurant-settings', updatedSettings);
+      if (!response.ok) {
+        throw new Error('Failed to update restaurant settings');
+      }
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Restaurant settings updated successfully",
+      });
+      // Invalidate the query to refresh the data
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant-settings'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update restaurant settings",
+        variant: "destructive",
+      });
+      console.error('Error updating restaurant settings:', error);
+    }
+  });
+
   const handleSave = () => {
-    // In a real app, this would save to the backend
-    console.log("Saving settings:", settings);
+    // Save to restaurant settings API so both tabs stay in sync
+    updateRestaurantSettingsMutation.mutate(settings);
   };
 
   return (
@@ -4714,7 +5170,7 @@ const SettingsPanel = () => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">System Settings</h2>
-          <p className="text-gray-600">Configure your restaurant settings and preferences</p>
+          <p className="text-gray-600">Configure operational settings, notifications, and system preferences</p>
         </div>
         <Button onClick={handleSave}>
           <Save className="h-4 w-4 mr-2" />
@@ -4908,6 +5364,165 @@ const SettingsPanel = () => {
                       />
                       <Label htmlFor="customer-notifications">Send order updates to customers</Label>
                     </div>
+
+                    <div className="p-4 bg-blue-50 rounded-lg border space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id="sound-notifications"
+                              checked={soundNotificationsEnabled}
+                              onChange={(e) => setSoundNotificationsEnabled(e.target.checked)}
+                            />
+                            <Label htmlFor="sound-notifications" className="font-medium">🔔 Sound Notifications</Label>
+                          </div>
+                          <p className="text-sm text-gray-600">Play notification sounds when new orders arrive</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={playTestSound}
+                          disabled={!soundNotificationsEnabled}
+                        >
+                          Test Sound
+                        </Button>
+                      </div>
+
+                      {soundNotificationsEnabled && (
+                        <div className="space-y-4 pt-2 border-t border-blue-200">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="sound-type" className="text-sm font-medium">Sound Type</Label>
+                              <Select value={soundType} onValueChange={(value: 'chime' | 'bell' | 'ding' | 'beep' | 'custom') => setSoundType(value)}>
+                                <SelectTrigger id="sound-type" className="w-full">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="chime">🎵 Chime (Default)</SelectItem>
+                                  <SelectItem value="bell">🔔 Bell</SelectItem>
+                                  <SelectItem value="ding">✨ Ding</SelectItem>
+                                  <SelectItem value="beep">📢 Beep</SelectItem>
+                                  <SelectItem value="custom">📁 Custom Upload</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="sound-volume" className="text-sm font-medium">
+                                Volume ({Math.round(soundVolume * 100)}%)
+                              </Label>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-xs text-gray-500">🔉</span>
+                                <input
+                                  type="range"
+                                  id="sound-volume"
+                                  min="0.1"
+                                  max="1.0"
+                                  step="0.1"
+                                  value={soundVolume}
+                                  onChange={(e) => setSoundVolume(parseFloat(e.target.value))}
+                                  className="flex-1"
+                                />
+                                <span className="text-xs text-gray-500">🔊</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Custom Sound Upload Section */}
+                          {soundType === 'custom' && (
+                            <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h4 className="font-medium text-yellow-800">📁 Custom Sound Upload</h4>
+                                {customSoundName && (
+                                  <span className="text-sm text-green-600">✅ {customSoundName}</span>
+                                )}
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label htmlFor="custom-sound-upload" className="text-sm font-medium text-yellow-700">
+                                  Upload Audio File (MP3, WAV, OGG - Max 5MB)
+                                </Label>
+                                <input
+                                  type="file"
+                                  id="custom-sound-upload"
+                                  accept="audio/*"
+                                  onChange={handleCustomSoundUpload}
+                                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100"
+                                />
+                              </div>
+
+                              {customSoundUrl && (
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={playTestSound}
+                                  >
+                                    🎵 Test Custom Sound
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setCustomSoundUrl('');
+                                      setCustomSoundName('');
+                                      setSoundType('chime');
+                                    }}
+                                  >
+                                    🗑️ Remove
+                                  </Button>
+                                </div>
+                              )}
+
+                              <p className="text-xs text-yellow-600">
+                                💡 Tip: Short sounds (1-3 seconds) work best for notifications
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => { setSoundType('chime'); setTimeout(playTestSound, 100); }}
+                            >
+                              🎵 Chime
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => { setSoundType('bell'); setTimeout(playTestSound, 100); }}
+                            >
+                              🔔 Bell
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => { setSoundType('ding'); setTimeout(playTestSound, 100); }}
+                            >
+                              ✨ Ding
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => { setSoundType('beep'); setTimeout(playTestSound, 100); }}
+                            >
+                              📢 Beep
+                            </Button>
+                            {customSoundUrl && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => { setSoundType('custom'); setTimeout(playTestSound, 100); }}
+                              >
+                                📁 Custom
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -4923,32 +5538,56 @@ const SettingsPanel = () => {
                           <div>
                             <h4 className="font-medium">Stripe Payment Processing</h4>
                             <p className="text-sm text-gray-600">Process credit card payments securely</p>
+                            <p className="text-xs text-green-600 mt-1">✅ Integrated and active</p>
                           </div>
-                          <Badge variant="default">Connected</Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="default">Connected</Badge>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open('https://dashboard.stripe.com', '_blank')}
+                            >
+                              Dashboard
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
-                    
+
                     <Card>
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div>
                             <h4 className="font-medium">Google Business Profile</h4>
-                            <p className="text-sm text-gray-600">Sync with Google Business Profile</p>
+                            <p className="text-sm text-gray-600">Sync with Google Business Profile for reviews, hours, and location</p>
+                            <p className="text-xs text-blue-600 mt-1">🚀 Manage your Google listing and customer reviews</p>
                           </div>
-                          <Button variant="outline" size="sm">Connect</Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open('https://business.google.com', '_blank')}
+                          >
+                            Connect
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
-                    
+
                     <Card>
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div>
                             <h4 className="font-medium">Facebook Business</h4>
-                            <p className="text-sm text-gray-600">Connect Facebook Business account</p>
+                            <p className="text-sm text-gray-600">Connect Facebook Business for social media marketing</p>
+                            <p className="text-xs text-blue-600 mt-1">📱 Manage Facebook posts, ads, and customer engagement</p>
                           </div>
-                          <Button variant="outline" size="sm">Connect</Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open('https://business.facebook.com', '_blank')}
+                          >
+                            Connect
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -6419,6 +7058,25 @@ const EditMenuItemForm = ({ item, onSubmit, onCancel, categories }: { item: any;
     }
   });
 
+  // Update form data when item prop changes (after save/refresh)
+  useEffect(() => {
+    setFormData({
+      name: item.name || "",
+      description: item.description || "",
+      price: item.basePrice?.toString() || "",
+      category: item.category || "",
+      image: item.imageUrl || "", // This will now update with fresh data
+      isAvailable: item.isAvailable !== false,
+      options: item.options || {
+        sizes: [] as { name: string; price: string }[],
+        toppings: [] as { name: string; price: string }[],
+        extras: [] as { name: string; price: string }[],
+        addOns: [] as { name: string; price: string }[],
+        customizations: [] as { name: string; price: string }[]
+      }
+    });
+  }, [item]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
@@ -6479,7 +7137,7 @@ const EditMenuItemForm = ({ item, onSubmit, onCancel, categories }: { item: any;
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
         />
       </div>
-      
+
       <ImageUpload
         label="Menu Item Image"
         value={formData.image}
@@ -8007,7 +8665,7 @@ const PromoCodesManagement = () => {
       discountType: "percentage",
       minOrderAmount: 20,
       maxUses: 1000,
-      currentUses: 150,
+      currentUses: 0,
       expiresAt: new Date("2024-12-31"),
       isActive: true,
       description: "Welcome discount for new customers"
@@ -8019,7 +8677,7 @@ const PromoCodesManagement = () => {
       discountType: "fixed",
       minOrderAmount: 15,
       maxUses: 500,
-      currentUses: 75,
+      currentUses: 0,
       expiresAt: new Date("2024-12-31"),
       isActive: true,
       description: "Fixed $5 off any order"
@@ -8031,7 +8689,7 @@ const PromoCodesManagement = () => {
       discountType: "percentage",
       minOrderAmount: 25,
       maxUses: 200,
-      currentUses: 45,
+      currentUses: 0,
       expiresAt: new Date("2024-12-31"),
       isActive: false,
       description: "20% off pizza orders"
@@ -8191,12 +8849,12 @@ const PromoCodesManagement = () => {
                 <div className="mt-2">
                   <div className="flex items-center gap-2">
                     <div className="flex-1 bg-gray-200 rounded-full h-2">
-                      <div 
+                      <div
                         className={`h-2 rounded-full ${
-                          getUsagePercentage(promo.currentUses, promo.maxUses) > 80 
-                            ? 'bg-red-500' 
-                            : getUsagePercentage(promo.currentUses, promo.maxUses) > 60 
-                            ? 'bg-yellow-500' 
+                          getUsagePercentage(promo.currentUses, promo.maxUses) > 80
+                            ? 'bg-red-500'
+                            : getUsagePercentage(promo.currentUses, promo.maxUses) > 60
+                            ? 'bg-yellow-500'
                             : 'bg-green-500'
                         }`}
                         style={{ width: `${Math.min(getUsagePercentage(promo.currentUses, promo.maxUses), 100)}%` }}
@@ -8208,7 +8866,7 @@ const PromoCodesManagement = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -8217,7 +8875,7 @@ const PromoCodesManagement = () => {
                 >
                   <Edit className="h-4 w-4" />
                 </Button>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -8225,7 +8883,7 @@ const PromoCodesManagement = () => {
                 >
                   {promo.isActive ? "Deactivate" : "Activate"}
                 </Button>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -8753,7 +9411,8 @@ const ReportsSection = ({ analytics, orders }: any) => {
     return new Date(date).toLocaleDateString();
   };
 
-  if (!analytics || !orders) {
+  // Show loading only if we don't have orders data
+  if (!orders || orders.length === 0) {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
@@ -8761,39 +9420,184 @@ const ReportsSection = ({ analytics, orders }: any) => {
         </div>
         <Card>
           <CardContent className="p-6">
-            <p className="text-gray-500">Loading analytics data...</p>
+            <p className="text-gray-500">No order data available for reports.</p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // Calculate order status breakdown
-  const statusBreakdown = (orders || []).reduce((acc: any, order: any) => {
-    acc[order.status] = (acc[order.status] || 0) + 1;
+  // Calculate date filtering
+  const now = new Date();
+  const daysToShow = dateRange === "7d" ? 7 : dateRange === "30d" ? 30 : dateRange === "90d" ? 90 : 7;
+  const cutoffDate = new Date(now);
+  cutoffDate.setDate(cutoffDate.getDate() - daysToShow);
+
+  const filteredOrders = orders.filter((order: any) => {
+    const orderDate = new Date(order.createdAt || order.created_at);
+    return orderDate >= cutoffDate;
+  });
+
+  // Use filtered orders if available, otherwise fall back to all orders
+  const ordersToUse = filteredOrders.length > 0 ? filteredOrders : orders;
+
+  // Debug: Show actual order dates vs cutoff
+  const orderDates = orders.slice(0, 5).map((order: any) => ({
+    id: order.id,
+    date: new Date(order.createdAt || order.created_at).toISOString().split('T')[0],
+    total: order.total || order.totalAmount
+  }));
+
+  console.log('📊 Reports filtering debug:', {
+    totalOrders: orders.length,
+    filteredOrders: filteredOrders.length,
+    dateRange,
+    daysToShow,
+    cutoffDate: cutoffDate.toISOString().split('T')[0],
+    today: now.toISOString().split('T')[0],
+    sampleOrderDates: orderDates,
+    usingFiltered: filteredOrders.length > 0,
+    filteredRevenue: filteredOrders.reduce((sum: number, order: any) => {
+      const orderTotal = parseFloat(order.total || order.totalAmount || 0);
+      return sum + (isNaN(orderTotal) ? 0 : orderTotal);
+    }, 0),
+    allOrdersRevenue: orders.reduce((sum: number, order: any) => {
+      const orderTotal = parseFloat(order.total || order.totalAmount || 0);
+      return sum + (isNaN(orderTotal) ? 0 : orderTotal);
+    }, 0)
+  });
+
+  // Calculate real totals from filtered orders
+  const calculatedRevenue = ordersToUse.reduce((sum: number, order: any) => {
+    const orderTotal = parseFloat(order.total || order.totalAmount || 0);
+    if (isNaN(orderTotal)) return sum; // Skip invalid totals like NaN
+    return sum + orderTotal;
+  }, 0);
+
+  const totalOrders = ordersToUse.length;
+  const avgOrderValue = totalOrders > 0 ? calculatedRevenue / totalOrders : 0;
+  const uniqueCustomers = new Set(ordersToUse.map((order: any) => order.userId || order.user_id).filter(Boolean)).size;
+
+  // Calculate order status breakdown from filtered orders
+  const statusBreakdown = ordersToUse.reduce((acc: any, order: any) => {
+    const status = order.status || 'unknown';
+    acc[status] = (acc[status] || 0) + 1;
     return acc;
   }, {});
 
-  // Calculate order type breakdown
-  const typeBreakdown = (orders || []).reduce((acc: any, order: any) => {
-    acc[order.orderType] = (acc[order.orderType] || 0) + 1;
+  // Debug order types first
+  const orderTypeDebug = ordersToUse.slice(0, 10).map((order: any) => ({
+    id: order.id,
+    orderType: order.orderType,
+    type: order.type,
+    delivery_method: order.delivery_method,
+    order_type: order.order_type,
+    allKeys: Object.keys(order).filter(key => key.toLowerCase().includes('type') || key.toLowerCase().includes('delivery'))
+  }));
+
+  console.log('🚚 Order Type Debug:', {
+    sampleOrderTypes: orderTypeDebug,
+    uniqueOrderTypes: [...new Set(ordersToUse.map(o => o.orderType))],
+    uniqueTypes: [...new Set(ordersToUse.map(o => o.type))],
+    uniqueDeliveryMethods: [...new Set(ordersToUse.map(o => o.delivery_method))],
+    uniqueOrderTypeFields: [...new Set(ordersToUse.map(o => o.order_type))]
+  });
+
+  // Calculate order type breakdown from filtered orders
+  const typeBreakdown = ordersToUse.reduce((acc: any, order: any) => {
+    // For bulk orders from API, use order_type (snake_case from database)
+    // For single orders, orderType is transformed to camelCase
+    const type = order.order_type || order.orderType || order.type || 'unknown';
+    acc[type] = (acc[type] || 0) + 1;
     return acc;
   }, {});
 
-  // Calculate revenue by day
-  const revenueByDay = (orders || []).reduce((acc: any, order: any) => {
-    const date = new Date(order.createdAt).toDateString();
-    acc[date] = (acc[date] || 0) + parseFloat(order.total || 0);
+  // Calculate revenue by day from filtered orders
+  const revenueByDay = ordersToUse.reduce((acc: any, order: any) => {
+    const orderDate = new Date(order.createdAt || order.created_at);
+    const date = orderDate.toDateString();
+    const orderTotal = parseFloat(order.total || order.totalAmount || 0);
+    if (!isNaN(orderTotal)) {
+      acc[date] = (acc[date] || 0) + orderTotal;
+    }
     return acc;
   }, {});
+
+  const handleExportReport = (orders: any[], timeRange: string, reportData: any) => {
+    try {
+      // Create comprehensive report data
+      const summaryData = {
+        reportDate: new Date().toISOString().split('T')[0],
+        timeRange: timeRange,
+        reportType: reportType,
+        totalOrders: reportData.totalOrders,
+        totalRevenue: `$${reportData.totalRevenue.toFixed(2)}`,
+        averageOrderValue: `$${reportData.avgOrderValue.toFixed(2)}`,
+        uniqueCustomers: reportData.uniqueCustomers
+      };
+
+      // Create CSV content with summary, breakdowns, and detailed order data
+      const headers = ['Order ID', 'Date', 'Customer ID', 'Type', 'Status', 'Total Amount'];
+      const orderRows = orders.map(order => [
+        order.id,
+        new Date(order.createdAt || order.created_at).toLocaleDateString(),
+        order.userId || order.user_id || 'Guest',
+        order.order_type || order.orderType || order.type || 'N/A',
+        order.status || 'unknown',
+        `$${parseFloat(order.total || order.totalAmount || 0).toFixed(2)}`
+      ]);
+
+      // Combine summary, breakdown, and detail data
+      let csvContent = `Business Report - ${reportType.toUpperCase()}\n`;
+      csvContent += `Report Date,${summaryData.reportDate}\n`;
+      csvContent += `Time Range,${summaryData.timeRange}\n`;
+      csvContent += `Report Type,${summaryData.reportType}\n\n`;
+
+      csvContent += "Summary Metrics\n";
+      csvContent += `Total Orders,${summaryData.totalOrders}\n`;
+      csvContent += `Total Revenue,${summaryData.totalRevenue}\n`;
+      csvContent += `Average Order Value,${summaryData.averageOrderValue}\n`;
+      csvContent += `Unique Customers,${summaryData.uniqueCustomers}\n\n`;
+
+      csvContent += "Order Status Breakdown\n";
+      Object.entries(reportData.statusBreakdown).forEach(([status, count]) => {
+        csvContent += `${status},${count}\n`;
+      });
+      csvContent += '\n';
+
+      csvContent += "Order Type Breakdown\n";
+      Object.entries(reportData.typeBreakdown).forEach(([type, count]) => {
+        csvContent += `${type},${count}\n`;
+      });
+      csvContent += '\n';
+
+      csvContent += "Detailed Order Data\n";
+      csvContent += headers.join(',') + '\n';
+      csvContent += orderRows.map(row => row.join(',')).join('\n');
+
+      // Download the file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `business-report-${reportType}-${timeRange}-${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      console.log('📁 Business report exported successfully');
+    } catch (error) {
+      console.error('❌ Report export failed:', error);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
         <div className="flex space-x-4">
-          <select 
-            value={dateRange} 
+          <select
+            value={dateRange}
             onChange={(e) => setDateRange(e.target.value)}
             className="border rounded-md px-3 py-2"
           >
@@ -8801,8 +9605,8 @@ const ReportsSection = ({ analytics, orders }: any) => {
             <option value="30d">Last 30 days</option>
             <option value="90d">Last 90 days</option>
           </select>
-          <select 
-            value={reportType} 
+          <select
+            value={reportType}
             onChange={(e) => setReportType(e.target.value)}
             className="border rounded-md px-3 py-2"
           >
@@ -8810,6 +9614,17 @@ const ReportsSection = ({ analytics, orders }: any) => {
             <option value="detailed">Detailed</option>
             <option value="financial">Financial</option>
           </select>
+          <Button variant="outline" onClick={() => handleExportReport(ordersToUse, dateRange, {
+            totalOrders,
+            totalRevenue: calculatedRevenue,
+            avgOrderValue,
+            uniqueCustomers,
+            statusBreakdown,
+            typeBreakdown
+          })}>
+            <Download className="h-4 w-4 mr-2" />
+            Export Report
+          </Button>
         </div>
       </div>
 
@@ -8820,7 +9635,13 @@ const ReportsSection = ({ analytics, orders }: any) => {
             <CardTitle className="text-sm font-medium text-gray-500">Total Orders</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{analytics.totalOrders || 0}</p>
+            <p className="text-2xl font-bold">{totalOrders}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {dateRange === "7d" && "Last 7 days"}
+              {dateRange === "30d" && "Last 30 days"}
+              {dateRange === "90d" && "Last 90 days"}
+              {filteredOrders.length === 0 && "(All time)"}
+            </p>
           </CardContent>
         </Card>
 
@@ -8829,7 +9650,13 @@ const ReportsSection = ({ analytics, orders }: any) => {
             <CardTitle className="text-sm font-medium text-gray-500">Total Revenue</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatCurrency(parseFloat(analytics.totalRevenue || 0))}</p>
+            <p className="text-2xl font-bold">{formatCurrency(calculatedRevenue)}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {dateRange === "7d" && "Last 7 days"}
+              {dateRange === "30d" && "Last 30 days"}
+              {dateRange === "90d" && "Last 90 days"}
+              {filteredOrders.length === 0 && "(All time)"}
+            </p>
           </CardContent>
         </Card>
 
@@ -8838,7 +9665,13 @@ const ReportsSection = ({ analytics, orders }: any) => {
             <CardTitle className="text-sm font-medium text-gray-500">Average Order Value</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatCurrency(parseFloat(analytics.averageOrderValue || 0))}</p>
+            <p className="text-2xl font-bold">{formatCurrency(avgOrderValue)}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {dateRange === "7d" && "Last 7 days"}
+              {dateRange === "30d" && "Last 30 days"}
+              {dateRange === "90d" && "Last 90 days"}
+              {filteredOrders.length === 0 && "(All time)"}
+            </p>
           </CardContent>
         </Card>
 
@@ -8847,7 +9680,13 @@ const ReportsSection = ({ analytics, orders }: any) => {
             <CardTitle className="text-sm font-medium text-gray-500">Unique Customers</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{new Set(orders.map((o: any) => o.userId)).size}</p>
+            <p className="text-2xl font-bold">{uniqueCustomers}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {dateRange === "7d" && "Last 7 days"}
+              {dateRange === "30d" && "Last 30 days"}
+              {dateRange === "90d" && "Last 90 days"}
+              {filteredOrders.length === 0 && "(All time)"}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -8866,9 +9705,9 @@ const ReportsSection = ({ analytics, orders }: any) => {
                   <span className="capitalize">{status}</span>
                   <div className="flex items-center space-x-2">
                     <div className="w-20 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full" 
-                        style={{ width: `${(count as number / orders.length) * 100}%` }}
+                      <div
+                        className="bg-blue-600 h-2 rounded-full"
+                        style={{ width: `${(count as number / ordersToUse.length) * 100}%` }}
                       ></div>
                     </div>
                     <span className="font-medium">{count as number}</span>
@@ -8891,9 +9730,9 @@ const ReportsSection = ({ analytics, orders }: any) => {
                   <span className="capitalize">{type}</span>
                   <div className="flex items-center space-x-2">
                     <div className="w-20 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-green-600 h-2 rounded-full" 
-                        style={{ width: `${(count as number / orders.length) * 100}%` }}
+                      <div
+                        className="bg-green-600 h-2 rounded-full"
+                        style={{ width: `${(count as number / ordersToUse.length) * 100}%` }}
                       ></div>
                     </div>
                     <span className="font-medium">{count as number}</span>
@@ -8924,17 +9763,17 @@ const ReportsSection = ({ analytics, orders }: any) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.slice(0, 10).map((order: any) => (
+                  {ordersToUse.slice(0, 10).map((order: any) => (
                     <tr key={order.id} className="border-b">
                       <td className="py-2">#{order.id}</td>
-                      <td className="py-2">{formatDate(order.createdAt)}</td>
-                      <td className="py-2 capitalize">{order.orderType}</td>
+                      <td className="py-2">{formatDate(order.createdAt || order.created_at)}</td>
+                      <td className="py-2 capitalize">{order.order_type || order.orderType || order.type || 'N/A'}</td>
                       <td className="py-2">
                         <Badge variant={order.status === 'completed' ? 'default' : 'secondary'}>
-                          {order.status}
+                          {order.status || 'unknown'}
                         </Badge>
                       </td>
-                      <td className="py-2">{formatCurrency(parseFloat(order.total || 0))}</td>
+                      <td className="py-2">{formatCurrency(parseFloat(order.total || order.totalAmount || 0))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -8964,142 +9803,6 @@ const ReportsSection = ({ analytics, orders }: any) => {
             </div>
           </CardContent>
         </Card>
-      )}
-    </div>
-  );
-};
-
-// Menu Images Management Tab
-const MenuImagesTab = ({ menuItems }: { menuItems: any[] }) => {
-  const [selectedImages, setSelectedImages] = useState<{ [key: number]: File }>({});
-  const [uploadProgress, setUploadProgress] = useState<{ [key: number]: number }>({});
-  const { toast } = useToast();
-
-  const handleImageUpload = async (menuItemId: number, file: File) => {
-    const formData = new FormData();
-    formData.append('image', file);
-    
-    try {
-      setUploadProgress(prev => ({ ...prev, [menuItemId]: 0 }));
-      
-      // Simulate upload progress
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => ({
-          ...prev,
-          [menuItemId]: Math.min((prev[menuItemId] || 0) + 10, 90)
-        }));
-      }, 100);
-
-      // In a real implementation, this would upload to your image storage service
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      clearInterval(progressInterval);
-      setUploadProgress(prev => ({ ...prev, [menuItemId]: 100 }));
-      
-      // Update menu item with new image URL
-      await apiRequest("PATCH", `/api/menu-items/${menuItemId}`, {
-        imageUrl: URL.createObjectURL(file)
-      });
-
-      toast({
-        title: "Image Uploaded",
-        description: "Menu item image has been updated successfully.",
-      });
-
-      setTimeout(() => {
-        setUploadProgress(prev => {
-          const newProgress = { ...prev };
-          delete newProgress[menuItemId];
-          return newProgress;
-        });
-      }, 1000);
-
-    } catch (error: any) {
-      toast({
-        title: "Upload Failed",
-        description: error.message || "Failed to upload image.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Menu Images Management</h3>
-        <div className="text-sm text-gray-500">
-          {menuItems?.length || 0} menu items
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {menuItems?.map((item) => (
-          <Card key={item.id} className="overflow-hidden">
-            <div className="relative h-48 bg-gray-100">
-              {item.imageUrl ? (
-                <img
-                  src={item.imageUrl}
-                  alt={item.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                  <ImageIcon className="h-12 w-12" />
-                </div>
-              )}
-              {uploadProgress[item.id] !== undefined && (
-                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                  <div className="text-white text-center">
-                    <div className="text-lg font-medium">{uploadProgress[item.id]}%</div>
-                    <div className="w-32 h-2 bg-gray-700 rounded-full mt-2">
-                      <div 
-                        className="h-full bg-white rounded-full transition-all duration-300"
-                        style={{ width: `${uploadProgress[item.id]}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-            <CardContent className="p-4">
-              <h4 className="font-medium text-lg truncate">{item.name}</h4>
-              <p className="text-sm text-gray-500 mb-3">{item.category}</p>
-              <div className="space-y-2">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setSelectedImages(prev => ({ ...prev, [item.id]: file }));
-                      handleImageUpload(item.id, file);
-                    }
-                  }}
-                  className="text-sm"
-                />
-                {item.imageUrl && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full"
-                    onClick={() => window.open(item.imageUrl, '_blank')}
-                  >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    View Full Size
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {!menuItems?.length && (
-        <div className="text-center py-12">
-          <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">No menu items found</h3>
-          <p className="text-gray-500">Add menu items first to manage their images.</p>
-        </div>
       )}
     </div>
   );
@@ -9299,6 +10002,20 @@ const PricingTab = ({ menuItems }: { menuItems: any[] }) => {
 
 // Multi-Location Management Tab
 const MultiLocationTab = () => {
+  const { toast } = useToast();
+
+  // Fetch restaurant settings to populate main location
+  const { data: restaurantData, isLoading } = useQuery({
+    queryKey: ['/api/restaurant-settings'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/restaurant-settings');
+      if (!response.ok) {
+        throw new Error('Failed to fetch restaurant settings');
+      }
+      return await response.json();
+    }
+  });
+
   const [locations, setLocations] = useState([
     {
       id: 1,
@@ -9306,11 +10023,30 @@ const MultiLocationTab = () => {
       address: "123 Main Street, New York, NY 10001",
       phone: "(555) 123-4567",
       isActive: true,
-      deliveryRadius: 5,
-      minOrder: 15.00
+      deliveryRadius: 10,
+      minOrder: 0.00
     }
   ]);
+
+  // Update main location when restaurant data loads
+  useEffect(() => {
+    if (restaurantData) {
+      setLocations(prev => prev.map(location =>
+        location.id === 1 ? {
+          ...location,
+          name: restaurantData.restaurantName || "Main Location",
+          address: restaurantData.address || location.address,
+          phone: restaurantData.phone || location.phone,
+          deliveryRadius: restaurantData.maxDeliveryRadius ? parseFloat(restaurantData.maxDeliveryRadius) : 10,
+          minOrder: restaurantData.minimumOrder || 0.00
+        } : location
+      ));
+    }
+  }, [restaurantData]);
+
   const [isAddingLocation, setIsAddingLocation] = useState(false);
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [editingLocation, setEditingLocation] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -9319,21 +10055,87 @@ const MultiLocationTab = () => {
     minOrder: ""
   });
 
-  const handleAddLocation = () => {
-    const newLocation = {
-      id: Date.now(),
-      name: formData.name,
-      address: formData.address,
-      phone: formData.phone,
-      isActive: true,
-      deliveryRadius: parseFloat(formData.deliveryRadius),
-      minOrder: parseFloat(formData.minOrder)
-    };
+  // Mutation to update restaurant settings when main location is edited
+  const updateRestaurantMutation = useMutation({
+    mutationFn: async (updatedData: any) => {
+      const response = await apiRequest('PUT', '/api/restaurant-settings', updatedData);
+      if (!response.ok) {
+        throw new Error('Failed to update restaurant settings');
+      }
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      // Update local state with the saved data
+      setLocations(prev => prev.map(location =>
+        location.id === 1 ? {
+          ...location,
+          name: data.restaurantName,
+          address: data.address,
+          phone: data.phone,
+          minOrder: parseFloat(data.minimumOrder)
+        } : location
+      ));
 
-    setLocations([...locations, newLocation]);
-    setFormData({ name: "", address: "", phone: "", deliveryRadius: "", minOrder: "" });
-    setIsAddingLocation(false);
+      setFormData({ name: "", address: "", phone: "", deliveryRadius: "", minOrder: "" });
+      setIsEditingLocation(false);
+      setEditingLocation(null);
+
+      toast({
+        title: "Success",
+        description: "Main location updated successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant-settings'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update main location",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleEditLocation = (location: any) => {
+    setEditingLocation(location);
+    setFormData({
+      name: location.name,
+      address: location.address,
+      phone: location.phone,
+      deliveryRadius: location.deliveryRadius.toString(),
+      minOrder: location.minOrder.toString()
+    });
+    setIsEditingLocation(true);
   };
+
+  const handleSaveEdit = () => {
+    if (editingLocation?.id === 1) {
+      // Editing main location - save to restaurant settings
+      const updatedSettings = {
+        restaurantName: formData.name,
+        address: formData.address,
+        phone: formData.phone,
+        minimumOrder: formData.minOrder
+      };
+      updateRestaurantMutation.mutate(updatedSettings);
+    } else {
+      // Editing other locations - update local state
+      setLocations(prev => prev.map(location =>
+        location.id === editingLocation?.id ? {
+          ...location,
+          name: formData.name,
+          address: formData.address,
+          phone: formData.phone,
+          deliveryRadius: parseFloat(formData.deliveryRadius),
+          minOrder: parseFloat(formData.minOrder)
+        } : location
+      ));
+
+      setFormData({ name: "", address: "", phone: "", deliveryRadius: "", minOrder: "" });
+      setIsEditingLocation(false);
+      setEditingLocation(null);
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -9377,7 +10179,12 @@ const MultiLocationTab = () => {
                 </div>
               </div>
               <div className="flex space-x-2">
-                <Button variant="outline" size="sm" className="flex-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => handleEditLocation(location)}
+                >
                   Edit
                 </Button>
                 <Button variant="outline" size="sm" className="flex-1">
@@ -9389,60 +10196,102 @@ const MultiLocationTab = () => {
         ))}
       </div>
 
-      {/* Add Location Dialog */}
+      {/* Contact Message Dialog */}
       <Dialog open={isAddingLocation} onOpenChange={setIsAddingLocation}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add New Location</DialogTitle>
+            <DialogTitle>Multi-Location Feature</DialogTitle>
             <DialogDescription>
-              Enter the details for your new restaurant location.
+              Contact us to enable multi-location functionality for your restaurant.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-6 text-center">
+            <div className="mb-4">
+              <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                <Store className="h-6 w-6 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Expand to Multiple Locations
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Ready to manage multiple restaurant locations? Contact Nardoni Media to unlock advanced multi-location features including centralized management, location-specific settings, and more.
+              </p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <p className="text-sm font-medium text-gray-900 mb-2">Contact Nardoni Media:</p>
+              <p className="text-sm text-gray-600">
+                Email: <span className="font-medium">contact@nardonimedia.com</span>
+              </p>
+              <p className="text-sm text-gray-600">
+                Phone: <span className="font-medium">(555) 123-4567</span>
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={() => setIsAddingLocation(false)}>
+              Got it
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Location Dialog */}
+      <Dialog open={isEditingLocation} onOpenChange={setIsEditingLocation}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit {editingLocation?.name}</DialogTitle>
+            <DialogDescription>
+              Update the details for this restaurant location.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="location-name">Location Name</Label>
+              <Label htmlFor="edit-location-name">Location Name</Label>
               <Input
-                id="location-name"
+                id="edit-location-name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Downtown Branch"
               />
             </div>
             <div>
-              <Label htmlFor="location-address">Address</Label>
+              <Label htmlFor="edit-location-address">Address</Label>
               <Input
-                id="location-address"
+                id="edit-location-address"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 placeholder="456 Downtown Ave, City, State 12345"
               />
             </div>
             <div>
-              <Label htmlFor="location-phone">Phone</Label>
+              <Label htmlFor="edit-location-phone">Phone</Label>
               <Input
-                id="location-phone"
+                id="edit-location-phone"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 placeholder="(555) 987-6543"
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="delivery-radius">Delivery Radius (miles)</Label>
+                <Label htmlFor="edit-location-delivery-radius">Delivery Radius (miles)</Label>
                 <Input
-                  id="delivery-radius"
+                  id="edit-location-delivery-radius"
                   type="number"
+                  step="0.5"
+                  min="0"
                   value={formData.deliveryRadius}
                   onChange={(e) => setFormData({ ...formData, deliveryRadius: e.target.value })}
-                  placeholder="5"
+                  placeholder="5.0"
                 />
               </div>
               <div>
-                <Label htmlFor="min-order">Minimum Order ($)</Label>
+                <Label htmlFor="edit-location-min-order">Minimum Order ($)</Label>
                 <Input
-                  id="min-order"
+                  id="edit-location-min-order"
                   type="number"
                   step="0.01"
+                  min="0"
                   value={formData.minOrder}
                   onChange={(e) => setFormData({ ...formData, minOrder: e.target.value })}
                   placeholder="15.00"
@@ -9450,11 +10299,21 @@ const MultiLocationTab = () => {
               </div>
             </div>
             <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setIsAddingLocation(false)}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsEditingLocation(false);
+                  setEditingLocation(null);
+                  setFormData({ name: "", address: "", phone: "", deliveryRadius: "", minOrder: "" });
+                }}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleAddLocation}>
-                Add Location
+              <Button
+                onClick={handleSaveEdit}
+                disabled={updateRestaurantMutation.isPending}
+              >
+                {updateRestaurantMutation.isPending ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </div>
@@ -11818,11 +12677,16 @@ const RewardsManagement = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [rewardToDelete, setRewardToDelete] = useState<any>(null);
 
+  // Use /api/rewards endpoint (works on Netlify production)
+  const getRewardsEndpoint = () => {
+    return "/api/rewards";
+  };
+
   // Fetch rewards from API
   const { data: rewards = [], isLoading, refetch } = useQuery({
-    queryKey: ["/api/rewards"],
+    queryKey: [getRewardsEndpoint()],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/rewards");
+      const response = await apiRequest("GET", getRewardsEndpoint());
       const data = await response.json();
       return data;
     },
@@ -11833,7 +12697,7 @@ const RewardsManagement = () => {
   // Create reward mutation
   const createRewardMutation = useMutation({
     mutationFn: async (rewardData: any) => {
-      const response = await apiRequest("POST", "/api/rewards", rewardData);
+      const response = await apiRequest("POST", getRewardsEndpoint(), rewardData);
       if (!response.ok) {
         throw new Error("Failed to create reward");
       }
@@ -11859,7 +12723,8 @@ const RewardsManagement = () => {
   // Update reward mutation
   const updateRewardMutation = useMutation({
     mutationFn: async ({ id, rewardData }: { id: number; rewardData: any }) => {
-      const response = await apiRequest("PUT", `/api/rewards/${id}`, rewardData);
+      const endpoint = getRewardsEndpoint();
+      const response = await apiRequest("PUT", `${endpoint}/${id}`, rewardData);
       if (!response.ok) {
         throw new Error("Failed to update reward");
       }
@@ -11886,7 +12751,8 @@ const RewardsManagement = () => {
   // Delete reward mutation
   const deleteRewardMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await apiRequest("DELETE", `/api/rewards/${id}`);
+      const endpoint = getRewardsEndpoint();
+      const response = await apiRequest("DELETE", `${endpoint}/${id}`);
       if (!response.ok) {
         throw new Error("Failed to delete reward");
       }

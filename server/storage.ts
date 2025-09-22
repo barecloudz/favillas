@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, categories, type Category, type InsertCategory, menuItems, type MenuItem, type InsertMenuItem, orders, type Order, type InsertOrder, orderItems, type OrderItem, type InsertOrderItem, rewards, type Reward, type InsertReward, userRewards, type UserReward, type InsertUserReward, promoCodes, type PromoCode, type InsertPromoCode, loyaltyProgram, type LoyaltyProgram, type InsertLoyaltyProgram, userPoints, type UserPoints, type InsertUserPoints, pointsTransactions, type PointsTransaction, type InsertPointsTransaction, pointsRewards, type PointsReward, type InsertPointsReward, userPointsRedemptions, type UserPointsRedemption, type InsertUserPointsRedemption, vacationMode, type VacationMode, type InsertVacationMode, storeHours, type StoreHours, type InsertStoreHours, restaurantSettings, type RestaurantSettings, type InsertRestaurantSettings, choiceGroups, type ChoiceGroup, type InsertChoiceGroup, choiceItems, type ChoiceItem, type InsertChoiceItem, menuItemChoiceGroups, type MenuItemChoiceGroup, type InsertMenuItemChoiceGroup, categoryChoiceGroups, type CategoryChoiceGroup, type InsertCategoryChoiceGroup, taxCategories, type TaxCategory, type InsertTaxCategory, taxSettings, type TaxSettings, type InsertTaxSettings, pauseServices, type PauseService, type InsertPauseService, timeClockEntries, type TimeClockEntry, type InsertTimeClockEntry, employeeSchedules, type EmployeeSchedule, type InsertEmployeeSchedule, scheduleAlerts, type ScheduleAlert, type InsertScheduleAlert, payPeriods, type PayPeriod, type InsertPayPeriod, printerConfig, type PrinterConfig, type InsertPrinterConfig, sessions } from "@shared/schema";
+import { users, type User, type InsertUser, categories, type Category, type InsertCategory, menuItems, type MenuItem, type InsertMenuItem, orders, type Order, type InsertOrder, orderItems, type OrderItem, type InsertOrderItem, rewards, type Reward, type InsertReward, userRewards, type UserReward, type InsertUserReward, promoCodes, type PromoCode, type InsertPromoCode, loyaltyProgram, type LoyaltyProgram, type InsertLoyaltyProgram, userPoints, type UserPoints, type InsertUserPoints, pointsTransactions, type PointsTransaction, type InsertPointsTransaction, pointsRewards, type PointsReward, type InsertPointsReward, userPointsRedemptions, type UserPointsRedemption, type InsertUserPointsRedemption, vacationMode, type VacationMode, type InsertVacationMode, storeHours, type StoreHours, type InsertStoreHours, restaurantSettings, type RestaurantSettings, type InsertRestaurantSettings, choiceGroups, type ChoiceGroup, type InsertChoiceGroup, choiceItems, type ChoiceItem, type InsertChoiceItem, menuItemChoiceGroups, type MenuItemChoiceGroup, type InsertMenuItemChoiceGroup, categoryChoiceGroups, type CategoryChoiceGroup, type InsertCategoryChoiceGroup, taxCategories, type TaxCategory, type InsertTaxCategory, taxSettings, type TaxSettings, type InsertTaxSettings, pauseServices, type PauseService, type InsertPauseService, timeClockEntries, type TimeClockEntry, type InsertTimeClockEntry, employeeSchedules, type EmployeeSchedule, type InsertEmployeeSchedule, scheduleAlerts, type ScheduleAlert, type InsertScheduleAlert, payPeriods, type PayPeriod, type InsertPayPeriod, printerConfig, type PrinterConfig, type InsertPrinterConfig, deliveryZones, type DeliveryZone, type InsertDeliveryZone, deliverySettings, type DeliverySettings, type InsertDeliverySettings, sessions } from "@shared/schema";
 import session from "express-session";
 import ConnectPgSimple from "connect-pg-simple";
 import { db } from "./db";
@@ -219,6 +219,16 @@ export interface IStorage {
   deletePrinterConfig(id: number): Promise<boolean>;
   setPrimaryPrinter(id: number): Promise<boolean>;
   updatePrinterConnectionStatus(id: number, status: 'connected' | 'disconnected' | 'error' | 'unknown', error?: string): Promise<PrinterConfig | undefined>;
+
+  // Delivery operations
+  getDeliverySettings(): Promise<DeliverySettings | undefined>;
+  updateDeliverySettings(settings: Partial<InsertDeliverySettings>): Promise<DeliverySettings | undefined>;
+  getDeliveryZones(): Promise<DeliveryZone[]>;
+  getActiveDeliveryZones(): Promise<DeliveryZone[]>;
+  createDeliveryZone(zone: InsertDeliveryZone): Promise<DeliveryZone>;
+  updateDeliveryZone(id: number, zone: Partial<InsertDeliveryZone>): Promise<DeliveryZone | undefined>;
+  deleteDeliveryZone(id: number): Promise<boolean>;
+  calculateDistance(origin: string, destination: string): Promise<number>;
 
   // Database reset operations
   resetAllOrders(): Promise<boolean>;
@@ -1749,6 +1759,39 @@ export class MemStorage implements IStorage {
     return true;
   }
 
+  // Delivery operations (MemStorage implementation)
+  async getDeliverySettings(): Promise<DeliverySettings | undefined> {
+    return undefined;
+  }
+
+  async updateDeliverySettings(settings: Partial<InsertDeliverySettings>): Promise<DeliverySettings | undefined> {
+    return undefined;
+  }
+
+  async getDeliveryZones(): Promise<DeliveryZone[]> {
+    return [];
+  }
+
+  async getActiveDeliveryZones(): Promise<DeliveryZone[]> {
+    return [];
+  }
+
+  async createDeliveryZone(zone: InsertDeliveryZone): Promise<DeliveryZone> {
+    throw new Error('MemStorage delivery operations not implemented');
+  }
+
+  async updateDeliveryZone(id: number, zone: Partial<InsertDeliveryZone>): Promise<DeliveryZone | undefined> {
+    return undefined;
+  }
+
+  async deleteDeliveryZone(id: number): Promise<boolean> {
+    return false;
+  }
+
+  async calculateDistance(origin: string, destination: string): Promise<number> {
+    return 5.0;
+  }
+
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2178,7 +2221,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(rewards)
-      .where(eq(rewards.isActive, true));
+      .where(eq(rewards.active, true));
   }
 
   async updateReward(id: number, reward: Partial<InsertReward>): Promise<Reward | undefined> {
@@ -3557,6 +3600,125 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('Error resetting all data:', error);
       return false;
+    }
+  }
+
+  // Delivery Management Methods
+  async getDeliverySettings() {
+    const [settings] = await db.select().from(deliverySettings).limit(1);
+    return settings;
+  }
+
+  async updateDeliverySettings(data: any) {
+    const [existing] = await db.select().from(deliverySettings).limit(1);
+
+    if (!existing) {
+      const [newSettings] = await db
+        .insert(deliverySettings)
+        .values({
+          restaurantAddress: data.restaurantAddress,
+          restaurantLat: data.restaurantLat,
+          restaurantLng: data.restaurantLng,
+          googleMapsApiKey: data.googleMapsApiKey,
+          maxDeliveryRadius: data.maxDeliveryRadius,
+          distanceUnit: data.distanceUnit,
+          isGoogleMapsEnabled: data.isGoogleMapsEnabled,
+          fallbackDeliveryFee: data.fallbackDeliveryFee
+        })
+        .returning();
+      return newSettings;
+    } else {
+      const [updatedSettings] = await db
+        .update(deliverySettings)
+        .set({
+          restaurantAddress: data.restaurantAddress,
+          restaurantLat: data.restaurantLat,
+          restaurantLng: data.restaurantLng,
+          googleMapsApiKey: data.googleMapsApiKey,
+          maxDeliveryRadius: data.maxDeliveryRadius,
+          distanceUnit: data.distanceUnit,
+          isGoogleMapsEnabled: data.isGoogleMapsEnabled,
+          fallbackDeliveryFee: data.fallbackDeliveryFee,
+          updatedAt: new Date()
+        })
+        .where(eq(schema.deliverySettings.id, existing.id))
+        .returning();
+      return updatedSettings;
+    }
+  }
+
+  async getDeliveryZones() {
+    return await db
+      .select()
+      .from(deliveryZones)
+      .orderBy(deliveryZones.sortOrder);
+  }
+
+  async createDeliveryZone(data: any) {
+    const [newZone] = await db
+      .insert(deliveryZones)
+      .values({
+        name: data.name,
+        maxRadius: data.maxRadius,
+        deliveryFee: data.deliveryFee,
+        isActive: data.isActive !== undefined ? data.isActive : true,
+        sortOrder: data.sortOrder || 0
+      })
+      .returning();
+    return newZone;
+  }
+
+  async updateDeliveryZone(id: number, data: any) {
+    const [updatedZone] = await db
+      .update(deliveryZones)
+      .set({
+        name: data.name,
+        maxRadius: data.maxRadius,
+        deliveryFee: data.deliveryFee,
+        isActive: data.isActive,
+        sortOrder: data.sortOrder,
+        updatedAt: new Date()
+      })
+      .where(eq(schema.deliveryZones.id, id))
+      .returning();
+    return updatedZone;
+  }
+
+  async deleteDeliveryZone(id: number) {
+    await db
+      .delete(deliveryZones)
+      .where(eq(deliveryZones.id, id));
+  }
+
+  async calculateDistance(origin: string, destination: string): Promise<number> {
+    const settings = await this.getDeliverySettings();
+    if (!settings?.googleMapsApiKey) {
+      throw new Error('Google Maps API key not configured');
+    }
+
+    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(destination)}&units=imperial&key=${settings.googleMapsApiKey}`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.status !== 'OK') {
+        throw new Error(`Google Maps API error: ${data.status}`);
+      }
+
+      const element = data.rows[0]?.elements[0];
+      if (!element || element.status !== 'OK') {
+        throw new Error(`Distance calculation failed: ${element?.status || 'Unknown error'}`);
+      }
+
+      // Convert meters to miles (1 meter = 0.000621371 miles)
+      const distanceInMeters = element.distance.value;
+      const distanceInMiles = distanceInMeters * 0.000621371;
+
+      return distanceInMiles;
+    } catch (error) {
+      console.error('Google Maps API error:', error);
+      throw error;
     }
   }
 }

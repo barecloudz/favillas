@@ -230,6 +230,27 @@
   to = "/.netlify/functions/setup-storage-no-auth"
   status = 200
 
+# Test endpoints
+[[redirects]]
+  from = "/api/test-simple"
+  to = "/.netlify/functions/test-simple"
+  status = 200
+
+[[redirects]]
+  from = "/api/db-test-simple"
+  to = "/.netlify/functions/db-test-simple"
+  status = 200
+
+[[redirects]]
+  from = "/api/test-no-imports"
+  to = "/.netlify/functions/test-no-imports"
+  status = 200
+
+[[redirects]]
+  from = "/api/db-test-production"
+  to = "/.netlify/functions/db-test-production"
+  status = 200
+
 # Menu endpoints (cacheable for GET requests)
 [[redirects]]
   from = "/api/menu-items"
@@ -267,6 +288,27 @@
   to = "/.netlify/functions/rewards"
   status = 200
   headers = {Cache-Control = "public, max-age=300, s-maxage=300, stale-while-revalidate=60"}
+
+# Authentication endpoints
+[[redirects]]
+  from = "/api/login"
+  to = "/.netlify/functions/login"
+  status = 200
+
+[[redirects]]
+  from = "/api/admin-login"
+  to = "/.netlify/functions/admin-login"
+  status = 200
+
+[[redirects]]
+  from = "/api/register"
+  to = "/.netlify/functions/register"
+  status = 200
+
+[[redirects]]
+  from = "/api/logout"
+  to = "/.netlify/functions/logout"
+  status = 200
 
 # Catch-all API redirect (must be before SPA fallback)
 [[redirects]]
@@ -377,4 +419,3 @@
   port = 8888
   targetPort = 5173
   publish = "dist/public"
-  functionsPort = 8889
