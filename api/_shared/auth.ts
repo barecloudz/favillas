@@ -150,9 +150,13 @@ export async function authenticateToken(event: NetlifyEvent): Promise<AuthPayloa
 
         console.log('✅ Supabase user authenticated:', {
           email: payload.email,
-          role: finalRole,
+          supabaseUserId: supabaseUserId,
+          userRole: userRole,
+          metadataRole: userMetadata.role,
+          finalRole: finalRole,
           fromDatabase: userRole !== 'customer',
-          fromMetadata: userMetadata.role
+          fromMetadata: userMetadata.role,
+          allMetadata: userMetadata
         });
 
         // For Supabase users, return the UUID and extracted metadata
