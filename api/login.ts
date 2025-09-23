@@ -48,19 +48,14 @@ export const handler: Handler = async (event, context) => {
 
       const token = jwt.sign(userPayload, jwtSecret, { expiresIn: '7d' });
 
-      // Set cookie for authentication
-      const origin = event.headers.origin || '';
-      const isProduction = origin.includes('netlify.app') || origin.includes('favillasnypizza');
-
-      // For production, always use Secure flag and don't set domain (let browser handle it)
-      const cookieOptions = `auth-token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax${isProduction ? '; Secure' : ''}`;
+      // Set cookie for authentication - always use Secure for Netlify production
+      const cookieOptions = `auth-token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax; Secure`;
 
       console.log('🍪 Setting cookie for superadmin:', {
-        origin,
-        isProduction,
+        origin: event.headers.origin,
+        host: event.headers.host,
         cookieOptions: cookieOptions.replace(token, 'TOKEN_HIDDEN'),
-        tokenLength: token.length,
-        headers: Object.keys(event.headers)
+        tokenLength: token.length
       });
 
       return {
