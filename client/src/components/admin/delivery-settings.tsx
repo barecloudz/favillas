@@ -92,15 +92,23 @@ export function DeliverySettings() {
   // Update delivery settings mutation
   const updateSettingsMutation = useMutation({
     mutationFn: async (settingsData: DeliverySettings) => {
+      console.log('🔄 Submitting settings:', settingsData);
       const response = await apiRequest('PUT', '/api/admin/delivery-zones', {
         type: 'settings',
         ...settingsData
       });
-      return await response.json();
+      console.log('📡 Settings response status:', response.status);
+      const result = await response.json();
+      console.log('✅ Settings response data:', result);
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('🎉 Settings saved successfully:', data);
       queryClient.invalidateQueries({ queryKey: ['/api/admin/delivery-zones'] });
       setShowSettings(false);
+    },
+    onError: (error) => {
+      console.error('❌ Settings save failed:', error);
     }
   });
 
@@ -139,6 +147,7 @@ export function DeliverySettings() {
 
   const handleUpdateSettings = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    console.log('📝 Form submitted for settings update');
     const formData = new FormData(event.currentTarget);
 
     const settingsData = {
@@ -151,6 +160,16 @@ export function DeliverySettings() {
       fallbackDeliveryFee: formData.get('fallbackDeliveryFee') as string
     };
 
+    console.log('📋 Form data collected:', {
+      restaurantAddress: formData.get('restaurantAddress'),
+      maxDeliveryRadius: formData.get('maxDeliveryRadius'),
+      distanceUnit: formData.get('distanceUnit'),
+      isGoogleMapsEnabled: formData.get('isGoogleMapsEnabled'),
+      fallbackDeliveryFee: formData.get('fallbackDeliveryFee'),
+      hasApiKey: !!import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+    });
+
+    console.log('🚀 Calling mutation with settings:', settingsData);
     updateSettingsMutation.mutate(settingsData);
   };
 
@@ -332,6 +351,19 @@ export function DeliverySettings() {
                 {updateSettingsMutation.isPending ? 'Saving...' : 'Save Settings'}
               </button>
             </div>
+
+            {/* Status Messages */}
+            {updateSettingsMutation.isError && (
+              <div className="mt-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded">
+                ❌ Failed to save settings. Check console for details.
+              </div>
+            )}
+
+            {updateSettingsMutation.isSuccess && (
+              <div className="mt-4 p-3 bg-green-100 border border-green-300 text-green-700 rounded">
+                ✅ Settings saved successfully!
+              </div>
+            )}
           </form>
         </div>
       )}
