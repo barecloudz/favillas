@@ -164,9 +164,9 @@ export async function authenticateToken(event: NetlifyEvent): Promise<AuthPayloa
     }
 
     // Fallback to our JWT verification
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
     if (!jwtSecret) {
-      throw new Error('JWT_SECRET environment variable is required');
+      throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
     }
 
     const decoded = jwt.verify(token, jwtSecret) as any;
