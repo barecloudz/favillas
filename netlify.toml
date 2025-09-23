@@ -219,8 +219,8 @@
 
 # Admin delivery zones endpoint
 [[redirects]]
-  from = "/api/admin-delivery-zones"
-  to = "/.netlify/functions/admin-delivery-zones"
+  from = "/api/admin/delivery-zones"
+  to = "/.netlify/functions/admin/delivery-zones"
   status = 200
 
 # Test deployment endpoint
