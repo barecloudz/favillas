@@ -18,7 +18,7 @@ export function AdminProtectedRoute({
       const storedAdmin = localStorage.getItem('admin-user');
       if (storedAdmin) {
         const admin = JSON.parse(storedAdmin);
-        if (admin.role === 'admin' && admin.isAdmin) {
+        if ((admin.role === 'admin' || admin.role === 'super_admin') && admin.isAdmin) {
           setAdminUser(admin);
         }
       }

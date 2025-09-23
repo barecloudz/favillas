@@ -262,6 +262,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setUser(mappedUser);
 
+      // Save admin session to localStorage for AdminProtectedRoute
+      if (mappedUser.isAdmin) {
+        localStorage.setItem('admin-user', JSON.stringify({
+          ...user,
+          role: user.role === 'super_admin' ? 'admin' : user.role,
+          isAdmin: true
+        }));
+        console.log('💾 Saved admin session to localStorage');
+      }
+
       toast({
         title: "Login successful",
         description: `Welcome back, ${user.firstName || user.username}!`,
