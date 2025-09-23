@@ -17,12 +17,20 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
                              document.cookie.includes('token') ||
                              document.cookie.includes('jwt');
 
-    // For production, assume cookies are present since they're HttpOnly
+    // Always try to get Supabase token first for consistent authentication
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      console.log('🔑 Using Supabase access token for authentication');
+      headers.Authorization = `Bearer ${session.access_token}`;
+      return headers;
+    }
+
+    // For production, fallback to cookies for legacy authentication
     const isProduction = window.location.hostname.includes('netlify.app') ||
                         window.location.hostname.includes('favillasnypizza');
 
     if (isProduction) {
-      console.log('🍪 Production mode: assuming HttpOnly auth cookies are present');
+      console.log('🍪 Production mode: falling back to HttpOnly auth cookies');
       return headers; // Don't add Authorization header, rely on cookies
     }
 

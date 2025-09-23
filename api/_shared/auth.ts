@@ -145,18 +145,28 @@ export async function authenticateToken(event: NetlifyEvent): Promise<AuthPayloa
           }
         }
 
+        // For Supabase users, use metadata role if database lookup fails
+        const finalRole = userRole !== 'customer' ? userRole : (userMetadata.role || 'customer');
+
+        console.log('✅ Supabase user authenticated:', {
+          email: payload.email,
+          role: finalRole,
+          fromDatabase: userRole !== 'customer',
+          fromMetadata: userMetadata.role
+        });
+
         // For Supabase users, return the UUID and extracted metadata
         return {
           userId: null, // No integer user ID for Supabase users
           supabaseUserId: supabaseUserId,
           username: payload.email || 'supabase_user',
-          role: userRole,
+          role: finalRole,
           isSupabase: true,
           // Extract Google user information from metadata
           email: payload.email,
           fullName: userMetadata.full_name || userMetadata.name,
-          firstName: userMetadata.name?.split(' ')[0] || userMetadata.full_name?.split(' ')[0],
-          lastName: userMetadata.name?.split(' ').slice(1).join(' ') || userMetadata.full_name?.split(' ').slice(1).join(' ')
+          firstName: userMetadata.name?.split(' ')[0] || userMetadata.full_name?.split(' ')[0] || userMetadata.first_name,
+          lastName: userMetadata.name?.split(' ').slice(1).join(' ') || userMetadata.full_name?.split(' ').slice(1).join(' ') || userMetadata.last_name
         };
       }
     } catch (supabaseError) {
