@@ -242,6 +242,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/test-cookie"
+  to = "/.netlify/functions/test-cookie"
+  status = 200
+
+[[redirects]]
   from = "/api/db-test-simple"
   to = "/.netlify/functions/db-test-simple"
   status = 200
