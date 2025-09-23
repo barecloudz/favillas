@@ -41,7 +41,7 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
-  const authPayload = authenticateToken(event);
+  const authPayload = await authenticateToken(event);
   if (!authPayload) {
     return {
       statusCode: 401,

@@ -69,7 +69,7 @@ export const handler: Handler = async (event, context) => {
   }
 
   console.log('🔐 Starting authentication...');
-  const authPayload = authenticateToken(event);
+  const authPayload = await authenticateToken(event);
 
   if (!authPayload) {
     console.log('❌ Authentication failed - no valid token');

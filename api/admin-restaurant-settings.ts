@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { eq } from 'drizzle-orm';
 import { restaurantSettings } from '../shared/schema';
-import jwt from 'jsonwebtoken';
+import { authenticateToken } from './_shared/auth';
 
 let dbConnection: any = null;
 
@@ -27,38 +27,6 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
-  // Check for JWT token in Authorization header first
-  const authHeader = event.headers.authorization;
-  let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
-  // If no Authorization header, check for auth-token cookie
-  if (!token) {
-    const cookies = event.headers.cookie;
-    if (cookies) {
-      const authCookie = cookies.split(';').find((c: string) => c.trim().startsWith('auth-token='));
-      if (authCookie) {
-        token = authCookie.split('=')[1];
-      }
-    }
-  }
-
-  if (!token) {
-    return null;
-  }
-
-  try {
-    const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
-    if (!jwtSecret) {
-      throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
-    }
-
-    const payload = jwt.verify(token, jwtSecret) as { userId: number; username: string; role: string };
-    return payload;
-  } catch (error) {
-    return null;
-  }
-}
 
 export const handler: Handler = async (event, context) => {
   const origin = event.headers.origin || 'http://localhost:3000';
@@ -77,7 +45,7 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
-  const authPayload = authenticateToken(event);
+  const authPayload = await authenticateToken(event);
   if (!authPayload) {
     return {
       statusCode: 401,
@@ -87,7 +55,7 @@ export const handler: Handler = async (event, context) => {
   }
 
   // Only admin can manage restaurant settings
-  if (authPayload.role !== 'admin') {
+  if (authPayload.role !== 'admin' && authPayload.role !== 'super_admin') {
     return {
       statusCode: 403,
       headers,
