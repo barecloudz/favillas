@@ -2,6 +2,13 @@ import { Handler } from '@netlify/functions';
 import jwt from 'jsonwebtoken';
 
 export const handler: Handler = async (event, context) => {
+  console.log('🚀 Login function called:', {
+    method: event.httpMethod,
+    origin: event.headers.origin,
+    hasBody: !!event.body,
+    bodyLength: event.body?.length || 0
+  });
+
   const headers = {
     'Access-Control-Allow-Origin': event.headers.origin || 'http://localhost:5173',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -20,6 +27,7 @@ export const handler: Handler = async (event, context) => {
 
   try {
     const { username, password } = JSON.parse(event.body || '{}');
+    console.log('🔐 Login attempt:', { username: username || 'MISSING', hasPassword: !!password });
 
     // Admin credentials for production
     if (username === 'superadmin' && password === 'superadmin123') {
