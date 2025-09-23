@@ -1,41 +1,5 @@
 import { Handler } from '@netlify/functions';
-import jwt from 'jsonwebtoken';
-
-function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
-  // First try to get token from Authorization header
-  let token = null;
-  const authHeader = event.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.split(' ')[1];
-  }
-  
-  // If no token in header, try to get from cookies
-  if (!token) {
-    const cookies = event.headers.cookie;
-    if (cookies) {
-      const authCookie = cookies.split(';').find(cookie => cookie.trim().startsWith('auth-token='));
-      if (authCookie) {
-        token = authCookie.split('=')[1];
-      }
-    }
-  }
-
-  if (!token) {
-    return null;
-  }
-
-  try {
-    const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
-    if (!jwtSecret) {
-      throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
-    }
-
-    const payload = jwt.verify(token, jwtSecret) as { userId: number; username: string; role: string };
-    return payload;
-  } catch (error) {
-    return null;
-  }
-}
+import { authenticateToken } from './_shared/auth';
 
 export const handler: Handler = async (event, context) => {
   // Set CORS headers
@@ -68,7 +32,7 @@ export const handler: Handler = async (event, context) => {
 
   // Check authentication for non-GET requests
   if (event.httpMethod !== 'GET') {
-    const authPayload = authenticateToken(event);
+    const authPayload = await authenticateToken(event);
     if (!authPayload) {
       return {
         statusCode: 401,
@@ -78,7 +42,7 @@ export const handler: Handler = async (event, context) => {
     }
 
     // Only admins can modify menu items
-    if (!['admin', 'manager'].includes(authPayload.role)) {
+    if (!['admin', 'manager', 'super_admin'].includes(authPayload.role)) {
       return {
         statusCode: 403,
         headers,
