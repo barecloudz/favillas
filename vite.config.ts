@@ -20,8 +20,18 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       host: true,
       proxy: {
+        '/api': {
+          target: 'http://localhost:5000',
+          changeOrigin: true,
+          secure: false,
+          configure: (proxy, options) => {
+            proxy.on('proxyReq', (proxyReq, req, res) => {
+              console.log('Proxying request:', req.method, req.url, '-> http://localhost:5000' + req.url);
+            });
+          }
+        },
         '/.netlify/functions': {
-          target: 'http://localhost:8888',
+          target: 'http://localhost:5000',
           changeOrigin: true,
           secure: false,
         },

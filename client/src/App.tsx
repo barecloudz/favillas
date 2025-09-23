@@ -20,6 +20,7 @@ import TestPage from "@/pages/test-page";
 import EmployeeClockPage from "@/pages/employee-clock";
 import { AuthProvider } from "@/hooks/use-supabase-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
+import { AdminProtectedRoute } from "@/lib/admin-protected-route";
 import { CartProvider } from "@/hooks/use-cart";
 import CartSidebar from "@/components/cart/cart-sidebar";
 import Header from "@/components/layout/header";
@@ -51,7 +52,7 @@ function Router() {
         <Route path="/rewards" component={RewardsPage} />
         <Route path="/profile" component={ProfilePage} />
         <ProtectedRoute path="/kitchen" component={KitchenPage} />
-        <ProtectedRoute path="/admin" component={AdminDashboard} />
+        <AdminProtectedRoute path="/admin/dashboard" component={AdminDashboard} />
         <ProtectedRoute path="/employee/clock" component={EmployeeClockPage} />
         <Route component={NotFound} />
       </Switch>

@@ -8,49 +8,50 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {};
 
   try {
-    // First try to get token from localStorage (where it's actually stored)
-    const localStorageAuth = localStorage.getItem('favillasnypizza-auth-token');
-    let token = null;
+    // For Netlify Functions, rely on cookies instead of Authorization headers
+    // The authenticateToken function in Netlify will handle cookie-based auth
+    // No need to set Authorization header since cookies are sent automatically
 
-    if (localStorageAuth) {
-      try {
-        const authData = JSON.parse(localStorageAuth);
-        token = authData.access_token;
-        console.log('🔍 Using localStorage token:', {
-          hasLocalAuth: !!localStorageAuth,
-          hasAccessToken: !!token,
-          tokenPreview: token ? token.substring(0, 20) + '...' : 'null'
-        });
-      } catch (parseError) {
-        console.warn('Failed to parse localStorage auth data:', parseError);
+    // Fallback: try to get Supabase token only if no cookies are available
+    const hasCookies = document.cookie.includes('auth-token') ||
+                      document.cookie.includes('token') ||
+                      document.cookie.includes('jwt');
+
+    if (!hasCookies) {
+      console.log('🔍 No auth cookies found, trying Supabase token as fallback');
+
+      // Try localStorage first for Supabase token
+      const localStorageAuth = localStorage.getItem('favillasnypizza-auth-token');
+      let token = null;
+
+      if (localStorageAuth) {
+        try {
+          const authData = JSON.parse(localStorageAuth);
+          token = authData.access_token;
+        } catch (parseError) {
+          console.warn('Failed to parse localStorage auth data:', parseError);
+        }
       }
-    }
 
-    // Fallback to Supabase session if localStorage token not found
-    if (!token) {
-      const { data: { session } } = await supabase.auth.getSession();
-      token = session?.access_token;
-      console.log('🔍 Fallback to Supabase session:', {
-        hasSession: !!session,
-        hasAccessToken: !!token,
-        tokenPreview: token ? token.substring(0, 20) + '...' : 'null'
-      });
-
-      // Try to refresh if no token
+      // Fallback to Supabase session
       if (!token) {
-        const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
-        token = refreshedSession?.access_token;
-        console.log('🔍 Tried refreshed session:', {
-          hasRefreshedToken: !!token
-        });
-      }
-    }
+        const { data: { session } } = await supabase.auth.getSession();
+        token = session?.access_token;
 
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-      console.log('✅ Adding Authorization header');
+        if (!token) {
+          const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
+          token = refreshedSession?.access_token;
+        }
+      }
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        console.log('🔍 Using Supabase token as Authorization header');
+      } else {
+        console.log('❌ No access token available from any source');
+      }
     } else {
-      console.log('❌ No access token available from any source');
+      console.log('🍪 Using cookie-based authentication for Netlify Functions');
     }
   } catch (error) {
     console.warn('Failed to get auth headers:', error);
@@ -71,23 +72,58 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  // Use the original URL - Netlify will handle the redirect automatically
-  const fullUrl = url.startsWith('http') ? url : url;
+  // For local development, route API calls to Netlify dev server
+  let fullUrl = url;
+  if (!url.startsWith('http')) {
+    // Check if we're in local development
+    const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isLocalDev && url.startsWith('/api/')) {
+      // Try multiple common Netlify dev server ports
+      const possiblePorts = ['8888', '8889', '9999', '3001'];
+      const currentPort = window.location.port;
+
+      // Use the port the user specifies in the terminal, or default to 5000 (Express server)
+      const expressPort = localStorage.getItem('express-dev-port') || '5000';
+      fullUrl = `http://localhost:${expressPort}${url}`;
+    } else {
+      fullUrl = url;
+    }
+  }
   
   const headers = await getAuthHeaders();
   if (data) {
     headers["Content-Type"] = "application/json";
   }
   
-  const res = await fetch(fullUrl, {
-    method,
-    headers,
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-  });
+  try {
+    const fetchOptions: RequestInit = {
+      method,
+      headers,
+      credentials: "include",
+    };
 
-  await throwIfResNotOk(res);
-  return res;
+    // Only add body for non-GET/HEAD methods
+    if (method !== 'GET' && method !== 'HEAD' && data) {
+      fetchOptions.body = JSON.stringify(data);
+    }
+
+    const res = await fetch(fullUrl, fetchOptions);
+
+    await throwIfResNotOk(res);
+    return res;
+  } catch (error) {
+    console.error('❌ API Request failed:', {
+      url: fullUrl,
+      method,
+      error: error.message
+    });
+
+    // If it's a local dev request that failed, try fallback
+    if (fullUrl.includes('localhost') && fullUrl.includes('/api/')) {
+    }
+
+    throw error;
+  }
 }
 
 export const getQueryFn: <T>(options: {
@@ -96,12 +132,24 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const url = queryKey[0] as string;
-    // Use the original URL - Netlify will handle the redirect automatically
-    const fullUrl = url.startsWith('http') ? url : url;
+    // For local development, route API calls to Netlify dev server
+    let fullUrl = url;
+    if (!url.startsWith('http')) {
+      // Check if we're in local development
+      const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (isLocalDev && url.startsWith('/api/')) {
+        // Use the port the user specifies in the terminal, or default to 5000 (Express server)
+        const expressPort = localStorage.getItem('express-dev-port') || '5000';
+        fullUrl = `http://localhost:${expressPort}${url}`;
+      } else {
+        fullUrl = url;
+      }
+    }
     
     const headers = await getAuthHeaders();
     
     const res = await fetch(fullUrl, {
+      method: 'GET',
       headers,
       credentials: "include",
     });
@@ -119,8 +167,9 @@ export const queryClient = new QueryClient({
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
+      refetchOnWindowFocus: true, // Refetch when window regains focus
+      staleTime: 30 * 1000, // Cache for only 30 seconds instead of 5 minutes
+      cacheTime: 1 * 60 * 1000, // Keep cache for 1 minute after component unmounts
       retry: false,
     },
     mutations: {

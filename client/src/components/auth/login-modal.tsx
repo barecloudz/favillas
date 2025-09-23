@@ -4,7 +4,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, User, Mail, Lock, Phone, MapPin } from "lucide-react";
@@ -132,7 +131,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
               ← Back
             </Button>
             <DialogTitle className="text-center text-2xl font-bold text-[#d73a31] flex-1">
-              Welcome to Favilla's
+              Welcome
             </DialogTitle>
             <div className="w-12"></div> {/* Spacer for centering */}
           </div>

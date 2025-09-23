@@ -797,6 +797,52 @@ export const insertPrinterConfigSchema = createInsertSchema(printerConfig).omit(
   updatedAt: true,
 });
 
+// Delivery Zones schema for Google Maps API radius-based pricing
+export const deliveryZones = pgTable("delivery_zones", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(), // e.g., "Zone 1", "Close Range", "Extended Area"
+  maxRadius: decimal("max_radius", { precision: 8, scale: 2 }).notNull(), // in miles or km
+  deliveryFee: decimal("delivery_fee", { precision: 10, scale: 2 }).notNull(), // fee for this zone
+  isActive: boolean("is_active").default(true).notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(), // for ordering zones (closest first)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertDeliveryZoneSchema = createInsertSchema(deliveryZones).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Delivery Settings schema for Google Maps configuration
+export const deliverySettings = pgTable("delivery_settings", {
+  id: serial("id").primaryKey(),
+  restaurantAddress: text("restaurant_address").notNull(), // base address for distance calculation
+  restaurantLat: decimal("restaurant_lat", { precision: 10, scale: 8 }),
+  restaurantLng: decimal("restaurant_lng", { precision: 11, scale: 8 }),
+  googleMapsApiKey: text("google_maps_api_key"), // encrypted API key
+  maxDeliveryRadius: decimal("max_delivery_radius", { precision: 8, scale: 2 }).notNull().default("10"), // max delivery distance
+  distanceUnit: text("distance_unit").notNull().default("miles"), // "miles" or "km"
+  isGoogleMapsEnabled: boolean("is_google_maps_enabled").default(false).notNull(),
+  fallbackDeliveryFee: decimal("fallback_delivery_fee", { precision: 10, scale: 2 }).notNull().default("5.00"), // if API fails
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertDeliverySettingsSchema = createInsertSchema(deliverySettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Delivery types definition
+export type DeliveryZone = typeof deliveryZones.$inferSelect;
+export type InsertDeliveryZone = z.infer<typeof insertDeliveryZoneSchema>;
+
+export type DeliverySettings = typeof deliverySettings.$inferSelect;
+export type InsertDeliverySettings = z.infer<typeof insertDeliverySettingsSchema>;
+
 // Printer type definition
 export type PrinterConfig = typeof printerConfig.$inferSelect;
 export type InsertPrinterConfig = z.infer<typeof insertPrinterConfigSchema>;

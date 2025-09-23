@@ -4,7 +4,7 @@ import { Input } from './input';
 import { Label } from './label';
 import { Upload, X, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { queryClient } from '@/lib/queryClient';
+import { queryClient, apiRequest } from '@/lib/queryClient';
 
 interface ImageUploadProps {
   value?: string;
@@ -54,10 +54,15 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await fetch('/api/image-upload-test', {
+      // Route to Express server for local development
+      const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const expressPort = localStorage.getItem('express-dev-port') || '5000';
+      const uploadUrl = isLocalDev ? `http://localhost:${expressPort}/api/image-upload-test` : '/api/image-upload-test';
+
+      const response = await fetch(uploadUrl, {
         method: 'POST',
         body: formData,
-        credentials: 'include', // Include cookies for authentication
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -81,9 +86,13 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         setPreview(cacheBustedUrl);
         onChange(result.imageUrl); // Store clean URL in database
         
-        // Invalidate menu queries to refresh images
+        // Invalidate menu queries to refresh images across all tabs
         queryClient.invalidateQueries({ queryKey: ['/api/menu'] });
         queryClient.invalidateQueries({ queryKey: ['/api/featured'] });
+
+        // Force refetch immediately
+        queryClient.refetchQueries({ queryKey: ['/api/menu'] });
+        queryClient.refetchQueries({ queryKey: ['/api/featured'] });
         
         toast({
           title: 'Success',

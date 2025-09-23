@@ -19,6 +19,23 @@ const app = express();
 // Enable compression for all responses
 app.use(compression());
 
+// Enable CORS for local development
+app.use((req, res, next) => {
+  // Allow requests from Vite dev server
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  
+  next();
+});
+
 // Optimize body parsing with conditional middleware - exclude upload routes
 app.use('/api', (req, res, next) => {
   // Skip JSON parsing for file upload routes

@@ -7,7 +7,6 @@ import { useCart } from "@/hooks/use-cart";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
 import { Helmet } from "react-helmet";
 import { Button } from "@/components/ui/button";
@@ -137,13 +136,10 @@ const CheckoutPage = () => {
 
     try {
       const payload = {
-        address: addressInfo.fullAddress,
-        latitude: addressInfo.latitude,
-        longitude: addressInfo.longitude,
-        zipCode: addressInfo.zipCode
+        address: addressInfo.fullAddress
       };
 
-      const response = await fetch('/api/calculate-delivery-fee', {
+      const response = await fetch('/api/delivery-fee', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -157,8 +153,8 @@ const CheckoutPage = () => {
         throw new Error(result.error || 'Failed to calculate delivery fee');
       }
 
-      if (!result.canDeliver) {
-        setDeliveryError(result.message);
+      if (!result.success) {
+        setDeliveryError(result.message || 'Delivery not available to this location');
         setDeliveryFee(0);
         setDeliveryZoneInfo(null);
       } else {
@@ -803,7 +799,6 @@ const CheckoutPage = () => {
         <title>Checkout | Favilla's NY Pizza</title>
         <meta name="description" content="Complete your order at Favilla's NY Pizza. Easy and secure checkout with multiple payment options." />
       </Helmet>
-      <Header />
       <main className="bg-gray-50 py-12">
         <div className="container mx-auto px-4">
           {/* Back Button */}

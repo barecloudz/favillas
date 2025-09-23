@@ -12,7 +12,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
 import { Helmet } from "react-helmet";
 import { useToast } from "@/hooks/use-toast";
@@ -108,7 +107,6 @@ const AuthPage = () => {
         <title>Login or Sign Up | Favilla's NY Pizza</title>
         <meta name="description" content="Login to your Favilla's NY Pizza account or create a new one to order delicious authentic Italian pizza online and earn rewards." />
       </Helmet>
-      <Header />
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="container mx-auto px-4">
           {/* Back Button */}

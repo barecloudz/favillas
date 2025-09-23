@@ -91,7 +91,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (session) {
-          console.log('🔄 Found Supabase session (Google user)');
           setSession(session);
 
           // For Supabase users, fetch complete profile from database instead of just mapping metadata
@@ -99,7 +98,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const completeProfile = await fetchUserProfile();
             if (completeProfile) {
               setUser(completeProfile);
-              console.log('✅ Supabase user profile loaded with complete data:', completeProfile);
             } else {
               // Fallback to basic mapping if profile fetch fails
               const mappedUser = mapSupabaseUser(session?.user || null);
@@ -113,16 +111,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } else {
           // If no Supabase session, check for legacy JWT cookie only if we have evidence of one
-          const hasJwtCookie = document.cookie.includes('jwt') || document.cookie.includes('token');
+          const hasJwtCookie = document.cookie.includes('jwt') || document.cookie.includes('token') || document.cookie.includes('connect.sid');
 
           if (hasJwtCookie) {
-            console.log('🔄 No Supabase session, checking for legacy JWT cookie');
             try {
               const response = await apiRequest('GET', '/api/user');
               const userData = await response.json();
 
               if (userData && userData.id) {
-                console.log('🔑 Found legacy JWT session:', userData.username);
                 const mappedUser: MappedUser = {
                   id: userData.id?.toString() || '',
                   email: userData.email || userData.username || '',
@@ -135,15 +131,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   isGoogleUser: false
                 };
                 setUser(mappedUser);
-                console.log('✅ Legacy session restored');
-              } else {
-                console.log('❌ No valid authentication found');
               }
             } catch (authError) {
-              console.log('❌ No legacy JWT session found');
+              // Silently handle auth errors
             }
-          } else {
-            console.log('🔍 No authentication cookies found, skipping legacy JWT check');
           }
         }
       } catch (error) {
@@ -156,7 +147,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('🔄 Auth state changed:', event, session ? 'Session exists' : 'No session');
         setSession(session);
 
         if (session) {
@@ -185,7 +175,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut();
       setUser(null);
       setSession(null);
-      console.log('🔄 Cleared any existing session before Google sign in');
     } catch (error) {
       console.warn('Failed to clear session:', error);
     }
@@ -254,7 +243,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
-      console.log('🔑 Legacy login successful, updating auth state:', user);
 
       // Update query cache
       queryClient.setQueryData(["/api/user"], user);

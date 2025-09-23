@@ -210,7 +210,7 @@ export const handler: Handler = async (event, context) => {
     }
 
     // Authenticate the request
-    const authPayload = authenticateToken(event);
+    const authPayload = await authenticateToken(event);
     console.log('Authentication result:', authPayload ? 'Success' : 'Failed');
 
     if (!authPayload) {

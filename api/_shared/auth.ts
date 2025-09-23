@@ -1,4 +1,21 @@
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
+const postgres = require('postgres');
+
+// Create a new database connection for each request (serverless-friendly)
+function getDB() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL environment variable is required');
+  }
+
+  return postgres(databaseUrl, {
+    max: 1,
+    idle_timeout: 5,
+    connect_timeout: 5,
+    prepare: false,
+    keep_alive: false,
+  });
+}
 
 /**
  * Authentication payload interface for consistent type checking
@@ -36,7 +53,7 @@ export interface NetlifyEvent {
  * @param event - Netlify Functions event object
  * @returns AuthPayload if authentication successful, null otherwise
  */
-export function authenticateToken(event: NetlifyEvent): AuthPayload | null {
+export async function authenticateToken(event: NetlifyEvent): Promise<AuthPayload | null> {
   // Check for JWT token in Authorization header first
   const authHeader = event.headers.authorization;
   let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
@@ -85,12 +102,44 @@ export function authenticateToken(event: NetlifyEvent): AuthPayload | null {
           metadataKeys: Object.keys(userMetadata)
         });
 
+        // Look up user role from database for Supabase users
+        let userRole = 'customer';
+        let sql;
+        try {
+          sql = getDB();
+          const dbUsers = await sql`
+            SELECT role, is_admin
+            FROM users
+            WHERE supabase_user_id = ${supabaseUserId}
+            LIMIT 1
+          `;
+
+          if (dbUsers.length > 0) {
+            userRole = dbUsers[0].role || 'customer';
+            console.log('🔍 Supabase user role from database:', userRole, 'is_admin:', dbUsers[0].is_admin);
+          } else {
+            console.log('⚠️ No database record found for Supabase user:', supabaseUserId);
+          }
+        } catch (dbError) {
+          console.error('❌ Error looking up Supabase user role:', dbError);
+          // Default to customer role on database error
+        } finally {
+          // Always close the database connection
+          if (sql) {
+            try {
+              await sql.end();
+            } catch (closeError) {
+              console.error('❌ Error closing database connection:', closeError);
+            }
+          }
+        }
+
         // For Supabase users, return the UUID and extracted metadata
         return {
           userId: null, // No integer user ID for Supabase users
           supabaseUserId: supabaseUserId,
           username: payload.email || 'supabase_user',
-          role: 'customer',
+          role: userRole,
           isSupabase: true,
           // Extract Google user information from metadata
           email: payload.email,

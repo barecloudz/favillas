@@ -1,48 +1,13 @@
 import { Handler } from '@netlify/functions';
-import jwt from 'jsonwebtoken';
-
-function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
-  // First try to get token from Authorization header
-  let token = null;
-  const authHeader = event.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.split(' ')[1];
-  }
-  
-  // If no token in header, try to get from cookies
-  if (!token) {
-    const cookies = event.headers.cookie;
-    if (cookies) {
-      const authCookie = cookies.split(';').find(cookie => cookie.trim().startsWith('auth-token='));
-      if (authCookie) {
-        token = authCookie.split('=')[1];
-      }
-    }
-  }
-
-  if (!token) {
-    return null;
-  }
-
-  try {
-    const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
-    if (!jwtSecret) {
-      throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
-    }
-
-    const payload = jwt.verify(token, jwtSecret) as { userId: number; username: string; role: string };
-    return payload;
-  } catch (error) {
-    return null;
-  }
-}
+import { authenticateToken, isStaff } from './_shared/auth';
 
 export const handler: Handler = async (event, context) => {
   // Set CORS headers
   const headers = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': event.headers.origin || 'http://localhost:5173',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json',
   };
   
@@ -63,7 +28,7 @@ export const handler: Handler = async (event, context) => {
   }
 
   // Check authentication
-  const authPayload = authenticateToken(event);
+  const authPayload = await authenticateToken(event);
   if (!authPayload) {
     // Return empty analytics data instead of 401 for unauthenticated users
     const emptyAnalytics = {
@@ -97,7 +62,7 @@ export const handler: Handler = async (event, context) => {
   }
 
   // Only admin, manager, and kitchen staff can view analytics
-  if (!['admin', 'manager', 'kitchen'].includes(authPayload.role)) {
+  if (!isStaff(authPayload)) {
     return {
       statusCode: 403,
       headers,

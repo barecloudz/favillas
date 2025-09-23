@@ -172,7 +172,7 @@ const Header = () => {
                       {user.isAdmin && (
                         <>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => navigate("/admin")}>
+                          <DropdownMenuItem onClick={() => navigate("/admin/dashboard")}>
                             <BarChart3 className="mr-2 h-4 w-4" />
                             <span>Admin Dashboard</span>
                           </DropdownMenuItem>
@@ -253,7 +253,7 @@ const Header = () => {
                     {user.isAdmin && (
                       <>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => navigate("/admin")}>
+                        <DropdownMenuItem onClick={() => navigate("/admin/dashboard")}>
                           <BarChart3 className="mr-2 h-4 w-4" />
                           <span>Admin Dashboard</span>
                         </DropdownMenuItem>
@@ -357,7 +357,7 @@ const Header = () => {
                     {user.isAdmin && (
                       <>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => navigate("/admin")}>
+                        <DropdownMenuItem onClick={() => navigate("/admin/dashboard")}>
                           <BarChart3 className="mr-2 h-4 w-4" />
                           <span>Admin Dashboard</span>
                         </DropdownMenuItem>

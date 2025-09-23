@@ -1,9 +1,11 @@
 import { Link } from "wouter";
 import { Facebook, Instagram, Phone, MapPin, Mail, Clock } from "lucide-react";
 import { useBranding } from "@/hooks/use-branding";
+import { useRestaurantSettings } from "@/hooks/use-restaurant-settings";
 
 const Footer = () => {
-  const { companyName, companyTagline, companyAddress, companyPhone, companyEmail, logoUrl } = useBranding();
+  const { companyName, companyTagline, logoUrl } = useBranding();
+  const { address, phone, email } = useRestaurantSettings();
   
   return (
     <footer className="bg-[#222] text-white pt-16 pb-8">
@@ -112,24 +114,24 @@ const Footer = () => {
             <ul className="space-y-4">
               <li className="flex items-start justify-center md:justify-start">
                 <MapPin className="mt-1 mr-3 h-5 w-5 text-[#d73a31] flex-shrink-0" />
-                <span className="text-gray-300">{companyAddress}</span>
+                <span className="text-gray-300">{address}</span>
               </li>
               <li className="flex items-start justify-center md:justify-start">
                 <Phone className="mt-1 mr-3 h-5 w-5 text-[#d73a31] flex-shrink-0" />
-                <a 
-                  href={`tel:${companyPhone.replace(/[^\d]/g, '')}`} 
+                <a
+                  href={`tel:${phone.replace(/[^\d]/g, '')}`}
                   className="text-gray-300 hover:text-white transition-colors"
                 >
-                  {companyPhone}
+                  {phone}
                 </a>
               </li>
               <li className="flex items-start justify-center md:justify-start">
                 <Mail className="mt-1 mr-3 h-5 w-5 text-[#d73a31] flex-shrink-0" />
-                <a 
-                  href={`mailto:${companyEmail}`} 
+                <a
+                  href={`mailto:${email}`}
                   className="text-gray-300 hover:text-white transition-colors"
                 >
-                  {companyEmail}
+                  {email}
                 </a>
               </li>
             </ul>

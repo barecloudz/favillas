@@ -30,7 +30,9 @@ export const useWebSocket = () => {
 
     try {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      // Use the correct port for local development
+      const port = window.location.port === '5173' ? '5000' : window.location.port;
+      const wsUrl = `${protocol}//${window.location.hostname}:${port}/ws`;
       
       console.log('WebSocket connecting to:', wsUrl);
       const ws = new WebSocket(wsUrl);
