@@ -247,6 +247,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/login-test-simple"
+  to = "/.netlify/functions/login-test-simple"
+  status = 200
+
+[[redirects]]
   from = "/api/db-test-simple"
   to = "/.netlify/functions/db-test-simple"
   status = 200
