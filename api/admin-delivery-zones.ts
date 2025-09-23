@@ -1,6 +1,6 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
-import jwt from 'jsonwebtoken';
+import { authenticateToken, isStaff } from './_shared/auth';
 
 let dbConnection: any = null;
 
@@ -20,31 +20,6 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
-  const authHeader = event.headers.authorization;
-  let token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    const cookies = event.headers.cookie;
-    if (cookies) {
-      const authCookie = cookies.split(';').find((c: string) => c.trim().startsWith('auth-token='));
-      if (authCookie) {
-        token = authCookie.split('=')[1];
-      }
-    }
-  }
-
-  if (!token) return null;
-
-  try {
-    const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
-    if (!jwtSecret) throw new Error('JWT_SECRET or SESSION_SECRET required');
-    const payload = jwt.verify(token, jwtSecret) as { userId: number; username: string; role: string };
-    return payload;
-  } catch (error) {
-    return null;
-  }
-}
 
 export const handler: Handler = async (event, context) => {
   console.log('🚀 DELIVERY ZONES API CALLED');
@@ -82,7 +57,7 @@ export const handler: Handler = async (event, context) => {
 
   console.log('✅ Authentication successful:', authPayload);
 
-  if (authPayload.role !== 'admin' && authPayload.role !== 'super_admin') {
+  if (!isStaff(authPayload)) {
     console.log('❌ Authorization failed - insufficient role:', authPayload.role);
     return {
       statusCode: 403,

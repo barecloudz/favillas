@@ -44,7 +44,7 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
-  const authPayload = authenticateToken(event);
+  const authPayload = await authenticateToken(event);
   if (!authPayload) {
     return {
       statusCode: 401,
@@ -60,7 +60,7 @@ export const handler: Handler = async (event, context) => {
       // Get user profile - support both authentication types
       let user;
 
-      if (authPayload.isSupabase) {
+      if (authPayload.isSupabase && authPayload.supabaseUserId) {
         console.log('📝 Getting Supabase user profile:', authPayload.supabaseUserId);
 
         // Get the most recent user record in case of duplicates
@@ -76,13 +76,20 @@ export const handler: Handler = async (event, context) => {
         if (user.length > 0) {
           console.log('📝 Using user record:', { id: user[0].id, username: user[0].username, email: user[0].email });
         }
-      } else {
+      } else if (authPayload.userId) {
         console.log('📝 Getting legacy user profile:', authPayload.userId);
         user = await sql`
           SELECT id, username, email, phone, address, city, state, zip_code, role, created_at
           FROM users
           WHERE id = ${authPayload.userId}
         `;
+      } else {
+        console.log('❌ No valid user ID found in auth payload:', authPayload);
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Invalid user authentication - missing user ID' })
+        };
       }
 
       if (user.length === 0) {
@@ -112,7 +119,7 @@ export const handler: Handler = async (event, context) => {
         rawBody: event.body
       });
 
-      if (authPayload.isSupabase) {
+      if (authPayload.isSupabase && authPayload.supabaseUserId) {
         // Handle Supabase user profile update - get most recent record
         const existingSupabaseUser = await sql`
           SELECT id, username, email, first_name, last_name FROM users
@@ -239,7 +246,7 @@ export const handler: Handler = async (event, context) => {
           body: JSON.stringify(updatedUser[0])
         };
 
-      } else {
+      } else if (authPayload.userId) {
         // Handle legacy user profile update
         const existingUser = await sql`SELECT id FROM users WHERE id = ${authPayload.userId}`;
 
@@ -319,6 +326,13 @@ export const handler: Handler = async (event, context) => {
           statusCode: 200,
           headers,
           body: JSON.stringify(updatedUser[0])
+        };
+      } else {
+        console.log('❌ No valid user ID found in auth payload for PATCH:', authPayload);
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Invalid user authentication - missing user ID' })
         };
       }
 

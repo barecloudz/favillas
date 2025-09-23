@@ -74,7 +74,7 @@ export const handler: Handler = async (event, context) => {
     // Import dependencies dynamically
     const { drizzle } = await import('drizzle-orm/postgres-js');
     const postgres = (await import('postgres')).default;
-    const { orders } = await import('../../shared/schema.js');
+    const { orders } = await import('../shared/schema.js');
     
     // Create database connection
     const sql = postgres(process.env.DATABASE_URL!, {
