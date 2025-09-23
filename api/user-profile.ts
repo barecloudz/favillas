@@ -93,10 +93,78 @@ export const handler: Handler = async (event, context) => {
       }
 
       if (user.length === 0) {
+        console.log('👤 User not found, creating new user record for:', authPayload.supabaseUserId || authPayload.userId);
+
+        // Auto-create user if they don't exist
+        try {
+          let newUser;
+
+          if (authPayload.isSupabase && authPayload.supabaseUserId) {
+            // Create Supabase user
+            newUser = await sql`
+              INSERT INTO users (
+                supabase_user_id, username, email, role, phone, address, city, state, zip_code,
+                first_name, last_name, password, created_at, updated_at
+              ) VALUES (
+                ${authPayload.supabaseUserId},
+                ${authPayload.email || authPayload.username || 'google_user'},
+                ${authPayload.email || authPayload.username || 'user@example.com'},
+                ${authPayload.role || 'customer'},
+                '',
+                '',
+                '',
+                '',
+                '',
+                ${authPayload.firstName || (authPayload.fullName ? authPayload.fullName.split(' ')[0] : 'User')},
+                ${authPayload.lastName || (authPayload.fullName ? authPayload.fullName.split(' ').slice(1).join(' ') : 'Customer')},
+                'GOOGLE_USER',
+                NOW(),
+                NOW()
+              )
+              RETURNING *
+            `;
+          } else if (authPayload.userId) {
+            // Create legacy user
+            newUser = await sql`
+              INSERT INTO users (
+                id, username, email, role, phone, address, city, state, zip_code,
+                first_name, last_name, password, created_at, updated_at
+              ) VALUES (
+                ${authPayload.userId},
+                ${authPayload.username || 'user'},
+                ${authPayload.username || 'user@example.com'},
+                ${authPayload.role || 'customer'},
+                '',
+                '',
+                '',
+                '',
+                '',
+                'User',
+                'Customer',
+                'LEGACY_USER',
+                NOW(),
+                NOW()
+              )
+              RETURNING *
+            `;
+          }
+
+          if (newUser && newUser.length > 0) {
+            console.log('✅ Auto-created user:', newUser[0]);
+            return {
+              statusCode: 200,
+              headers,
+              body: JSON.stringify(newUser[0])
+            };
+          }
+        } catch (createError) {
+          console.error('❌ Failed to auto-create user:', createError);
+        }
+
         return {
           statusCode: 404,
           headers,
-          body: JSON.stringify({ error: 'User not found' })
+          body: JSON.stringify({ error: 'User not found and could not be created' })
         };
       }
 
