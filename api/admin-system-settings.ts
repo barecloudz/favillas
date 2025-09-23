@@ -42,7 +42,16 @@ export const handler: Handler = async (event, context) => {
     return {
       statusCode: 401,
       headers,
-      body: JSON.stringify({ error: 'Unauthorized' })
+      body: JSON.stringify({
+        error: 'Unauthorized',
+        debug: {
+          hasCookies: !!event.headers.cookie,
+          hasAuthHeader: !!event.headers.authorization,
+          cookieNames: event.headers.cookie ?
+            event.headers.cookie.split(';').map(c => c.trim().split('=')[0]) : [],
+          timestamp: new Date().toISOString()
+        }
+      })
     };
   }
 
