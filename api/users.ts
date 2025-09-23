@@ -1,6 +1,6 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
-import { authenticateToken, isStaff } from './admin/_shared/auth';
+import { authenticateToken, isStaff } from './_shared/auth';
 
 export const handler: Handler = async (event, context) => {
   const origin = event.headers.origin || 'http://localhost:3000';
