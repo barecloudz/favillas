@@ -25,43 +25,60 @@ export function DeliveryMap({ zones, restaurantAddress, onZoneUpdate }: Delivery
   // Zone colors
   const zoneColors = ['#22c55e', '#3b82f6', '#ef4444']; // Green, Blue, Red
 
-  // Load Google Maps with modern async approach
+  // Load Google Maps with proper callback approach
   useEffect(() => {
-    const loadGoogleMaps = async () => {
-      if (window.google) {
+    const loadGoogleMaps = () => {
+      if (window.google && window.google.maps) {
         initializeMap();
         return;
       }
 
-      // Use modern async loading approach with marker library
+      // Create a unique callback name to avoid conflicts
+      const callbackName = 'initGoogleMaps_' + Date.now();
+      window[callbackName] = () => {
+        initializeMap();
+        delete window[callbackName]; // Clean up
+      };
+
+      // Use callback parameter for reliable loading
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=geometry,marker&loading=async`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=geometry,marker&callback=${callbackName}`;
       script.async = true;
       script.defer = true;
-      script.onload = initializeMap;
+      script.onerror = () => {
+        console.error('Failed to load Google Maps API');
+        delete window[callbackName];
+      };
       document.head.appendChild(script);
     };
 
     const initializeMap = () => {
       if (!mapRef.current) return;
 
+      // Ensure Google Maps API is fully loaded
+      if (!window.google || !window.google.maps || !window.google.maps.Map) {
+        console.error('Google Maps API not properly loaded');
+        return;
+      }
+
       // Default to Asheville, NC
       const defaultCenter = { lat: 35.5951, lng: -82.5515 };
 
-      const newMap = new google.maps.Map(mapRef.current, {
-        zoom: 12,
-        center: defaultCenter,
-        mapTypeId: google.maps.MapTypeId.ROADMAP,
-        styles: [
-          {
-            featureType: 'poi',
-            elementType: 'labels',
-            stylers: [{ visibility: 'off' }]
-          }
-        ]
-      });
+      try {
+        const newMap = new google.maps.Map(mapRef.current, {
+          zoom: 12,
+          center: defaultCenter,
+          mapTypeId: google.maps.MapTypeId.ROADMAP,
+          styles: [
+            {
+              featureType: 'poi',
+              elementType: 'labels',
+              stylers: [{ visibility: 'off' }]
+            }
+          ]
+        });
 
-      setMap(newMap);
+        setMap(newMap);
 
       // Geocode restaurant address
       if (restaurantAddress) {
@@ -120,6 +137,9 @@ export function DeliveryMap({ zones, restaurantAddress, onZoneUpdate }: Delivery
             }
           }
         });
+      }
+      } catch (error) {
+        console.error('Error initializing Google Maps:', error);
       }
     };
 
