@@ -551,7 +551,7 @@ const AdminDashboard = () => {
       "menu-editor", "pricing", "out-of-stock", "multi-location",
       "frontend", "qr-codes", "widget", "smart-links", "printer", "receipt-templates", "scheduling", "reservations", 
       "vacation-mode", "delivery", "taxation",
-      "promo-codes", "rewards", "kickstarter", "email-campaigns", "sms-marketing", "local-seo",
+      "promo-codes", "rewards", "subscribed-users", "kickstarter", "email-campaigns", "sms-marketing", "local-seo",
       "customers", "users", "reviews",
       "employee-schedules", "payroll", "tip-settings",
       "api", "pos-integration", "integrations", "webhooks",
@@ -736,6 +736,7 @@ const AdminDashboard = () => {
       items: [
         { name: "Promo Codes", icon: Tag, href: "promo-codes" },
         { name: "Rewards System", icon: Star, href: "rewards" },
+        { name: "Subscribed Users", icon: Mail, href: "subscribed-users" },
         { name: "Kickstarter Marketing", icon: Target, href: "kickstarter" },
         { name: "Email Campaigns", icon: Mail, href: "email-campaigns" },
         { name: "SMS Marketing", icon: MessageSquare, href: "sms-marketing" },
@@ -1043,6 +1044,10 @@ const AdminDashboard = () => {
 
             {activeTab === "rewards" && (
               <RewardsManagement />
+            )}
+
+            {activeTab === "subscribed-users" && (
+              <SubscribedUsersManagement />
             )}
 
             {activeTab === "kickstarter" && (
@@ -4474,7 +4479,176 @@ const OutOfStockManagement = ({ menuItems }: any) => {
 
 const DeliveryOptions = () => <DeliverySettings />;
 
+const SubscribedUsersManagement = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
+  // Fetch subscribed users
+  const { data: subscribedUsers, isLoading, error } = useQuery({
+    queryKey: ['/api/subscribed-users'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/subscribed-users');
+      if (!response.ok) {
+        throw new Error('Failed to fetch subscribed users');
+      }
+      return response.json();
+    }
+  });
+
+  // Unsubscribe user mutation
+  const unsubscribeMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const response = await apiRequest('PUT', `/api/subscribed-users/${userId}`, {
+        marketingOptIn: false
+      });
+      if (!response.ok) {
+        throw new Error('Failed to unsubscribe user');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/subscribed-users'] });
+      toast({
+        title: "User Unsubscribed",
+        description: `${data.user.firstName} ${data.user.lastName} has been unsubscribed from marketing emails.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Unsubscribe Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin mr-2" />
+            <span>Loading subscribed users...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center text-red-600">
+            <p>Error loading subscribed users</p>
+            <p className="text-sm">{error instanceof Error ? error.message : 'Unknown error'}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Subscribed Users</CardTitle>
+              <CardDescription>
+                Manage users who are subscribed to marketing emails for exclusive offers
+              </CardDescription>
+            </div>
+            <Badge variant="outline" className="text-lg px-3 py-1">
+              {subscribedUsers?.length || 0} Subscribers
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {subscribedUsers && subscribedUsers.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-3 font-medium">Name</th>
+                    <th className="text-left p-3 font-medium">Email</th>
+                    <th className="text-left p-3 font-medium">Phone</th>
+                    <th className="text-left p-3 font-medium">Points</th>
+                    <th className="text-left p-3 font-medium">Joined</th>
+                    <th className="text-left p-3 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {subscribedUsers.map((user: any) => (
+                    <tr key={user.id} className="border-b hover:bg-gray-50">
+                      <td className="p-3">
+                        <div>
+                          <div className="font-medium">
+                            {user.firstName} {user.lastName}
+                          </div>
+                          <div className="text-sm text-gray-500 capitalize">
+                            {user.role}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center">
+                          <Mail className="h-4 w-4 mr-2 text-gray-400" />
+                          {user.email}
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center">
+                          <Phone className="h-4 w-4 mr-2 text-gray-400" />
+                          {user.phone || 'Not provided'}
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center">
+                          <Star className="h-4 w-4 mr-1 text-yellow-500" />
+                          {user.currentPoints}
+                        </div>
+                      </td>
+                      <td className="p-3 text-sm text-gray-600">
+                        {new Date(user.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="p-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => unsubscribeMutation.mutate(user.id)}
+                          disabled={unsubscribeMutation.isPending}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          {unsubscribeMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Mail className="h-4 w-4 mr-1" />
+                              Unsubscribe
+                            </>
+                          )}
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Mail className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No subscribed users</h3>
+              <p className="text-gray-500">
+                Users who subscribe to marketing emails will appear here.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
 const KickstarterMarketing = () => (
   <Card>
