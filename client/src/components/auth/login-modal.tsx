@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, User, Mail, Lock, Phone, MapPin } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -41,6 +42,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
     address: "",
     password: "",
     confirmPassword: "",
+    marketingOptIn: true, // Auto-checked for marketing emails
   });
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -79,6 +81,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
         phone: registerData.phone,
         address: registerData.address,
         password: registerData.password,
+        marketingOptIn: registerData.marketingOptIn,
       });
       toast({
         title: "Registration successful",
@@ -309,8 +312,21 @@ const LoginModal: React.FC<LoginModalProps> = ({
                 </div>
               </div>
 
-              <Button 
-                type="submit" 
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="marketing-opt-in"
+                  checked={registerData.marketingOptIn}
+                  onCheckedChange={(checked) =>
+                    setRegisterData(prev => ({ ...prev, marketingOptIn: checked === true }))
+                  }
+                />
+                <Label htmlFor="marketing-opt-in" className="text-sm text-gray-600">
+                  Subscribe to marketing emails for exclusive offers and updates
+                </Label>
+              </div>
+
+              <Button
+                type="submit"
                 className="w-full bg-[#d73a31] hover:bg-[#c73128]"
                 disabled={registerMutation.isPending}
               >

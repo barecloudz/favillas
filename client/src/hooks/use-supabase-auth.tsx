@@ -314,7 +314,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           data: {
             first_name: credentials.firstName,
             last_name: credentials.lastName,
-            role: 'customer'
+            phone: credentials.phone || '',
+            address: credentials.address || '',
+            role: 'customer',
+            marketing_opt_in: credentials.marketingOptIn !== false // Default to true
           }
         }
       });
