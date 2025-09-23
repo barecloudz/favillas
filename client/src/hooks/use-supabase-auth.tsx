@@ -110,8 +110,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(mappedUser);
           }
         } else {
-          // If no Supabase session, check for legacy JWT cookie only if we have evidence of one
-          const hasJwtCookie = document.cookie.includes('jwt') || document.cookie.includes('token') || document.cookie.includes('connect.sid');
+          // If no Supabase session, check for JWT auth cookies
+          const hasJwtCookie = document.cookie.includes('auth-token') ||
+                               document.cookie.includes('jwt') ||
+                               document.cookie.includes('token') ||
+                               document.cookie.includes('connect.sid');
 
           if (hasJwtCookie) {
             try {
