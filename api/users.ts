@@ -295,18 +295,57 @@ export const handler: Handler = async (event, context) => {
       }
 
       try {
-        // Delete orders associated with this user (simpler approach to avoid constraint issues)
-        const deletedOrders = await sql`DELETE FROM orders WHERE user_id = ${userId} RETURNING id`;
-        console.log(`✅ Deleted ${deletedOrders.length} user orders`);
+        // Get all order IDs for this user first
+        const userOrders = await sql`SELECT id FROM orders WHERE user_id = ${userId}`;
+        const orderIds = userOrders.map(order => order.id);
+
+        console.log(`🗑️ Found ${orderIds.length} orders to delete for user ${userId}`);
+
+        if (orderIds.length > 0) {
+          // Delete order-related records first to avoid foreign key constraints
+
+          // Delete order items
+          const deletedOrderItems = await sql`DELETE FROM order_items WHERE order_id = ANY(${orderIds}) RETURNING id`;
+          console.log(`✅ Deleted ${deletedOrderItems.length} order items`);
+
+          // Delete tip distributions
+          try {
+            const deletedTips = await sql`DELETE FROM tip_distributions WHERE order_id = ANY(${orderIds}) RETURNING id`;
+            console.log(`✅ Deleted ${deletedTips.length} tip distributions`);
+          } catch (error) {
+            console.log('ℹ️ No tip_distributions table or records to delete');
+          }
+
+          // Delete voucher usages
+          try {
+            const deletedVoucherUsages = await sql`DELETE FROM voucher_usages WHERE applied_to_order_id = ANY(${orderIds}) RETURNING id`;
+            console.log(`✅ Deleted ${deletedVoucherUsages.length} voucher usages`);
+          } catch (error) {
+            console.log('ℹ️ No voucher_usages table or records to delete');
+          }
+
+          // Delete user points redemptions
+          try {
+            const deletedRedemptions = await sql`DELETE FROM user_points_redemptions WHERE order_id = ANY(${orderIds}) RETURNING id`;
+            console.log(`✅ Deleted ${deletedRedemptions.length} user points redemptions`);
+          } catch (error) {
+            console.log('ℹ️ No user_points_redemptions table or records to delete');
+          }
+
+          // Points transactions were already deleted above, so orders should be clear now
+
+          // Finally delete the orders
+          const deletedOrders = await sql`DELETE FROM orders WHERE user_id = ${userId} RETURNING id`;
+          console.log(`✅ Deleted ${deletedOrders.length} user orders`);
+        }
       } catch (error) {
-        console.log('ℹ️ Could not delete orders:', error.message);
-        // If we can't delete orders, we can't delete the user due to foreign key constraints
+        console.log('❌ Could not delete orders and related records:', error.message);
         return {
           statusCode: 400,
           headers,
           body: JSON.stringify({
             error: 'Cannot delete user with existing orders',
-            details: 'Please handle or delete the user\'s orders first before deleting the user account'
+            details: `Failed to delete order-related records: ${error.message}`
           })
         };
       }
