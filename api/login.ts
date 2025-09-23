@@ -20,15 +20,34 @@ export const handler: Handler = async (event, context) => {
   try {
     const { username, password } = JSON.parse(event.body || '{}');
 
-    // Simple test credentials for now
-    if (username === 'admin' && password === 'password123') {
+    // Admin credentials for production
+    if (username === 'superadmin' && password === 'superadmin123') {
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           id: 1,
+          username: 'superadmin',
+          email: 'superadmin@favillas.com',
+          firstName: 'Super',
+          lastName: 'Admin',
+          role: 'super_admin',
+          isAdmin: true,
+          isActive: true,
+          rewards: 0
+        })
+      };
+    }
+
+    // Fallback admin credentials
+    if (username === 'admin' && password === 'admin123456') {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          id: 2,
           username: 'admin',
-          email: 'admin@test.com',
+          email: 'admin@favillas.com',
           firstName: 'Admin',
           lastName: 'User',
           role: 'admin',
