@@ -75,13 +75,16 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
     try {
       await registerMutation.mutateAsync({
+        username: registerData.email, // Use email as username
         firstName: registerData.firstName,
         lastName: registerData.lastName,
         email: registerData.email,
-        phone: registerData.phone,
-        address: registerData.address,
+        phone: registerData.phone || '',
+        address: registerData.address || '',
         password: registerData.password,
-        marketingOptIn: registerData.marketingOptIn,
+        role: 'customer',
+        isActive: true,
+        marketingOptIn: registerData.marketingOptIn ?? true,
       });
       toast({
         title: "Registration successful",
@@ -315,9 +318,9 @@ const LoginModal: React.FC<LoginModalProps> = ({
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="marketing-opt-in"
-                  checked={registerData.marketingOptIn}
+                  checked={registerData.marketingOptIn ?? true}
                   onCheckedChange={(checked) =>
-                    setRegisterData(prev => ({ ...prev, marketingOptIn: checked === true }))
+                    setRegisterData(prev => ({ ...prev, marketingOptIn: Boolean(checked) }))
                   }
                 />
                 <Label htmlFor="marketing-opt-in" className="text-sm text-gray-600">

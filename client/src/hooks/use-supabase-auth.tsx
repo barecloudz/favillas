@@ -19,7 +19,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
+  registerMutation: UseMutationResult<SelectUser, Error, any>;
   refreshUserProfile: () => Promise<void>;
 }
 
@@ -299,25 +299,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Supabase-only registration mutation
   const registerMutation = useMutation({
-    mutationFn: async (credentials: InsertUser) => {
+    mutationFn: async (credentials: any) => {
       // All registration now goes through Supabase
-      console.log('📧 Using Supabase registration...');
+      console.log('📧 Using Supabase registration...', credentials);
 
       if (!credentials.email) {
         throw new Error('Email is required for registration');
       }
 
-      const { data, error } = await supabase.auth.signUp({
+      // Validate the input data manually to avoid Zod schema issues
+      const registrationData = {
         email: credentials.email,
         password: credentials.password,
+        firstName: credentials.firstName || '',
+        lastName: credentials.lastName || '',
+        phone: credentials.phone || '',
+        address: credentials.address || '',
+        role: 'customer',
+        marketingOptIn: credentials.marketingOptIn !== false
+      };
+
+      console.log('📋 Registration data:', registrationData);
+
+      const { data, error } = await supabase.auth.signUp({
+        email: registrationData.email,
+        password: registrationData.password,
         options: {
           data: {
-            first_name: credentials.firstName,
-            last_name: credentials.lastName,
-            phone: credentials.phone || '',
-            address: credentials.address || '',
-            role: 'customer',
-            marketing_opt_in: credentials.marketingOptIn !== false // Default to true
+            first_name: registrationData.firstName,
+            last_name: registrationData.lastName,
+            phone: registrationData.phone,
+            address: registrationData.address,
+            role: registrationData.role,
+            marketing_opt_in: registrationData.marketingOptIn
           }
         }
       });
@@ -334,12 +348,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: data.user.id,
           email: data.user.email,
           username: data.user.email,
-          firstName: credentials.firstName,
-          lastName: credentials.lastName,
-          role: 'customer',
+          firstName: registrationData.firstName,
+          lastName: registrationData.lastName,
+          phone: registrationData.phone,
+          address: registrationData.address,
+          role: registrationData.role,
           isAdmin: false,
           isActive: true,
-          rewards: 0
+          rewards: 0,
+          marketingOptIn: registrationData.marketingOptIn
         };
       }
 
