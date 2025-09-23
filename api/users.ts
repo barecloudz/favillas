@@ -264,6 +264,14 @@ export const handler: Handler = async (event, context) => {
         console.log('ℹ️ No user_points table or records to delete');
       }
 
+      // Delete points transactions (complete points history)
+      try {
+        const deletedTransactions = await sql`DELETE FROM points_transactions WHERE user_id = ${userId} RETURNING id`;
+        console.log(`✅ Deleted ${deletedTransactions.length} points transaction records`);
+      } catch (error) {
+        console.log('ℹ️ No points_transactions table or records to delete');
+      }
+
       // Delete any other related records that might exist
       try {
         // Delete user redemptions if they exist
