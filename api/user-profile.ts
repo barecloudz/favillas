@@ -104,7 +104,7 @@ export const handler: Handler = async (event, context) => {
             newUser = await sql`
               INSERT INTO users (
                 supabase_user_id, username, email, role, phone, address, city, state, zip_code,
-                first_name, last_name, password, created_at, updated_at
+                first_name, last_name, password, marketing_opt_in, created_at, updated_at
               ) VALUES (
                 ${authPayload.supabaseUserId},
                 ${authPayload.email || authPayload.username || 'google_user'},
@@ -118,6 +118,7 @@ export const handler: Handler = async (event, context) => {
                 ${authPayload.firstName || (authPayload.fullName ? authPayload.fullName.split(' ')[0] : 'User')},
                 ${authPayload.lastName || (authPayload.fullName ? authPayload.fullName.split(' ').slice(1).join(' ') : 'Customer')},
                 'GOOGLE_USER',
+                ${authPayload.marketingOptIn !== false},
                 NOW(),
                 NOW()
               )
@@ -220,7 +221,7 @@ export const handler: Handler = async (event, context) => {
             const newUserResult = await sql`
               INSERT INTO users (
                 supabase_user_id, username, email, role, phone, address, city, state, zip_code,
-                first_name, last_name, password, created_at, updated_at
+                first_name, last_name, password, marketing_opt_in, created_at, updated_at
               ) VALUES (
                 ${authPayload.supabaseUserId},
                 ${authPayload.email || authPayload.username || 'google_user'},
@@ -234,6 +235,7 @@ export const handler: Handler = async (event, context) => {
                 ${authPayload.firstName || (authPayload.fullName ? authPayload.fullName.split(' ')[0] : 'User')},
                 ${authPayload.lastName || (authPayload.fullName ? authPayload.fullName.split(' ').slice(1).join(' ') : 'Google User')},
                 'GOOGLE_USER',
+                ${authPayload.marketingOptIn !== false},
                 NOW(),
                 NOW()
               )

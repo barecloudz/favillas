@@ -31,6 +31,7 @@ export interface AuthPayload {
   fullName?: string;
   firstName?: string;
   lastName?: string;
+  marketingOptIn?: boolean;
 }
 
 /**
@@ -174,7 +175,8 @@ export async function authenticateToken(event: NetlifyEvent): Promise<AuthPayloa
           email: payload.email,
           fullName: userMetadata.full_name || userMetadata.name,
           firstName: userMetadata.name?.split(' ')[0] || userMetadata.full_name?.split(' ')[0] || userMetadata.first_name,
-          lastName: userMetadata.name?.split(' ').slice(1).join(' ') || userMetadata.full_name?.split(' ').slice(1).join(' ') || userMetadata.last_name
+          lastName: userMetadata.name?.split(' ').slice(1).join(' ') || userMetadata.full_name?.split(' ').slice(1).join(' ') || userMetadata.last_name,
+          marketingOptIn: userMetadata.marketing_opt_in !== false // Default to true
         };
       }
     } catch (supabaseError) {

@@ -235,7 +235,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (data.user) {
         console.log('✅ Supabase authentication successful');
+
+        // Set the session first
+        setSession(data.session);
+
+        // Fetch complete user profile which will create database record if needed
+        try {
+          const completeProfile = await fetchUserProfile();
+          if (completeProfile) {
+            console.log('✅ Complete user profile loaded from database');
+            return completeProfile;
+          }
+        } catch (profileError) {
+          console.warn('⚠️ Failed to fetch complete profile during login:', profileError);
+        }
+
+        // Fallback to basic user data from Supabase metadata
         const userMetadata = data.user.user_metadata || {};
+        console.log('⚠️ Using fallback user data from Supabase metadata');
 
         // Return user data in the expected format
         return {
@@ -344,9 +361,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.user) {
         console.log('✅ Supabase registration successful');
 
+        // If we have an immediate session (no email confirmation required)
+        if (data.session) {
+          console.log('🔗 User has immediate session, creating database record');
+
+          try {
+            // Create the database user record immediately
+            const createUserResponse = await apiRequest('PATCH', '/api/user-profile', {
+              first_name: registrationData.firstName,
+              last_name: registrationData.lastName,
+              email: registrationData.email,
+              phone: registrationData.phone || '',
+              address: registrationData.address || '',
+              city: '',
+              state: '',
+              zip_code: ''
+            });
+            console.log('✅ Database user record created successfully');
+          } catch (apiError) {
+            console.log('⚠️ Database user creation failed, will be created on first login:', apiError);
+          }
+        }
+
         // Check if email confirmation is required
         if (!data.session && data.user && !data.user.email_confirmed_at) {
-          console.log('📧 Email confirmation required');
+          console.log('📧 Email confirmation required - database record will be created after confirmation');
           // Return a special indicator that email confirmation is needed
           return {
             id: data.user.id,
