@@ -104,8 +104,15 @@ export function DeliverySettings() {
     },
     onSuccess: (data) => {
       console.log('🎉 Settings saved successfully:', data);
+      console.log('💰 API returned fallback fee:', data.fallbackDeliveryFee);
+
+      // Don't close the form immediately - let user see the update
       queryClient.invalidateQueries({ queryKey: ['/api/admin/delivery-zones'] });
-      setShowSettings(false);
+
+      // Close the form after a delay to allow cache refresh
+      setTimeout(() => {
+        setShowSettings(false);
+      }, 1000);
     },
     onError: (error) => {
       console.error('❌ Settings save failed:', error);
