@@ -134,6 +134,22 @@ export const handler: Handler = async (event, context) => {
     } else if (event.httpMethod === 'POST') {
       const zoneData = JSON.parse(event.body || '{}');
 
+      // Check if we already have 3 zones (limit)
+      const existingZones = await sql`SELECT COUNT(*) as count FROM delivery_zones`;
+      const zoneCount = parseInt(existingZones[0].count);
+
+      if (zoneCount >= 3) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            error: 'Maximum of 3 delivery zones allowed',
+            currentCount: zoneCount,
+            maxAllowed: 3
+          })
+        };
+      }
+
       const [newZoneRaw] = await sql`
         INSERT INTO delivery_zones (name, max_radius, delivery_fee, is_active, sort_order)
         VALUES (${zoneData.name}, ${zoneData.maxRadius}, ${zoneData.deliveryFee}, ${zoneData.isActive !== undefined ? zoneData.isActive : true}, ${zoneData.sortOrder || 0})
@@ -157,21 +173,118 @@ export const handler: Handler = async (event, context) => {
         body: JSON.stringify(newZone)
       };
 
-    } else if (event.httpMethod === 'DELETE') {
-      console.log('🗑️ Deleting delivery zones...');
+    } else if (event.httpMethod === 'PUT') {
+      console.log('✏️ Updating delivery zone...');
 
-      // Delete all delivery zones
-      const deletedZones = await sql`DELETE FROM delivery_zones RETURNING *`;
-      console.log('✅ Deleted zones:', deletedZones.length, 'zones deleted');
+      const zoneData = JSON.parse(event.body || '{}');
+      const { id, name, maxRadius, deliveryFee, isActive, sortOrder } = zoneData;
+
+      if (!id) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Zone ID is required for updates' })
+        };
+      }
+
+      console.log('🔄 Updating zone with data:', { id, name, maxRadius, deliveryFee, isActive, sortOrder });
+
+      const updatedZoneRaw = await sql`
+        UPDATE delivery_zones
+        SET
+          name = ${name},
+          max_radius = ${maxRadius},
+          delivery_fee = ${deliveryFee},
+          is_active = ${isActive !== undefined ? isActive : true},
+          sort_order = ${sortOrder || 0},
+          updated_at = NOW()
+        WHERE id = ${id}
+        RETURNING *
+      `;
+
+      if (updatedZoneRaw.length === 0) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ error: 'Delivery zone not found' })
+        };
+      }
+
+      const updatedZone = {
+        id: updatedZoneRaw[0].id,
+        name: updatedZoneRaw[0].name,
+        maxRadius: updatedZoneRaw[0].max_radius,
+        deliveryFee: updatedZoneRaw[0].delivery_fee,
+        isActive: updatedZoneRaw[0].is_active,
+        sortOrder: updatedZoneRaw[0].sort_order,
+        createdAt: updatedZoneRaw[0].created_at,
+        updatedAt: updatedZoneRaw[0].updated_at
+      };
+
+      console.log('✅ Zone updated successfully:', updatedZone);
 
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({
-          message: `Successfully deleted ${deletedZones.length} delivery zones`,
-          deletedCount: deletedZones.length
-        })
+        body: JSON.stringify(updatedZone)
       };
+
+    } else if (event.httpMethod === 'DELETE') {
+      console.log('🗑️ Processing DELETE request...');
+
+      // Check if this is a delete by ID (query parameter) or delete all
+      const zoneId = event.queryStringParameters?.id;
+
+      if (zoneId) {
+        console.log('🗑️ Deleting individual delivery zone:', zoneId);
+
+        const deletedZone = await sql`
+          DELETE FROM delivery_zones
+          WHERE id = ${zoneId}
+          RETURNING *
+        `;
+
+        if (deletedZone.length === 0) {
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({ error: 'Delivery zone not found' })
+          };
+        }
+
+        console.log('✅ Individual zone deleted:', deletedZone[0]);
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            message: `Successfully deleted delivery zone: ${deletedZone[0].name}`,
+            deletedZone: {
+              id: deletedZone[0].id,
+              name: deletedZone[0].name,
+              maxRadius: deletedZone[0].max_radius,
+              deliveryFee: deletedZone[0].delivery_fee,
+              isActive: deletedZone[0].is_active,
+              sortOrder: deletedZone[0].sort_order
+            }
+          })
+        };
+      } else {
+        console.log('🗑️ Deleting all delivery zones...');
+
+        // Delete all delivery zones
+        const deletedZones = await sql`DELETE FROM delivery_zones RETURNING *`;
+        console.log('✅ Deleted zones:', deletedZones.length, 'zones deleted');
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            message: `Successfully deleted ${deletedZones.length} delivery zones`,
+            deletedCount: deletedZones.length
+          })
+        };
+      }
 
     } else {
       return {
