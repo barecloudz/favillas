@@ -1,6 +1,13 @@
 import { Handler } from '@netlify/functions';
+import jwt from 'jsonwebtoken';
 
 export const handler: Handler = async (event, context) => {
+  console.log('🚀 Admin-login function called:', {
+    method: event.httpMethod,
+    origin: event.headers.origin,
+    hasBody: !!event.body
+  });
+
   const headers = {
     'Access-Control-Allow-Origin': event.headers.origin || 'http://localhost:5173',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -19,14 +26,96 @@ export const handler: Handler = async (event, context) => {
 
   try {
     const { username, password } = JSON.parse(event.body || '{}');
+    console.log('🔐 Admin login attempt:', { username: username || 'MISSING', hasPassword: !!password });
 
-    // Simple admin credentials
-    if (username === 'admin' && password === 'admin123456') {
+    // Check superadmin credentials first
+    if (username === 'superadmin' && password === 'superadmin123') {
+      const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+      if (!jwtSecret) {
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({ message: 'Server configuration error' })
+        };
+      }
+
+      const userPayload = {
+        userId: 1,
+        username: 'superadmin',
+        role: 'super_admin'
+      };
+
+      const token = jwt.sign(userPayload, jwtSecret, { expiresIn: '7d' });
+
+      // Set cookie for authentication
+      const origin = event.headers.origin || '';
+      const isProduction = origin.includes('netlify.app') || origin.includes('favillasnypizza');
+      const cookieOptions = `auth-token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax${isProduction ? '; Secure' : ''}`;
+
+      console.log('🍪 Setting cookie for superadmin via admin-login:', {
+        origin,
+        isProduction,
+        cookieSet: true
+      });
+
       return {
         statusCode: 200,
-        headers,
+        headers: {
+          ...headers,
+          'Set-Cookie': cookieOptions
+        },
         body: JSON.stringify({
           id: 1,
+          username: 'superadmin',
+          email: 'superadmin@favillas.com',
+          firstName: 'Super',
+          lastName: 'Admin',
+          role: 'super_admin',
+          isAdmin: true,
+          isActive: true,
+          rewards: 0
+        })
+      };
+    }
+
+    // Fallback admin credentials
+    if (username === 'admin' && password === 'admin123456') {
+      const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+      if (!jwtSecret) {
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({ message: 'Server configuration error' })
+        };
+      }
+
+      const userPayload = {
+        userId: 2,
+        username: 'admin',
+        role: 'admin'
+      };
+
+      const token = jwt.sign(userPayload, jwtSecret, { expiresIn: '7d' });
+
+      // Set cookie for authentication
+      const origin = event.headers.origin || '';
+      const isProduction = origin.includes('netlify.app') || origin.includes('favillasnypizza');
+      const cookieOptions = `auth-token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax${isProduction ? '; Secure' : ''}`;
+
+      console.log('🍪 Setting cookie for admin via admin-login:', {
+        origin,
+        isProduction,
+        cookieSet: true
+      });
+
+      return {
+        statusCode: 200,
+        headers: {
+          ...headers,
+          'Set-Cookie': cookieOptions
+        },
+        body: JSON.stringify({
+          id: 2,
           username: 'admin',
           email: 'admin@favillas.com',
           firstName: 'Admin',
@@ -46,6 +135,7 @@ export const handler: Handler = async (event, context) => {
     };
 
   } catch (error) {
+    console.error('Admin login error:', error);
     return {
       statusCode: 500,
       headers,
