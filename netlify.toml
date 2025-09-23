@@ -351,8 +351,6 @@
 [functions]
   directory = "api"
   node_bundler = "esbuild"
-  # Optimize bundling for faster builds
-  external_node_modules = ["sharp", "canvas", "sqlite3"]
 
 # Function-specific configurations for optimization
 [functions."health"]
