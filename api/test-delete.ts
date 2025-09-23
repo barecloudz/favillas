@@ -3,7 +3,7 @@ import { Handler } from '@netlify/functions';
 export const handler: Handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Content-Type': 'application/json',
   };
@@ -16,10 +16,10 @@ export const handler: Handler = async (event, context) => {
     statusCode: 200,
     headers,
     body: JSON.stringify({
-      message: 'Deployment test successful',
+      method: event.httpMethod,
+      message: `DELETE test successful - method was ${event.httpMethod}`,
       timestamp: new Date().toISOString(),
-      commitHash: 'e23eaae',
-      deploymentVersion: '2024-01-23-auto-user-fix'
+      path: event.path
     })
   };
 };

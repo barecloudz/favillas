@@ -217,6 +217,24 @@
   to = "/.netlify/functions/create-supabase-admin"
   status = 200
 
+# Admin delivery zones endpoint
+[[redirects]]
+  from = "/api/admin-delivery-zones"
+  to = "/.netlify/functions/admin-delivery-zones"
+  status = 200
+
+# Test deployment endpoint
+[[redirects]]
+  from = "/api/test-deployment"
+  to = "/.netlify/functions/test-deployment"
+  status = 200
+
+# Test DELETE endpoint
+[[redirects]]
+  from = "/api/test-delete"
+  to = "/.netlify/functions/test-delete"
+  status = 200
+
 # Image upload endpoint
 [[redirects]]
   from = "/api/image-upload-test"
