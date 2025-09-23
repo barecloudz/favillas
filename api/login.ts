@@ -41,14 +41,29 @@ export const handler: Handler = async (event, context) => {
       const token = jwt.sign(userPayload, jwtSecret, { expiresIn: '7d' });
 
       // Set cookie for authentication
-      const isProduction = event.headers.origin?.includes('netlify.app') || event.headers.origin?.includes('favillasnypizza');
-      const cookieOptions = `auth-token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax${isProduction ? '; Secure' : ''}`;
+      const origin = event.headers.origin || '';
+      const isProduction = origin.includes('netlify.app') || origin.includes('favillasnypizza');
+
+      // Extract domain from origin for cookie setting
+      let domain = '';
+      if (isProduction) {
+        try {
+          const url = new URL(origin);
+          domain = url.hostname;
+        } catch (e) {
+          domain = 'favillasnypizza.netlify.app';
+        }
+      }
+
+      const cookieOptions = `auth-token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax${isProduction ? '; Secure' : ''}${domain ? `; Domain=${domain}` : ''}`;
 
       console.log('🍪 Setting cookie for superadmin:', {
-        origin: event.headers.origin,
+        origin,
         isProduction,
-        cookieOptions,
-        tokenLength: token.length
+        domain,
+        cookieOptions: cookieOptions.replace(token, 'TOKEN_HIDDEN'),
+        tokenLength: token.length,
+        headers: Object.keys(event.headers)
       });
 
       return {
