@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { Redirect, Route } from "wouter";
-import { useAuth } from "@/hooks/use-supabase-auth";
 
 export function AdminProtectedRoute({
   path,
@@ -10,22 +9,26 @@ export function AdminProtectedRoute({
   path: string;
   component: () => React.JSX.Element;
 }) {
-  const { user, loading } = useAuth();
-  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
+  const [adminUser, setAdminUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Wait for auth to either succeed or fail
   useEffect(() => {
-    if (!loading) {
-      // Wait a moment for any async auth operations to complete
-      const timer = setTimeout(() => {
-        setHasCheckedAuth(true);
-      }, 200); // Increased delay to allow API call to complete
-      return () => clearTimeout(timer);
+    // Check for admin session in localStorage
+    try {
+      const storedAdmin = localStorage.getItem('admin-user');
+      if (storedAdmin) {
+        const admin = JSON.parse(storedAdmin);
+        if (admin.role === 'admin' && admin.isAdmin) {
+          setAdminUser(admin);
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing admin session:', error);
     }
-  }, [loading, user]); // Also depend on user changes
+    setIsLoading(false);
+  }, []);
 
-  // Show loading until auth check is completely done
-  if (loading || !hasCheckedAuth) {
+  if (isLoading) {
     return (
       <Route path={path}>
         <div className="flex items-center justify-center min-h-screen">
@@ -35,12 +38,13 @@ export function AdminProtectedRoute({
     );
   }
 
-  if (!user || !user.isAdmin) {
+  if (!adminUser) {
     return (
       <Route path={path}>
-        <Redirect to="/auth" />
+        <Redirect to="/admin" />
       </Route>
     );
   }
+
   return <Route path={path} component={Component} />;
 }

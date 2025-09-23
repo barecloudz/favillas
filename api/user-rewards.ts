@@ -1,6 +1,6 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
-import jwt from 'jsonwebtoken';
+import { authenticateToken, getUserId } from './_shared/auth';
 
 let dbConnection: any = null;
 
@@ -88,10 +88,12 @@ function authenticateToken(event: any): { userId: number | null; supabaseUserId:
 }
 
 export const handler: Handler = async (event, context) => {
+  const origin = event.headers.origin || 'http://localhost:3000';
   const headers = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json',
   };
 

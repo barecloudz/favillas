@@ -79,10 +79,12 @@ function calculateDeliveryFee(distance: number, zones: any[], fallbackFee: numbe
 }
 
 export const handler: Handler = async (event, context) => {
+  const origin = event.headers.origin || 'http://localhost:3000';
   const headers = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
   };
 
   if (event.httpMethod === 'OPTIONS') {
@@ -128,7 +130,7 @@ export const handler: Handler = async (event, context) => {
     const zones = await db
       .select()
       .from(deliveryZones)
-      .where(deliveryZones.isActive.eq(true))
+      .where(eq(deliveryZones.isActive, true))
       .orderBy(asc(deliveryZones.sortOrder));
 
     // Get Google Maps API key from environment or database settings
