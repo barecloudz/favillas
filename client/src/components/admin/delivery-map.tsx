@@ -42,7 +42,7 @@ export function DeliveryMap({ zones, restaurantAddress, onZoneUpdate }: Delivery
 
       // Use callback parameter for reliable loading
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=geometry,marker&callback=${callbackName}`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=geometry,marker&callback=${callbackName}&loading=async`;
       script.async = true;
       script.defer = true;
       script.onerror = () => {
@@ -69,6 +69,7 @@ export function DeliveryMap({ zones, restaurantAddress, onZoneUpdate }: Delivery
           zoom: 12,
           center: defaultCenter,
           mapTypeId: google.maps.MapTypeId.ROADMAP,
+          mapId: 'DELIVERY_ZONES_MAP', // Add Map ID for Advanced Markers
           styles: [
             {
               featureType: 'poi',
