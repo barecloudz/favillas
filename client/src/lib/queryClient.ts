@@ -8,17 +8,26 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {};
 
   try {
-    // For Netlify Functions, rely on cookies instead of Authorization headers
-    // The authenticateToken function in Netlify will handle cookie-based auth
-    // No need to set Authorization header since cookies are sent automatically
+    // For Netlify Functions, cookies are sent automatically with credentials: "include"
+    // HttpOnly cookies can't be read by JavaScript, but they're still sent to the server
+    // Check for any auth-related cookies (including HttpOnly ones we can't read)
 
-    // Fallback: try to get Supabase token only if no cookies are available
-    const hasCookies = document.cookie.includes('auth-token') ||
-                      document.cookie.includes('token') ||
-                      document.cookie.includes('jwt');
+    // Check if we can see any non-HttpOnly auth cookies
+    const hasVisibleCookies = document.cookie.includes('auth-token') ||
+                             document.cookie.includes('token') ||
+                             document.cookie.includes('jwt');
 
-    if (!hasCookies) {
-      console.log('🔍 No auth cookies found, trying Supabase token as fallback');
+    // For production, assume cookies are present since they're HttpOnly
+    const isProduction = window.location.hostname.includes('netlify.app') ||
+                        window.location.hostname.includes('favillasnypizza');
+
+    if (isProduction) {
+      console.log('🍪 Production mode: assuming HttpOnly auth cookies are present');
+      return headers; // Don't add Authorization header, rely on cookies
+    }
+
+    if (!hasVisibleCookies) {
+      console.log('🔍 No visible auth cookies found, trying Supabase token as fallback');
 
       // Try localStorage first for Supabase token
       const localStorageAuth = localStorage.getItem('favillasnypizza-auth-token');
@@ -51,7 +60,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
         console.log('❌ No access token available from any source');
       }
     } else {
-      console.log('🍪 Using cookie-based authentication for Netlify Functions');
+      console.log('🍪 Local development: visible cookies detected, using cookie-based auth');
       console.log('🍪 Available cookies:', document.cookie);
     }
   } catch (error) {
