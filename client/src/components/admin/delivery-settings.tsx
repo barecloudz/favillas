@@ -166,7 +166,14 @@ export function DeliverySettings() {
       distanceUnit: formData.get('distanceUnit'),
       isGoogleMapsEnabled: formData.get('isGoogleMapsEnabled'),
       fallbackDeliveryFee: formData.get('fallbackDeliveryFee'),
+      fallbackDeliveryFeeType: typeof formData.get('fallbackDeliveryFee'),
       hasApiKey: !!import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+    });
+
+    console.log('💰 Fallback delivery fee debug:', {
+      formValue: formData.get('fallbackDeliveryFee'),
+      currentSettingsValue: deliveryData?.settings?.fallbackDeliveryFee,
+      finalValue: formData.get('fallbackDeliveryFee') as string
     });
 
     console.log('🚀 Calling mutation with settings:', settingsData);
