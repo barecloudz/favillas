@@ -249,7 +249,31 @@ export const handler: Handler = async (event, context) => {
         };
       }
 
-      // Delete user
+      // Delete related records first to avoid foreign key constraints
+      console.log('🗑️ Deleting related records for user:', userId);
+
+      // Delete employee schedules
+      const deletedSchedules = await sql`DELETE FROM employee_schedules WHERE employee_id = ${userId} RETURNING id`;
+      console.log(`✅ Deleted ${deletedSchedules.length} employee schedules`);
+
+      // Delete any other related records that might exist
+      try {
+        // Delete user redemptions if they exist
+        const deletedRedemptions = await sql`DELETE FROM user_redemptions WHERE user_id = ${userId} RETURNING id`;
+        console.log(`✅ Deleted ${deletedRedemptions.length} user redemptions`);
+      } catch (error) {
+        console.log('ℹ️ No user_redemptions table or records to delete');
+      }
+
+      try {
+        // Delete user vouchers if they exist
+        const deletedVouchers = await sql`DELETE FROM user_vouchers WHERE user_id = ${userId} RETURNING id`;
+        console.log(`✅ Deleted ${deletedVouchers.length} user vouchers`);
+      } catch (error) {
+        console.log('ℹ️ No user_vouchers table or records to delete');
+      }
+
+      // Finally delete the user
       await sql`DELETE FROM users WHERE id = ${userId}`;
       console.log('✅ User deleted successfully:', userToDelete[0]);
 
