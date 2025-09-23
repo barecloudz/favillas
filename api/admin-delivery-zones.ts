@@ -157,6 +157,22 @@ export const handler: Handler = async (event, context) => {
         body: JSON.stringify(newZone)
       };
 
+    } else if (event.httpMethod === 'DELETE') {
+      console.log('🗑️ Deleting delivery zones...');
+
+      // Delete all delivery zones
+      const deletedZones = await sql`DELETE FROM delivery_zones RETURNING *`;
+      console.log('✅ Deleted zones:', deletedZones.length, 'zones deleted');
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          message: `Successfully deleted ${deletedZones.length} delivery zones`,
+          deletedCount: deletedZones.length
+        })
+      };
+
     } else {
       return {
         statusCode: 405,
