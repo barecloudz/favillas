@@ -58,7 +58,8 @@ export async function authenticateToken(event: NetlifyEvent): Promise<AuthPayloa
     hasAuthHeader: !!event.headers.authorization,
     hasCookies: !!event.headers.cookie,
     path: event.path,
-    method: event.httpMethod
+    method: event.httpMethod,
+    authHeaderPreview: event.headers.authorization ? event.headers.authorization.substring(0, 20) + '...' : 'none'
   });
 
   // Check for JWT token in Authorization header first
@@ -92,8 +93,11 @@ export async function authenticateToken(event: NetlifyEvent): Promise<AuthPayloa
   }
 
   if (!token) {
+    console.log('❌ No authentication token found');
     return null;
   }
+
+  console.log('🔍 Found token, length:', token.length, 'preview:', token.substring(0, 20) + '...');
 
   try {
     // First try to decode as Supabase JWT token
@@ -174,7 +178,7 @@ export async function authenticateToken(event: NetlifyEvent): Promise<AuthPayloa
         };
       }
     } catch (supabaseError) {
-      console.log('Not a Supabase token, trying JWT verification');
+      console.log('❌ Not a Supabase token or failed to decode:', supabaseError.message);
     }
 
     // Fallback to our JWT verification
