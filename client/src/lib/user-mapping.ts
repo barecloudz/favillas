@@ -24,11 +24,15 @@ export function mapSupabaseUser(supabaseUser: User | null): MappedUser | null {
   const userMetadata = supabaseUser.user_metadata || {};
   const appMetadata = supabaseUser.app_metadata || {};
   
-  // Parse full name from Google user metadata
-  const fullName = userMetadata.full_name || userMetadata.name || '';
-  const nameParts = fullName.split(' ');
-  const firstName = nameParts[0] || '';
-  const lastName = nameParts.slice(1).join(' ') || '';
+  // Parse name from user metadata (handles both Google and email/password users)
+  const firstName = userMetadata.first_name ||
+                   userMetadata.name?.split(' ')[0] ||
+                   userMetadata.full_name?.split(' ')[0] ||
+                   'User';
+  const lastName = userMetadata.last_name ||
+                  userMetadata.name?.split(' ').slice(1).join(' ') ||
+                  userMetadata.full_name?.split(' ').slice(1).join(' ') ||
+                  '';
 
   // Check if this is a Google user based on provider info
   const isGoogleUser = appMetadata.provider === 'google' || 
@@ -46,8 +50,8 @@ export function mapSupabaseUser(supabaseUser: User | null): MappedUser | null {
     city: userMetadata.city || '',
     state: userMetadata.state || '',
     zipCode: userMetadata.zipCode || userMetadata.postal_code || '',
-    isAdmin: appMetadata.isAdmin || false,
-    role: appMetadata.role || 'customer',
+    isAdmin: appMetadata.isAdmin || userMetadata.role === 'admin' || userMetadata.role === 'superadmin',
+    role: appMetadata.role || userMetadata.role || 'customer',
     avatarUrl: userMetadata.avatar_url || userMetadata.picture || '',
     isGoogleUser,
   };
