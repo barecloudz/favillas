@@ -218,13 +218,6 @@ export function DeliverySettings() {
     fallbackDeliveryFee: '5.00'
   };
 
-  // Debug map visibility conditions
-  console.log('🗺️ Map visibility debug:', {
-    isGoogleMapsEnabled: settings.isGoogleMapsEnabled,
-    hasApiKey: !!import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
-    restaurantAddress: settings.restaurantAddress,
-    shouldShowMap: settings.isGoogleMapsEnabled && import.meta.env.VITE_GOOGLE_MAPS_API_KEY && settings.restaurantAddress
-  });
 
   return (
     <div className="space-y-6">
@@ -468,16 +461,6 @@ export function DeliverySettings() {
         </div>
       )}
 
-      {/* Debug Info Panel */}
-      <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-        <h3 className="font-semibold text-yellow-800 mb-2">🔍 Map Debug Info</h3>
-        <div className="text-sm space-y-1">
-          <div>Google Maps Enabled: <span className={settings.isGoogleMapsEnabled ? 'text-green-600' : 'text-red-600'}>{settings.isGoogleMapsEnabled ? '✅ Yes' : '❌ No'}</span></div>
-          <div>API Key Present: <span className={import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? 'text-green-600' : 'text-red-600'}>{import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? '✅ Yes' : '❌ No'}</span></div>
-          <div>Restaurant Address: <span className={settings.restaurantAddress ? 'text-green-600' : 'text-red-600'}>{settings.restaurantAddress || '❌ Not set'}</span></div>
-          <div>Should Show Map: <span className={settings.isGoogleMapsEnabled && import.meta.env.VITE_GOOGLE_MAPS_API_KEY && settings.restaurantAddress ? 'text-green-600' : 'text-red-600'}>{settings.isGoogleMapsEnabled && import.meta.env.VITE_GOOGLE_MAPS_API_KEY && settings.restaurantAddress ? '✅ Yes' : '❌ No'}</span></div>
-        </div>
-      </div>
 
       {/* Interactive Delivery Map */}
       {import.meta.env.VITE_GOOGLE_MAPS_API_KEY && settings.restaurantAddress && (

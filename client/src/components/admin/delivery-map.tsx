@@ -25,16 +25,19 @@ export function DeliveryMap({ zones, restaurantAddress, onZoneUpdate }: Delivery
   // Zone colors
   const zoneColors = ['#22c55e', '#3b82f6', '#ef4444']; // Green, Blue, Red
 
-  // Load Google Maps
+  // Load Google Maps with modern async approach
   useEffect(() => {
-    const loadGoogleMaps = () => {
+    const loadGoogleMaps = async () => {
       if (window.google) {
         initializeMap();
         return;
       }
 
+      // Use modern async loading approach with marker library
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=geometry`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=geometry,marker&loading=async`;
+      script.async = true;
+      script.defer = true;
       script.onload = initializeMap;
       document.head.appendChild(script);
     };
@@ -69,22 +72,52 @@ export function DeliveryMap({ zones, restaurantAddress, onZoneUpdate }: Delivery
             setRestaurantLocation(location);
             newMap.setCenter(location);
 
-            // Add restaurant marker
-            new google.maps.Marker({
-              position: location,
-              map: newMap,
-              title: 'Restaurant Location',
-              icon: {
-                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                  <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="16" cy="16" r="12" fill="#dc2626" stroke="white" stroke-width="2"/>
-                    <text x="16" y="20" font-family="Arial" font-size="14" font-weight="bold" fill="white" text-anchor="middle">🏪</text>
-                  </svg>
-                `),
-                scaledSize: new google.maps.Size(32, 32),
-                anchor: new google.maps.Point(16, 16)
+            // Add restaurant marker using modern AdvancedMarkerElement (with fallback)
+            try {
+              // Try to use AdvancedMarkerElement (new approach)
+              if (google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
+                const restaurantMarker = new google.maps.marker.AdvancedMarkerElement({
+                  position: location,
+                  map: newMap,
+                  title: 'Restaurant Location',
+                });
+              } else {
+                // Fallback to regular Marker for older browsers
+                new google.maps.Marker({
+                  position: location,
+                  map: newMap,
+                  title: 'Restaurant Location',
+                  icon: {
+                    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                      <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="16" cy="16" r="12" fill="#dc2626" stroke="white" stroke-width="2"/>
+                        <text x="16" y="20" font-family="Arial" font-size="14" font-weight="bold" fill="white" text-anchor="middle">🏪</text>
+                      </svg>
+                    `),
+                    scaledSize: new google.maps.Size(32, 32),
+                    anchor: new google.maps.Point(16, 16)
+                  }
+                });
               }
-            });
+            } catch (error) {
+              console.warn('Failed to create AdvancedMarkerElement, using fallback:', error);
+              // Fallback to regular Marker
+              new google.maps.Marker({
+                position: location,
+                map: newMap,
+                title: 'Restaurant Location',
+                icon: {
+                  url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                    <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="16" cy="16" r="12" fill="#dc2626" stroke="white" stroke-width="2"/>
+                      <text x="16" y="20" font-family="Arial" font-size="14" font-weight="bold" fill="white" text-anchor="middle">🏪</text>
+                    </svg>
+                  `),
+                  scaledSize: new google.maps.Size(32, 32),
+                  anchor: new google.maps.Point(16, 16)
+                }
+              });
+            }
           }
         });
       }
