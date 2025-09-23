@@ -174,60 +174,149 @@ export const handler: Handler = async (event, context) => {
       };
 
     } else if (event.httpMethod === 'PUT') {
-      console.log('✏️ Updating delivery zone...');
+      const requestData = JSON.parse(event.body || '{}');
 
-      const zoneData = JSON.parse(event.body || '{}');
-      const { id, name, maxRadius, deliveryFee, isActive, sortOrder } = zoneData;
+      // Check if this is a settings update or zone update
+      if (requestData.type === 'settings') {
+        console.log('⚙️ Updating delivery settings...');
 
-      if (!id) {
+        const {
+          restaurantAddress,
+          googleMapsApiKey,
+          maxDeliveryRadius,
+          distanceUnit,
+          isGoogleMapsEnabled,
+          fallbackDeliveryFee
+        } = requestData;
+
+        console.log('🔄 Updating settings with data:', {
+          restaurantAddress,
+          googleMapsApiKey: googleMapsApiKey ? '[REDACTED]' : undefined,
+          maxDeliveryRadius,
+          distanceUnit,
+          isGoogleMapsEnabled,
+          fallbackDeliveryFee
+        });
+
+        // Try to update existing settings, or insert if none exist
+        const existingSettings = await sql`SELECT id FROM delivery_settings LIMIT 1`;
+
+        let updatedSettingsRaw;
+
+        if (existingSettings.length > 0) {
+          // Update existing settings
+          updatedSettingsRaw = await sql`
+            UPDATE delivery_settings
+            SET
+              restaurant_address = ${restaurantAddress || ''},
+              google_maps_api_key = ${googleMapsApiKey || ''},
+              max_delivery_radius = ${maxDeliveryRadius || '10'},
+              distance_unit = ${distanceUnit || 'miles'},
+              is_google_maps_enabled = ${isGoogleMapsEnabled || false},
+              fallback_delivery_fee = ${fallbackDeliveryFee || '5.00'},
+              updated_at = NOW()
+            WHERE id = ${existingSettings[0].id}
+            RETURNING *
+          `;
+        } else {
+          // Insert new settings
+          updatedSettingsRaw = await sql`
+            INSERT INTO delivery_settings (
+              restaurant_address, google_maps_api_key, max_delivery_radius,
+              distance_unit, is_google_maps_enabled, fallback_delivery_fee,
+              created_at, updated_at
+            ) VALUES (
+              ${restaurantAddress || ''},
+              ${googleMapsApiKey || ''},
+              ${maxDeliveryRadius || '10'},
+              ${distanceUnit || 'miles'},
+              ${isGoogleMapsEnabled || false},
+              ${fallbackDeliveryFee || '5.00'},
+              NOW(),
+              NOW()
+            )
+            RETURNING *
+          `;
+        }
+
+        const updatedSettings = {
+          id: updatedSettingsRaw[0].id,
+          restaurantAddress: updatedSettingsRaw[0].restaurant_address,
+          restaurantLat: updatedSettingsRaw[0].restaurant_lat,
+          restaurantLng: updatedSettingsRaw[0].restaurant_lng,
+          googleMapsApiKey: updatedSettingsRaw[0].google_maps_api_key,
+          maxDeliveryRadius: updatedSettingsRaw[0].max_delivery_radius,
+          distanceUnit: updatedSettingsRaw[0].distance_unit,
+          isGoogleMapsEnabled: updatedSettingsRaw[0].is_google_maps_enabled,
+          fallbackDeliveryFee: updatedSettingsRaw[0].fallback_delivery_fee,
+          createdAt: updatedSettingsRaw[0].created_at,
+          updatedAt: updatedSettingsRaw[0].updated_at
+        };
+
+        console.log('✅ Settings updated successfully');
+
         return {
-          statusCode: 400,
+          statusCode: 200,
           headers,
-          body: JSON.stringify({ error: 'Zone ID is required for updates' })
+          body: JSON.stringify(updatedSettings)
+        };
+
+      } else {
+        // Handle zone update
+        console.log('✏️ Updating delivery zone...');
+
+        const { id, name, maxRadius, deliveryFee, isActive, sortOrder } = requestData;
+
+        if (!id) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Zone ID is required for updates' })
+          };
+        }
+
+        console.log('🔄 Updating zone with data:', { id, name, maxRadius, deliveryFee, isActive, sortOrder });
+
+        const updatedZoneRaw = await sql`
+          UPDATE delivery_zones
+          SET
+            name = ${name},
+            max_radius = ${maxRadius},
+            delivery_fee = ${deliveryFee},
+            is_active = ${isActive !== undefined ? isActive : true},
+            sort_order = ${sortOrder || 0},
+            updated_at = NOW()
+          WHERE id = ${id}
+          RETURNING *
+        `;
+
+        if (updatedZoneRaw.length === 0) {
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({ error: 'Delivery zone not found' })
+          };
+        }
+
+        const updatedZone = {
+          id: updatedZoneRaw[0].id,
+          name: updatedZoneRaw[0].name,
+          maxRadius: updatedZoneRaw[0].max_radius,
+          deliveryFee: updatedZoneRaw[0].delivery_fee,
+          isActive: updatedZoneRaw[0].is_active,
+          sortOrder: updatedZoneRaw[0].sort_order,
+          createdAt: updatedZoneRaw[0].created_at,
+          updatedAt: updatedZoneRaw[0].updated_at
+        };
+
+        console.log('✅ Zone updated successfully:', updatedZone);
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify(updatedZone)
         };
       }
-
-      console.log('🔄 Updating zone with data:', { id, name, maxRadius, deliveryFee, isActive, sortOrder });
-
-      const updatedZoneRaw = await sql`
-        UPDATE delivery_zones
-        SET
-          name = ${name},
-          max_radius = ${maxRadius},
-          delivery_fee = ${deliveryFee},
-          is_active = ${isActive !== undefined ? isActive : true},
-          sort_order = ${sortOrder || 0},
-          updated_at = NOW()
-        WHERE id = ${id}
-        RETURNING *
-      `;
-
-      if (updatedZoneRaw.length === 0) {
-        return {
-          statusCode: 404,
-          headers,
-          body: JSON.stringify({ error: 'Delivery zone not found' })
-        };
-      }
-
-      const updatedZone = {
-        id: updatedZoneRaw[0].id,
-        name: updatedZoneRaw[0].name,
-        maxRadius: updatedZoneRaw[0].max_radius,
-        deliveryFee: updatedZoneRaw[0].delivery_fee,
-        isActive: updatedZoneRaw[0].is_active,
-        sortOrder: updatedZoneRaw[0].sort_order,
-        createdAt: updatedZoneRaw[0].created_at,
-        updatedAt: updatedZoneRaw[0].updated_at
-      };
-
-      console.log('✅ Zone updated successfully:', updatedZone);
-
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify(updatedZone)
-      };
 
     } else if (event.httpMethod === 'DELETE') {
       console.log('🗑️ Processing DELETE request...');
