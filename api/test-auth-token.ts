@@ -20,7 +20,9 @@ export const handler: Handler = async (event, context) => {
     console.log('🔑 Environment check:', {
       hasJwtSecret: !!process.env.JWT_SECRET,
       hasSessionSecret: !!process.env.SESSION_SECRET,
-      cookieHeader: event.headers.cookie ? 'present' : 'missing'
+      cookieHeader: event.headers.cookie ? 'present' : 'missing',
+      authHeader: event.headers.authorization ? 'present' : 'missing',
+      allHeaders: Object.keys(event.headers)
     });
 
     const authPayload = await authenticateToken(event);
