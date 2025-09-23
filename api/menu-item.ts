@@ -114,7 +114,12 @@ export const handler: Handler = async (event, context) => {
     } else if (event.httpMethod === 'PUT') {
       // Update menu item
       const updateData = JSON.parse(event.body || '{}');
-      
+      console.log('🔄 Updating menu item:', {
+        menuId,
+        updateData,
+        fieldsToUpdate: Object.keys(updateData)
+      });
+
       const updatedMenuItem = await db
         .update(menuItems)
         .set({
@@ -131,6 +136,11 @@ export const handler: Handler = async (event, context) => {
         })
         .where(eq(menuItems.id, parseInt(menuId)))
         .returning();
+
+      console.log('✅ Menu item update result:', {
+        updatedCount: updatedMenuItem.length,
+        updatedItem: updatedMenuItem[0]
+      });
 
       await sql.end();
 
