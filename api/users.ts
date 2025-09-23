@@ -295,26 +295,20 @@ export const handler: Handler = async (event, context) => {
       }
 
       try {
-        // Update orders to remove user association (preserve order history for business records)
-        // Set user_id to NULL and update guest_email/guest_phone if available
-        const updatedOrders = await sql`
-          UPDATE orders
-          SET user_id = NULL,
-              guest_email = COALESCE(guest_email, (SELECT email FROM users WHERE id = ${userId})),
-              guest_phone = COALESCE(guest_phone, (SELECT phone FROM users WHERE id = ${userId}))
-          WHERE user_id = ${userId}
-          RETURNING id
-        `;
-        console.log(`✅ Updated ${updatedOrders.length} orders to remove user association`);
+        // Delete orders associated with this user (simpler approach to avoid constraint issues)
+        const deletedOrders = await sql`DELETE FROM orders WHERE user_id = ${userId} RETURNING id`;
+        console.log(`✅ Deleted ${deletedOrders.length} user orders`);
       } catch (error) {
-        console.log('ℹ️ Could not update orders, attempting to delete:', error.message);
-        // Fallback: try to delete orders if update fails
-        try {
-          const deletedOrders = await sql`DELETE FROM orders WHERE user_id = ${userId} RETURNING id`;
-          console.log(`✅ Deleted ${deletedOrders.length} user orders as fallback`);
-        } catch (deleteError) {
-          console.log('ℹ️ Could not delete orders either:', deleteError.message);
-        }
+        console.log('ℹ️ Could not delete orders:', error.message);
+        // If we can't delete orders, we can't delete the user due to foreign key constraints
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            error: 'Cannot delete user with existing orders',
+            details: 'Please handle or delete the user\'s orders first before deleting the user account'
+          })
+        };
       }
 
       // Finally delete the user
