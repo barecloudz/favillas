@@ -95,23 +95,21 @@ export const handler: Handler = async (event, context) => {
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({
-          users: allUsers.map(user => ({
-            id: user.id,
-            username: user.username,
-            email: user.email,
-            firstName: user.first_name,
-            lastName: user.last_name,
-            phone: user.phone,
-            role: user.role,
-            isAdmin: user.is_admin,
-            isActive: user.is_active,
-            createdAt: user.created_at,
-            rewards: user.rewards || 0,
-            supabaseUserId: user.supabase_user_id,
-            userType: user.user_type
-          }))
-        })
+        body: JSON.stringify(allUsers.map(user => ({
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          phone: user.phone,
+          role: user.role,
+          isAdmin: user.is_admin,
+          isActive: user.is_active,
+          createdAt: user.created_at,
+          rewards: user.rewards || 0,
+          supabaseUserId: user.supabase_user_id,
+          userType: user.user_type
+        })))
       };
     }
 
