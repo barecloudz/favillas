@@ -111,15 +111,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } else {
           // If no Supabase session, check for JWT auth cookies
+          console.log('🔍 Available cookies on page load:', document.cookie);
+
           const hasJwtCookie = document.cookie.includes('auth-token') ||
                                document.cookie.includes('jwt') ||
                                document.cookie.includes('token') ||
                                document.cookie.includes('connect.sid');
 
+          console.log('🍪 JWT cookie detection:', {
+            hasAuthToken: document.cookie.includes('auth-token'),
+            hasJwt: document.cookie.includes('jwt'),
+            hasToken: document.cookie.includes('token'),
+            hasConnectSid: document.cookie.includes('connect.sid'),
+            hasJwtCookie
+          });
+
           if (hasJwtCookie) {
+            console.log('🔄 Attempting to restore authentication from cookies...');
             try {
               const response = await apiRequest('GET', '/api/user');
               const userData = await response.json();
+
+              console.log('✅ User data restored from cookies:', userData);
 
               if (userData && userData.id) {
                 const mappedUser: MappedUser = {
@@ -136,7 +149,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setUser(mappedUser);
               }
             } catch (authError) {
-              // Silently handle auth errors
+              console.warn('❌ Failed to restore authentication from JWT cookie:', authError);
+              console.warn('❌ Error details:', {
+                message: authError instanceof Error ? authError.message : 'Unknown error'
+              });
             }
           }
         }
