@@ -242,10 +242,52 @@ export const handler: Handler = async (event, context) => {
             border-bottom: 3px solid #d73a31;
             padding-bottom: 20px;
         }
-        
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #d73a31, #c73128);
+            border-radius: 50%;
+            box-shadow: 0 4px 15px rgba(215, 58, 49, 0.3);
+        }
+
+        .pizza-icon {
+            font-size: 2.5rem;
+            animation: rotate 10s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .company-info {
+            text-align: left;
+        }
+
         .header h1 {
             color: #d73a31;
             font-size: 2.5rem;
+            margin-bottom: 5px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .company-tagline {
+            color: #666;
+            font-size: 1rem;
+            font-style: italic;
             margin-bottom: 10px;
         }
         
@@ -450,29 +492,44 @@ export const handler: Handler = async (event, context) => {
         }
         
         @media print {
-            body { -webkit-print-color-adjust: exact; }
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
             .container { padding: 10px; }
             .header h1 { font-size: 2rem; }
+            .logo { width: 60px; height: 60px; }
+            .pizza-icon { font-size: 2rem; animation: none; }
+            .company-tagline { font-size: 0.9rem; }
             .schedule-table { font-size: 0.85rem; }
+            .summary { grid-template-columns: repeat(4, 1fr); }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Favilla's NY Pizza</h1>
+            <div class="logo-section">
+                <div class="logo">
+                    <div class="pizza-icon">🍕</div>
+                </div>
+                <div class="company-info">
+                    <h1>Favilla's NY Pizza</h1>
+                    <div class="company-tagline">Authentic New York Style Pizza</div>
+                </div>
+            </div>
             <div class="subtitle">Employee Work Schedule</div>
             <div class="date-range">
-                Week of ${startDateObj.toLocaleDateString('en-US', { 
+                Week of ${startDateObj.toLocaleDateString('en-US', {
                   weekday: 'long',
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })} - ${new Date(endDate as string).toLocaleDateString('en-US', { 
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })} - ${new Date(endDate as string).toLocaleDateString('en-US', {
                   weekday: 'long',
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
                 })}
             </div>
         </div>

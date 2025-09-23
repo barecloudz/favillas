@@ -20,9 +20,24 @@ interface ScheduleCreatorProps {
 const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // Utility function to get date string in local timezone
+  const getLocalDateString = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Utility function to create date from date string (avoiding timezone issues)
+  const createDateFromString = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
   const [scheduleForm, setScheduleForm] = useState({
     employeeId: '',
-    scheduleDate: new Date().toISOString().split('T')[0],
+    scheduleDate: getLocalDateString(new Date()),
     startTime: '09:00',
     endTime: '17:00',
     position: 'kitchen',
@@ -37,13 +52,17 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
   // Calculate view dates based on current week
   const viewDates = useMemo(() => {
     const startOfWeek = new Date(currentWeek);
-    startOfWeek.setDate(currentWeek.getDate() - currentWeek.getDay() + 1); // Monday
+    // Get Monday of the current week (0 = Sunday, 1 = Monday, etc.)
+    const dayOfWeek = startOfWeek.getDay();
+    const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Handle Sunday properly
+    startOfWeek.setDate(startOfWeek.getDate() + daysToMonday);
+
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6); // Sunday
-    
+
     return {
-      startDate: startOfWeek.toISOString().split('T')[0],
-      endDate: endOfWeek.toISOString().split('T')[0],
+      startDate: getLocalDateString(startOfWeek),
+      endDate: getLocalDateString(endOfWeek),
     };
   }, [currentWeek]);
 
@@ -144,7 +163,7 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
   const resetForm = () => {
     setScheduleForm({
       employeeId: '',
-      scheduleDate: new Date().toISOString().split('T')[0],
+      scheduleDate: getLocalDateString(new Date()),
       startTime: '09:00',
       endTime: '17:00',
       position: 'kitchen',
@@ -183,7 +202,7 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
   };
 
   const handleDateClick = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(date);
     setSelectedDate(dateStr);
     setScheduleForm(prev => ({ ...prev, scheduleDate: dateStr }));
     setIsDialogOpen(true);
@@ -494,16 +513,14 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
                         
                         <div className="grid grid-cols-1 gap-2">
                           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, dayIndex) => {
-                            const dayDate = new Date(viewDates.startDate);
+                            const dayDate = createDateFromString(viewDates.startDate);
                             dayDate.setDate(dayDate.getDate() + dayIndex);
-                            const daySchedules = employeeSchedules.filter((s: any) => {
-                              const scheduleDate = new Date(s.scheduleDate);
-                              return scheduleDate.toDateString() === dayDate.toDateString();
-                            });
+                            const dayDateStr = getLocalDateString(dayDate);
+                            const daySchedules = employeeSchedules.filter((s: any) => s.scheduleDate === dayDateStr);
 
                             return (
-                              <div 
-                                key={day} 
+                              <div
+                                key={day}
                                 className="flex items-center justify-between py-2 border-l-4 border-gray-200 pl-3 cursor-pointer hover:bg-gray-50 active:bg-gray-100 rounded-r-md transition-colors touch-table-cell"
                                 onClick={() => handleDateClick(dayDate)}
                               >
@@ -561,14 +578,18 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
                         <th className="border border-gray-200 p-3 text-left font-medium text-gray-900 sticky left-0 bg-gray-50 z-10 min-w-[150px]">
                           Employee
                         </th>
-                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                          <th key={day} className="border border-gray-200 p-3 text-center font-medium text-gray-900 min-w-[120px]">
-                            <div>{day}</div>
-                            <div className="text-xs font-normal text-gray-600">
-                              {new Date(viewDates.startDate).getDate() + ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(day)}
-                            </div>
-                          </th>
-                        ))}
+                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, dayIndex) => {
+                          const headerDate = createDateFromString(viewDates.startDate);
+                          headerDate.setDate(headerDate.getDate() + dayIndex);
+                          return (
+                            <th key={day} className="border border-gray-200 p-3 text-center font-medium text-gray-900 min-w-[120px]">
+                              <div>{day}</div>
+                              <div className="text-xs font-normal text-gray-600">
+                                {headerDate.getDate()}/{headerDate.getMonth() + 1}
+                              </div>
+                            </th>
+                          );
+                        })}
                         <th className="border border-gray-200 p-3 text-center font-medium text-gray-900 min-w-[100px]">
                           Total Hours
                         </th>
@@ -599,9 +620,9 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
                           </div>
                         </td>
                         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, dayIndex) => {
-                          const date = new Date(viewDates.startDate);
+                          const date = createDateFromString(viewDates.startDate);
                           date.setDate(date.getDate() + dayIndex);
-                          const dateStr = date.toISOString().split('T')[0];
+                          const dateStr = getLocalDateString(date);
                           const daySchedules = employeeSchedules.filter((s: any) => s.scheduleDate === dateStr);
 
                           return (
@@ -769,9 +790,9 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
                   
                   {/* Understaffed Days */}
                   {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].some((day, dayIndex) => {
-                    const date = new Date(viewDates.startDate);
+                    const date = createDateFromString(viewDates.startDate);
                     date.setDate(date.getDate() + dayIndex);
-                    const dateStr = date.toISOString().split('T')[0];
+                    const dateStr = getLocalDateString(date);
                     const daySchedules = schedules?.filter((s: any) => s.scheduleDate === dateStr) || [];
                     return daySchedules.length < 2; // Minimum 2 staff per day
                   }) && (
