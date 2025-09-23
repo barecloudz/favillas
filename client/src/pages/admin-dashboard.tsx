@@ -8192,14 +8192,92 @@ const EditChoiceForm = ({ choice, onSubmit, onCancel }: { choice: any; onSubmit:
   );
 };
 
+// Award Points Form Component
+const AwardPointsForm = ({ user, onSubmit, onCancel, isLoading }: any) => {
+  const [formData, setFormData] = useState({
+    points: '',
+    reason: ''
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const points = parseInt(formData.points);
+    if (points <= 0) {
+      alert('Points must be a positive number');
+      return;
+    }
+    onSubmit({
+      points,
+      reason: formData.reason || `Points awarded by admin`
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="currentPoints">Current Points</Label>
+        <div className="text-lg font-semibold text-green-600">
+          {user.currentPoints || 0} points
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="points">Points to Award *</Label>
+        <Input
+          id="points"
+          type="number"
+          min="1"
+          step="1"
+          value={formData.points}
+          onChange={(e) => setFormData({ ...formData, points: e.target.value })}
+          placeholder="Enter points amount"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="reason">Reason (Optional)</Label>
+        <Input
+          id="reason"
+          value={formData.reason}
+          onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+          placeholder="e.g., Customer appreciation, Special promotion"
+        />
+      </div>
+
+      <div className="flex gap-2 pt-4">
+        <Button
+          type="submit"
+          disabled={isLoading || !formData.points}
+          className="flex-1"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Awarding...
+            </>
+          ) : (
+            'Award Points'
+          )}
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+};
+
 // User Management Tab Component (keeping the existing implementation)
 const UserManagementTab = () => {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
+  const [awardingPointsUser, setAwardingPointsUser] = useState<any>(null);
 
   // Fetch users
   const { data: users, isLoading } = useQuery({
@@ -8273,6 +8351,32 @@ const UserManagementTab = () => {
       toast({
         title: "User Deleted",
         description: "User has been deleted successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Award points mutation
+  const awardPointsMutation = useMutation({
+    mutationFn: async ({ userId, points, reason }: { userId: number; points: number; reason: string }) => {
+      const response = await apiRequest("POST", "/api/award-points", { userId, points, reason });
+      if (!response.ok) {
+        throw new Error("Failed to award points");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setAwardingPointsUser(null);
+      toast({
+        title: "Points Awarded",
+        description: `Successfully awarded ${data.pointsAwarded} points to ${data.user.firstName} ${data.user.lastName}. New total: ${data.newTotal} points.`,
       });
     },
     onError: (error: any) => {
@@ -8417,6 +8521,7 @@ const UserManagementTab = () => {
                   <th className="text-left p-2">Name</th>
                   <th className="text-left p-2">Email</th>
                   <th className="text-left p-2">Role</th>
+                  <th className="text-left p-2">Points</th>
                   <th className="text-left p-2">Status</th>
                   <th className="text-left p-2">Created</th>
                   <th className="text-left p-2">Actions</th>
@@ -8436,6 +8541,23 @@ const UserManagementTab = () => {
                       <Badge className={getRoleBadgeColor(user.role)}>
                         {user.role?.replace('_', ' ').toUpperCase()}
                       </Badge>
+                    </td>
+                    <td className="p-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-green-600">
+                          {user.currentPoints || 0} pts
+                        </span>
+                        {user.role === 'customer' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setAwardingPointsUser(user)}
+                            className="text-xs px-2 py-1 h-6"
+                          >
+                            Award
+                          </Button>
+                        )}
+                      </div>
                     </td>
                     <td className="p-2">
                       <Badge variant={user.isActive ? "default" : "destructive"}>
@@ -8485,6 +8607,30 @@ const UserManagementTab = () => {
               user={editingUser} 
               onSubmit={(userData) => handleUpdateUser(editingUser.id, userData)}
               onCancel={() => setEditingUser(null)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Award Points Dialog */}
+      {awardingPointsUser && (
+        <Dialog open={!!awardingPointsUser} onOpenChange={() => setAwardingPointsUser(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Award Points</DialogTitle>
+              <DialogDescription>
+                Award points to {awardingPointsUser.firstName} {awardingPointsUser.lastName}
+              </DialogDescription>
+            </DialogHeader>
+            <AwardPointsForm
+              user={awardingPointsUser}
+              onSubmit={(pointsData) => awardPointsMutation.mutate({
+                userId: awardingPointsUser.id,
+                points: pointsData.points,
+                reason: pointsData.reason
+              })}
+              onCancel={() => setAwardingPointsUser(null)}
+              isLoading={awardPointsMutation.isPending}
             />
           </DialogContent>
         </Dialog>

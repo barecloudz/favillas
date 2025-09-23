@@ -66,26 +66,30 @@ export const handler: Handler = async (event, context) => {
     if (event.httpMethod === 'GET') {
       console.log('📊 Fetching all users...');
 
-      // Get legacy users
+      // Get legacy users with current point balance
       const legacyUsers = await sql`
         SELECT
-          id, username, email, first_name, last_name, phone,
-          role, is_admin, is_active, created_at, rewards,
-          NULL as supabase_user_id, 'legacy' as user_type
-        FROM users
-        WHERE supabase_user_id IS NULL
-        ORDER BY created_at DESC
+          u.id, u.username, u.email, u.first_name, u.last_name, u.phone,
+          u.role, u.is_admin, u.is_active, u.created_at, u.rewards,
+          NULL as supabase_user_id, 'legacy' as user_type,
+          COALESCE(up.points, 0) as current_points
+        FROM users u
+        LEFT JOIN user_points up ON u.id = up.user_id
+        WHERE u.supabase_user_id IS NULL
+        ORDER BY u.created_at DESC
       `;
 
-      // Get Supabase users
+      // Get Supabase users with current point balance
       const supabaseUsers = await sql`
         SELECT
-          id, username, email, first_name, last_name, phone,
-          role, is_admin, is_active, created_at, rewards,
-          supabase_user_id, 'supabase' as user_type
-        FROM users
-        WHERE supabase_user_id IS NOT NULL
-        ORDER BY created_at DESC
+          u.id, u.username, u.email, u.first_name, u.last_name, u.phone,
+          u.role, u.is_admin, u.is_active, u.created_at, u.rewards,
+          u.supabase_user_id, 'supabase' as user_type,
+          COALESCE(up.points, 0) as current_points
+        FROM users u
+        LEFT JOIN user_points up ON u.id = up.user_id
+        WHERE u.supabase_user_id IS NOT NULL
+        ORDER BY u.created_at DESC
       `;
 
       console.log(`✅ Found ${legacyUsers.length} legacy users and ${supabaseUsers.length} Supabase users`);
@@ -107,6 +111,7 @@ export const handler: Handler = async (event, context) => {
           isActive: user.is_active,
           createdAt: user.created_at,
           rewards: user.rewards || 0,
+          currentPoints: parseInt(user.current_points) || 0,
           supabaseUserId: user.supabase_user_id,
           userType: user.user_type
         })))
