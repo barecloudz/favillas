@@ -256,6 +256,14 @@ export const handler: Handler = async (event, context) => {
       const deletedSchedules = await sql`DELETE FROM employee_schedules WHERE employee_id = ${userId} RETURNING id`;
       console.log(`✅ Deleted ${deletedSchedules.length} employee schedules`);
 
+      // Delete user points (reset points to zero and remove records)
+      try {
+        const deletedPoints = await sql`DELETE FROM user_points WHERE user_id = ${userId} RETURNING id`;
+        console.log(`✅ Deleted ${deletedPoints.length} user points records`);
+      } catch (error) {
+        console.log('ℹ️ No user_points table or records to delete');
+      }
+
       // Delete any other related records that might exist
       try {
         // Delete user redemptions if they exist
@@ -271,6 +279,14 @@ export const handler: Handler = async (event, context) => {
         console.log(`✅ Deleted ${deletedVouchers.length} user vouchers`);
       } catch (error) {
         console.log('ℹ️ No user_vouchers table or records to delete');
+      }
+
+      try {
+        // Delete orders associated with this user
+        const deletedOrders = await sql`DELETE FROM orders WHERE user_id = ${userId} RETURNING id`;
+        console.log(`✅ Deleted ${deletedOrders.length} user orders`);
+      } catch (error) {
+        console.log('ℹ️ No orders table or records to delete');
       }
 
       // Finally delete the user
