@@ -144,7 +144,7 @@ export function DeliverySettings() {
     const settingsData = {
       ...deliveryData?.settings,
       restaurantAddress: formData.get('restaurantAddress') as string,
-      googleMapsApiKey: formData.get('googleMapsApiKey') as string,
+      googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
       maxDeliveryRadius: formData.get('maxDeliveryRadius') as string,
       distanceUnit: formData.get('distanceUnit') as string,
       isGoogleMapsEnabled: formData.get('isGoogleMapsEnabled') === 'on',
@@ -246,9 +246,14 @@ export function DeliverySettings() {
                 type="text"
                 id="googleMapsApiKey"
                 name="googleMapsApiKey"
-                defaultValue={settings.googleMapsApiKey || ''}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                value={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'Not configured'}
+                readOnly
+                className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 text-gray-500 shadow-sm"
+                title="API key is automatically loaded from environment variables"
               />
+              <p className="mt-1 text-xs text-gray-500">
+                ✅ API key automatically loaded from environment variables (more secure)
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -426,7 +431,7 @@ export function DeliverySettings() {
       )}
 
       {/* Interactive Delivery Map */}
-      {settings.isGoogleMapsEnabled && settings.googleMapsApiKey && settings.restaurantAddress && (
+      {settings.isGoogleMapsEnabled && import.meta.env.VITE_GOOGLE_MAPS_API_KEY && settings.restaurantAddress && (
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h3 className="text-lg font-semibold mb-4">Delivery Zone Map</h3>
           <DeliveryMap
@@ -457,7 +462,7 @@ export function DeliverySettings() {
       )}
 
       {/* Fallback Map when Google Maps is not enabled */}
-      {(!settings.isGoogleMapsEnabled || !settings.googleMapsApiKey) && zones.length > 0 && (
+      {(!settings.isGoogleMapsEnabled || !import.meta.env.VITE_GOOGLE_MAPS_API_KEY) && zones.length > 0 && (
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h3 className="text-lg font-semibold mb-4">Delivery Zones</h3>
           <DeliveryMapFallback
