@@ -44,6 +44,13 @@ export const handler: Handler = async (event, context) => {
       const isProduction = event.headers.origin?.includes('netlify.app') || event.headers.origin?.includes('favillasnypizza');
       const cookieOptions = `auth-token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax${isProduction ? '; Secure' : ''}`;
 
+      console.log('🍪 Setting cookie for superadmin:', {
+        origin: event.headers.origin,
+        isProduction,
+        cookieOptions,
+        tokenLength: token.length
+      });
+
       return {
         statusCode: 200,
         headers: {
