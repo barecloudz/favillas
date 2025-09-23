@@ -1,11 +1,12 @@
 import { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
+import { authenticateToken } from './_shared/auth';
 
 export const handler: Handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Content-Type': 'application/json',
   };
 
@@ -21,8 +22,26 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
+  // Check authentication - only super_admin can create other admins
+  const authPayload = await authenticateToken(event);
+  if (!authPayload) {
+    return {
+      statusCode: 401,
+      headers,
+      body: JSON.stringify({ error: 'Unauthorized' })
+    };
+  }
+
+  if (authPayload.role !== 'super_admin') {
+    return {
+      statusCode: 403,
+      headers,
+      body: JSON.stringify({ error: 'Forbidden - Super admin access required' })
+    };
+  }
+
   try {
-    const { email, password, role = 'admin' } = JSON.parse(event.body || '{}');
+    const { email, password, role = 'admin', firstName, lastName } = JSON.parse(event.body || '{}');
 
     if (!email || !password) {
       return {
@@ -57,8 +76,9 @@ export const handler: Handler = async (event, context) => {
       password,
       user_metadata: {
         role: role,
-        first_name: 'Admin',
-        last_name: 'User',
+        first_name: firstName || 'Admin',
+        last_name: lastName || 'User',
+        full_name: `${firstName || 'Admin'} ${lastName || 'User'}`,
       },
       email_confirm: true // Auto-confirm email
     });

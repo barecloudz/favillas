@@ -152,6 +152,9 @@ export const handler: Handler = async (event, context) => {
         const transformedOrder = {
           ...order,
           orderType: order.order_type, // Transform snake_case to camelCase for frontend
+          createdAt: order.created_at, // Transform snake_case to camelCase
+          processedAt: order.processed_at,
+          completedAt: order.completed_at,
           total: parseFloat(order.total || '0'),
           tax: parseFloat(order.tax || '0'),
           delivery_fee: parseFloat(order.delivery_fee || '0'),
@@ -222,6 +225,10 @@ export const handler: Handler = async (event, context) => {
             // Ensure numeric values are properly converted for frontend
             const transformedOrder = {
               ...order,
+              orderType: order.order_type, // Transform snake_case to camelCase
+              createdAt: order.created_at, // Transform snake_case to camelCase
+              processedAt: order.processed_at,
+              completedAt: order.completed_at,
               total: parseFloat(order.total || '0'),
               tax: parseFloat(order.tax || '0'),
               delivery_fee: parseFloat(order.delivery_fee || '0'),
@@ -235,6 +242,10 @@ export const handler: Handler = async (event, context) => {
             // Still ensure numeric conversion even on error
             return {
               ...order,
+              orderType: order.order_type, // Transform snake_case to camelCase
+              createdAt: order.created_at, // Transform snake_case to camelCase
+              processedAt: order.processed_at,
+              completedAt: order.completed_at,
               total: parseFloat(order.total || '0'),
               tax: parseFloat(order.tax || '0'),
               delivery_fee: parseFloat(order.delivery_fee || '0'),
@@ -768,9 +779,13 @@ export const handler: Handler = async (event, context) => {
           console.log('⚠️ Orders API: No user ID available for contact info retrieval');
         }
 
-        // Enhance order object with user contact information
+        // Enhance order object with user contact information and transform field names
         const enhancedOrder = {
           ...newOrder,
+          orderType: newOrder.order_type, // Transform snake_case to camelCase
+          createdAt: newOrder.created_at, // Transform snake_case to camelCase
+          processedAt: newOrder.processed_at,
+          completedAt: newOrder.completed_at,
           items: transformedItems,
           userContactInfo: userContactInfo
         };

@@ -1691,7 +1691,7 @@ const OrdersManagement = ({ orders, onUpdateStatus }: any) => {
                   <th className="text-left py-3 px-4 font-medium">Items</th>
                   <th className="text-left py-3 px-4 font-medium">Total</th>
                   <th className="text-left py-3 px-4 font-medium">Status</th>
-                  <th className="text-left py-3 px-4 font-medium">Time</th>
+                  <th className="text-left py-3 px-4 font-medium">Date & Time</th>
                   <th className="text-left py-3 px-4 font-medium">Actions</th>
                 </tr>
               </thead>
@@ -1722,7 +1722,10 @@ const OrdersManagement = ({ orders, onUpdateStatus }: any) => {
                       </Badge>
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-500">
-                      {new Date(order.createdAt).toLocaleTimeString()}
+                      <div>
+                        <div>{new Date(order.createdAt).toLocaleDateString()}</div>
+                        <div className="text-xs text-gray-400">{new Date(order.createdAt).toLocaleTimeString()}</div>
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex space-x-2">
@@ -8350,6 +8353,24 @@ const UserManagementTab = () => {
         </Dialog>
       </div>
 
+      {/* Create Admin User (Supabase) */}
+      {currentUser?.role === 'super_admin' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-blue-600" />
+              Create Admin User (Supabase)
+            </CardTitle>
+            <CardDescription>
+              Create new admin or employee accounts with Supabase authentication
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SupabaseAdminCreator />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
@@ -8469,6 +8490,141 @@ const UserManagementTab = () => {
         </Dialog>
       )}
     </div>
+  );
+};
+
+// Supabase Admin Creator Component
+const SupabaseAdminCreator = () => {
+  const { toast } = useToast();
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    role: "admin",
+    firstName: "",
+    lastName: ""
+  });
+
+  const createSupabaseAdminMutation = useMutation({
+    mutationFn: async (adminData: any) => {
+      const response = await apiRequest("POST", "/api/create-supabase-admin", adminData);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Admin User Created",
+        description: `${data.user?.role} user created successfully with email: ${data.user?.email}`,
+      });
+      setFormData({
+        email: "",
+        password: "",
+        role: "admin",
+        firstName: "",
+        lastName: ""
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create admin user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    createSupabaseAdminMutation.mutate({
+      email: formData.email,
+      password: formData.password,
+      role: formData.role,
+      firstName: formData.firstName,
+      lastName: formData.lastName
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="firstName">First Name</Label>
+          <Input
+            id="firstName"
+            value={formData.firstName}
+            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+            placeholder="John"
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="lastName">Last Name</Label>
+          <Input
+            id="lastName"
+            value={formData.lastName}
+            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+            placeholder="Doe"
+            required
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          placeholder="admin@restaurant.com"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
+          type="password"
+          value={formData.password}
+          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+          placeholder="Strong password (min 8 characters)"
+          minLength={8}
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="role">Role</Label>
+        <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="manager">Manager</SelectItem>
+            <SelectItem value="kitchen">Kitchen Staff</SelectItem>
+            <SelectItem value="super_admin">Super Admin</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Button
+        type="submit"
+        disabled={createSupabaseAdminMutation.isPending}
+        className="w-full"
+      >
+        {createSupabaseAdminMutation.isPending ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Creating Admin...
+          </>
+        ) : (
+          <>
+            <Plus className="h-4 w-4 mr-2" />
+            Create {formData.role.replace('_', ' ')} User
+          </>
+        )}
+      </Button>
+    </form>
   );
 };
 
