@@ -43,9 +43,9 @@ export function DeliverySettings() {
 
   // Fetch delivery zones and settings
   const { data: deliveryData, isLoading, error } = useQuery<DeliveryData>({
-    queryKey: ['/api/admin-delivery-zones'],
+    queryKey: ['/api/admin/delivery-zones'],
     queryFn: async () => {
-      const response = await apiRequest('GET', '/api/admin-delivery-zones');
+      const response = await apiRequest('GET', '/api/admin/delivery-zones');
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
@@ -81,7 +81,7 @@ export function DeliverySettings() {
   // Delete delivery zone mutation
   const deleteZoneMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await apiRequest('DELETE', '/api/admin/delivery-zones', { id });
+      const response = await apiRequest('DELETE', '/api/admin/delivery-zones?id=' + id);
       return await response.json();
     },
     onSuccess: () => {
