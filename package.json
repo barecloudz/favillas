@@ -13,7 +13,7 @@
     "dev:server": "cross-env NODE_ENV=development tsx server/index.ts",
     "dev:api": "cross-env NODE_ENV=development tsx server/index.ts",
     "dev:netlify": "netlify dev",
-    "build": "cross-env NODE_ENV=production vite build --mode production",
+    "build": "cross-env NODE_ENV=production vite build --mode production --minify esbuild",
     "start": "cross-env NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
     "db:push": "drizzle-kit push",

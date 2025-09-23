@@ -1,5 +1,5 @@
 [build]
-  command = "npm ci && npm run build"
+  command = "npm install --no-audit --no-fund && npm run build"
   publish = "dist/public"
 
 [build.environment]
@@ -9,8 +9,12 @@
   DISABLE_OPENCOLLECTIVE = "true"
   SECRETS_SCAN_ENABLED = "false"
   # Optimize build performance
-  NODE_OPTIONS = "--max-old-space-size=2048"
+  NODE_OPTIONS = "--max-old-space-size=3072"
   NETLIFY_USE_YARN = "false"
+  # Enable build caching
+  NETLIFY_CACHE_ENABLED = "true"
+  # Skip optional dependencies for faster installs
+  NPM_CONFIG_OPTIONAL = "false"
 
 # Health check endpoint
 [[redirects]]
@@ -347,8 +351,8 @@
 [functions]
   directory = "api"
   node_bundler = "esbuild"
-  # Include source maps for better debugging
-  included_files = ["**/*.map"]
+  # Optimize bundling for faster builds
+  external_node_modules = ["sharp", "canvas", "sqlite3"]
 
 # Function-specific configurations for optimization
 [functions."health"]
