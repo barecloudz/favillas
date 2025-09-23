@@ -133,6 +133,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const userData = await response.json();
 
               console.log('✅ User data restored from cookies:', userData);
+              console.log('🔍 Role analysis:', {
+                role: userData.role,
+                isAdmin: userData.role === 'admin' || userData.role === 'super_admin' || userData.role === 'superadmin' || userData.username === 'superadmin',
+                username: userData.username
+              });
 
               if (userData && userData.id) {
                 const mappedUser: MappedUser = {
@@ -142,8 +147,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   lastName: userData.lastName || '',
                   phone: userData.phone || '',
                   address: userData.address || '',
+                  city: userData.city || '',
+                  state: userData.state || '',
+                  zipCode: userData.zipCode || userData.zip_code || '',
                   role: userData.role || 'customer',
-                  isAdmin: userData.role === 'admin' || userData.role === 'superadmin' || userData.username === 'superadmin',
+                  isAdmin: userData.role === 'admin' || userData.role === 'super_admin' || userData.role === 'superadmin' || userData.username === 'superadmin',
                   isGoogleUser: false
                 };
                 setUser(mappedUser);
