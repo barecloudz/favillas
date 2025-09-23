@@ -290,11 +290,26 @@ export const handler: Handler = async (event, context) => {
       }
 
       try {
-        // Delete orders associated with this user
-        const deletedOrders = await sql`DELETE FROM orders WHERE user_id = ${userId} RETURNING id`;
-        console.log(`✅ Deleted ${deletedOrders.length} user orders`);
+        // Update orders to remove user association (preserve order history for business records)
+        // Set user_id to NULL and update guest_email/guest_phone if available
+        const updatedOrders = await sql`
+          UPDATE orders
+          SET user_id = NULL,
+              guest_email = COALESCE(guest_email, (SELECT email FROM users WHERE id = ${userId})),
+              guest_phone = COALESCE(guest_phone, (SELECT phone FROM users WHERE id = ${userId}))
+          WHERE user_id = ${userId}
+          RETURNING id
+        `;
+        console.log(`✅ Updated ${updatedOrders.length} orders to remove user association`);
       } catch (error) {
-        console.log('ℹ️ No orders table or records to delete');
+        console.log('ℹ️ Could not update orders, attempting to delete:', error.message);
+        // Fallback: try to delete orders if update fails
+        try {
+          const deletedOrders = await sql`DELETE FROM orders WHERE user_id = ${userId} RETURNING id`;
+          console.log(`✅ Deleted ${deletedOrders.length} user orders as fallback`);
+        } catch (deleteError) {
+          console.log('ℹ️ Could not delete orders either:', deleteError.message);
+        }
       }
 
       // Finally delete the user
