@@ -187,33 +187,6 @@ export function DeliverySettings() {
           <pre className="text-xs mt-1">{JSON.stringify(error, null, 2)}</pre>
         </details>
       </div>
-
-      <div className="p-4 bg-blue-50 border border-blue-200 rounded">
-        <h3 className="font-bold text-blue-800 mb-2">Setup Required</h3>
-        <p className="text-blue-700 mb-4">
-          It looks like the delivery system hasn't been set up yet. Click the button below to initialize the database tables and default delivery zones.
-        </p>
-
-        {migrationStatus === 'success' && (
-          <div className="mb-4 p-3 bg-green-100 border border-green-300 text-green-700 rounded">
-            ✅ Migration completed successfully! The page should reload automatically.
-          </div>
-        )}
-
-        {migrationStatus === 'error' && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded">
-            ❌ Migration failed: {migrationError}
-          </div>
-        )}
-
-        <button
-          onClick={runMigration}
-          disabled={migrationStatus === 'running'}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {migrationStatus === 'running' ? 'Setting up...' : 'Setup Delivery System'}
-        </button>
-      </div>
     </div>
   );
 
