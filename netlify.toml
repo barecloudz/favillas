@@ -205,6 +205,12 @@
   to = "/.netlify/functions/debug-upload-auth"
   status = 200
 
+# Admin system settings endpoint
+[[redirects]]
+  from = "/api/admin/system-settings"
+  to = "/.netlify/functions/admin-system-settings"
+  status = 200
+
 # Image upload endpoint
 [[redirects]]
   from = "/api/image-upload-test"
@@ -288,26 +294,26 @@
   status = 200
   headers = {Cache-Control = "public, max-age=300, s-maxage=300, stale-while-revalidate=60"}
 
-# Authentication endpoints - DISABLED FOR LOCAL DEV
-# [[redirects]]
-#   from = "/api/login"
-#   to = "/.netlify/functions/login"
-#   status = 200
+# Authentication endpoints
+[[redirects]]
+  from = "/api/login"
+  to = "/.netlify/functions/login"
+  status = 200
 
-# [[redirects]]
-#   from = "/api/admin-login"
-#   to = "/.netlify/functions/admin-login"
-#   status = 200
+[[redirects]]
+  from = "/api/admin-login"
+  to = "/.netlify/functions/admin-login"
+  status = 200
 
-# [[redirects]]
-#   from = "/api/register"
-#   to = "/.netlify/functions/register"
-#   status = 200
+[[redirects]]
+  from = "/api/register"
+  to = "/.netlify/functions/register"
+  status = 200
 
-# [[redirects]]
-#   from = "/api/logout"
-#   to = "/.netlify/functions/logout"
-#   status = 200
+[[redirects]]
+  from = "/api/logout"
+  to = "/.netlify/functions/logout"
+  status = 200
 
 # Catch-all API redirect (must be before SPA fallback)
 [[redirects]]
