@@ -109,7 +109,31 @@ export const handler: Handler = async (event, context) => {
     const decoded = jwt.verify(token, secret) as any;
     console.log('Decoded JWT:', decoded);
 
-    // Get fresh user data from database
+    // Handle hardcoded superadmin case
+    if (decoded.username === 'superadmin' && decoded.role === 'super_admin') {
+      console.log('Handling hardcoded superadmin user');
+      const safeUser = {
+        id: 1,
+        username: 'superadmin',
+        email: 'superadmin@favillas.com',
+        firstName: 'Super',
+        lastName: 'Admin',
+        role: 'super_admin',
+        isAdmin: true,
+        isActive: true,
+        rewards: 0,
+        createdAt: new Date(),
+        marketingOptIn: false
+      };
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(safeUser)
+      };
+    }
+
+    // Get fresh user data from database for regular users
     const db = getDB();
     const user = await db
       .select()
@@ -128,7 +152,7 @@ export const handler: Handler = async (event, context) => {
 
     // Return user data (excluding password)
     const { password: _, ...userWithoutPassword } = user;
-    
+
     // Ensure we have required fields with defaults
     const safeUser = {
       id: userWithoutPassword.id,
