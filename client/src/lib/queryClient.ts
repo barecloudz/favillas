@@ -52,6 +52,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
       }
     } else {
       console.log('🍪 Using cookie-based authentication for Netlify Functions');
+      console.log('🍪 Available cookies:', document.cookie);
     }
   } catch (error) {
     console.warn('Failed to get auth headers:', error);
