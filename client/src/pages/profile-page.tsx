@@ -41,6 +41,17 @@ const ProfilePage: React.FC = () => {
   // Sync form state with user data when it changes
   useEffect(() => {
     if (user) {
+      console.log('👤 Syncing form with user data:', {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        address: user.address,
+        city: user.city,
+        state: user.state,
+        zipCode: user.zipCode,
+      });
+
       setFirstName(user.firstName || "");
       setLastName(user.lastName || "");
       setEmail(user.email || "");
@@ -63,17 +74,35 @@ const ProfilePage: React.FC = () => {
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { first_name?: string; last_name?: string; email?: string; phone: string; address: string; city: string; state: string; zip_code: string }) => {
-      return apiRequest("PATCH", "/api/user-profile", data);
+      console.log('🔄 Updating profile with data:', data);
+      const response = await apiRequest("PATCH", "/api/user-profile", data);
+      const result = await response.json();
+      console.log('✅ Profile update response:', result);
+      return result;
     },
-    onSuccess: async () => {
+    onSuccess: async (updatedData) => {
+      console.log('🎉 Profile update successful:', updatedData);
       toast({
         title: "Success",
         description: "Profile updated successfully",
       });
       // Refresh user profile to get updated data
       await refreshUserProfile();
+
+      // Also update form state immediately with the returned data
+      if (updatedData) {
+        setFirstName(updatedData.first_name || "");
+        setLastName(updatedData.last_name || "");
+        setEmail(updatedData.email || "");
+        setPhone(updatedData.phone || "");
+        setAddress(updatedData.address || "");
+        setCity(updatedData.city || "");
+        setState(updatedData.state || "");
+        setZipCode(updatedData.zip_code || "");
+      }
     },
     onError: (error: any) => {
+      console.error('❌ Profile update failed:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to update profile",
@@ -107,6 +136,18 @@ const ProfilePage: React.FC = () => {
   
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
+
+    console.log('📝 Form data being submitted:', {
+      first_name: firstName,
+      last_name: lastName,
+      email,
+      phone,
+      address,
+      city,
+      state,
+      zip_code: zipCode,
+    });
+
     updateProfileMutation.mutate({
       first_name: firstName,
       last_name: lastName,
