@@ -133,7 +133,7 @@ export const handler: Handler = async (event, context) => {
     // Create points transaction record
     await sql`
       INSERT INTO points_transactions (
-        user_id, points_change, transaction_type, description, created_at
+        user_id, points, type, description, created_at
       ) VALUES (
         ${userId}, ${points}, 'admin_award', ${reason || 'Points awarded by admin'}, NOW()
       )
