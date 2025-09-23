@@ -22,9 +22,20 @@ const loginSchema = z.object({
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
 });
 
-// Register schema
-const registerSchema = insertUserSchema.extend({
+// Register schema - simplified to avoid Zod conflicts
+const registerSchema = z.object({
+  username: z.string().min(1, { message: "Username is required" }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
   confirmPassword: z.string().min(6, { message: "Password must be at least 6 characters" }),
+  email: z.string().email({ message: "Invalid email address" }),
+  firstName: z.string().min(1, { message: "First name is required" }),
+  lastName: z.string().min(1, { message: "Last name is required" }),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zipCode: z.string().optional(),
+  marketingOptIn: z.boolean().default(true),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
@@ -81,6 +92,7 @@ const AuthPage = () => {
       city: "",
       state: "",
       zipCode: "",
+      marketingOptIn: true, // Auto-checked for marketing emails
     },
   });
 
@@ -91,7 +103,13 @@ const AuthPage = () => {
 
   const onRegisterSubmit = (values: RegisterFormValues) => {
     const { confirmPassword, ...registerData } = values;
-    registerMutation.mutate(registerData);
+    // Add required fields for our registration mutation
+    const completeRegisterData = {
+      ...registerData,
+      role: 'customer',
+      isActive: true,
+    };
+    registerMutation.mutate(completeRegisterData);
   };
 
   // Redirect if already logged in

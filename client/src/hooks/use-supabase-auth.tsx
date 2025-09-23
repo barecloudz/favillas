@@ -343,6 +343,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (data.user) {
         console.log('✅ Supabase registration successful');
+
+        // Check if email confirmation is required
+        if (!data.session && data.user && !data.user.email_confirmed_at) {
+          console.log('📧 Email confirmation required');
+          // Return a special indicator that email confirmation is needed
+          return {
+            id: data.user.id,
+            email: data.user.email,
+            username: data.user.email,
+            firstName: registrationData.firstName,
+            lastName: registrationData.lastName,
+            phone: registrationData.phone,
+            address: registrationData.address,
+            role: registrationData.role,
+            isAdmin: false,
+            isActive: true,
+            rewards: 0,
+            marketingOptIn: registrationData.marketingOptIn,
+            emailConfirmationRequired: true
+          };
+        }
+
         // Return user data in the expected format
         return {
           id: data.user.id,
@@ -383,10 +405,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setUser(mappedUser);
 
-      toast({
-        title: "Registration successful",
-        description: `Welcome to Favilla's, ${user.firstName || user.username}!`,
-      });
+      if ((user as any).emailConfirmationRequired) {
+        toast({
+          title: "Registration successful!",
+          description: `Please check your email (${user.email}) and click the confirmation link to complete your account setup.`,
+          duration: 8000, // Show longer for email confirmation
+        });
+      } else {
+        toast({
+          title: "Registration successful",
+          description: `Welcome to Favilla's, ${user.firstName || user.username}!`,
+        });
+      }
     },
     onError: (error: Error) => {
       toast({
