@@ -255,9 +255,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Email/password login mutation (using existing API)
+  // Email/password login mutation (try Supabase first, then fallback to legacy API)
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
+      // First try Supabase email/password authentication
+      if (credentials.username.includes('@')) {
+        console.log('📧 Attempting Supabase email login...');
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: credentials.username,
+          password: credentials.password,
+        });
+
+        if (error) {
+          console.log('❌ Supabase login failed, trying legacy API...');
+          // Fallback to legacy API for non-email usernames
+          const res = await apiRequest("POST", "/api/login", credentials);
+          return await res.json();
+        }
+
+        if (data.user) {
+          console.log('✅ Supabase email login successful');
+          // Return user data in the expected format
+          return {
+            id: data.user.id,
+            email: data.user.email,
+            username: data.user.email,
+            firstName: data.user.user_metadata?.full_name?.split(' ')[0] || 'Admin',
+            lastName: data.user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
+            role: data.user.user_metadata?.role || 'admin',
+            isAdmin: true,
+            isActive: true,
+            rewards: 0
+          };
+        }
+      }
+
+      // Fallback to legacy API for username-based login
+      console.log('🔐 Using legacy username/password login...');
       const res = await apiRequest("POST", "/api/login", credentials);
       return await res.json();
     },
