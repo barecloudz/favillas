@@ -33,4 +33,4 @@ jobs:
             ${{ runner.os }}-node-
             
       - name: Build (Test)
-        run: npm run build:fast
+        run: npm run build
