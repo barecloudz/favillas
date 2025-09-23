@@ -156,7 +156,7 @@ export function DeliverySettings() {
       googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
       maxDeliveryRadius: formData.get('maxDeliveryRadius') as string,
       distanceUnit: formData.get('distanceUnit') as string,
-      isGoogleMapsEnabled: formData.get('isGoogleMapsEnabled') === 'on',
+      isGoogleMapsEnabled: true, // Always enabled when API key is present
       fallbackDeliveryFee: formData.get('fallbackDeliveryFee') as string
     };
 
@@ -214,7 +214,7 @@ export function DeliverySettings() {
     restaurantAddress: '',
     maxDeliveryRadius: '10',
     distanceUnit: 'miles',
-    isGoogleMapsEnabled: false,
+    isGoogleMapsEnabled: true, // Default to enabled since API key is available
     fallbackDeliveryFee: '5.00'
   };
 
@@ -330,17 +330,15 @@ export function DeliverySettings() {
               />
             </div>
 
-            <div className="flex items-center">
+            <div className="flex items-center bg-green-50 p-3 rounded-lg border border-green-200">
               <input
-                type="checkbox"
-                id="isGoogleMapsEnabled"
+                type="hidden"
                 name="isGoogleMapsEnabled"
-                defaultChecked={settings.isGoogleMapsEnabled}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                value="on"
               />
-              <label htmlFor="isGoogleMapsEnabled" className="ml-2 block text-sm text-gray-900">
-                Enable Google Maps Integration
-              </label>
+              <span className="text-green-600 text-sm">
+                ✅ Google Maps Integration automatically enabled (API key detected)
+              </span>
             </div>
 
             <div className="flex justify-end space-x-2">
@@ -482,7 +480,7 @@ export function DeliverySettings() {
       </div>
 
       {/* Interactive Delivery Map */}
-      {settings.isGoogleMapsEnabled && import.meta.env.VITE_GOOGLE_MAPS_API_KEY && settings.restaurantAddress && (
+      {import.meta.env.VITE_GOOGLE_MAPS_API_KEY && settings.restaurantAddress && (
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h3 className="text-lg font-semibold mb-4">Delivery Zone Map</h3>
           <DeliveryMap
@@ -512,8 +510,8 @@ export function DeliverySettings() {
         </div>
       )}
 
-      {/* Fallback Map when Google Maps is not enabled */}
-      {(!settings.isGoogleMapsEnabled || !import.meta.env.VITE_GOOGLE_MAPS_API_KEY) && zones.length > 0 && (
+      {/* Fallback Map when Google Maps API key is not available */}
+      {!import.meta.env.VITE_GOOGLE_MAPS_API_KEY && zones.length > 0 && (
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h3 className="text-lg font-semibold mb-4">Delivery Zones</h3>
           <DeliveryMapFallback
