@@ -8,220 +8,85 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {};
 
   try {
-    // For Netlify Functions, cookies are sent automatically with credentials: "include"
-    // HttpOnly cookies can't be read by JavaScript, but they're still sent to the server
-    // Check for any auth-related cookies (including HttpOnly ones we can't read)
-
-    // Check if we can see any non-HttpOnly auth cookies
-    const hasVisibleCookies = document.cookie.includes('auth-token') ||
-                             document.cookie.includes('token') ||
-                             document.cookie.includes('jwt');
-
-    // Always try to get Supabase token first for consistent authentication
+    // Use Supabase authentication only
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.access_token) {
       console.log('🔑 Using Supabase access token for authentication');
       headers.Authorization = `Bearer ${session.access_token}`;
-      return headers;
-    }
-
-    // For production, fallback to cookies for legacy authentication
-    const isProduction = window.location.hostname.includes('netlify.app') ||
-                        window.location.hostname.includes('favillasnypizza');
-
-    if (isProduction) {
-      console.log('🍪 Production mode: falling back to HttpOnly auth cookies');
-      return headers; // Don't add Authorization header, rely on cookies
-    }
-
-    if (!hasVisibleCookies) {
-      console.log('🔍 No visible auth cookies found, trying Supabase token as fallback');
-
-      // Try localStorage first for Supabase token
-      const localStorageAuth = localStorage.getItem('favillasnypizza-auth-token');
-      let token = null;
-
-      if (localStorageAuth) {
-        try {
-          const authData = JSON.parse(localStorageAuth);
-          token = authData.access_token;
-        } catch (parseError) {
-          console.warn('Failed to parse localStorage auth data:', parseError);
-        }
-      }
-
-      // Fallback to Supabase session
-      if (!token) {
-        const { data: { session } } = await supabase.auth.getSession();
-        token = session?.access_token;
-
-        if (!token) {
-          const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
-          token = refreshedSession?.access_token;
-        }
-      }
-
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-        console.log('🔍 Using Supabase token as Authorization header');
-      } else {
-        console.log('❌ No access token available from any source');
-      }
     } else {
-      console.log('🍪 Local development: visible cookies detected, using cookie-based auth');
-      console.log('🍪 Available cookies:', document.cookie);
+      console.log('ℹ️ No Supabase session found - requests will be unauthenticated');
     }
+
+    return headers;
   } catch (error) {
-    console.warn('Failed to get auth headers:', error);
-  }
-
-  return headers;
-}
-
-async function throwIfResNotOk(res: Response) {
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || res.statusText);
+    console.error('Error getting auth headers:', error);
+    return headers;
   }
 }
 
 export async function apiRequest(
-  method: string,
+  method: "GET" | "POST" | "PUT" | "DELETE",
   url: string,
-  data?: unknown | undefined,
+  data?: any,
+  unauthorizedBehavior: UnauthorizedBehavior = "throw"
 ): Promise<Response> {
-  // For local development, route API calls to appropriate server
-  let fullUrl = url;
-  if (!url.startsWith('http')) {
-    // Check if we're in local development
-    const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    if (isLocalDev && url.startsWith('/api/')) {
-      const currentPort = window.location.port;
-
-      // If running on Vite dev server (5173), check for Netlify dev server
-      if (currentPort === '5173') {
-        // Check if user prefers Netlify dev (stored in localStorage)
-        const useNetlifyDev = localStorage.getItem('use-netlify-dev') === 'true';
-
-        if (useNetlifyDev) {
-          // Use Netlify dev server (typically port 8888)
-          const netlifyPort = localStorage.getItem('netlify-dev-port') || '8888';
-          fullUrl = `http://localhost:${netlifyPort}${url}`;
-        } else {
-          // Use Express server
-          const expressPort = localStorage.getItem('express-dev-port') || '5000';
-          fullUrl = `http://localhost:${expressPort}${url}`;
-        }
-      } else {
-        // If already on Netlify dev port, use relative URLs
-        fullUrl = url;
-      }
-    } else {
-      fullUrl = url;
-    }
-  }
-  
   const headers = await getAuthHeaders();
+
+  const fetchOptions: RequestInit = {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...headers,
+    },
+    credentials: "include", // Include cookies for any remaining legacy endpoints
+  };
+
   if (data) {
-    headers["Content-Type"] = "application/json";
+    fetchOptions.body = JSON.stringify(data);
   }
-  
-  try {
-    const fetchOptions: RequestInit = {
-      method,
-      headers,
-      credentials: "include",
-    };
 
-    // Only add body for non-GET/HEAD methods
-    if (method !== 'GET' && method !== 'HEAD' && data) {
-      fetchOptions.body = JSON.stringify(data);
+  console.log(`🌐 API ${method} ${url}`, {
+    hasAuth: !!headers.Authorization,
+    authType: headers.Authorization ? 'Supabase' : 'none'
+  });
+
+  const response = await fetch(url, fetchOptions);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.log(`❌ API Request failed: ${JSON.stringify({
+      url,
+      method,
+      error: errorText
+    })}`);
+
+    if (response.status === 401 && unauthorizedBehavior === "returnNull") {
+      return new Response("null", { status: 200 });
     }
 
-    const res = await fetch(fullUrl, fetchOptions);
-
-    await throwIfResNotOk(res);
-    return res;
-  } catch (error) {
-    console.error('❌ API Request failed:', {
-      url: fullUrl,
-      method,
-      error: error.message
-    });
-
-    // If it's a local dev request that failed, try fallback
-    if (fullUrl.includes('localhost') && fullUrl.includes('/api/')) {
-    }
-
-    throw error;
+    throw new Error(`${response.status}: ${errorText}`);
   }
+
+  return response;
 }
 
-export const getQueryFn: <T>(options: {
-  on401: UnauthorizedBehavior;
-}) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
-    const url = queryKey[0] as string;
-    // For local development, route API calls to appropriate server
-    let fullUrl = url;
-    if (!url.startsWith('http')) {
-      // Check if we're in local development
-      const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      if (isLocalDev && url.startsWith('/api/')) {
-        const currentPort = window.location.port;
-
-        // If running on Vite dev server (5173), check for Netlify dev server
-        if (currentPort === '5173') {
-          // Check if user prefers Netlify dev (stored in localStorage)
-          const useNetlifyDev = localStorage.getItem('use-netlify-dev') === 'true';
-
-          if (useNetlifyDev) {
-            // Use Netlify dev server (typically port 8888)
-            const netlifyPort = localStorage.getItem('netlify-dev-port') || '8888';
-            fullUrl = `http://localhost:${netlifyPort}${url}`;
-          } else {
-            // Use Express server
-            const expressPort = localStorage.getItem('express-dev-port') || '5000';
-            fullUrl = `http://localhost:${expressPort}${url}`;
-          }
-        } else {
-          // If already on Netlify dev port, use relative URLs
-          fullUrl = url;
-        }
-      } else {
-        fullUrl = url;
-      }
-    }
-    
-    const headers = await getAuthHeaders();
-    
-    const res = await fetch(fullUrl, {
-      method: 'GET',
-      headers,
-      credentials: "include",
-    });
-
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
-    }
-
-    await throwIfResNotOk(res);
-    return await res.json();
-  };
+const defaultQueryFn: QueryFunction = async ({ queryKey }) => {
+  const [url] = queryKey as [string];
+  const response = await apiRequest("GET", url, undefined, "returnNull");
+  return await response.json();
+};
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
-      refetchInterval: false,
-      refetchOnWindowFocus: true, // Refetch when window regains focus
-      staleTime: 30 * 1000, // Cache for only 30 seconds instead of 5 minutes
-      cacheTime: 1 * 60 * 1000, // Keep cache for 1 minute after component unmounts
-      retry: false,
-    },
-    mutations: {
-      retry: false,
+      queryFn: defaultQueryFn,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: (failureCount, error) => {
+        if (error instanceof Error && error.message.includes('401')) {
+          return false; // Don't retry unauthorized requests
+        }
+        return failureCount < 3;
+      },
     },
   },
 });

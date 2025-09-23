@@ -110,59 +110,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(mappedUser);
           }
         } else {
-          // If no Supabase session, check for JWT auth cookies
-          console.log('🔍 Available cookies on page load:', document.cookie);
-
-          const hasJwtCookie = document.cookie.includes('auth-token') ||
-                               document.cookie.includes('jwt') ||
-                               document.cookie.includes('token') ||
-                               document.cookie.includes('connect.sid');
-
-          console.log('🍪 JWT cookie detection:', {
-            hasAuthToken: document.cookie.includes('auth-token'),
-            hasJwt: document.cookie.includes('jwt'),
-            hasToken: document.cookie.includes('token'),
-            hasConnectSid: document.cookie.includes('connect.sid'),
-            hasJwtCookie
-          });
-
-          if (hasJwtCookie) {
-            console.log('🔄 Attempting to restore authentication from cookies...');
-            try {
-              const response = await apiRequest('GET', '/api/user');
-              const userData = await response.json();
-
-              console.log('✅ User data restored from cookies:', userData);
-              console.log('🔍 Role analysis:', {
-                role: userData.role,
-                isAdmin: userData.role === 'admin' || userData.role === 'super_admin' || userData.role === 'superadmin' || userData.username === 'superadmin',
-                username: userData.username
-              });
-
-              if (userData && userData.id) {
-                const mappedUser: MappedUser = {
-                  id: userData.id?.toString() || '',
-                  email: userData.email || userData.username || '',
-                  firstName: userData.firstName || userData.username || 'User',
-                  lastName: userData.lastName || '',
-                  phone: userData.phone || '',
-                  address: userData.address || '',
-                  city: userData.city || '',
-                  state: userData.state || '',
-                  zipCode: userData.zipCode || userData.zip_code || '',
-                  role: userData.role || 'customer',
-                  isAdmin: userData.role === 'admin' || userData.role === 'super_admin' || userData.role === 'superadmin' || userData.username === 'superadmin',
-                  isGoogleUser: false
-                };
-                setUser(mappedUser);
-              }
-            } catch (authError) {
-              console.warn('❌ Failed to restore authentication from JWT cookie:', authError);
-              console.warn('❌ Error details:', {
-                message: authError instanceof Error ? authError.message : 'Unknown error'
-              });
-            }
-          }
+          // No Supabase session found
+          console.log('ℹ️ No Supabase session found - user needs to log in');
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
@@ -263,45 +212,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Email/password login mutation (Supabase for emails, legacy for username)
+  // Supabase-only login mutation
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      // Use Supabase for all email-based authentication
-      if (credentials.username.includes('@')) {
-        console.log('📧 Using Supabase email authentication...');
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: credentials.username,
-          password: credentials.password,
-        });
+      // All authentication now goes through Supabase
+      console.log('📧 Using Supabase authentication...');
 
-        if (error) {
-          console.error('❌ Supabase login failed:', error.message);
-          throw new Error(error.message);
-        }
+      // Support both email and username format - treat as email if it contains @
+      const email = credentials.username.includes('@')
+        ? credentials.username
+        : `${credentials.username}@favillasnypizza.com`; // Convert username to email format
 
-        if (data.user) {
-          console.log('✅ Supabase email login successful');
-          const userMetadata = data.user.user_metadata || {};
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: credentials.password,
+      });
 
-          // Return user data in the expected format
-          return {
-            id: data.user.id,
-            email: data.user.email,
-            username: data.user.email,
-            firstName: userMetadata.first_name || userMetadata.full_name?.split(' ')[0] || 'User',
-            lastName: userMetadata.last_name || userMetadata.full_name?.split(' ').slice(1).join(' ') || '',
-            role: userMetadata.role || 'customer',
-            isAdmin: userMetadata.role === 'admin' || userMetadata.role === 'superadmin',
-            isActive: true,
-            rewards: 0
-          };
-        }
+      if (error) {
+        console.error('❌ Supabase login failed:', error.message);
+        throw new Error(error.message);
       }
 
-      // Legacy API for username-based login (temporary)
-      console.log('🔐 Using legacy username/password login...');
-      const res = await apiRequest("POST", "/api/login", credentials);
-      return await res.json();
+      if (data.user) {
+        console.log('✅ Supabase authentication successful');
+        const userMetadata = data.user.user_metadata || {};
+
+        // Return user data in the expected format
+        return {
+          id: data.user.id,
+          email: data.user.email,
+          username: data.user.email,
+          firstName: userMetadata.first_name || userMetadata.full_name?.split(' ')[0] || 'User',
+          lastName: userMetadata.last_name || userMetadata.full_name?.split(' ').slice(1).join(' ') || '',
+          role: userMetadata.role || 'customer',
+          isAdmin: userMetadata.role === 'admin' || userMetadata.role === 'superadmin',
+          isActive: true,
+          rewards: 0
+        };
+      }
+
+      throw new Error('Authentication failed');
     },
     onSuccess: (user: SelectUser) => {
 
@@ -347,50 +297,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  // Registration mutation (using Supabase for email, legacy for username)
+  // Supabase-only registration mutation
   const registerMutation = useMutation({
     mutationFn: async (credentials: InsertUser) => {
-      // Use Supabase for email-based registration
-      if (credentials.email) {
-        console.log('📧 Using Supabase email registration...');
-        const { data, error } = await supabase.auth.signUp({
-          email: credentials.email,
-          password: credentials.password,
-          options: {
-            data: {
-              first_name: credentials.firstName,
-              last_name: credentials.lastName,
-              role: 'customer'
-            }
-          }
-        });
+      // All registration now goes through Supabase
+      console.log('📧 Using Supabase registration...');
 
-        if (error) {
-          console.error('❌ Supabase registration failed:', error.message);
-          throw new Error(error.message);
-        }
-
-        if (data.user) {
-          console.log('✅ Supabase registration successful');
-          // Return user data in the expected format
-          return {
-            id: data.user.id,
-            email: data.user.email,
-            username: data.user.email,
-            firstName: credentials.firstName,
-            lastName: credentials.lastName,
-            role: 'customer',
-            isAdmin: false,
-            isActive: true,
-            rewards: 0
-          };
-        }
+      if (!credentials.email) {
+        throw new Error('Email is required for registration');
       }
 
-      // Legacy API fallback for username-based registration
-      console.log('🔐 Using legacy registration...');
-      const res = await apiRequest("POST", "/api/register", credentials);
-      return await res.json();
+      const { data, error } = await supabase.auth.signUp({
+        email: credentials.email,
+        password: credentials.password,
+        options: {
+          data: {
+            first_name: credentials.firstName,
+            last_name: credentials.lastName,
+            role: 'customer'
+          }
+        }
+      });
+
+      if (error) {
+        console.error('❌ Supabase registration failed:', error.message);
+        throw new Error(error.message);
+      }
+
+      if (data.user) {
+        console.log('✅ Supabase registration successful');
+        // Return user data in the expected format
+        return {
+          id: data.user.id,
+          email: data.user.email,
+          username: data.user.email,
+          firstName: credentials.firstName,
+          lastName: credentials.lastName,
+          role: 'customer',
+          isAdmin: false,
+          isActive: true,
+          rewards: 0
+        };
+      }
+
+      throw new Error('Registration failed');
     },
     onSuccess: (user: SelectUser) => {
       console.log('🔑 Legacy registration successful, updating auth state:', user);
