@@ -255,42 +255,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Email/password login mutation (try Supabase first, then fallback to legacy API)
+  // Email/password login mutation (Supabase for emails, legacy for username)
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      // First try Supabase email/password authentication
+      // Use Supabase for all email-based authentication
       if (credentials.username.includes('@')) {
-        console.log('📧 Attempting Supabase email login...');
+        console.log('📧 Using Supabase email authentication...');
         const { data, error } = await supabase.auth.signInWithPassword({
           email: credentials.username,
           password: credentials.password,
         });
 
         if (error) {
-          console.log('❌ Supabase login failed, trying legacy API...');
-          // Fallback to legacy API for non-email usernames
-          const res = await apiRequest("POST", "/api/login", credentials);
-          return await res.json();
+          console.error('❌ Supabase login failed:', error.message);
+          throw new Error(error.message);
         }
 
         if (data.user) {
           console.log('✅ Supabase email login successful');
+          const userMetadata = data.user.user_metadata || {};
+
           // Return user data in the expected format
           return {
             id: data.user.id,
             email: data.user.email,
             username: data.user.email,
-            firstName: data.user.user_metadata?.full_name?.split(' ')[0] || 'Admin',
-            lastName: data.user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
-            role: data.user.user_metadata?.role || 'admin',
-            isAdmin: true,
+            firstName: userMetadata.first_name || userMetadata.full_name?.split(' ')[0] || 'User',
+            lastName: userMetadata.last_name || userMetadata.full_name?.split(' ').slice(1).join(' ') || '',
+            role: userMetadata.role || 'customer',
+            isAdmin: userMetadata.role === 'admin' || userMetadata.role === 'superadmin',
             isActive: true,
             rewards: 0
           };
         }
       }
 
-      // Fallback to legacy API for username-based login
+      // Legacy API for username-based login (temporary)
       console.log('🔐 Using legacy username/password login...');
       const res = await apiRequest("POST", "/api/login", credentials);
       return await res.json();
@@ -339,9 +339,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  // Registration mutation (using existing API)
+  // Registration mutation (using Supabase for email, legacy for username)
   const registerMutation = useMutation({
     mutationFn: async (credentials: InsertUser) => {
+      // Use Supabase for email-based registration
+      if (credentials.email) {
+        console.log('📧 Using Supabase email registration...');
+        const { data, error } = await supabase.auth.signUp({
+          email: credentials.email,
+          password: credentials.password,
+          options: {
+            data: {
+              first_name: credentials.firstName,
+              last_name: credentials.lastName,
+              role: 'customer'
+            }
+          }
+        });
+
+        if (error) {
+          console.error('❌ Supabase registration failed:', error.message);
+          throw new Error(error.message);
+        }
+
+        if (data.user) {
+          console.log('✅ Supabase registration successful');
+          // Return user data in the expected format
+          return {
+            id: data.user.id,
+            email: data.user.email,
+            username: data.user.email,
+            firstName: credentials.firstName,
+            lastName: credentials.lastName,
+            role: 'customer',
+            isAdmin: false,
+            isActive: true,
+            rewards: 0
+          };
+        }
+      }
+
+      // Legacy API fallback for username-based registration
+      console.log('🔐 Using legacy registration...');
       const res = await apiRequest("POST", "/api/register", credentials);
       return await res.json();
     },

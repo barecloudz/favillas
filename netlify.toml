@@ -211,6 +211,12 @@
   to = "/.netlify/functions/admin-system-settings"
   status = 200
 
+# Create Supabase admin user endpoint
+[[redirects]]
+  from = "/api/create-supabase-admin"
+  to = "/.netlify/functions/create-supabase-admin"
+  status = 200
+
 # Image upload endpoint
 [[redirects]]
   from = "/api/image-upload-test"
