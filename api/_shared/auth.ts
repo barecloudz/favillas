@@ -54,6 +54,13 @@ export interface NetlifyEvent {
  * @returns AuthPayload if authentication successful, null otherwise
  */
 export async function authenticateToken(event: NetlifyEvent): Promise<AuthPayload | null> {
+  console.log('🔐 authenticateToken called:', {
+    hasAuthHeader: !!event.headers.authorization,
+    hasCookies: !!event.headers.cookie,
+    path: event.path,
+    method: event.httpMethod
+  });
+
   // Check for JWT token in Authorization header first
   const authHeader = event.headers.authorization;
   let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
@@ -62,6 +69,8 @@ export async function authenticateToken(event: NetlifyEvent): Promise<AuthPayloa
   if (!token) {
     const cookies = event.headers.cookie;
     if (cookies) {
+      console.log('🍪 Raw cookies received:', cookies);
+
       // Try multiple cookie names for backwards compatibility
       const cookiesToTry = ['auth-token=', 'token=', 'jwt=', 'session='];
 
@@ -69,7 +78,7 @@ export async function authenticateToken(event: NetlifyEvent): Promise<AuthPayloa
         const authCookie = cookies.split(';').find((c: string) => c.trim().startsWith(cookieName));
         if (authCookie) {
           token = authCookie.split('=')[1];
-          console.log(`🔍 Found token in cookie: ${cookieName.slice(0, -1)}`);
+          console.log(`🔍 Found token in cookie: ${cookieName.slice(0, -1)}, token length: ${token?.length}`);
           break;
         }
       }
@@ -77,6 +86,8 @@ export async function authenticateToken(event: NetlifyEvent): Promise<AuthPayloa
       if (!token) {
         console.log('❌ No auth token found in cookies:', cookies.split(';').map(c => c.trim().split('=')[0]));
       }
+    } else {
+      console.log('❌ No cookies received in request');
     }
   }
 
