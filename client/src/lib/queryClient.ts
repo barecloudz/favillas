@@ -72,19 +72,32 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  // For local development, route API calls to Netlify dev server
+  // For local development, route API calls to appropriate server
   let fullUrl = url;
   if (!url.startsWith('http')) {
     // Check if we're in local development
     const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     if (isLocalDev && url.startsWith('/api/')) {
-      // Try multiple common Netlify dev server ports
-      const possiblePorts = ['8888', '8889', '9999', '3001'];
       const currentPort = window.location.port;
 
-      // Use the port the user specifies in the terminal, or default to 5000 (Express server)
-      const expressPort = localStorage.getItem('express-dev-port') || '5000';
-      fullUrl = `http://localhost:${expressPort}${url}`;
+      // If running on Vite dev server (5173), check for Netlify dev server
+      if (currentPort === '5173') {
+        // Check if user prefers Netlify dev (stored in localStorage)
+        const useNetlifyDev = localStorage.getItem('use-netlify-dev') === 'true';
+
+        if (useNetlifyDev) {
+          // Use Netlify dev server (typically port 8888)
+          const netlifyPort = localStorage.getItem('netlify-dev-port') || '8888';
+          fullUrl = `http://localhost:${netlifyPort}${url}`;
+        } else {
+          // Use Express server
+          const expressPort = localStorage.getItem('express-dev-port') || '5000';
+          fullUrl = `http://localhost:${expressPort}${url}`;
+        }
+      } else {
+        // If already on Netlify dev port, use relative URLs
+        fullUrl = url;
+      }
     } else {
       fullUrl = url;
     }
@@ -132,15 +145,32 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const url = queryKey[0] as string;
-    // For local development, route API calls to Netlify dev server
+    // For local development, route API calls to appropriate server
     let fullUrl = url;
     if (!url.startsWith('http')) {
       // Check if we're in local development
       const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       if (isLocalDev && url.startsWith('/api/')) {
-        // Use the port the user specifies in the terminal, or default to 5000 (Express server)
-        const expressPort = localStorage.getItem('express-dev-port') || '5000';
-        fullUrl = `http://localhost:${expressPort}${url}`;
+        const currentPort = window.location.port;
+
+        // If running on Vite dev server (5173), check for Netlify dev server
+        if (currentPort === '5173') {
+          // Check if user prefers Netlify dev (stored in localStorage)
+          const useNetlifyDev = localStorage.getItem('use-netlify-dev') === 'true';
+
+          if (useNetlifyDev) {
+            // Use Netlify dev server (typically port 8888)
+            const netlifyPort = localStorage.getItem('netlify-dev-port') || '8888';
+            fullUrl = `http://localhost:${netlifyPort}${url}`;
+          } else {
+            // Use Express server
+            const expressPort = localStorage.getItem('express-dev-port') || '5000';
+            fullUrl = `http://localhost:${expressPort}${url}`;
+          }
+        } else {
+          // If already on Netlify dev port, use relative URLs
+          fullUrl = url;
+        }
       } else {
         fullUrl = url;
       }

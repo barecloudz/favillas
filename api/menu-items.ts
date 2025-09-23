@@ -1,16 +1,17 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
+import { authenticateToken } from './_shared/auth';
 
 let dbConnection: any = null;
 
 function getDB() {
   if (dbConnection) return dbConnection;
-  
+
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     throw new Error('DATABASE_URL environment variable is required');
   }
-  
+
   dbConnection = postgres(databaseUrl, {
     max: 1,
     idle_timeout: 20,
@@ -18,15 +19,17 @@ function getDB() {
     prepare: false,
     keep_alive: false,
   });
-  
+
   return dbConnection;
 }
 
 export const handler: Handler = async (event, context) => {
+  const origin = event.headers.origin || 'http://localhost:3000';
   const headers = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json',
   };
 
@@ -67,7 +70,16 @@ export const handler: Handler = async (event, context) => {
     }
 
     if (event.httpMethod === 'POST') {
-      // Create menu item
+      // Create menu item (admin only)
+      const authPayload = await authenticateToken(event);
+      if (!authPayload || (authPayload.role !== 'admin' && authPayload.role !== 'super_admin')) {
+        return {
+          statusCode: 401,
+          headers,
+          body: JSON.stringify({ error: 'Unauthorized - Admin access required' })
+        };
+      }
+
       const data = JSON.parse(event.body || '{}');
       
       const menuItem = await sql`
@@ -84,7 +96,16 @@ export const handler: Handler = async (event, context) => {
     }
 
     if (event.httpMethod === 'PUT') {
-      // Update menu item
+      // Update menu item (admin only)
+      const authPayload = await authenticateToken(event);
+      if (!authPayload || (authPayload.role !== 'admin' && authPayload.role !== 'super_admin')) {
+        return {
+          statusCode: 401,
+          headers,
+          body: JSON.stringify({ error: 'Unauthorized - Admin access required' })
+        };
+      }
+
       const data = JSON.parse(event.body || '{}');
       const id = parseInt(event.path.split('/').pop() || '0');
       
@@ -116,7 +137,16 @@ export const handler: Handler = async (event, context) => {
     }
 
     if (event.httpMethod === 'PATCH') {
-      // Partial update menu item
+      // Partial update menu item (admin only)
+      const authPayload = await authenticateToken(event);
+      if (!authPayload || (authPayload.role !== 'admin' && authPayload.role !== 'super_admin')) {
+        return {
+          statusCode: 401,
+          headers,
+          body: JSON.stringify({ error: 'Unauthorized - Admin access required' })
+        };
+      }
+
       const data = JSON.parse(event.body || '{}');
       const id = parseInt(event.path.split('/').pop() || '0');
       
@@ -179,7 +209,16 @@ export const handler: Handler = async (event, context) => {
     }
 
     if (event.httpMethod === 'DELETE') {
-      // Delete menu item
+      // Delete menu item (admin only)
+      const authPayload = await authenticateToken(event);
+      if (!authPayload || (authPayload.role !== 'admin' && authPayload.role !== 'super_admin')) {
+        return {
+          statusCode: 401,
+          headers,
+          body: JSON.stringify({ error: 'Unauthorized - Admin access required' })
+        };
+      }
+
       const id = parseInt(event.path.split('/').pop() || '0');
       
       const result = await sql`
