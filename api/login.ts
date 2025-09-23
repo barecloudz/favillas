@@ -1,4 +1,5 @@
 import { Handler } from '@netlify/functions';
+import jwt from 'jsonwebtoken';
 
 export const handler: Handler = async (event, context) => {
   const headers = {
@@ -22,9 +23,33 @@ export const handler: Handler = async (event, context) => {
 
     // Admin credentials for production
     if (username === 'superadmin' && password === 'superadmin123') {
+      const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+      if (!jwtSecret) {
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({ message: 'Server configuration error' })
+        };
+      }
+
+      const userPayload = {
+        userId: 1,
+        username: 'superadmin',
+        role: 'super_admin'
+      };
+
+      const token = jwt.sign(userPayload, jwtSecret, { expiresIn: '7d' });
+
+      // Set cookie for authentication
+      const isProduction = event.headers.origin?.includes('netlify.app') || event.headers.origin?.includes('favillasnypizza');
+      const cookieOptions = `auth-token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax${isProduction ? '; Secure' : ''}`;
+
       return {
         statusCode: 200,
-        headers,
+        headers: {
+          ...headers,
+          'Set-Cookie': cookieOptions
+        },
         body: JSON.stringify({
           id: 1,
           username: 'superadmin',
@@ -41,9 +66,33 @@ export const handler: Handler = async (event, context) => {
 
     // Fallback admin credentials
     if (username === 'admin' && password === 'admin123456') {
+      const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+      if (!jwtSecret) {
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({ message: 'Server configuration error' })
+        };
+      }
+
+      const userPayload = {
+        userId: 2,
+        username: 'admin',
+        role: 'admin'
+      };
+
+      const token = jwt.sign(userPayload, jwtSecret, { expiresIn: '7d' });
+
+      // Set cookie for authentication
+      const isProduction = event.headers.origin?.includes('netlify.app') || event.headers.origin?.includes('favillasnypizza');
+      const cookieOptions = `auth-token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax${isProduction ? '; Secure' : ''}`;
+
       return {
         statusCode: 200,
-        headers,
+        headers: {
+          ...headers,
+          'Set-Cookie': cookieOptions
+        },
         body: JSON.stringify({
           id: 2,
           username: 'admin',
