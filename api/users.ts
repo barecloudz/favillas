@@ -190,17 +190,35 @@ export const handler: Handler = async (event, context) => {
     // DELETE - Delete user
     if (event.httpMethod === 'DELETE') {
       console.log('🗑️ Deleting user...');
-      const requestData = JSON.parse(event.body || '{}');
-      const { userId } = requestData;
+      console.log('📋 Event path:', event.path);
+      console.log('📋 Event rawUrl:', event.rawUrl);
+
+      // Extract user ID from URL path (e.g., /api/users/123 or /.netlify/functions/users/123)
+      let userId = null;
+      const pathParts = event.path.split('/');
+      const usersIndex = pathParts.findIndex(part => part === 'users');
+      if (usersIndex !== -1 && pathParts[usersIndex + 1]) {
+        userId = parseInt(pathParts[usersIndex + 1]);
+      }
+
+      // Fallback: try to get from request body if not in URL
+      if (!userId) {
+        try {
+          const requestData = JSON.parse(event.body || '{}');
+          userId = requestData.userId;
+        } catch (e) {
+          // Ignore JSON parse errors
+        }
+      }
 
       console.log('📋 Delete request for user ID:', userId);
 
-      if (!userId) {
+      if (!userId || isNaN(userId)) {
         return {
           statusCode: 400,
           headers,
           body: JSON.stringify({
-            error: 'User ID is required'
+            error: 'Valid user ID is required'
           })
         };
       }
