@@ -1,5 +1,5 @@
 [build]
-  command = "npm install --no-audit --no-fund && npm run build"
+  command = "npm install && npm run build"
   publish = "dist/public"
 
 [build.environment]
@@ -8,13 +8,8 @@
   NPM_CONFIG_AUDIT = "false"
   DISABLE_OPENCOLLECTIVE = "true"
   SECRETS_SCAN_ENABLED = "false"
-  # Optimize build performance
   NODE_OPTIONS = "--max-old-space-size=3072"
   NETLIFY_USE_YARN = "false"
-  # Enable build caching
-  NETLIFY_CACHE_ENABLED = "true"
-  # Skip optional dependencies for faster installs
-  NPM_CONFIG_OPTIONAL = "false"
 
 # Health check endpoint
 [[redirects]]
