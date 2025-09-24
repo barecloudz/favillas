@@ -40,7 +40,6 @@ BEGIN
             name VARCHAR(255) NOT NULL,
             price DECIMAL(10,2) DEFAULT 0.00,
             is_default BOOLEAN DEFAULT false,
-            is_available BOOLEAN DEFAULT true,
             created_at TIMESTAMP DEFAULT NOW()
         );
 
@@ -95,44 +94,44 @@ BEGIN
     SELECT id INTO drinks_group_id FROM choice_groups WHERE name = 'Drinks';
 
     -- Insert sample choice items (using WHERE NOT EXISTS to avoid duplicates)
-    INSERT INTO choice_items (choice_group_id, name, price, is_default, is_available)
-    SELECT size_group_id, 'Small 10"', 0.00, true, true
+    INSERT INTO choice_items (choice_group_id, name, price, is_default)
+    SELECT size_group_id, 'Small 10"', 0.00, true
     WHERE NOT EXISTS (SELECT 1 FROM choice_items WHERE choice_group_id = size_group_id AND name = 'Small 10"');
 
-    INSERT INTO choice_items (choice_group_id, name, price, is_default, is_available)
-    SELECT size_group_id, 'Medium 14"', 4.00, false, true
+    INSERT INTO choice_items (choice_group_id, name, price, is_default)
+    SELECT size_group_id, 'Medium 14"', 4.00, false
     WHERE NOT EXISTS (SELECT 1 FROM choice_items WHERE choice_group_id = size_group_id AND name = 'Medium 14"');
 
-    INSERT INTO choice_items (choice_group_id, name, price, is_default, is_available)
-    SELECT size_group_id, 'Large 16"', 6.00, false, true
+    INSERT INTO choice_items (choice_group_id, name, price, is_default)
+    SELECT size_group_id, 'Large 16"', 6.00, false
     WHERE NOT EXISTS (SELECT 1 FROM choice_items WHERE choice_group_id = size_group_id AND name = 'Large 16"');
 
-    INSERT INTO choice_items (choice_group_id, name, price, is_default, is_available)
-    SELECT toppings_group_id, 'Extra Cheese', 2.00, false, true
+    INSERT INTO choice_items (choice_group_id, name, price, is_default)
+    SELECT toppings_group_id, 'Extra Cheese', 2.00, false
     WHERE NOT EXISTS (SELECT 1 FROM choice_items WHERE choice_group_id = toppings_group_id AND name = 'Extra Cheese');
 
-    INSERT INTO choice_items (choice_group_id, name, price, is_default, is_available)
-    SELECT toppings_group_id, 'Pepperoni', 2.50, false, true
+    INSERT INTO choice_items (choice_group_id, name, price, is_default)
+    SELECT toppings_group_id, 'Pepperoni', 2.50, false
     WHERE NOT EXISTS (SELECT 1 FROM choice_items WHERE choice_group_id = toppings_group_id AND name = 'Pepperoni');
 
-    INSERT INTO choice_items (choice_group_id, name, price, is_default, is_available)
-    SELECT toppings_group_id, 'Mushrooms', 2.00, false, true
+    INSERT INTO choice_items (choice_group_id, name, price, is_default)
+    SELECT toppings_group_id, 'Mushrooms', 2.00, false
     WHERE NOT EXISTS (SELECT 1 FROM choice_items WHERE choice_group_id = toppings_group_id AND name = 'Mushrooms');
 
-    INSERT INTO choice_items (choice_group_id, name, price, is_default, is_available)
-    SELECT toppings_group_id, 'Sausage', 2.50, false, true
+    INSERT INTO choice_items (choice_group_id, name, price, is_default)
+    SELECT toppings_group_id, 'Sausage', 2.50, false
     WHERE NOT EXISTS (SELECT 1 FROM choice_items WHERE choice_group_id = toppings_group_id AND name = 'Sausage');
 
-    INSERT INTO choice_items (choice_group_id, name, price, is_default, is_available)
-    SELECT drinks_group_id, 'Coca Cola', 2.99, false, true
+    INSERT INTO choice_items (choice_group_id, name, price, is_default)
+    SELECT drinks_group_id, 'Coca Cola', 2.99, false
     WHERE NOT EXISTS (SELECT 1 FROM choice_items WHERE choice_group_id = drinks_group_id AND name = 'Coca Cola');
 
-    INSERT INTO choice_items (choice_group_id, name, price, is_default, is_available)
-    SELECT drinks_group_id, 'Pepsi', 2.99, false, true
+    INSERT INTO choice_items (choice_group_id, name, price, is_default)
+    SELECT drinks_group_id, 'Pepsi', 2.99, false
     WHERE NOT EXISTS (SELECT 1 FROM choice_items WHERE choice_group_id = drinks_group_id AND name = 'Pepsi');
 
-    INSERT INTO choice_items (choice_group_id, name, price, is_default, is_available)
-    SELECT drinks_group_id, 'Sprite', 2.99, false, true
+    INSERT INTO choice_items (choice_group_id, name, price, is_default)
+    SELECT drinks_group_id, 'Sprite', 2.99, false
     WHERE NOT EXISTS (SELECT 1 FROM choice_items WHERE choice_group_id = drinks_group_id AND name = 'Sprite');
 END $$;
 
@@ -148,8 +147,7 @@ SELECT
     cg.name as group_name,
     ci.name as item_name,
     ci.price,
-    ci.is_default,
-    ci.is_available
+    ci.is_default
 FROM choice_groups cg
 JOIN choice_items ci ON cg.id = ci.choice_group_id
 ORDER BY cg.name, ci.name;

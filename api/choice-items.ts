@@ -57,7 +57,7 @@ export const handler: Handler = async (event, context) => {
       };
 
     } else if (event.httpMethod === 'POST') {
-      const { choiceGroupId, name, price, isDefault, isAvailable } = JSON.parse(event.body || '{}');
+      const { choiceGroupId, name, price, isDefault } = JSON.parse(event.body || '{}');
       
       if (!choiceGroupId || !name) {
         return {
@@ -68,8 +68,8 @@ export const handler: Handler = async (event, context) => {
       }
       
       const result = await sql`
-        INSERT INTO choice_items (choice_group_id, name, price, is_default, is_available, created_at)
-        VALUES (${choiceGroupId}, ${name}, ${price || 0}, ${isDefault || false}, ${isAvailable !== false}, NOW())
+        INSERT INTO choice_items (choice_group_id, name, price, is_default, created_at)
+        VALUES (${choiceGroupId}, ${name}, ${price || 0}, ${isDefault || false}, NOW())
         RETURNING *
       `;
       
@@ -92,12 +92,12 @@ export const handler: Handler = async (event, context) => {
         };
       }
       
-      const { choiceGroupId, name, price, isDefault, isAvailable } = JSON.parse(event.body || '{}');
-      
+      const { choiceGroupId, name, price, isDefault } = JSON.parse(event.body || '{}');
+
       const result = await sql`
         UPDATE choice_items
         SET choice_group_id = ${choiceGroupId}, name = ${name}, price = ${price},
-            is_default = ${isDefault}, is_available = ${isAvailable}
+            is_default = ${isDefault}
         WHERE id = ${parseInt(itemId)}
         RETURNING *
       `;
