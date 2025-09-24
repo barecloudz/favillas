@@ -805,10 +805,10 @@ const AdminDashboard = () => {
         )}
         
         {/* Sidebar */}
-        <div className={`bg-white shadow-lg transition-all duration-300 z-50 ${
-          sidebarCollapsed 
-            ? 'w-16 md:w-16' 
-            : 'w-64 md:w-64 fixed md:relative h-full md:h-auto'
+        <div className={`bg-white shadow-lg transition-all duration-300 z-50 flex flex-col ${
+          sidebarCollapsed
+            ? 'w-16 md:w-16 fixed md:fixed h-full'
+            : 'w-64 md:w-64 fixed md:fixed h-full'
         } ${sidebarCollapsed ? '' : 'md:translate-x-0'}`}>
           <div className="p-4 border-b">
             <div className="flex items-center justify-between">
@@ -826,7 +826,7 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <nav className="p-4 space-y-3">
+          <nav className="p-4 space-y-3 flex-1 overflow-y-auto">
             {/* Primary Tabs */}
             <div className="space-y-2">
               {primaryTabs.map((item, index) => (
@@ -895,7 +895,9 @@ const AdminDashboard = () => {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col">
+        <div className={`flex-1 flex flex-col transition-all duration-300 ${
+          sidebarCollapsed ? 'md:ml-16' : 'md:ml-64'
+        }`}>
           {/* Top Header */}
           <header className="bg-white shadow-sm border-b px-4 md:px-6 py-4">
             <div className="flex items-center justify-between">
