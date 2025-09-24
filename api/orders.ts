@@ -28,7 +28,7 @@ export const handler: Handler = async (event, context) => {
   const origin = event.headers.origin || 'http://localhost:3000';
   const headers = {
     'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json',
@@ -1055,7 +1055,127 @@ export const handler: Handler = async (event, context) => {
           })
         };
       }
-      
+
+    } else if (event.httpMethod === 'PATCH') {
+      // PATCH requests require staff authentication
+      if (!authPayload || !isStaff(authPayload)) {
+        return {
+          statusCode: 401,
+          headers,
+          body: JSON.stringify({ error: 'Unauthorized' })
+        };
+      }
+
+      const requestData = JSON.parse(event.body || '{}');
+
+      // Extract order ID from URL path (e.g., /api/orders/14)
+      let orderId = requestData.orderId;
+      if (!orderId) {
+        const pathParts = event.path.split('/');
+        const ordersIndex = pathParts.findIndex(part => part === 'orders');
+        if (ordersIndex !== -1 && pathParts[ordersIndex + 1]) {
+          orderId = parseInt(pathParts[ordersIndex + 1]);
+        }
+      }
+
+      if (!orderId) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Order ID is required' })
+        };
+      }
+
+      console.log('🔄 Updating order:', orderId, 'with data:', requestData);
+
+      try {
+        // Get current order to check if it exists
+        const currentOrder = await sql`
+          SELECT * FROM orders WHERE id = ${orderId}
+        `;
+
+        if (currentOrder.length === 0) {
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({ error: 'Order not found' })
+          };
+        }
+
+        // Build update query dynamically based on provided fields
+        const updateFields: string[] = [];
+        const updateValues: any[] = [];
+        let valueIndex = 1;
+
+        if (requestData.status !== undefined) {
+          updateFields.push(`status = $${valueIndex}`);
+          updateValues.push(requestData.status);
+          valueIndex++;
+        }
+
+        if (requestData.kitchen_status !== undefined) {
+          updateFields.push(`kitchen_status = $${valueIndex}`);
+          updateValues.push(requestData.kitchen_status);
+          valueIndex++;
+        }
+
+        if (requestData.delivery_status !== undefined) {
+          updateFields.push(`delivery_status = $${valueIndex}`);
+          updateValues.push(requestData.delivery_status);
+          valueIndex++;
+        }
+
+        if (requestData.notes !== undefined) {
+          updateFields.push(`notes = $${valueIndex}`);
+          updateValues.push(requestData.notes);
+          valueIndex++;
+        }
+
+        if (updateFields.length === 0) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'No valid fields to update' })
+          };
+        }
+
+        // Add updated_at timestamp
+        updateFields.push(`updated_at = NOW()`);
+
+        // Execute update
+        const updateQuery = `
+          UPDATE orders
+          SET ${updateFields.join(', ')}
+          WHERE id = $${valueIndex}
+          RETURNING *
+        `;
+        updateValues.push(orderId);
+
+        const updatedOrder = await sql.unsafe(updateQuery, updateValues);
+
+        console.log('✅ Order updated successfully:', updatedOrder[0]);
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            message: 'Order updated successfully',
+            order: updatedOrder[0]
+          })
+        };
+
+      } catch (updateError) {
+        console.error('❌ Order update error:', updateError);
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({
+            error: 'Failed to update order',
+            details: updateError instanceof Error ? updateError.message : 'Unknown error'
+          })
+        };
+      }
+
     } else {
       return {
         statusCode: 405,
