@@ -1,5 +1,6 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
+import { authenticateToken, isStaff } from './_shared/auth';
 
 let dbConnection: any = null;
 
@@ -23,14 +24,15 @@ function getDB() {
 }
 
 export const handler: Handler = async (event, context) => {
-  // Set CORS headers
+  const origin = event.headers.origin || 'http://localhost:3000';
   const headers = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json',
   };
-  
+
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
@@ -44,6 +46,16 @@ export const handler: Handler = async (event, context) => {
       statusCode: 405,
       headers,
       body: JSON.stringify({ message: 'Method not allowed' })
+    };
+  }
+
+  // Authenticate user - kitchen staff should be authenticated
+  const authPayload = await authenticateToken(event);
+  if (!authPayload || !isStaff(authPayload)) {
+    return {
+      statusCode: 401,
+      headers,
+      body: JSON.stringify({ error: 'Unauthorized - Kitchen access required' })
     };
   }
 
