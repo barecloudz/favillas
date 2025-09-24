@@ -63,6 +63,7 @@ const CustomerDisplay = () => {
   // Filter orders by status
   const cookingOrders = orders?.filter((order: any) => order.status === 'cooking') || [];
   const readyOrders = orders?.filter((order: any) => order.status === 'completed') || [];
+  // Note: picked_up orders are excluded from customer display
 
   return (
     <>

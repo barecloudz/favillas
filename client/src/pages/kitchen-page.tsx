@@ -102,6 +102,7 @@ const KitchenPage = () => {
     }
     if (activeTab === "cooking") return order.status === "cooking";
     if (activeTab === "completed") return order.status === "completed";
+    if (activeTab === "picked_up") return order.status === "picked_up";
     if (activeTab === "scheduled") {
       // Show only scheduled orders that are not ready to start yet
       return order.status === "pending" &&
@@ -261,7 +262,13 @@ const KitchenPage = () => {
                     <Badge className="ml-2 bg-yellow-500">{orders.filter((o: any) => o.status === "cooking").length}</Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="completed">Completed</TabsTrigger>
+                <TabsTrigger value="completed">Ready for Pickup</TabsTrigger>
+                <TabsTrigger value="picked_up">
+                  Picked Up
+                  {orders?.filter((o: any) => o.status === 'picked_up').length > 0 && (
+                    <Badge className="ml-2 bg-gray-500">{orders.filter((o: any) => o.status === 'picked_up').length}</Badge>
+                  )}
+                </TabsTrigger>
                 <TabsTrigger value="scheduled">
                   Scheduled Later
                   {orders?.filter((o: any) => o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o)).length > 0 && (
@@ -292,6 +299,7 @@ const KitchenPage = () => {
                         ${order.status === 'pending' ? 'bg-red-100' : ''}
                         ${order.status === 'cooking' ? 'bg-yellow-100' : ''}
                         ${order.status === 'completed' ? 'bg-green-100' : ''}
+                        ${order.status === 'picked_up' ? 'bg-gray-100' : ''}
                       `}>
                         <div className="flex justify-between items-center">
                           <CardTitle>Order #{order.id}</CardTitle>
@@ -299,6 +307,7 @@ const KitchenPage = () => {
                             ${order.status === 'pending' ? 'bg-red-500' : ''}
                             ${order.status === 'cooking' ? 'bg-yellow-500' : ''}
                             ${order.status === 'completed' ? 'bg-green-500' : ''}
+                            ${order.status === 'picked_up' ? 'bg-gray-500' : ''}
                           `}>
                             {order.status.toUpperCase()}
                           </Badge>
@@ -415,13 +424,21 @@ const KitchenPage = () => {
                           )}
                           
                           {order.status === 'completed' && (
-                            <Button
-                              className="flex-1 bg-gray-500 hover:bg-gray-600"
-                              variant="outline"
-                              onClick={() => updateOrderStatus(order.id, 'cooking')}
-                            >
-                              Reopen
-                            </Button>
+                            <>
+                              <Button
+                                className="flex-1 bg-blue-500 hover:bg-blue-600"
+                                onClick={() => updateOrderStatus(order.id, 'picked_up')}
+                              >
+                                Picked Up
+                              </Button>
+                              <Button
+                                className="flex-1 bg-gray-500 hover:bg-gray-600"
+                                variant="outline"
+                                onClick={() => updateOrderStatus(order.id, 'cooking')}
+                              >
+                                Reopen
+                              </Button>
+                            </>
                           )}
                         </div>
                       </CardContent>
