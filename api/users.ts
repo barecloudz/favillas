@@ -75,11 +75,12 @@ export const handler: Handler = async (event, context) => {
     if (event.httpMethod === 'GET') {
       console.log('📊 Fetching all users...');
 
-      // Get legacy users with current point balance
+      // Get legacy users with current point balance and hourly rate
       const legacyUsers = await sql`
         SELECT
           u.id, u.username, u.email, u.first_name, u.last_name, u.phone,
           u.role, u.is_admin, u.is_active, u.created_at, u.rewards,
+          u.hourly_rate, u.department,
           NULL as supabase_user_id, 'legacy' as user_type,
           COALESCE(up.points, 0) as current_points
         FROM users u
@@ -88,11 +89,12 @@ export const handler: Handler = async (event, context) => {
         ORDER BY u.created_at DESC
       `;
 
-      // Get Supabase users with current point balance
+      // Get Supabase users with current point balance and hourly rate
       const supabaseUsers = await sql`
         SELECT
           u.id, u.username, u.email, u.first_name, u.last_name, u.phone,
           u.role, u.is_admin, u.is_active, u.created_at, u.rewards,
+          u.hourly_rate, u.department,
           u.supabase_user_id, 'supabase' as user_type,
           COALESCE(up.points, 0) as current_points
         FROM users u
@@ -121,6 +123,8 @@ export const handler: Handler = async (event, context) => {
           createdAt: user.created_at,
           rewards: user.rewards || 0,
           currentPoints: parseInt(user.current_points) || 0,
+          hourlyRate: parseFloat(user.hourly_rate) || null,
+          department: user.department,
           supabaseUserId: user.supabase_user_id,
           userType: user.user_type
         })))
@@ -131,7 +135,7 @@ export const handler: Handler = async (event, context) => {
     if (event.httpMethod === 'POST') {
       console.log('➕ Creating new user...');
       const requestData = JSON.parse(event.body || '{}');
-      const { email, firstName, lastName, phone, role, isAdmin } = requestData;
+      const { email, firstName, lastName, phone, role, isAdmin, hourlyRate, department } = requestData;
 
       console.log('📋 User data:', { email, firstName, lastName, phone, role, isAdmin });
 
@@ -170,11 +174,13 @@ export const handler: Handler = async (event, context) => {
       const newUser = await sql`
         INSERT INTO users (
           username, email, first_name, last_name, phone,
-          role, is_admin, is_active, rewards, created_at, updated_at
+          role, is_admin, is_active, rewards, hourly_rate, department,
+          created_at, updated_at
         ) VALUES (
           ${email}, ${email}, ${firstName}, ${lastName}, ${phone || null},
-          ${userRole}, ${userIsAdmin}, true, 0, NOW(), NOW()
-        ) RETURNING id, username, email, first_name, last_name, phone, role, is_admin, created_at
+          ${userRole}, ${userIsAdmin}, true, 0, ${hourlyRate || null}, ${department || null},
+          NOW(), NOW()
+        ) RETURNING id, username, email, first_name, last_name, phone, role, is_admin, hourly_rate, department, created_at
       `;
 
       console.log('✅ User created successfully:', newUser[0]);

@@ -224,6 +224,19 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
     return diff.toFixed(1);
   };
 
+  const calculateLaborCost = () => {
+    if (!Array.isArray(schedules) || !Array.isArray(employees)) {
+      return 0;
+    }
+
+    return schedules.reduce((total: number, schedule: any) => {
+      const employee = employees.find((emp: any) => emp.id === schedule.employeeId);
+      const hours = parseFloat(calculateShiftHours(schedule.startTime, schedule.endTime));
+      const hourlyRate = employee?.hourlyRate ? parseFloat(employee.hourlyRate) : 15.00; // Default to $15 if not set
+      return total + (hours * hourlyRate);
+    }, 0);
+  };
+
   const groupSchedulesByDate = (schedules: any[]) => {
     if (!Array.isArray(schedules)) {
       console.warn('⚠️ groupSchedulesByDate received non-array:', schedules);
@@ -737,9 +750,7 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
               </div>
               <div className="text-center p-4 bg-orange-50 rounded-lg">
                 <div className="text-2xl font-bold text-orange-600">
-                  ${ ((Array.isArray(schedules) ? schedules.reduce((total: number, s: any) =>
-                    total + parseFloat(calculateShiftHours(s.startTime, s.endTime)), 0
-                  ) : 0) * 15).toFixed(0)}
+                  ${calculateLaborCost().toFixed(0)}
                 </div>
                 <div className="text-sm text-gray-600">Est. Labor Cost</div>
               </div>

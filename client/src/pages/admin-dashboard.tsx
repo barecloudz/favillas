@@ -8452,6 +8452,7 @@ const UserManagementTab = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [awardingPointsUser, setAwardingPointsUser] = useState<any>(null);
+  const [editingRateUser, setEditingRateUser] = useState<any>(null);
 
   // Fetch users
   const { data: users, isLoading } = useQuery({
@@ -8562,6 +8563,32 @@ const UserManagementTab = () => {
     },
   });
 
+  // Update rate mutation
+  const updateRateMutation = useMutation({
+    mutationFn: async (rateData: any) => {
+      const response = await apiRequest("PUT", "/api/update-user-rate", rateData);
+      if (!response.ok) {
+        throw new Error("Failed to update user rate");
+      }
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setEditingRateUser(null);
+      toast({
+        title: "Rate Updated",
+        description: `Successfully updated hourly rate for ${data.user.firstName} ${data.user.lastName}.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Filter users
   const filteredUsers = (users as any[])?.filter((user: any) => {
     const matchesSearch = 
@@ -8587,6 +8614,10 @@ const UserManagementTab = () => {
     if (confirm("Are you sure you want to delete this user?")) {
       deleteUserMutation.mutate(id);
     }
+  };
+
+  const handleEditRate = (user: any) => {
+    setEditingRateUser(user);
   };
 
   const getRoleBadgeColor = (role: string) => {
@@ -8695,6 +8726,7 @@ const UserManagementTab = () => {
                   <th className="text-left p-2">Name</th>
                   <th className="text-left p-2">Email</th>
                   <th className="text-left p-2">Role</th>
+                  <th className="text-left p-2">Hourly Rate</th>
                   <th className="text-left p-2">Points</th>
                   <th className="text-left p-2">Status</th>
                   <th className="text-left p-2">Created</th>
@@ -8715,6 +8747,25 @@ const UserManagementTab = () => {
                       <Badge className={getRoleBadgeColor(user.role)}>
                         {user.role?.replace('_', ' ').toUpperCase()}
                       </Badge>
+                    </td>
+                    <td className="p-2">
+                      {(user.role === 'employee' || user.role === 'admin' || user.role === 'manager') ? (
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            {user.hourlyRate ? `$${parseFloat(user.hourlyRate).toFixed(2)}/hr` : 'Not set'}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditRate(user)}
+                            className="text-xs px-2 py-1 h-6"
+                          >
+                            Edit
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">N/A</span>
+                      )}
                     </td>
                     <td className="p-2">
                       <div className="flex items-center gap-2">
@@ -8805,6 +8856,29 @@ const UserManagementTab = () => {
               })}
               onCancel={() => setAwardingPointsUser(null)}
               isLoading={awardPointsMutation.isPending}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Edit Rate Dialog */}
+      {editingRateUser && (
+        <Dialog open={!!editingRateUser} onOpenChange={() => setEditingRateUser(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Hourly Rate</DialogTitle>
+              <DialogDescription>
+                Set hourly rate for {editingRateUser.firstName} {editingRateUser.lastName}
+              </DialogDescription>
+            </DialogHeader>
+            <EditRateForm
+              user={editingRateUser}
+              onSubmit={(rateData) => updateRateMutation.mutate({
+                userId: editingRateUser.id,
+                ...rateData
+              })}
+              onCancel={() => setEditingRateUser(null)}
+              isLoading={updateRateMutation.isPending}
             />
           </DialogContent>
         </Dialog>
@@ -13678,6 +13752,72 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
         </form>
       </DialogContent>
     </Dialog>
+  );
+};
+
+// Edit Rate Form Component
+const EditRateForm = ({ user, onSubmit, onCancel, isLoading }: {
+  user: any;
+  onSubmit: (data: any) => void;
+  onCancel: () => void;
+  isLoading: boolean;
+}) => {
+  const [formData, setFormData] = useState({
+    hourlyRate: user.hourlyRate ? parseFloat(user.hourlyRate).toString() : '',
+    department: user.department || ''
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit({
+      hourlyRate: formData.hourlyRate ? parseFloat(formData.hourlyRate) : null,
+      department: formData.department || null
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="hourlyRate">Hourly Rate ($)</Label>
+        <Input
+          id="hourlyRate"
+          type="number"
+          step="0.01"
+          min="0"
+          value={formData.hourlyRate}
+          onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
+          placeholder="15.00"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="department">Department (Optional)</Label>
+        <Select
+          value={formData.department}
+          onValueChange={(value) => setFormData({ ...formData, department: value })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select department" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">No department</SelectItem>
+            <SelectItem value="kitchen">Kitchen</SelectItem>
+            <SelectItem value="front-of-house">Front of House</SelectItem>
+            <SelectItem value="delivery">Delivery</SelectItem>
+            <SelectItem value="management">Management</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? "Updating..." : "Update Rate"}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 };
 
