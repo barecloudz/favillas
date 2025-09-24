@@ -3231,16 +3231,22 @@ const MenuEditor = ({ menuItems }: any) => {
   const { data: choiceGroups = [], refetch: refetchChoiceGroups } = useQuery({
     queryKey: ['choice-groups'],
     queryFn: async () => {
+      console.log('🔍 Fetching choice groups...');
       const response = await apiRequest('GET', '/api/choice-groups');
-      return response.json();
+      const data = await response.json();
+      console.log('📦 Choice groups response:', data);
+      return data;
     }
   });
 
   const { data: choiceItems = [], refetch: refetchChoiceItems } = useQuery({
     queryKey: ['choice-items'],
     queryFn: async () => {
+      console.log('🔍 Fetching choice items...');
       const response = await apiRequest('GET', '/api/choice-items');
-      return response.json();
+      const data = await response.json();
+      console.log('📦 Choice items response:', data);
+      return data;
     }
   });
 
@@ -3526,6 +3532,16 @@ const MenuEditor = ({ menuItems }: any) => {
   const sortedChoices = choiceGroups
     .filter((choice: any) => choice.isActive)
     .sort((a: any, b: any) => a.order - b.order);
+
+  // Debug logging for choices
+  console.log('🔍 Debug choice data:', {
+    choiceGroups: choiceGroups,
+    choiceGroupsLength: choiceGroups.length,
+    sortedChoices: sortedChoices,
+    sortedChoicesLength: sortedChoices.length,
+    choiceItems: choiceItems,
+    choiceItemsLength: choiceItems.length
+  });
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
