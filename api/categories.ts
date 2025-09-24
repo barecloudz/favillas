@@ -86,8 +86,8 @@ export const handler: Handler = async (event, context) => {
       }
       
       const result = await sql`
-        INSERT INTO categories (name, "order", is_active, created_at, updated_at)
-        VALUES (${name}, ${order || 1}, ${isActive !== false}, NOW(), NOW())
+        INSERT INTO categories (name, "order", is_active, created_at)
+        VALUES (${name}, ${order || 1}, ${isActive !== false}, NOW())
         RETURNING *
       `;
       
@@ -113,8 +113,8 @@ export const handler: Handler = async (event, context) => {
       const { name, order, isActive } = JSON.parse(event.body || '{}');
       
       const result = await sql`
-        UPDATE categories 
-        SET name = ${name}, "order" = ${order}, is_active = ${isActive}, updated_at = NOW()
+        UPDATE categories
+        SET name = ${name}, "order" = ${order}, is_active = ${isActive}
         WHERE id = ${parseInt(categoryId)}
         RETURNING *
       `;
