@@ -78,12 +78,51 @@ const KitchenPage = () => {
     };
   }, [toast]);
 
+  // Helper function to check if order is ready to start (for scheduled orders)
+  const isOrderReadyToStart = (order: any) => {
+    if (order.fulfillmentTime !== 'scheduled' || !order.scheduledTime) {
+      return true; // ASAP orders are always ready
+    }
+
+    const scheduledTime = new Date(order.scheduledTime);
+    const now = new Date();
+    const minutesUntilScheduled = (scheduledTime.getTime() - now.getTime()) / (1000 * 60);
+
+    // Allow starting 30 minutes before scheduled time
+    return minutesUntilScheduled <= 30;
+  };
+
   // Filter orders based on active tab
   const filteredOrders = orders ? orders.filter((order: any) => {
-    if (activeTab === "pending") return order.status === "pending";
+    if (activeTab === "pending") {
+      // Show only orders ready to start (ASAP or scheduled orders within 30 minutes)
+      return order.status === "pending" && (
+        order.fulfillmentTime === 'asap' || isOrderReadyToStart(order)
+      );
+    }
     if (activeTab === "cooking") return order.status === "cooking";
     if (activeTab === "completed") return order.status === "completed";
+    if (activeTab === "scheduled") {
+      // Show only scheduled orders that are not ready to start yet
+      return order.status === "pending" &&
+             order.fulfillmentTime === 'scheduled' &&
+             !isOrderReadyToStart(order);
+    }
     return true;
+  }) : [];
+
+  // Separate pending orders into ready-to-start and scheduled-for-later
+  const pendingOrders = orders ? orders.filter((order: any) => {
+    return order.status === "pending" && (
+      order.fulfillmentTime === 'asap' ||
+      isOrderReadyToStart(order)
+    );
+  }) : [];
+
+  const scheduledLaterOrders = orders ? orders.filter((order: any) => {
+    return order.status === "pending" &&
+           order.fulfillmentTime === 'scheduled' &&
+           !isOrderReadyToStart(order);
   }) : [];
 
   // Update order status
@@ -211,9 +250,9 @@ const KitchenPage = () => {
             <div className="flex justify-between items-center mb-6">
               <TabsList>
                 <TabsTrigger value="pending" className="relative">
-                  Pending
-                  {orders?.filter((o: any) => o.status === "pending").length > 0 && (
-                    <Badge className="ml-2 bg-red-500">{orders.filter((o: any) => o.status === "pending").length}</Badge>
+                  Ready to Start
+                  {orders?.filter((o: any) => o.status === "pending" && (o.fulfillmentTime === 'asap' || isOrderReadyToStart(o))).length > 0 && (
+                    <Badge className="ml-2 bg-red-500">{orders.filter((o: any) => o.status === "pending" && (o.fulfillmentTime === 'asap' || isOrderReadyToStart(o))).length}</Badge>
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="cooking">
@@ -223,6 +262,12 @@ const KitchenPage = () => {
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="completed">Completed</TabsTrigger>
+                <TabsTrigger value="scheduled">
+                  Scheduled Later
+                  {orders?.filter((o: any) => o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o)).length > 0 && (
+                    <Badge className="ml-2 bg-blue-500">{orders.filter((o: any) => o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o)).length}</Badge>
+                  )}
+                </TabsTrigger>
                 <TabsTrigger value="all">All Orders</TabsTrigger>
               </TabsList>
               
@@ -304,6 +349,20 @@ const KitchenPage = () => {
                             <p className="text-sm">{order.address}</p>
                           </div>
                         )}
+
+                        {order.fulfillmentTime === 'scheduled' && order.scheduledTime && (
+                          <div className="mt-4 p-3 bg-purple-50 rounded-md">
+                            <p className="font-medium text-sm">Scheduled Time:</p>
+                            <p className="text-sm font-mono">
+                              {new Date(order.scheduledTime).toLocaleString()}
+                            </p>
+                            {!isOrderReadyToStart(order) && (
+                              <p className="text-xs text-purple-600 mt-1">
+                                Can start in {Math.ceil((new Date(order.scheduledTime).getTime() - Date.now()) / (1000 * 60) - 30)} minutes
+                              </p>
+                            )}
+                          </div>
+                        )}
                         
                         <Separator className="my-4" />
                         
@@ -324,10 +383,25 @@ const KitchenPage = () => {
                           
                           {order.status === 'pending' && (
                             <Button
-                              className="flex-1 bg-yellow-500 hover:bg-yellow-600"
-                              onClick={() => updateOrderStatus(order.id, 'cooking')}
+                              className={`flex-1 ${
+                                isOrderReadyToStart(order)
+                                  ? "bg-yellow-500 hover:bg-yellow-600"
+                                  : "bg-gray-400 cursor-not-allowed"
+                              }`}
+                              onClick={() => {
+                                if (isOrderReadyToStart(order)) {
+                                  updateOrderStatus(order.id, 'cooking');
+                                } else {
+                                  toast({
+                                    title: "Order Not Ready",
+                                    description: `This scheduled order can be started 30 minutes before: ${new Date(order.scheduledTime).toLocaleTimeString()}`,
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                              disabled={!isOrderReadyToStart(order)}
                             >
-                              Start Cooking
+                              {isOrderReadyToStart(order) ? "Start Cooking" : "Scheduled"}
                             </Button>
                           )}
                           
