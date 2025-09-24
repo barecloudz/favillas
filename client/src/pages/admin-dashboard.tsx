@@ -13764,14 +13764,14 @@ const EditRateForm = ({ user, onSubmit, onCancel, isLoading }: {
 }) => {
   const [formData, setFormData] = useState({
     hourlyRate: user.hourlyRate ? parseFloat(user.hourlyRate).toString() : '',
-    department: user.department || ''
+    department: user.department || 'none'
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
       hourlyRate: formData.hourlyRate ? parseFloat(formData.hourlyRate) : null,
-      department: formData.department || null
+      department: formData.department === 'none' ? null : formData.department
     });
   };
 
@@ -13800,7 +13800,7 @@ const EditRateForm = ({ user, onSubmit, onCancel, isLoading }: {
             <SelectValue placeholder="Select department" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">No department</SelectItem>
+            <SelectItem value="none">No department</SelectItem>
             <SelectItem value="kitchen">Kitchen</SelectItem>
             <SelectItem value="front-of-house">Front of House</SelectItem>
             <SelectItem value="delivery">Delivery</SelectItem>
