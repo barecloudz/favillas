@@ -136,12 +136,12 @@ const CustomerDisplay = () => {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                          {order.orderType === 'delivery' && (
+                          {order.order_type === 'delivery' && (
                             <Car className="w-6 h-6 text-blue-400" />
                           )}
                           <div>
                             <div className="text-xl font-semibold text-white">
-                              {formatCustomerName(order.firstName, order.lastName)}
+                              {formatCustomerName(order.first_name, order.last_name)}
                             </div>
                             <div className="text-sm text-gray-300">
                               Order #{order.id}
@@ -151,13 +151,13 @@ const CustomerDisplay = () => {
 
                         <div className="text-right">
                           <div className="text-lg font-mono text-yellow-400">
-                            {new Date(order.createdAt).toLocaleTimeString([], {
+                            {new Date(order.created_at).toLocaleTimeString([], {
                               hour: '2-digit',
                               minute: '2-digit'
                             })}
                           </div>
                           <div className="text-xs text-gray-400 uppercase">
-                            {order.orderType || 'Pickup'}
+                            {order.order_type || 'Pickup'}
                           </div>
                         </div>
                       </div>
@@ -202,7 +202,7 @@ const CustomerDisplay = () => {
                   </div>
                 ) : (
                   readyOrders.map((order: any) => {
-                    const readyTime = new Date(order.updatedAt || order.createdAt);
+                    const readyTime = new Date(order.updated_at || order.created_at);
                     const now = new Date();
                     const minutesReady = Math.floor((now.getTime() - readyTime.getTime()) / (1000 * 60));
 
@@ -215,12 +215,12 @@ const CustomerDisplay = () => {
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
-                            {order.orderType === 'delivery' && (
+                            {order.order_type === 'delivery' && (
                               <Car className="w-6 h-6 text-blue-400" />
                             )}
                             <div>
                               <div className="text-xl font-semibold text-white">
-                                {formatCustomerName(order.firstName, order.lastName)}
+                                {formatCustomerName(order.first_name, order.last_name)}
                               </div>
                               <div className="text-sm text-gray-300">
                                 Order #{order.id}
@@ -236,7 +236,7 @@ const CustomerDisplay = () => {
                               })}
                             </div>
                             <div className="text-xs text-gray-400 uppercase">
-                              {order.orderType || 'Pickup'}
+                              {order.order_type || 'Pickup'}
                             </div>
                             {minutesReady > 0 && (
                               <div className={`text-xs ${

@@ -62,11 +62,16 @@ export const handler: Handler = async (event, context) => {
   try {
     const sql = getDB();
     
-    // Get active kitchen orders (pending, cooking, completed)
+    // Get active kitchen orders with customer names (pending, cooking, completed)
     const kitchenOrders = await sql`
-      SELECT * FROM orders
-      WHERE status IN ('pending', 'cooking', 'completed')
-      ORDER BY created_at ASC
+      SELECT
+        o.*,
+        u.first_name,
+        u.last_name
+      FROM orders o
+      LEFT JOIN users u ON (o.user_id = u.id OR o.supabase_user_id = u.supabase_user_id)
+      WHERE o.status IN ('pending', 'cooking', 'completed')
+      ORDER BY o.created_at ASC
     `;
     
     console.log(`[API] Fetching active orders... Found ${kitchenOrders.length} orders`);
