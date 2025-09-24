@@ -2925,6 +2925,7 @@ const MenuEditor = ({ menuItems }: any) => {
   const [isCreateCategoryOpen, setIsCreateCategoryOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
+  const [expandedMenuCategories, setExpandedMenuCategories] = useState<Set<number>>(new Set());
   const [expandedChoices, setExpandedChoices] = useState<Set<number>>(new Set());
   const [isCreateChoiceOpen, setIsCreateChoiceOpen] = useState(false);
   const [editingChoice, setEditingChoice] = useState<any>(null);
@@ -3634,113 +3635,147 @@ const MenuEditor = ({ menuItems }: any) => {
           <CardTitle>Menu Items</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search menu items..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Filter by category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {sortedCategories.map((category) => (
-                  <SelectItem key={category.id} value={category.name}>{category.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Category Quick Navigation Tabs */}
+          {/* Search Bar */}
           <div className="mb-6">
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={categoryFilter === "all" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setCategoryFilter("all")}
-                className="mb-2"
-              >
-                All Items ({filteredItems.length})
-              </Button>
-              {sortedCategories.map((category) => {
-                const itemCount = menuItems?.filter(item => item.category === category.name).length || 0;
-                return (
-                  <Button
-                    key={category.id}
-                    variant={categoryFilter === category.name ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setCategoryFilter(category.name)}
-                    className="mb-2"
-                  >
-                    {category.name} ({itemCount})
-                  </Button>
-                );
-              })}
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search across all menu items..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
           </div>
 
-          {/* Menu Items Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredItems.map((item: any) => (
-              <Card key={item.id} className="overflow-hidden">
-                <div className="aspect-video bg-gray-200 flex items-center justify-center">
-                  {item.imageUrl ? (
-                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <Pizza className="h-12 w-12 text-gray-400" />
-                  )}
-                </div>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-semibold text-lg">{item.name}</h3>
-                    <Badge variant={item.isAvailable !== false ? "default" : "secondary"}>
-                      {item.isAvailable !== false ? "Available" : "Unavailable"}
-                    </Badge>
-                  </div>
-                  <div className="mb-2">
-                    <Badge variant="outline" className="text-xs mb-2">
-                      {item.category}
-                    </Badge>
-                  </div>
-                  <p className="text-gray-600 text-sm mb-2">{item.description}</p>
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-lg">{formatCurrency(item.basePrice || 0)}</span>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEditingItem(item)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => deleteMenuItemMutation.mutate(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+          {/* Category Cards */}
+          <div className="space-y-4">
+            {sortedCategories.map((category) => {
+              const categoryItems = menuItems?.filter(item => item.category === category.name) || [];
+              const filteredCategoryItems = categoryItems.filter((item: any) =>
+                item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                item.description?.toLowerCase().includes(searchTerm.toLowerCase())
+              );
+              const isExpanded = expandedMenuCategories.has(category.id);
+
+              // Hide empty categories when searching
+              if (searchTerm && filteredCategoryItems.length === 0) return null;
+
+              return (
+                <Card key={category.id} className="overflow-hidden">
+                  <div
+                    className="p-4 cursor-pointer hover:bg-gray-50 transition-colors border-b"
+                    onClick={() => {
+                      const newExpanded = new Set(expandedMenuCategories);
+                      if (isExpanded) {
+                        newExpanded.delete(category.id);
+                      } else {
+                        newExpanded.add(category.id);
+                      }
+                      setExpandedMenuCategories(newExpanded);
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <Pizza className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-lg">{category.name}</h3>
+                          <p className="text-sm text-gray-500">
+                            {searchTerm ? filteredCategoryItems.length : categoryItems.length} items
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsCreateDialogOpen(true);
+                          }}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add Item
+                        </Button>
+                        <ChevronDown
+                          className={`h-5 w-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                        />
+                      </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
 
-          {filteredItems.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              No menu items found matching your criteria.
-            </div>
-          )}
+                  {isExpanded && (
+                    <div className="p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filteredCategoryItems.map((item: any) => (
+                          <Card key={item.id} className="overflow-hidden">
+                            <div className="aspect-video bg-gray-200 flex items-center justify-center">
+                              {item.imageUrl ? (
+                                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <Pizza className="h-12 w-12 text-gray-400" />
+                              )}
+                            </div>
+                            <CardContent className="p-4">
+                              <div className="flex justify-between items-start mb-2">
+                                <h4 className="font-semibold">{item.name}</h4>
+                                <Badge variant={item.isAvailable !== false ? "default" : "secondary"}>
+                                  {item.isAvailable !== false ? "Available" : "Unavailable"}
+                                </Badge>
+                              </div>
+                              <p className="text-gray-600 text-sm mb-2">{item.description}</p>
+                              <div className="flex justify-between items-center">
+                                <span className="font-bold text-lg">{formatCurrency(item.basePrice || 0)}</span>
+                                <div className="flex space-x-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setEditingItem(item)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => deleteMenuItemMutation.mutate(item.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+
+                        {filteredCategoryItems.length === 0 && (
+                          <div className="col-span-full text-center py-8 text-gray-500">
+                            No items found in this category.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+
+            {searchTerm && sortedCategories.every(category => {
+              const categoryItems = menuItems?.filter(item => item.category === category.name) || [];
+              const filteredCategoryItems = categoryItems.filter((item: any) =>
+                item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                item.description?.toLowerCase().includes(searchTerm.toLowerCase())
+              );
+              return filteredCategoryItems.length === 0;
+            }) && (
+              <div className="text-center py-8 text-gray-500">
+                <Package className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                <h3 className="text-lg font-medium mb-2">No items found</h3>
+                <p>No menu items match your search criteria.</p>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -4187,12 +4222,12 @@ const MenuEditor = ({ menuItems }: any) => {
 
       {/* Category Management Dialog */}
       <Dialog open={isCategoryManagerOpen} onOpenChange={setIsCategoryManagerOpen}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>Manage Menu Categories</DialogTitle>
           </DialogHeader>
-          
-          <div className="space-y-4">
+
+          <div className="space-y-4 overflow-y-auto flex-1 pr-2">
             <div className="flex justify-between items-center">
               <p className="text-sm text-gray-600">Drag and drop categories to reorder them</p>
               <Button onClick={() => setIsCreateCategoryOpen(true)}>
