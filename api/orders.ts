@@ -28,7 +28,7 @@ export const handler: Handler = async (event, context) => {
   const origin = event.headers.origin || 'http://localhost:3000';
   const headers = {
     'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json',
@@ -1172,6 +1172,68 @@ export const handler: Handler = async (event, context) => {
           body: JSON.stringify({
             error: 'Failed to update order',
             details: updateError instanceof Error ? updateError.message : 'Unknown error'
+          })
+        };
+      }
+
+    } else if (event.httpMethod === 'DELETE') {
+      // DELETE requests require staff authentication
+      if (!authPayload || !isStaff(authPayload)) {
+        return {
+          statusCode: 401,
+          headers,
+          body: JSON.stringify({ error: 'Unauthorized' })
+        };
+      }
+
+      const requestData = JSON.parse(event.body || '{}');
+
+      // Support both single ID and bulk deletion
+      const orderIds = requestData.orderIds || (requestData.orderId ? [requestData.orderId] : []);
+
+      if (orderIds.length === 0) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Order ID(s) required' })
+        };
+      }
+
+      console.log('🗑️ Deleting orders:', orderIds);
+
+      try {
+        let deletedCount = 0;
+
+        for (const orderId of orderIds) {
+          // Delete related records first to avoid foreign key constraints
+          await sql`DELETE FROM order_items WHERE order_id = ${orderId}`;
+
+          // Delete the order
+          const deletedOrder = await sql`DELETE FROM orders WHERE id = ${orderId} RETURNING id`;
+          if (deletedOrder.length > 0) {
+            deletedCount++;
+          }
+        }
+
+        console.log(`✅ Successfully deleted ${deletedCount} orders`);
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            message: `Successfully deleted ${deletedCount} order(s)`,
+            deletedCount
+          })
+        };
+
+      } catch (deleteError) {
+        console.error('❌ Order deletion error:', deleteError);
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({
+            error: 'Failed to delete orders',
+            details: deleteError instanceof Error ? deleteError.message : 'Unknown error'
           })
         };
       }

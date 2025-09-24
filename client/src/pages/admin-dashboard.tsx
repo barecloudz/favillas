@@ -1455,6 +1455,8 @@ const OrdersManagement = ({ orders, onUpdateStatus }: any) => {
   const [refundAmount, setRefundAmount] = useState("");
   const [refundReason, setRefundReason] = useState("requested_by_customer");
   const [isProcessingRefund, setIsProcessingRefund] = useState(false);
+  const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
+  const [bulkActionMode, setBulkActionMode] = useState(false);
   const { toast } = useToast();
 
   const filteredOrders = (orders as any[])?.filter((order: any) => {
