@@ -61,7 +61,7 @@ const CustomerDisplay = () => {
   };
 
   // Filter orders by status
-  const cookingOrders = orders?.filter((order: any) => order.status === 'processing') || [];
+  const cookingOrders = orders?.filter((order: any) => order.status === 'cooking') || [];
   const readyOrders = orders?.filter((order: any) => order.status === 'completed') || [];
 
   return (

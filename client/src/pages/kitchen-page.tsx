@@ -81,7 +81,7 @@ const KitchenPage = () => {
   // Filter orders based on active tab
   const filteredOrders = orders ? orders.filter((order: any) => {
     if (activeTab === "pending") return order.status === "pending";
-    if (activeTab === "cooking") return order.status === "processing";
+    if (activeTab === "cooking") return order.status === "cooking";
     if (activeTab === "completed") return order.status === "completed";
     return true;
   }) : [];
@@ -218,8 +218,8 @@ const KitchenPage = () => {
                 </TabsTrigger>
                 <TabsTrigger value="cooking">
                   Cooking
-                  {orders?.filter((o: any) => o.status === "processing").length > 0 && (
-                    <Badge className="ml-2 bg-yellow-500">{orders.filter((o: any) => o.status === "processing").length}</Badge>
+                  {orders?.filter((o: any) => o.status === "cooking").length > 0 && (
+                    <Badge className="ml-2 bg-yellow-500">{orders.filter((o: any) => o.status === "cooking").length}</Badge>
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="completed">Completed</TabsTrigger>
@@ -245,17 +245,17 @@ const KitchenPage = () => {
                     <Card key={order.id} className="overflow-hidden">
                       <CardHeader className={`
                         ${order.status === 'pending' ? 'bg-red-100' : ''}
-                        ${order.status === 'processing' ? 'bg-yellow-100' : ''}
+                        ${order.status === 'cooking' ? 'bg-yellow-100' : ''}
                         ${order.status === 'completed' ? 'bg-green-100' : ''}
                       `}>
                         <div className="flex justify-between items-center">
                           <CardTitle>Order #{order.id}</CardTitle>
                           <Badge className={`
                             ${order.status === 'pending' ? 'bg-red-500' : ''}
-                            ${order.status === 'processing' ? 'bg-yellow-500' : ''}
+                            ${order.status === 'cooking' ? 'bg-yellow-500' : ''}
                             ${order.status === 'completed' ? 'bg-green-500' : ''}
                           `}>
-                            {order.status === 'processing' ? 'COOKING' : order.status.toUpperCase()}
+                            {order.status.toUpperCase()}
                           </Badge>
                         </div>
                         <div className="text-sm text-gray-500">
@@ -325,13 +325,13 @@ const KitchenPage = () => {
                           {order.status === 'pending' && (
                             <Button
                               className="flex-1 bg-yellow-500 hover:bg-yellow-600"
-                              onClick={() => updateOrderStatus(order.id, 'processing')}
+                              onClick={() => updateOrderStatus(order.id, 'cooking')}
                             >
                               Start Cooking
                             </Button>
                           )}
                           
-                          {order.status === 'processing' && (
+                          {order.status === 'cooking' && (
                             <Button
                               className="flex-1 bg-green-500 hover:bg-green-600"
                               onClick={() => updateOrderStatus(order.id, 'completed')}
@@ -344,7 +344,7 @@ const KitchenPage = () => {
                             <Button
                               className="flex-1 bg-gray-500 hover:bg-gray-600"
                               variant="outline"
-                              onClick={() => updateOrderStatus(order.id, 'processing')}
+                              onClick={() => updateOrderStatus(order.id, 'cooking')}
                             >
                               Reopen
                             </Button>
