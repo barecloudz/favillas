@@ -235,6 +235,12 @@
   to = "/.netlify/functions/admin-alerts"
   status = 200
 
+# Admin service fees endpoint
+[[redirects]]
+  from = "/api/admin-service-fees"
+  to = "/.netlify/functions/admin-service-fees"
+  status = 200
+
 # Admin QR codes endpoint
 [[redirects]]
   from = "/api/admin/qr-codes"

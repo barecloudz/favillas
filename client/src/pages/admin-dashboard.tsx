@@ -238,7 +238,7 @@ const AdminDashboard = () => {
   // Taxation and Currency component
   const TaxationAndCurrency = () => {
     const { toast } = useToast();
-    
+
     // Tax settings state
     const { data: taxSettings = {}, refetch: refetchTaxSettings } = useQuery({
       queryKey: ['tax-settings'],
@@ -252,6 +252,15 @@ const AdminDashboard = () => {
       queryKey: ['tax-categories'],
       queryFn: async () => {
         const response = await apiRequest('GET', '/api/tax-categories');
+        return response.json();
+      }
+    });
+
+    // Service fees state
+    const { data: serviceFees = {}, refetch: refetchServiceFees } = useQuery({
+      queryKey: ['service-fees'],
+      queryFn: async () => {
+        const response = await apiRequest('GET', '/api/admin-service-fees');
         return response.json();
       }
     });
@@ -292,6 +301,24 @@ const AdminDashboard = () => {
       }
     });
 
+    const updateServiceFeesMutation = useMutation({
+      mutationFn: (data: any) => apiRequest('PUT', '/api/admin-service-fees', data),
+      onSuccess: () => {
+        refetchServiceFees();
+        toast({
+          title: "Success",
+          description: "Service fees settings updated successfully",
+        });
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to update service fees settings",
+          variant: "destructive",
+        });
+      }
+    });
+
     const [formData, setFormData] = useState({
       taxApplication: taxSettings.taxApplication || 'on_top',
       taxName: taxSettings.taxName || 'Sales Tax',
@@ -299,6 +326,34 @@ const AdminDashboard = () => {
       tipsTaxRate: taxSettings.tipsTaxRate || '0',
       serviceFeeTaxRate: taxSettings.serviceFeeTaxRate || '4.75',
       currency: taxSettings.currency || 'USD'
+    });
+
+    const [serviceFeeData, setServiceFeeData] = useState({
+      // Service Fee Settings
+      serviceFeesEnabled: serviceFees.serviceFeesEnabled || false,
+      serviceFeeType: serviceFees.serviceFeeType || 'percentage',
+      serviceFeeAmount: serviceFees.serviceFeeAmount || 0,
+      serviceFeeLabel: serviceFees.serviceFeeLabel || 'Service Fee',
+      serviceFeeDescription: serviceFees.serviceFeeDescription || 'Processing and service fee',
+
+      // Card Processing Fee Settings
+      cardFeesEnabled: serviceFees.cardFeesEnabled || false,
+      cardFeeType: serviceFees.cardFeeType || 'percentage',
+      cardFeeAmount: serviceFees.cardFeeAmount || 2.9,
+      cardFeeLabel: serviceFees.cardFeeLabel || 'Card Processing Fee',
+      cardFeeDescription: serviceFees.cardFeeDescription || 'Credit card processing fee',
+
+      // Application Rules
+      applyToDelivery: serviceFees.applyToDelivery !== undefined ? serviceFees.applyToDelivery : true,
+      applyToPickup: serviceFees.applyToPickup !== undefined ? serviceFees.applyToPickup : true,
+      applyToTaxableTotal: serviceFees.applyToTaxableTotal || false,
+      minimumOrderAmount: serviceFees.minimumOrderAmount || 0,
+      maximumFeeAmount: serviceFees.maximumFeeAmount || 0,
+
+      // Display Settings
+      showOnMenuPage: serviceFees.showOnMenuPage !== undefined ? serviceFees.showOnMenuPage : true,
+      showInOrderSummary: serviceFees.showInOrderSummary !== undefined ? serviceFees.showInOrderSummary : true,
+      includeInEmailReceipts: serviceFees.includeInEmailReceipts !== undefined ? serviceFees.includeInEmailReceipts : true
     });
 
     const [newTaxCategory, setNewTaxCategory] = useState({
@@ -311,8 +366,38 @@ const AdminDashboard = () => {
       appliesToMenuItems: true
     });
 
+    // Update service fee data when query data changes
+    useEffect(() => {
+      if (serviceFees && Object.keys(serviceFees).length > 0) {
+        setServiceFeeData({
+          serviceFeesEnabled: serviceFees.serviceFeesEnabled || false,
+          serviceFeeType: serviceFees.serviceFeeType || 'percentage',
+          serviceFeeAmount: serviceFees.serviceFeeAmount || 0,
+          serviceFeeLabel: serviceFees.serviceFeeLabel || 'Service Fee',
+          serviceFeeDescription: serviceFees.serviceFeeDescription || 'Processing and service fee',
+          cardFeesEnabled: serviceFees.cardFeesEnabled || false,
+          cardFeeType: serviceFees.cardFeeType || 'percentage',
+          cardFeeAmount: serviceFees.cardFeeAmount || 2.9,
+          cardFeeLabel: serviceFees.cardFeeLabel || 'Card Processing Fee',
+          cardFeeDescription: serviceFees.cardFeeDescription || 'Credit card processing fee',
+          applyToDelivery: serviceFees.applyToDelivery !== undefined ? serviceFees.applyToDelivery : true,
+          applyToPickup: serviceFees.applyToPickup !== undefined ? serviceFees.applyToPickup : true,
+          applyToTaxableTotal: serviceFees.applyToTaxableTotal || false,
+          minimumOrderAmount: serviceFees.minimumOrderAmount || 0,
+          maximumFeeAmount: serviceFees.maximumFeeAmount || 0,
+          showOnMenuPage: serviceFees.showOnMenuPage !== undefined ? serviceFees.showOnMenuPage : true,
+          showInOrderSummary: serviceFees.showInOrderSummary !== undefined ? serviceFees.showInOrderSummary : true,
+          includeInEmailReceipts: serviceFees.includeInEmailReceipts !== undefined ? serviceFees.includeInEmailReceipts : true
+        });
+      }
+    }, [serviceFees]);
+
     const handleSaveSettings = () => {
       updateTaxSettingsMutation.mutate(formData);
+    };
+
+    const handleSaveServiceFees = () => {
+      updateServiceFeesMutation.mutate(serviceFeeData);
     };
 
     const handleAddTaxCategory = () => {
@@ -473,8 +558,8 @@ const AdminDashboard = () => {
             {/* Currency */}
             <div>
               <Label htmlFor="currency" className="text-sm font-medium">Currency:</Label>
-              <Select 
-                value={formData.currency} 
+              <Select
+                value={formData.currency}
                 onValueChange={(value) => setFormData({ ...formData, currency: value })}
               >
                 <SelectTrigger className="w-full mt-1">
@@ -488,6 +573,275 @@ const AdminDashboard = () => {
                   <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Service Fees Configuration */}
+        <Card>
+          <CardContent className="p-6 space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Service Fees & Card Processing Fees</h3>
+                <p className="text-sm text-gray-600">Configure additional fees applied to all orders</p>
+              </div>
+              <Button onClick={handleSaveServiceFees} disabled={updateServiceFeesMutation.isLoading}>
+                {updateServiceFeesMutation.isLoading ? "Saving..." : "Save Service Fees"}
+              </Button>
+            </div>
+
+            {/* Service Fee Settings */}
+            <div className="space-y-4 border-b pb-6">
+              <div className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  id="serviceFeesEnabled"
+                  checked={serviceFeeData.serviceFeesEnabled}
+                  onChange={(e) => setServiceFeeData({ ...serviceFeeData, serviceFeesEnabled: e.target.checked })}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <Label htmlFor="serviceFeesEnabled" className="text-lg font-medium">Enable Service Fees</Label>
+              </div>
+
+              {serviceFeeData.serviceFeesEnabled && (
+                <div className="ml-7 space-y-4 bg-gray-50 p-4 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium">Fee Type:</Label>
+                      <Select
+                        value={serviceFeeData.serviceFeeType}
+                        onValueChange={(value) => setServiceFeeData({ ...serviceFeeData, serviceFeeType: value })}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="percentage">Percentage (%)</SelectItem>
+                          <SelectItem value="fixed">Fixed Amount ($)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-medium">
+                        {serviceFeeData.serviceFeeType === 'percentage' ? 'Percentage (%)' : 'Amount ($)'}:
+                      </Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={serviceFeeData.serviceFeeAmount}
+                        onChange={(e) => setServiceFeeData({ ...serviceFeeData, serviceFeeAmount: parseFloat(e.target.value) || 0 })}
+                        className="mt-1"
+                        placeholder={serviceFeeData.serviceFeeType === 'percentage' ? 'e.g., 3.5' : 'e.g., 2.50'}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium">Label:</Label>
+                      <Input
+                        value={serviceFeeData.serviceFeeLabel}
+                        onChange={(e) => setServiceFeeData({ ...serviceFeeData, serviceFeeLabel: e.target.value })}
+                        className="mt-1"
+                        placeholder="Service Fee"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-medium">Description:</Label>
+                      <Input
+                        value={serviceFeeData.serviceFeeDescription}
+                        onChange={(e) => setServiceFeeData({ ...serviceFeeData, serviceFeeDescription: e.target.value })}
+                        className="mt-1"
+                        placeholder="Processing and service fee"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Card Processing Fee Settings */}
+            <div className="space-y-4 border-b pb-6">
+              <div className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  id="cardFeesEnabled"
+                  checked={serviceFeeData.cardFeesEnabled}
+                  onChange={(e) => setServiceFeeData({ ...serviceFeeData, cardFeesEnabled: e.target.checked })}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <Label htmlFor="cardFeesEnabled" className="text-lg font-medium">Enable Card Processing Fees</Label>
+              </div>
+
+              {serviceFeeData.cardFeesEnabled && (
+                <div className="ml-7 space-y-4 bg-gray-50 p-4 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium">Fee Type:</Label>
+                      <Select
+                        value={serviceFeeData.cardFeeType}
+                        onValueChange={(value) => setServiceFeeData({ ...serviceFeeData, cardFeeType: value })}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="percentage">Percentage (%)</SelectItem>
+                          <SelectItem value="fixed">Fixed Amount ($)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-medium">
+                        {serviceFeeData.cardFeeType === 'percentage' ? 'Percentage (%)' : 'Amount ($)'}:
+                      </Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={serviceFeeData.cardFeeAmount}
+                        onChange={(e) => setServiceFeeData({ ...serviceFeeData, cardFeeAmount: parseFloat(e.target.value) || 0 })}
+                        className="mt-1"
+                        placeholder={serviceFeeData.cardFeeType === 'percentage' ? 'e.g., 2.9' : 'e.g., 0.30'}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium">Label:</Label>
+                      <Input
+                        value={serviceFeeData.cardFeeLabel}
+                        onChange={(e) => setServiceFeeData({ ...serviceFeeData, cardFeeLabel: e.target.value })}
+                        className="mt-1"
+                        placeholder="Card Processing Fee"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-medium">Description:</Label>
+                      <Input
+                        value={serviceFeeData.cardFeeDescription}
+                        onChange={(e) => setServiceFeeData({ ...serviceFeeData, cardFeeDescription: e.target.value })}
+                        className="mt-1"
+                        placeholder="Credit card processing fee"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Application Rules */}
+            <div className="space-y-4 border-b pb-6">
+              <h4 className="text-md font-semibold">Application Rules</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="applyToDelivery"
+                      checked={serviceFeeData.applyToDelivery}
+                      onChange={(e) => setServiceFeeData({ ...serviceFeeData, applyToDelivery: e.target.checked })}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <Label htmlFor="applyToDelivery">Apply to delivery orders</Label>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="applyToPickup"
+                      checked={serviceFeeData.applyToPickup}
+                      onChange={(e) => setServiceFeeData({ ...serviceFeeData, applyToPickup: e.target.checked })}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <Label htmlFor="applyToPickup">Apply to pickup orders</Label>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="applyToTaxableTotal"
+                      checked={serviceFeeData.applyToTaxableTotal}
+                      onChange={(e) => setServiceFeeData({ ...serviceFeeData, applyToTaxableTotal: e.target.checked })}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <Label htmlFor="applyToTaxableTotal">Apply to taxable total (vs subtotal)</Label>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-sm font-medium">Minimum order amount ($):</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={serviceFeeData.minimumOrderAmount / 100}
+                      onChange={(e) => setServiceFeeData({ ...serviceFeeData, minimumOrderAmount: Math.round((parseFloat(e.target.value) || 0) * 100) })}
+                      className="mt-1"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-sm font-medium">Maximum fee amount ($):</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={serviceFeeData.maximumFeeAmount / 100}
+                      onChange={(e) => setServiceFeeData({ ...serviceFeeData, maximumFeeAmount: Math.round((parseFloat(e.target.value) || 0) * 100) })}
+                      className="mt-1"
+                      placeholder="0.00 (0 = no cap)"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Display Settings */}
+            <div className="space-y-4">
+              <h4 className="text-md font-semibold">Display Settings</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="showOnMenuPage"
+                    checked={serviceFeeData.showOnMenuPage}
+                    onChange={(e) => setServiceFeeData({ ...serviceFeeData, showOnMenuPage: e.target.checked })}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <Label htmlFor="showOnMenuPage">Show on menu page</Label>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="showInOrderSummary"
+                    checked={serviceFeeData.showInOrderSummary}
+                    onChange={(e) => setServiceFeeData({ ...serviceFeeData, showInOrderSummary: e.target.checked })}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <Label htmlFor="showInOrderSummary">Show in order summary</Label>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="includeInEmailReceipts"
+                    checked={serviceFeeData.includeInEmailReceipts}
+                    onChange={(e) => setServiceFeeData({ ...serviceFeeData, includeInEmailReceipts: e.target.checked })}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <Label htmlFor="includeInEmailReceipts">Include in email receipts</Label>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
