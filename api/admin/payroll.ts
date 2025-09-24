@@ -149,10 +149,16 @@ export const handler: Handler = async (event, context) => {
         const regularHours = totalHours - overtimeHours;
 
         if (!employeeSummary.has(employeeId)) {
+          // Split the employee name for frontend compatibility
+          const nameParts = (entry.employeeName || '').split(' ');
+          const firstName = nameParts[0] || 'Unknown';
+          const lastName = nameParts.slice(1).join(' ') || '';
+
           employeeSummary.set(employeeId, {
             employeeId,
-            employeeName: entry.employeeName,
-            employeeRole: entry.employeeRole,
+            firstName,
+            lastName,
+            department: entry.employeeRole,
             totalHours: 0,
             regularHours: 0,
             overtimeHours: 0,
@@ -191,6 +197,7 @@ export const handler: Handler = async (event, context) => {
 
         return {
           ...employee,
+          hourlyRate: regularRate, // Frontend expects this field name
           regularRate,
           overtimeRate,
           regularPay: Math.round(regularPay * 100) / 100,
@@ -208,6 +215,7 @@ export const handler: Handler = async (event, context) => {
         totalHours: totals.totalHours + employee.totalHours,
         totalRegularHours: totals.totalRegularHours + employee.regularHours,
         totalOvertimeHours: totals.totalOvertimeHours + employee.overtimeHours,
+        totalRegularPay: totals.totalRegularPay + employee.regularPay,
         totalPay: totals.totalPay + employee.totalPay,
         totalShifts: totals.totalShifts + employee.totalShifts
       }), {
@@ -215,6 +223,7 @@ export const handler: Handler = async (event, context) => {
         totalHours: 0,
         totalRegularHours: 0,
         totalOvertimeHours: 0,
+        totalRegularPay: 0,
         totalPay: 0,
         totalShifts: 0
       });
@@ -230,6 +239,7 @@ export const handler: Handler = async (event, context) => {
           totalHours: Math.round(grandTotals.totalHours * 100) / 100,
           totalRegularHours: Math.round(grandTotals.totalRegularHours * 100) / 100,
           totalOvertimeHours: Math.round(grandTotals.totalOvertimeHours * 100) / 100,
+          totalRegularPay: Math.round(grandTotals.totalRegularPay * 100) / 100,
           totalPay: Math.round(grandTotals.totalPay * 100) / 100,
           totalShifts: grandTotals.totalShifts
         }

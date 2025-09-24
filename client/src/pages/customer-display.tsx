@@ -85,6 +85,15 @@ const CustomerDisplay = () => {
                 </div>
               </div>
 
+              <div className="flex-1 text-center">
+                <div className="text-2xl font-bold text-white">
+                  WEBSITE ORDERS
+                </div>
+                <p className="text-red-100 text-sm">
+                  Online orders will appear on this display
+                </p>
+              </div>
+
               <div className="text-right">
                 <div className="text-2xl font-mono font-bold text-white">
                   {currentTime.toLocaleTimeString([], {
