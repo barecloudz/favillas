@@ -54,11 +54,20 @@ export const handler: Handler = async (event, context) => {
     const sql = getDB();
 
     if (event.httpMethod === 'GET') {
-      const categories = await sql`
-        SELECT * FROM categories 
+      const dbCategories = await sql`
+        SELECT * FROM categories
         ORDER BY "order" ASC, name ASC
       `;
-      
+
+      // Transform database fields to match frontend expectations
+      const categories = dbCategories.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        order: cat.order,
+        isActive: cat.is_active,
+        created_at: cat.created_at
+      }));
+
       return {
         statusCode: 200,
         headers: headersWithCache,
