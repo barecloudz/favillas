@@ -262,7 +262,7 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
   };
 
   const handlePrintSchedule = () => {
-    const printUrl = `/api/admin/schedules/print?format=html&startDate=${viewDates.startDate}&endDate=${viewDates.endDate}`;
+    const printUrl = `/api/admin-schedules-print?format=html&startDate=${viewDates.startDate}&endDate=${viewDates.endDate}`;
     window.open(printUrl, '_blank');
   };
 
