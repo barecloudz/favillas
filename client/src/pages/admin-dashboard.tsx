@@ -3187,7 +3187,21 @@ const MenuEditor = ({ menuItems }: any) => {
   };
 
   const handleDeleteCategory = (id: number) => {
-    deleteCategoryMutation.mutate(id);
+    const category = categories.find(cat => cat.id === id);
+    const itemCount = menuItemsByCategory[category?.name || '']?.length || 0;
+
+    if (itemCount > 0) {
+      toast({
+        title: "Cannot delete category",
+        description: `This category contains ${itemCount} menu items. Move or delete the items first.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (confirm(`Are you sure you want to delete the category "${category?.name}"? This action cannot be undone.`)) {
+      deleteCategoryMutation.mutate(id);
+    }
   };
 
   const toggleCategoryStatus = (id: number) => {
@@ -4232,11 +4246,13 @@ const MenuEditor = ({ menuItems }: any) => {
                     </Button>
                     
                     <Button
-                      variant="outline"
+                      variant="destructive"
                       size="sm"
                       onClick={() => handleDeleteCategory(category.id)}
+                      className="bg-red-600 hover:bg-red-700 text-white"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
                     </Button>
                   </div>
                 </div>
