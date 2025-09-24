@@ -77,6 +77,11 @@ import {
   ShoppingBag,
   User,
   LogOut,
+  Copy,
+  ExternalLink,
+  Instagram,
+  Facebook,
+  CheckCircle,
   ChevronDown,
   ChevronRight,
   RefreshCw,
@@ -4343,49 +4348,96 @@ const MenuEditor = ({ menuItems }: any) => {
 };
 
 const QRCodeManagement = () => {
-  const [qrCodes, setQrCodes] = useState([
-    { id: 1, name: "Table 1", code: "table-1", url: "https://favillas.com/order?table=1", isActive: true },
-    { id: 2, name: "Table 2", code: "table-2", url: "https://favillas.com/order?table=2", isActive: true },
-    { id: 3, name: "Table 3", code: "table-3", url: "https://favillas.com/order?table=3", isActive: false },
-    { id: 4, name: "Bar Counter", code: "bar-1", url: "https://favillas.com/order?table=bar", isActive: true },
-  ]);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingQR, setEditingQR] = useState<any>(null);
 
-  const generateQRCode = (url: string) => {
-    // In a real implementation, this would generate an actual QR code
-    // For now, we'll use a placeholder
-    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
-  };
+  // Fetch QR codes from API
+  const { data: qrCodes = [], isLoading, refetch } = useQuery({
+    queryKey: ['qr-codes'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/admin/qr-codes');
+      return response.json();
+    }
+  });
+
+  // Create QR code mutation
+  const createQRMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('POST', '/api/admin/qr-codes', data),
+    onSuccess: () => {
+      refetch();
+      setIsCreateDialogOpen(false);
+      toast({
+        title: "Success",
+        description: "QR code created successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create QR code",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Update QR code mutation
+  const updateQRMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      apiRequest('PUT', `/api/admin/qr-codes/${id}`, data),
+    onSuccess: () => {
+      refetch();
+      setEditingQR(null);
+      toast({
+        title: "Success",
+        description: "QR code updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update QR code",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Delete QR code mutation
+  const deleteQRMutation = useMutation({
+    mutationFn: (id: number) => apiRequest('DELETE', `/api/admin/qr-codes/${id}`),
+    onSuccess: () => {
+      refetch();
+      toast({
+        title: "Success",
+        description: "QR code deleted successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete QR code",
+        variant: "destructive",
+      });
+    }
+  });
 
   const handleCreateQR = (data: any) => {
-    const newQR = {
-      id: Date.now(),
-      ...data,
-      url: `https://favillas.com/order?table=${data.code}`,
-      isActive: true
-    };
-    setQrCodes([...qrCodes, newQR]);
-    setIsCreateDialogOpen(false);
+    createQRMutation.mutate(data);
   };
 
   const handleUpdateQR = (id: number, data: any) => {
-    setQrCodes(qrCodes.map(qr => 
-      qr.id === id 
-        ? { ...qr, ...data, url: `https://favillas.com/order?table=${data.code}` }
-        : qr
-    ));
-    setEditingQR(null);
+    updateQRMutation.mutate({ id, data });
   };
 
   const handleDeleteQR = (id: number) => {
-    setQrCodes(qrCodes.filter(qr => qr.id !== id));
+    if (window.confirm('Are you sure you want to delete this QR code? This action cannot be undone.')) {
+      deleteQRMutation.mutate(id);
+    }
   };
 
-  const toggleQRStatus = (id: number) => {
-    setQrCodes(qrCodes.map(qr => 
-      qr.id === id ? { ...qr, isActive: !qr.isActive } : qr
-    ));
+  const toggleQRStatus = (id: number, currentStatus: boolean) => {
+    handleUpdateQR(id, { is_active: !currentStatus });
   };
 
   return (
@@ -4415,41 +4467,43 @@ const QRCodeManagement = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Active</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {qrCodes.filter(qr => qr.isActive).length}
+                  {qrCodes.filter((qr: any) => qr.is_active).length}
                 </p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Inactive</p>
                 <p className="text-2xl font-bold text-gray-600">
-                  {qrCodes.filter(qr => !qr.isActive).length}
+                  {qrCodes.filter((qr: any) => !qr.is_active).length}
                 </p>
               </div>
               <Clock className="h-8 w-8 text-gray-600" />
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Scans Today</p>
-                <p className="text-2xl font-bold text-purple-600">24</p>
+                <p className="text-sm font-medium text-gray-600">Total Scans</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {qrCodes.reduce((total: number, qr: any) => total + (qr.usage_count || 0), 0)}
+                </p>
               </div>
               <BarChart3 className="h-8 w-8 text-purple-600" />
             </div>
@@ -4463,74 +4517,102 @@ const QRCodeManagement = () => {
           <CardTitle>QR Codes</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {qrCodes.map((qr) => (
-              <Card key={qr.id} className="overflow-hidden">
-                <CardContent className="p-6">
-                  <div className="text-center">
-                    <div className="mb-4">
-                      <img 
-                        src={generateQRCode(qr.url)} 
-                        alt={`QR Code for ${qr.name}`}
-                        className="w-32 h-32 mx-auto border rounded"
-                      />
+          {isLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+          ) : qrCodes.length === 0 ? (
+            <div className="text-center py-12">
+              <QrCode className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No QR Codes Found</h3>
+              <p className="text-gray-500 mb-4">Create your first QR code to get started.</p>
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create QR Code
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {qrCodes.map((qr: any) => (
+                <Card key={qr.id} className="overflow-hidden">
+                  <CardContent className="p-6">
+                    <div className="text-center">
+                      <div className="mb-4">
+                        <img
+                          src={qr.qr_data || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qr.url)}`}
+                          alt={`QR Code for ${qr.name}`}
+                          className="w-32 h-32 mx-auto border rounded"
+                        />
+                      </div>
+
+                      <h3 className="font-semibold text-lg mb-2">{qr.name}</h3>
+                      <p className="text-sm text-gray-600 mb-2">Type: {qr.type}</p>
+                      {qr.description && (
+                        <p className="text-xs text-gray-500 mb-2">{qr.description}</p>
+                      )}
+
+                      <Badge variant={qr.is_active ? "default" : "secondary"} className="mb-4">
+                        {qr.is_active ? "Active" : "Inactive"}
+                      </Badge>
+
+                      <div className="text-xs text-gray-500 mb-4">
+                        Scans: {qr.usage_count || 0}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => setEditingQR(qr)}
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => toggleQRStatus(qr.id, qr.is_active)}
+                          disabled={updateQRMutation.isLoading}
+                        >
+                          {qr.is_active ? "Deactivate" : "Activate"}
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => {
+                            navigator.clipboard.writeText(qr.url);
+                            toast({
+                              title: "Copied!",
+                              description: "QR code URL copied to clipboard",
+                            });
+                          }}
+                        >
+                          <Link className="h-4 w-4 mr-2" />
+                          Copy URL
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-red-600 hover:text-red-700"
+                          onClick={() => handleDeleteQR(qr.id)}
+                          disabled={deleteQRMutation.isLoading}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          {deleteQRMutation.isLoading ? "Deleting..." : "Delete"}
+                        </Button>
+                      </div>
                     </div>
-                    
-                    <h3 className="font-semibold text-lg mb-2">{qr.name}</h3>
-                    <p className="text-sm text-gray-600 mb-2">Code: {qr.code}</p>
-                    
-                    <Badge variant={qr.isActive ? "default" : "secondary"} className="mb-4">
-                      {qr.isActive ? "Active" : "Inactive"}
-                    </Badge>
-                    
-                    <div className="space-y-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => setEditingQR(qr)}
-                      >
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit
-                      </Button>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => toggleQRStatus(qr.id)}
-                      >
-                        {qr.isActive ? "Deactivate" : "Activate"}
-                      </Button>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => {
-                          navigator.clipboard.writeText(qr.url);
-                          // Show toast notification
-                        }}
-                      >
-                        <Link className="h-4 w-4 mr-2" />
-                        Copy URL
-                      </Button>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => handleDeleteQR(qr.id)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -4579,16 +4661,168 @@ const WebsiteWidget = () => (
   </Card>
 );
 
-const SmartLinks = () => (
-  <Card>
-    <CardHeader>
-      <CardTitle>Smart Links for Social & Google</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <p className="text-gray-500">Create embeddable ordering links for Facebook, Instagram, Yelp, and Google Business Profile.</p>
-    </CardContent>
-  </Card>
-);
+const SmartLinks = () => {
+  const [smartLinks, setSmartLinks] = useState([
+    {
+      id: 1,
+      platform: "Instagram",
+      description: "Link for Instagram bio",
+      url: `${window.location.origin}/menu`,
+      clickCount: 0
+    },
+    {
+      id: 2,
+      platform: "Facebook",
+      description: "Link for Facebook page",
+      url: `${window.location.origin}/menu`,
+      clickCount: 0
+    },
+    {
+      id: 3,
+      platform: "Google Business",
+      description: "Google My Business ordering link",
+      url: `${window.location.origin}/menu`,
+      clickCount: 0
+    }
+  ]);
+  const { toast } = useToast();
+
+  const copyToClipboard = (url: string, platform: string) => {
+    navigator.clipboard.writeText(url).then(() => {
+      toast({
+        title: "Copied!",
+        description: `${platform} smart link copied to clipboard`,
+      });
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Smart Links for Social & Google</h2>
+          <p className="text-gray-600">Create embeddable ordering links for your social media and business profiles</p>
+        </div>
+      </div>
+
+      {/* Overview Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Smart Links</p>
+                <p className="text-2xl font-bold text-gray-900">{smartLinks.length}</p>
+              </div>
+              <Link className="h-8 w-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Clicks</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {smartLinks.reduce((total, link) => total + link.clickCount, 0)}
+                </p>
+              </div>
+              <BarChart3 className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Platform Types</p>
+                <p className="text-2xl font-bold text-purple-600">3</p>
+              </div>
+              <Globe className="h-8 w-8 text-purple-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Smart Links Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {smartLinks.map((link) => (
+          <Card key={link.id} className="overflow-hidden">
+            <CardContent className="p-6">
+              <div className="text-center">
+                <div className="mb-4">
+                  <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
+                    {link.platform === 'Instagram' && <Instagram className="h-8 w-8 text-pink-600" />}
+                    {link.platform === 'Facebook' && <Facebook className="h-8 w-8 text-blue-600" />}
+                    {link.platform === 'Google Business' && <Globe className="h-8 w-8 text-green-600" />}
+                  </div>
+                </div>
+
+                <h3 className="font-semibold text-lg mb-2">{link.platform}</h3>
+                <p className="text-sm text-gray-600 mb-2">{link.description}</p>
+
+                <div className="text-xs text-gray-500 mb-4 bg-gray-50 p-2 rounded font-mono break-all">
+                  {link.url}
+                </div>
+
+                <div className="text-xs text-gray-500 mb-4">
+                  Clicks: {link.clickCount}
+                </div>
+
+                <div className="space-y-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => copyToClipboard(link.url, link.platform)}
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy Link
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => window.open(link.url, '_blank')}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Preview
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Usage Instructions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>How to Use Smart Links</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <h4 className="font-semibold mb-2">Instagram:</h4>
+            <p className="text-sm text-gray-600">Copy the Instagram link and paste it in your Instagram bio. Customers can click to order directly from your menu.</p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold mb-2">Facebook:</h4>
+            <p className="text-sm text-gray-600">Add this link to your Facebook page's "Order Food" button or post it in your page updates.</p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold mb-2">Google My Business:</h4>
+            <p className="text-sm text-gray-600">Set this as your ordering URL in your Google Business Profile to enable direct ordering from Google Search and Maps.</p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
 const OrderScheduling = () => (
   <Card>
@@ -8096,12 +8330,21 @@ const EditMenuItemForm = ({ item, onSubmit, onCancel, categories }: { item: any;
 const CreateQRCodeForm = ({ onSubmit, onCancel }: { onSubmit: (data: any) => void; onCancel: () => void }) => {
   const [formData, setFormData] = useState({
     name: "",
-    code: ""
+    description: "",
+    type: "menu",
+    url: "",
+    table_number: ""
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+
+    const submitData = {
+      ...formData,
+      table_number: formData.table_number ? parseInt(formData.table_number) : null
+    };
+
+    onSubmit(submitData);
   };
 
   return (
@@ -8112,22 +8355,63 @@ const CreateQRCodeForm = ({ onSubmit, onCancel }: { onSubmit: (data: any) => voi
           id="qr-name"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="e.g., Table 1, Bar Counter"
+          placeholder="e.g., Table 1, Menu QR, Instagram Link"
           required
         />
       </div>
-      
+
       <div>
-        <Label htmlFor="qr-code">Code</Label>
+        <Label htmlFor="qr-description">Description (Optional)</Label>
         <Input
-          id="qr-code"
-          value={formData.code}
-          onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-          placeholder="e.g., table-1, bar-counter"
-          required
+          id="qr-description"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          placeholder="Brief description of this QR code"
         />
       </div>
-      
+
+      <div>
+        <Label htmlFor="qr-type">QR Code Type</Label>
+        <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="menu">Menu / Table Ordering</SelectItem>
+            <SelectItem value="social">Social Media Link</SelectItem>
+            <SelectItem value="table">Table Number</SelectItem>
+            <SelectItem value="promotion">Promotion / Discount</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label htmlFor="qr-url">URL</Label>
+        <Input
+          id="qr-url"
+          value={formData.url}
+          onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+          placeholder="e.g., /menu, /order?table=1, https://instagram.com/yourpage"
+          required
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Use relative URLs (e.g., /menu) or full URLs (e.g., https://instagram.com/yourpage)
+        </p>
+      </div>
+
+      {formData.type === 'table' && (
+        <div>
+          <Label htmlFor="qr-table">Table Number (Optional)</Label>
+          <Input
+            id="qr-table"
+            type="number"
+            value={formData.table_number}
+            onChange={(e) => setFormData({ ...formData, table_number: e.target.value })}
+            placeholder="e.g., 1, 5, 12"
+          />
+        </div>
+      )}
+
       <div className="flex justify-end space-x-2">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -8141,12 +8425,21 @@ const CreateQRCodeForm = ({ onSubmit, onCancel }: { onSubmit: (data: any) => voi
 const EditQRCodeForm = ({ qrCode, onSubmit, onCancel }: { qrCode: any; onSubmit: (data: any) => void; onCancel: () => void }) => {
   const [formData, setFormData] = useState({
     name: qrCode.name || "",
-    code: qrCode.code || ""
+    description: qrCode.description || "",
+    type: qrCode.type || "menu",
+    url: qrCode.url || "",
+    table_number: qrCode.table_number?.toString() || ""
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+
+    const submitData = {
+      ...formData,
+      table_number: formData.table_number ? parseInt(formData.table_number) : null
+    };
+
+    onSubmit(submitData);
   };
 
   return (
@@ -8157,22 +8450,63 @@ const EditQRCodeForm = ({ qrCode, onSubmit, onCancel }: { qrCode: any; onSubmit:
           id="edit-qr-name"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="e.g., Table 1, Bar Counter"
+          placeholder="e.g., Table 1, Menu QR, Instagram Link"
           required
         />
       </div>
-      
+
       <div>
-        <Label htmlFor="edit-qr-code">Code</Label>
+        <Label htmlFor="edit-qr-description">Description (Optional)</Label>
         <Input
-          id="edit-qr-code"
-          value={formData.code}
-          onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-          placeholder="e.g., table-1, bar-counter"
-          required
+          id="edit-qr-description"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          placeholder="Brief description of this QR code"
         />
       </div>
-      
+
+      <div>
+        <Label htmlFor="edit-qr-type">QR Code Type</Label>
+        <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="menu">Menu / Table Ordering</SelectItem>
+            <SelectItem value="social">Social Media Link</SelectItem>
+            <SelectItem value="table">Table Number</SelectItem>
+            <SelectItem value="promotion">Promotion / Discount</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label htmlFor="edit-qr-url">URL</Label>
+        <Input
+          id="edit-qr-url"
+          value={formData.url}
+          onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+          placeholder="e.g., /menu, /order?table=1, https://instagram.com/yourpage"
+          required
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Use relative URLs (e.g., /menu) or full URLs (e.g., https://instagram.com/yourpage)
+        </p>
+      </div>
+
+      {formData.type === 'table' && (
+        <div>
+          <Label htmlFor="edit-qr-table">Table Number (Optional)</Label>
+          <Input
+            id="edit-qr-table"
+            type="number"
+            value={formData.table_number}
+            onChange={(e) => setFormData({ ...formData, table_number: e.target.value })}
+            placeholder="e.g., 1, 5, 12"
+          />
+        </div>
+      )}
+
       <div className="flex justify-end space-x-2">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
