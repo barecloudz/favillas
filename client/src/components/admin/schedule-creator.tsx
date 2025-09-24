@@ -274,9 +274,26 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
     setCurrentWeek(new Date());
   };
 
-  const handlePrintSchedule = () => {
-    const printUrl = `/api/admin-schedules-print?format=html&startDate=${viewDates.startDate}&endDate=${viewDates.endDate}`;
-    window.open(printUrl, '_blank');
+  const handlePrintSchedule = async () => {
+    try {
+      const response = await apiRequest(
+        "GET",
+        `/api/admin-schedules-print?format=html&startDate=${viewDates.startDate}&endDate=${viewDates.endDate}`
+      );
+
+      if (response.ok) {
+        const htmlContent = await response.text();
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(htmlContent);
+          printWindow.document.close();
+        }
+      } else {
+        console.error('Failed to fetch print content:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching print content:', error);
+    }
   };
 
   const handleScheduleClick = (schedule: any) => {
