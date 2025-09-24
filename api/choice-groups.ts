@@ -68,8 +68,8 @@ export const handler: Handler = async (event, context) => {
       }
       
       const result = await sql`
-        INSERT INTO choice_groups (name, description, min_selections, max_selections, is_required, created_at, updated_at)
-        VALUES (${name}, ${description || ''}, ${minSelections || 0}, ${maxSelections || 1}, ${isRequired || false}, NOW(), NOW())
+        INSERT INTO choice_groups (name, description, min_selections, max_selections, is_required, created_at)
+        VALUES (${name}, ${description || ''}, ${minSelections || 0}, ${maxSelections || 1}, ${isRequired || false}, NOW())
         RETURNING *
       `;
       
@@ -95,9 +95,9 @@ export const handler: Handler = async (event, context) => {
       const { name, description, minSelections, maxSelections, isRequired } = JSON.parse(event.body || '{}');
       
       const result = await sql`
-        UPDATE choice_groups 
-        SET name = ${name}, description = ${description}, min_selections = ${minSelections}, 
-            max_selections = ${maxSelections}, is_required = ${isRequired}, updated_at = NOW()
+        UPDATE choice_groups
+        SET name = ${name}, description = ${description}, min_selections = ${minSelections},
+            max_selections = ${maxSelections}, is_required = ${isRequired}
         WHERE id = ${parseInt(groupId)}
         RETURNING *
       `;

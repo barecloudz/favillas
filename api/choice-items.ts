@@ -68,8 +68,8 @@ export const handler: Handler = async (event, context) => {
       }
       
       const result = await sql`
-        INSERT INTO choice_items (choice_group_id, name, price, is_default, is_available, created_at, updated_at)
-        VALUES (${choiceGroupId}, ${name}, ${price || 0}, ${isDefault || false}, ${isAvailable !== false}, NOW(), NOW())
+        INSERT INTO choice_items (choice_group_id, name, price, is_default, is_available, created_at)
+        VALUES (${choiceGroupId}, ${name}, ${price || 0}, ${isDefault || false}, ${isAvailable !== false}, NOW())
         RETURNING *
       `;
       
@@ -95,9 +95,9 @@ export const handler: Handler = async (event, context) => {
       const { choiceGroupId, name, price, isDefault, isAvailable } = JSON.parse(event.body || '{}');
       
       const result = await sql`
-        UPDATE choice_items 
-        SET choice_group_id = ${choiceGroupId}, name = ${name}, price = ${price}, 
-            is_default = ${isDefault}, is_available = ${isAvailable}, updated_at = NOW()
+        UPDATE choice_items
+        SET choice_group_id = ${choiceGroupId}, name = ${name}, price = ${price},
+            is_default = ${isDefault}, is_available = ${isAvailable}
         WHERE id = ${parseInt(itemId)}
         RETURNING *
       `;
