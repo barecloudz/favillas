@@ -551,83 +551,134 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
           <CardContent className="p-0 sm:p-6">
             {/* Mobile View */}
             <div className="block lg:hidden">
-              <div className="max-h-[70vh] overflow-y-auto mobile-scroll-container">
-                <div className="divide-y divide-gray-200">
-                  {employees?.map((employee: any) => {
-                    const employeeSchedules = Array.isArray(schedules) ?
-                      schedules.filter((s: any) => s.employeeId === employee.id) : [];
-                    const weeklyHours = employeeSchedules.reduce((total: number, schedule: any) => {
-                      return total + parseFloat(calculateShiftHours(schedule.startTime, schedule.endTime));
-                    }, 0);
+              {/* Week Days Header for Mobile */}
+              <div className="bg-gray-50 p-3 mb-4 rounded-lg border">
+                <div className="grid grid-cols-7 gap-1 text-center">
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, dayIndex) => {
+                    const headerDate = createDateFromString(viewDates.startDate);
+                    headerDate.setDate(headerDate.getDate() + dayIndex);
+                    const isToday = getLocalDateString(new Date()) === getLocalDateString(headerDate);
 
                     return (
-                      <div key={employee.id} className="p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-medium text-gray-900">
-                              {employee.firstName} {employee.lastName}
-                            </h4>
-                            <p className="text-sm text-gray-500">{employee.department || 'N/A'}</p>
-                          </div>
-                          <Badge variant="outline">
-                            {weeklyHours.toFixed(1)}h total
-                          </Badge>
+                      <div key={day} className={`py-2 px-1 rounded ${isToday ? 'bg-blue-100 border border-blue-300' : ''}`}>
+                        <div className={`text-xs font-medium ${isToday ? 'text-blue-800' : 'text-gray-900'}`}>
+                          {day}
                         </div>
-                        
-                        <div className="grid grid-cols-1 gap-2">
-                          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, dayIndex) => {
-                            const dayDate = createDateFromString(viewDates.startDate);
-                            dayDate.setDate(dayDate.getDate() + dayIndex);
-                            const dayDateStr = getLocalDateString(dayDate);
-                            const daySchedules = employeeSchedules.filter((s: any) => s.scheduleDate === dayDateStr);
-
-                            return (
-                              <div
-                                key={day}
-                                className="flex items-center justify-between py-2 border-l-4 border-gray-200 pl-3 cursor-pointer hover:bg-gray-50 active:bg-gray-100 rounded-r-md transition-colors touch-table-cell"
-                                onClick={() => handleDateClick(dayDate)}
-                              >
-                                <div className="flex items-center space-x-3">
-                                  <span className="text-sm font-medium text-gray-900 w-12">
-                                    {day}
-                                  </span>
-                                  <span className="text-xs text-gray-500">
-                                    {dayDate.getDate()}/{dayDate.getMonth() + 1}
-                                  </span>
-                                </div>
-                                <div className="text-right">
-                                  {daySchedules.length > 0 ? (
-                                    <div className="space-y-1">
-                                      {daySchedules.map((schedule: any) => (
-                                        <div
-                                          key={schedule.id}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleScheduleClick(schedule);
-                                          }}
-                                          className="cursor-pointer touch-manipulation"
-                                        >
-                                          <Badge className={getPositionColor(schedule.position)}>
-                                            {schedule.position}
-                                          </Badge>
-                                          <div className="text-xs text-gray-600">
-                                            {schedule.startTime}-{schedule.endTime}
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <span className="text-xs text-gray-400">No shifts</span>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
+                        <div className={`text-xs ${isToday ? 'text-blue-600' : 'text-gray-500'}`}>
+                          {headerDate.getDate()}/{headerDate.getMonth() + 1}
                         </div>
                       </div>
                     );
                   })}
                 </div>
+              </div>
+
+              <div className="max-h-[65vh] overflow-y-auto mobile-scroll-container space-y-4">
+                {employees?.map((employee: any) => {
+                  const employeeSchedules = Array.isArray(schedules) ?
+                    schedules.filter((s: any) => s.employeeId === employee.id) : [];
+                  const weeklyHours = employeeSchedules.reduce((total: number, schedule: any) => {
+                    return total + parseFloat(calculateShiftHours(schedule.startTime, schedule.endTime));
+                  }, 0);
+
+                  return (
+                    <Card key={employee.id} className="overflow-hidden">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-sm font-semibold text-blue-700">
+                                {employee.firstName?.[0]}{employee.lastName?.[0]}
+                              </span>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-900 text-base">
+                                {employee.firstName} {employee.lastName}
+                              </h4>
+                              <p className="text-sm text-gray-500">{employee.department || 'Staff'}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <Badge variant="outline" className={`
+                              ${weeklyHours > 40 ? 'border-orange-300 text-orange-700 bg-orange-50' :
+                                weeklyHours > 0 ? 'border-green-300 text-green-700 bg-green-50' :
+                                'border-gray-300 text-gray-500 bg-gray-50'}
+                            `}>
+                              {weeklyHours.toFixed(1)}h
+                            </Badge>
+                            {weeklyHours > 40 && (
+                              <div className="text-xs text-orange-600 mt-1 flex items-center justify-center gap-1">
+                                <AlertTriangle className="h-3 w-3" />
+                                OT
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
+
+                      <CardContent className="pt-0 pb-4">
+                        <div className="grid grid-cols-7 gap-1">
+                          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, dayIndex) => {
+                            const dayDate = createDateFromString(viewDates.startDate);
+                            dayDate.setDate(dayDate.getDate() + dayIndex);
+                            const dayDateStr = getLocalDateString(dayDate);
+                            const daySchedules = employeeSchedules.filter((s: any) => s.scheduleDate === dayDateStr);
+                            const isToday = getLocalDateString(new Date()) === dayDateStr;
+
+                            return (
+                              <div
+                                key={day}
+                                className={`
+                                  min-h-[80px] p-2 border rounded-lg cursor-pointer transition-all duration-200
+                                  ${isToday ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}
+                                  active:scale-95 active:bg-gray-100
+                                `}
+                                onClick={() => handleDateClick(dayDate)}
+                              >
+                                {daySchedules.length > 0 ? (
+                                  <div className="space-y-1">
+                                    {daySchedules.map((schedule: any, index: number) => (
+                                      <div
+                                        key={schedule.id}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleScheduleClick(schedule);
+                                        }}
+                                        className={`
+                                          text-xs p-1.5 rounded-md font-medium cursor-pointer transition-all hover:scale-105 touch-manipulation
+                                          ${schedule.position === 'kitchen' ? 'bg-blue-500 text-white hover:bg-blue-600' :
+                                            schedule.position === 'cashier' ? 'bg-green-500 text-white hover:bg-green-600' :
+                                            schedule.position === 'delivery' ? 'bg-purple-500 text-white hover:bg-purple-600' :
+                                            'bg-red-500 text-white hover:bg-red-600'}
+                                        `}
+                                      >
+                                        <div className="font-semibold">
+                                          {schedule.startTime.slice(0, 5)}
+                                        </div>
+                                        <div className="text-[10px] opacity-90">
+                                          {schedule.endTime.slice(0, 5)}
+                                        </div>
+                                        <div className="text-[9px] opacity-75 capitalize mt-0.5">
+                                          {schedule.position.slice(0, 3)}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="h-full flex items-center justify-center">
+                                    <span className="text-xs text-gray-400 text-center leading-tight">
+                                      OFF
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
 
