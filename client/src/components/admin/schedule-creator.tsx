@@ -10,8 +10,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Plus, Trash2, Edit, Users, ChevronLeft, ChevronRight, CalendarDays, DollarSign, AlertTriangle, Printer, BarChart3 } from "lucide-react";
+import { Calendar, Clock, Plus, Trash2, Edit, Users, ChevronLeft, ChevronRight, ChevronDown, CalendarDays, DollarSign, AlertTriangle, Printer, BarChart3 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
 
 interface ScheduleCreatorProps {
   className?: string;
@@ -48,6 +60,7 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [editingScheduleId, setEditingScheduleId] = useState<number | null>(null);
+  const [includeInsights, setIncludeInsights] = useState(true);
 
   // Calculate view dates based on current week
   const viewDates = useMemo(() => {
@@ -278,7 +291,7 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
     try {
       const response = await apiRequest(
         "GET",
-        `/api/admin-schedules-print?format=html&startDate=${viewDates.startDate}&endDate=${viewDates.endDate}`
+        `/api/admin-schedules-print?format=html&startDate=${viewDates.startDate}&endDate=${viewDates.endDate}&includeInsights=${includeInsights}`
       );
 
       if (response.ok) {
@@ -536,14 +549,30 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
                 >
                   This Week
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePrintSchedule}
-                >
-                  <Printer className="h-4 w-4 mr-2" />
-                  Print Schedule
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Printer className="h-4 w-4 mr-2" />
+                      Print Options
+                      <ChevronDown className="h-4 w-4 ml-2" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>Print Settings</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuCheckboxItem
+                      checked={includeInsights}
+                      onCheckedChange={setIncludeInsights}
+                    >
+                      Include weekly insights
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handlePrintSchedule}>
+                      <Printer className="h-4 w-4 mr-2" />
+                      Print Schedule
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </CardHeader>

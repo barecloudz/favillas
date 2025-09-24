@@ -102,6 +102,7 @@ export const handler: Handler = async (event, context) => {
     const startDate = urlParams.get('startDate');
     const endDate = urlParams.get('endDate');
     const format = urlParams.get('format') || 'pdf';
+    const includeInsights = urlParams.get('includeInsights') !== 'false'; // Default to true
     
     if (!startDate || !endDate) {
       return {
@@ -584,7 +585,8 @@ export const handler: Handler = async (event, context) => {
                 }).join('')}
             </tbody>
         </table>
-        
+
+        ${includeInsights ? `
         <div class="summary">
             <div class="summary-card">
                 <div class="number">${scheduleData.length}</div>
@@ -595,18 +597,19 @@ export const handler: Handler = async (event, context) => {
                 <div class="label">Staff Scheduled</div>
             </div>
             <div class="summary-card">
-                <div class="number">${scheduleData.reduce((total, s) => 
+                <div class="number">${scheduleData.reduce((total, s) =>
                   total + parseFloat(calculateShiftHours(s.startTime, s.endTime)), 0
                 ).toFixed(1)}h</div>
                 <div class="label">Total Hours</div>
             </div>
             <div class="summary-card">
-                <div class="number">$${(scheduleData.reduce((total, s) => 
+                <div class="number">$${(scheduleData.reduce((total, s) =>
                   total + parseFloat(calculateShiftHours(s.startTime, s.endTime)), 0
                 ) * 15).toFixed(0)}</div>
                 <div class="label">Est. Labor Cost</div>
             </div>
         </div>
+        ` : ''}
         
         <div class="footer">
             Generated on ${new Date().toLocaleDateString('en-US', { 
