@@ -140,114 +140,150 @@ export const handler: Handler = async (event, context) => {
       await sql.begin(async (sql) => {
         // Service Fee Settings
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('service_fee_enabled', ${data.serviceFeesEnabled ? 'true' : 'false'})
-          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('service_fee_enabled', ${data.serviceFeesEnabled ? 'true' : 'false'}, 'Service Fee Enabled')
+          ON CONFLICT (setting_key) DO UPDATE SET
+            setting_value = EXCLUDED.setting_value,
+            display_name = EXCLUDED.display_name
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('service_fee_type', ${data.serviceFeeType || 'percentage'})
-          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('service_fee_type', ${data.serviceFeeType || 'percentage'}, 'Service Fee Type')
+          ON CONFLICT (setting_key) DO UPDATE SET
+            setting_value = EXCLUDED.setting_value,
+            display_name = EXCLUDED.display_name
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('service_fee_amount', ${data.serviceFeeAmount?.toString() || '0'})
-          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('service_fee_amount', ${data.serviceFeeAmount?.toString() || '0'}, 'Service Fee Amount')
+          ON CONFLICT (setting_key) DO UPDATE SET
+            setting_value = EXCLUDED.setting_value,
+            display_name = EXCLUDED.display_name
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('service_fee_label', ${data.serviceFeeLabel || 'Service Fee'})
-          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('service_fee_label', ${data.serviceFeeLabel || 'Service Fee'}, 'Service Fee Label')
+          ON CONFLICT (setting_key) DO UPDATE SET
+            setting_value = EXCLUDED.setting_value,
+            display_name = EXCLUDED.display_name
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('service_fee_description', ${data.serviceFeeDescription || 'Processing and service fee'})
-          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('service_fee_description', ${data.serviceFeeDescription || 'Processing and service fee'}, 'Service Fee Description')
+          ON CONFLICT (setting_key) DO UPDATE SET
+            setting_value = EXCLUDED.setting_value,
+            display_name = EXCLUDED.display_name
         `;
 
         // Card Processing Fee Settings
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('card_fee_enabled', ${data.cardFeesEnabled ? 'true' : 'false'})
-          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('card_fee_enabled', ${data.cardFeesEnabled ? 'true' : 'false'}, 'Card Fee Enabled')
+          ON CONFLICT (setting_key) DO UPDATE SET
+            setting_value = EXCLUDED.setting_value,
+            display_name = EXCLUDED.display_name
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('card_fee_type', ${data.cardFeeType || 'percentage'})
-          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('card_fee_type', ${data.cardFeeType || 'percentage'}, 'Card Fee Type')
+          ON CONFLICT (setting_key) DO UPDATE SET
+            setting_value = EXCLUDED.setting_value,
+            display_name = EXCLUDED.display_name
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('card_fee_amount', ${data.cardFeeAmount?.toString() || '2.9'})
-          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('card_fee_amount', ${data.cardFeeAmount?.toString() || '2.9'}, 'Card Fee Amount')
+          ON CONFLICT (setting_key) DO UPDATE SET
+            setting_value = EXCLUDED.setting_value,
+            display_name = EXCLUDED.display_name
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('card_fee_label', ${data.cardFeeLabel || 'Card Processing Fee'})
-          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('card_fee_label', ${data.cardFeeLabel || 'Card Processing Fee'}, 'Card Fee Label')
+          ON CONFLICT (setting_key) DO UPDATE SET
+            setting_value = EXCLUDED.setting_value,
+            display_name = EXCLUDED.display_name
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('card_fee_description', ${data.cardFeeDescription || 'Credit card processing fee'})
-          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('card_fee_description', ${data.cardFeeDescription || 'Credit card processing fee'}, 'Card Fee Description')
+          ON CONFLICT (setting_key) DO UPDATE SET
+            setting_value = EXCLUDED.setting_value,
+            display_name = EXCLUDED.display_name
         `;
 
         // Application Rules
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('service_fee_apply_delivery', ${data.applyToDelivery ? 'true' : 'false'})
-          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('service_fee_apply_delivery', ${data.applyToDelivery ? 'true' : 'false'}, 'Apply to Delivery')
+          ON CONFLICT (setting_key) DO UPDATE SET
+            setting_value = EXCLUDED.setting_value,
+            display_name = EXCLUDED.display_name
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('service_fee_apply_pickup', ${data.applyToPickup ? 'true' : 'false'})
-          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('service_fee_apply_pickup', ${data.applyToPickup ? 'true' : 'false'}, 'Apply to Pickup')
+          ON CONFLICT (setting_key) DO UPDATE SET
+            setting_value = EXCLUDED.setting_value,
+            display_name = EXCLUDED.display_name
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('service_fee_apply_taxable', ${data.applyToTaxableTotal ? 'true' : 'false'})
-          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('service_fee_apply_taxable', ${data.applyToTaxableTotal ? 'true' : 'false'}, 'Apply to Taxable Total')
+          ON CONFLICT (setting_key) DO UPDATE SET
+            setting_value = EXCLUDED.setting_value,
+            display_name = EXCLUDED.display_name
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('service_fee_minimum_order', ${data.minimumOrderAmount?.toString() || '0'})
-          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('service_fee_minimum_order', ${data.minimumOrderAmount?.toString() || '0'}, 'Minimum Order Amount')
+          ON CONFLICT (setting_key) DO UPDATE SET
+            setting_value = EXCLUDED.setting_value,
+            display_name = EXCLUDED.display_name
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('service_fee_maximum_amount', ${data.maximumFeeAmount?.toString() || '0'})
-          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('service_fee_maximum_amount', ${data.maximumFeeAmount?.toString() || '0'}, 'Maximum Fee Amount')
+          ON CONFLICT (setting_key) DO UPDATE SET
+            setting_value = EXCLUDED.setting_value,
+            display_name = EXCLUDED.display_name
         `;
 
         // Display Settings
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('service_fee_show_menu', ${data.showOnMenuPage ? 'true' : 'false'})
-          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('service_fee_show_menu', ${data.showOnMenuPage ? 'true' : 'false'}, 'Show on Menu Page')
+          ON CONFLICT (setting_key) DO UPDATE SET
+            setting_value = EXCLUDED.setting_value,
+            display_name = EXCLUDED.display_name
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('service_fee_show_summary', ${data.showInOrderSummary ? 'true' : 'false'})
-          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('service_fee_show_summary', ${data.showInOrderSummary ? 'true' : 'false'}, 'Show in Order Summary')
+          ON CONFLICT (setting_key) DO UPDATE SET
+            setting_value = EXCLUDED.setting_value,
+            display_name = EXCLUDED.display_name
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('service_fee_show_email', ${data.includeInEmailReceipts ? 'true' : 'false'})
-          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('service_fee_show_email', ${data.includeInEmailReceipts ? 'true' : 'false'}, 'Include in Email Receipts')
+          ON CONFLICT (setting_key) DO UPDATE SET
+            setting_value = EXCLUDED.setting_value,
+            display_name = EXCLUDED.display_name
         `;
       });
 

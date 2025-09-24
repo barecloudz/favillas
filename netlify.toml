@@ -241,6 +241,12 @@
   to = "/.netlify/functions/admin-service-fees"
   status = 200
 
+# Database setup endpoint
+[[redirects]]
+  from = "/api/setup-database-tables"
+  to = "/.netlify/functions/setup-database-tables"
+  status = 200
+
 # Admin QR codes endpoint
 [[redirects]]
   from = "/api/admin/qr-codes"
