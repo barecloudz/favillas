@@ -22,8 +22,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { 
@@ -949,8 +947,6 @@ const AdminDashboard = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuLabel>Quick Navigation</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => window.open('/', '_blank')}>
                           <Home className="h-4 w-4 mr-2" />
                           Go to Frontend
@@ -959,8 +955,7 @@ const AdminDashboard = () => {
                           <ChefHat className="h-4 w-4 mr-2" />
                           Go to Kitchen
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                        <DropdownMenuItem onClick={handleLogout} className="text-red-600 border-t mt-1 pt-1">
                           <LogOut className="h-4 w-4 mr-2" />
                           Logout
                         </DropdownMenuItem>
