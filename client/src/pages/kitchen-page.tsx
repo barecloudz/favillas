@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { setupWebSocket } from "@/lib/websocket";
+import { setupWebSocket, sendMessage } from "@/lib/websocket";
 import { useToast } from "@/hooks/use-toast";
 import { Helmet } from "react-helmet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -131,7 +131,15 @@ const KitchenPage = () => {
     try {
       await apiRequest("PATCH", `/api/orders/${orderId}`, { status });
       queryClient.invalidateQueries({ queryKey: ["/api/kitchen/orders"] });
-      
+
+      // Send WebSocket message to update customer display immediately
+      sendMessage({
+        type: 'orderStatusUpdate',
+        orderId,
+        status,
+        timestamp: new Date().toISOString()
+      });
+
       toast({
         title: "Order Updated",
         description: `Order #${orderId} has been marked as ${status}.`,
@@ -171,10 +179,10 @@ const KitchenPage = () => {
           <body>
             <h1>Favilla's NY Pizza</h1>
             <h2>Order #${order.id}</h2>
-            <p>Date: ${new Date(order.createdAt).toLocaleString()}</p>
-            <p>Type: ${order.orderType.toUpperCase()}</p>
+            <p>Date: ${new Date(order.created_at).toLocaleString()}</p>
+            <p>Type: ${order.order_type.toUpperCase()}</p>
             <p>Status: ${order.status.toUpperCase()}</p>
-            <p>Payment: ${order.paymentStatus.toUpperCase()}</p>
+            <p>Payment: ${order.payment_status.toUpperCase()}</p>
             <p>Phone: ${order.phone}</p>
             ${order.address ? `<p>Delivery Address: ${order.address}</p>` : ''}
             ${order.specialInstructions ? `<p>Special Instructions: ${order.specialInstructions}</p>` : ''}
@@ -314,14 +322,14 @@ const KitchenPage = () => {
                         </div>
                         <div className="text-sm text-gray-500">
                           <div className="flex justify-between">
-                            <span>{new Date(order.createdAt).toLocaleTimeString()}</span>
-                            <Badge variant={order.paymentStatus === 'paid' ? 'default' : 'outline'}>
-                              {order.paymentStatus?.toUpperCase() || 'UNKNOWN'}
+                            <span>{new Date(order.created_at).toLocaleTimeString()}</span>
+                            <Badge variant={order.payment_status === 'paid' ? 'default' : 'outline'}>
+                              {order.payment_status?.toUpperCase() || 'UNKNOWN'}
                             </Badge>
                           </div>
                           <div className="mt-1">
                             <Badge variant="outline" className="mr-2">
-                              {order.orderType?.toUpperCase() || 'UNKNOWN'}
+                              {order.order_type?.toUpperCase() || 'UNKNOWN'}
                             </Badge>
                             <span>{order.phone}</span>
                           </div>

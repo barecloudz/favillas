@@ -19,7 +19,7 @@ const CustomerDisplay = () => {
   // Query for active orders
   const { data: orders, isLoading } = useQuery({
     queryKey: ["/api/kitchen/orders"],
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 3000, // Refetch every 3 seconds for near real-time updates
   });
 
   // Setup WebSocket for real-time order updates
