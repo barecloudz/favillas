@@ -2,8 +2,8 @@ import { Handler } from '@netlify/functions';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { eq, and, between, sql, desc } from 'drizzle-orm';
 import postgres from 'postgres';
-import { timeClockEntries, users, employeeSchedules, payPeriods } from '../../shared/schema';
-import { authenticateToken, isStaff } from '../_shared/auth';
+import { timeClockEntries, users, employeeSchedules, payPeriods } from '../shared/schema';
+import { authenticateToken, isStaff } from './_shared/auth';
 
 let dbConnection: any = null;
 
