@@ -940,9 +940,30 @@ const AdminDashboard = () => {
                       <p className="text-sm font-medium">{user?.firstName} {user?.lastName}</p>
                       <p className="text-xs text-gray-500">{user?.role?.replace('_', ' ').toUpperCase()}</p>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={handleLogout}>
-                      <LogOut className="h-4 w-4" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <User className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuLabel>Quick Navigation</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => window.open('/', '_blank')}>
+                          <Home className="h-4 w-4 mr-2" />
+                          Go to Frontend
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => window.open('/kitchen', '_blank')}>
+                          <ChefHat className="h-4 w-4 mr-2" />
+                          Go to Kitchen
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                          <LogOut className="h-4 w-4 mr-2" />
+                          Logout
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </div>
