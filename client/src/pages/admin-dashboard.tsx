@@ -4252,55 +4252,71 @@ const MenuEditor = ({ menuItems }: any) => {
               {categories.map((category) => (
                 <div
                   key={category.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, category.id)}
-                  onDragEnd={handleDragEnd}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, category.id)}
-                  className="flex items-center justify-between p-4 border rounded-lg bg-white hover:bg-gray-50 cursor-move transition-opacity duration-200"
+                  className="flex items-center border rounded-lg bg-white hover:bg-gray-50 transition-opacity duration-200"
                 >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-sm font-medium text-blue-600">{category.order}</span>
-                    </div>
-                    <div>
-                      <h3 className="font-medium">{category.name}</h3>
-                      <p className="text-sm text-gray-500">
-                        {(menuItemsByCategory[category.name] || []).length} items
-                      </p>
-                    </div>
+                  {/* Drag Handle */}
+                  <div
+                    className="flex items-center justify-center p-4 cursor-move hover:bg-gray-100 border-r"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, category.id)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, category.id)}
+                    title="Drag to reorder"
+                  >
+                    <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M9 3H11V5H9V3ZM13 3H15V5H13V3ZM9 7H11V9H9V7ZM13 7H15V9H13V7ZM9 11H11V13H9V11ZM13 11H15V13H13V11ZM9 15H11V17H9V15ZM13 15H15V17H13V15ZM9 19H11V21H9V19ZM13 19H15V21H13V19Z" />
+                    </svg>
                   </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Badge variant={category.isActive ? "default" : "secondary"}>
-                      {category.isActive ? "Active" : "Inactive"}
-                    </Badge>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEditingCategory(category)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => toggleCategoryStatus(category.id)}
-                    >
-                      {category.isActive ? "Deactivate" : "Activate"}
-                    </Button>
-                    
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDeleteCategory(category.id)}
-                      className="bg-red-600 hover:bg-red-700 text-white"
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete
-                    </Button>
+
+                  {/* Category Content */}
+                  <div className="flex items-center justify-between flex-1 p-4">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-sm font-medium text-blue-600">{category.order}</span>
+                      </div>
+                      <div>
+                        <h3 className="font-medium">{category.name}</h3>
+                        <p className="text-sm text-gray-500">
+                          {(menuItemsByCategory[category.name] || []).length} items
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Badge variant={category.isActive ? "default" : "secondary"}>
+                        {category.isActive ? "Active" : "Inactive"}
+                      </Badge>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingCategory(category)}
+                        onMouseDown={(e) => e.stopPropagation()}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleCategoryStatus(category.id)}
+                        onMouseDown={(e) => e.stopPropagation()}
+                      >
+                        {category.isActive ? "Deactivate" : "Activate"}
+                      </Button>
+
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteCategory(category.id)}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
