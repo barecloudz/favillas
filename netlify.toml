@@ -235,6 +235,18 @@
   to = "/.netlify/functions/admin-alerts"
   status = 200
 
+# Admin QR codes endpoint
+[[redirects]]
+  from = "/api/admin/qr-codes"
+  to = "/.netlify/functions/admin-qr-codes"
+  status = 200
+
+# Vacation mode endpoint
+[[redirects]]
+  from = "/api/vacation-mode"
+  to = "/.netlify/functions/vacation-mode"
+  status = 200
+
 # Test deployment endpoint
 [[redirects]]
   from = "/api/test-deployment"

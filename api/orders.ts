@@ -286,6 +286,40 @@ export const handler: Handler = async (event, context) => {
             scheduledTimeType: typeof orderData.scheduledTime
           }
         });
+
+        // Check if services are paused or in vacation mode before allowing orders
+        console.log('🔍 Orders API: Checking service status...');
+        const serviceSettings = await sql`
+          SELECT setting_key as key, setting_value as value FROM system_settings
+          WHERE setting_key IN ('pause_enabled', 'pause_message', 'vacation_enabled', 'vacation_message')
+        `;
+
+        let isPaused = false;
+        let pauseMessage = 'We are temporarily closed. Please check back later.';
+        let isVacation = false;
+        let vacationMessage = 'We are currently on vacation and will be back soon. Thank you for your patience!';
+
+        serviceSettings.forEach(setting => {
+          if (setting.key === 'pause_enabled') isPaused = setting.value === 'true';
+          if (setting.key === 'pause_message') pauseMessage = setting.value || pauseMessage;
+          if (setting.key === 'vacation_enabled') isVacation = setting.value === 'true';
+          if (setting.key === 'vacation_message') vacationMessage = setting.value || vacationMessage;
+        });
+
+        if (isPaused || isVacation) {
+          console.log(`❌ Orders API: Service unavailable - ${isPaused ? 'PAUSED' : 'VACATION'}`);
+          return {
+            statusCode: 503,
+            headers,
+            body: JSON.stringify({
+              error: 'Service temporarily unavailable',
+              message: isPaused ? pauseMessage : vacationMessage,
+              reason: isPaused ? 'paused' : 'vacation'
+            })
+          };
+        }
+
+        console.log('✅ Orders API: Service available, proceeding with order creation');
         
         // Validate required fields - allow zero values but not null/undefined
         if (orderData.total === null || orderData.total === undefined ||
