@@ -50,10 +50,10 @@ export const handler: Handler = async (event, context) => {
   try {
     const sql = getDB();
     
-    // Get active kitchen orders (pending, preparing, ready)
+    // Get active kitchen orders (pending, processing, completed)
     const kitchenOrders = await sql`
-      SELECT * FROM orders 
-      WHERE status IN ('pending', 'preparing', 'ready')
+      SELECT * FROM orders
+      WHERE status IN ('pending', 'processing', 'completed')
       ORDER BY created_at ASC
     `;
     
