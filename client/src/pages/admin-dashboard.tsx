@@ -3162,15 +3162,23 @@ const MenuEditor = ({ menuItems }: any) => {
     const targetOrder = targetCategory.order;
 
     // Update dragged category with target's order
-    updateCategoryMutation.mutate({ 
-      id: draggedCategoryId, 
-      data: { order: targetOrder } 
+    updateCategoryMutation.mutate({
+      id: draggedCategoryId,
+      data: {
+        name: draggedCategory.name,
+        order: targetOrder,
+        isActive: draggedCategory.isActive
+      }
     });
 
     // Update target category with dragged category's order
-    updateCategoryMutation.mutate({ 
-      id: targetCategoryId, 
-      data: { order: draggedOrder } 
+    updateCategoryMutation.mutate({
+      id: targetCategoryId,
+      data: {
+        name: targetCategory.name,
+        order: draggedOrder,
+        isActive: targetCategory.isActive
+      }
     });
   };
 
@@ -3208,9 +3216,13 @@ const MenuEditor = ({ menuItems }: any) => {
   const toggleCategoryStatus = (id: number) => {
     const category = categories.find(cat => cat.id === id);
     if (category) {
-      updateCategoryMutation.mutate({ 
-        id, 
-        data: { isActive: !category.isActive } 
+      updateCategoryMutation.mutate({
+        id,
+        data: {
+          name: category.name,
+          order: category.order,
+          isActive: !category.isActive
+        }
       });
     }
   };
