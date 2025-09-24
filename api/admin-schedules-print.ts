@@ -101,7 +101,7 @@ export const handler: Handler = async (event, context) => {
     const urlParams = new URLSearchParams(event.rawQuery || '');
     const startDate = urlParams.get('startDate');
     const endDate = urlParams.get('endDate');
-    const format = urlParams.get('format') || 'html';
+    const format = urlParams.get('format') || 'pdf';
     
     if (!startDate || !endDate) {
       return {
@@ -137,8 +137,8 @@ export const handler: Handler = async (event, context) => {
       .from(employeeSchedules)
       .leftJoin(users, eq(employeeSchedules.employeeId, users.id))
       .where(and(
-        gte(employeeSchedules.scheduleDate, new Date(startDate as string)),
-        lte(employeeSchedules.scheduleDate, new Date(endDate as string))
+        gte(employeeSchedules.scheduleDate, startDate as string),
+        lte(employeeSchedules.scheduleDate, endDate as string)
       ))
       .orderBy(employeeSchedules.scheduleDate, employeeSchedules.startTime);
 

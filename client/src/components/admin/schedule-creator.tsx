@@ -283,16 +283,43 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
 
       if (response.ok) {
         const htmlContent = await response.text();
+
+        // Create a new window with the HTML content optimized for printing
         const printWindow = window.open('', '_blank');
         if (printWindow) {
-          printWindow.document.write(htmlContent);
+          printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>Schedule ${viewDates.startDate} to ${viewDates.endDate}</title>
+              <meta charset="utf-8">
+              <style>
+                @media print {
+                  body { margin: 0; }
+                  .no-print { display: none; }
+                }
+                @page {
+                  margin: 0.5in;
+                  size: A4;
+                }
+              </style>
+            </head>
+            <body>
+              ${htmlContent}
+              <div class="no-print" style="position: fixed; top: 10px; right: 10px; z-index: 1000;">
+                <button onclick="window.print()" style="padding: 10px 20px; background: #d73a31; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">Print PDF</button>
+                <button onclick="window.close()" style="padding: 10px 20px; background: #666; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-left: 5px;">Close</button>
+              </div>
+            </body>
+            </html>
+          `);
           printWindow.document.close();
         }
       } else {
-        console.error('Failed to fetch print content:', response.status);
+        console.error('Failed to fetch schedule:', response.status);
       }
     } catch (error) {
-      console.error('Error fetching print content:', error);
+      console.error('Error fetching schedule:', error);
     }
   };
 
