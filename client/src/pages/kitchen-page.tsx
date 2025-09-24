@@ -187,13 +187,38 @@ const KitchenPage = () => {
             ${order.address ? `<p>Delivery Address: ${order.address}</p>` : ''}
             ${order.specialInstructions ? `<p>Special Instructions: ${order.specialInstructions}</p>` : ''}
             <div class="divider"></div>
-            ${order.items.map((item: any) => `
-              <div class="item">
-                <p>${item.quantity}x ${item.menuItem?.name || 'Unknown Item'} - $${formatPrice(item.price)}</p>
-                ${item.options?.size ? `<p>Size: ${item.options.size}</p>` : ''}
-                ${item.specialInstructions ? `<p>Note: ${item.specialInstructions}</p>` : ''}
-              </div>
-            `).join('')}
+            ${order.items.map((item: any) => {
+              let optionsHtml = '';
+
+              // Handle new choice system format
+              if (item.options && Array.isArray(item.options)) {
+                optionsHtml = item.options.map((option: any) =>
+                  `<p style="margin-left: 20px; color: #666;">${option.groupName}: ${option.itemName}${option.price > 0 ? ` (+$${option.price.toFixed(2)})` : ''}</p>`
+                ).join('');
+              } else if (item.options && typeof item.options === 'object') {
+                // Handle legacy format
+                const opts = [];
+                if (item.options.size) opts.push(`<p style="margin-left: 20px; color: #666;">Size: ${item.options.size}</p>`);
+                if (item.options.toppings && item.options.toppings.length > 0) {
+                  opts.push(`<p style="margin-left: 20px; color: #666;">Toppings: ${item.options.toppings.join(', ')}</p>`);
+                }
+                if (item.options.addOns && item.options.addOns.length > 0) {
+                  opts.push(`<p style="margin-left: 20px; color: #666;">Add-ons: ${item.options.addOns.join(', ')}</p>`);
+                }
+                if (item.options.extras && item.options.extras.length > 0) {
+                  opts.push(`<p style="margin-left: 20px; color: #666;">Extras: ${item.options.extras.join(', ')}</p>`);
+                }
+                optionsHtml = opts.join('');
+              }
+
+              return `
+                <div class="item">
+                  <p><strong>${item.quantity}x ${item.menuItem?.name || 'Unknown Item'} - $${formatPrice(item.price)}</strong></p>
+                  ${optionsHtml}
+                  ${item.specialInstructions ? `<p style="margin-left: 20px; color: #d73a31; font-weight: bold;">*** SPECIAL: ${item.specialInstructions.toUpperCase()} ***</p>` : ''}
+                </div>
+              `;
+            }).join('')}
             <div class="divider"></div>
             <div class="total">
               <p>Subtotal: $${formatPrice(order.total)}</p>
@@ -343,11 +368,40 @@ const KitchenPage = () => {
                                 <span>{item.quantity}x {item.menuItem?.name || 'Unknown Item'}</span>
                                 <span>${formatPrice(item.price)}</span>
                               </div>
-                              {item.options?.size && (
-                                <p className="text-sm text-gray-600">Size: {item.options.size}</p>
+                              {/* Display detailed choices and addons */}
+                              {item.options && Array.isArray(item.options) && item.options.length > 0 && (
+                                <div className="text-sm text-gray-600 space-y-1">
+                                  {item.options.map((option: any, idx: number) => (
+                                    <div key={idx} className="flex justify-between items-center">
+                                      <span>{option.groupName}: {option.itemName}</span>
+                                      {option.price && option.price > 0 && (
+                                        <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
                               )}
+
+                              {/* Legacy options support */}
+                              {item.options && typeof item.options === 'object' && !Array.isArray(item.options) && (
+                                <div className="text-sm text-gray-600">
+                                  {item.options.size && <p>Size: {item.options.size}</p>}
+                                  {item.options.toppings && item.options.toppings.length > 0 && (
+                                    <p>Toppings: {item.options.toppings.join(', ')}</p>
+                                  )}
+                                  {item.options.addOns && item.options.addOns.length > 0 && (
+                                    <p>Add-ons: {item.options.addOns.join(', ')}</p>
+                                  )}
+                                  {item.options.extras && item.options.extras.length > 0 && (
+                                    <p>Extras: {item.options.extras.join(', ')}</p>
+                                  )}
+                                </div>
+                              )}
+
                               {item.specialInstructions && (
-                                <p className="text-sm text-gray-600 italic">"{item.specialInstructions}"</p>
+                                <p className="text-sm text-gray-600 italic font-medium bg-yellow-100 px-2 py-1 rounded">
+                                  Special: "{item.specialInstructions}"
+                                </p>
                               )}
                             </div>
                           ))}

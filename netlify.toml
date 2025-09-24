@@ -241,6 +241,12 @@
   to = "/.netlify/functions/admin-service-fees"
   status = 200
 
+# Ship Day integration endpoint
+[[redirects]]
+  from = "/api/shipday-integration"
+  to = "/.netlify/functions/shipday-integration"
+  status = 200
+
 # Database setup endpoint
 [[redirects]]
   from = "/api/setup-database-tables"

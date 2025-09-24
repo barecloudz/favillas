@@ -145,7 +145,7 @@ export const handler: Handler = async (event, context) => {
       };
     }
 
-    const validStatuses = ['pending', 'processing', 'preparing', 'ready', 'completed', 'cancelled'];
+    const validStatuses = ['pending', 'processing', 'preparing', 'cooking', 'ready', 'completed', 'cancelled'];
     if (!validStatuses.includes(status)) {
       return {
         statusCode: 400,
@@ -174,13 +174,30 @@ export const handler: Handler = async (event, context) => {
 
     // Update the order status
     const updatedOrder = await sql`
-      UPDATE orders 
-      SET status = ${status}, 
+      UPDATE orders
+      SET status = ${status},
           updated_at = NOW(),
           completed_at = ${status === 'completed' ? 'NOW()' : null}
       WHERE id = ${orderId}
       RETURNING *
     `;
+
+    // Trigger Ship Day integration when order starts cooking
+    if (status === 'cooking' && currentOrder[0].status !== 'cooking') {
+      try {
+        // Import and call Ship Day integration
+        const { createShipDayOrder } = await import('./shipday-integration');
+        const shipDayResult = await createShipDayOrder(orderId);
+
+        if (shipDayResult.success) {
+          console.log(`✅ Ship Day order created when starting cooking for order #${orderId}: ${shipDayResult.message}`);
+        } else {
+          console.warn(`⚠️ Ship Day order creation failed for order #${orderId}: ${shipDayResult.error}`);
+        }
+      } catch (shipDayError: any) {
+        console.error(`❌ Ship Day integration error for order #${orderId}:`, shipDayError);
+      }
+    }
 
     if (updatedOrder.length === 0) {
       return {

@@ -288,8 +288,19 @@ function generateCustomerReceipt(data: OrderData): string {
         });
       }
       
-      // Handle options (sizes, add-ons, toppings, etc.)
-      if (item.options && typeof item.options === 'object') {
+      // Handle new choice system format: [{ groupName: "Size", itemName: "Large", price: 2.00 }]
+      if (item.options && Array.isArray(item.options)) {
+        item.options.forEach((option: any) => {
+          if (option.groupName && option.itemName) {
+            receiptText += `  ${option.groupName.toUpperCase()}: ${option.itemName}`;
+            if (option.price && option.price > 0) {
+              receiptText += ` (+$${option.price.toFixed(2)})`;
+            }
+            receiptText += '\n';
+          }
+        });
+      } else if (item.options && typeof item.options === 'object') {
+        // Handle legacy selectedOptions format
         Object.entries(item.options).forEach(([key, value]) => {
           if (value && Array.isArray(value) && value.length > 0) {
             receiptText += `  ${key.toUpperCase()}: ${value.join(', ')}\n`;
@@ -421,8 +432,19 @@ function generateKitchenTicket(data: OrderData): string {
         });
       }
       
-      // Handle options (sizes, add-ons, toppings, etc.)
-      if (item.options && typeof item.options === 'object') {
+      // Handle new choice system format for kitchen ticket
+      if (item.options && Array.isArray(item.options)) {
+        item.options.forEach((option: any) => {
+          if (option.groupName && option.itemName) {
+            ticketText += `  >> ${option.groupName.toUpperCase()}: ${option.itemName.toUpperCase()}`;
+            if (option.price && option.price > 0) {
+              ticketText += ` (+$${option.price.toFixed(2)})`;
+            }
+            ticketText += '\n';
+          }
+        });
+      } else if (item.options && typeof item.options === 'object') {
+        // Handle legacy selectedOptions format
         Object.entries(item.options).forEach(([key, value]) => {
           if (value && Array.isArray(value) && value.length > 0) {
             ticketText += `  >> ${key.toUpperCase()}: ${value.join(', ').toUpperCase()}\n`;
