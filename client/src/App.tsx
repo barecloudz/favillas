@@ -9,6 +9,8 @@ import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
 import AuthCallback from "@/pages/auth-callback";
 import MenuPage from "@/pages/menu-page";
+import CateringPage from "@/pages/catering-page";
+import CustomerDisplay from "@/pages/customer-display";
 import CheckoutPage from "@/pages/checkout-page";
 import OrderSuccessPage from "@/pages/order-success";
 import OrdersPage from "@/pages/orders-page";
@@ -45,6 +47,8 @@ function Router() {
         <Route path="/auth" component={AuthPage} />
         <Route path="/auth/callback" component={AuthCallback} />
         <Route path="/menu" component={MenuPage} />
+        <Route path="/catering" component={CateringPage} />
+        <Route path="/display" component={CustomerDisplay} />
         <Route path="/test" component={TestPage} />
         <Route path="/checkout" component={CheckoutPage} />
         <Route path="/order-success" component={OrderSuccessPage} />

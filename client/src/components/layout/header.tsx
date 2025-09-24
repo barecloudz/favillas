@@ -62,7 +62,7 @@ const Header = () => {
   }
 
   // Show bottom navigation for main pages on mobile (excluding admin dashboard)
-  if (["/", "/menu", "/checkout", "/kitchen", "/orders", "/rewards"].includes(location)) {
+  if (["/", "/menu", "/catering", "/checkout", "/kitchen", "/orders", "/rewards"].includes(location)) {
     return (
       <>
         {/* Desktop Header */}
@@ -118,6 +118,13 @@ const Header = () => {
                 >
                   Location
                 </button>
+                <Link href="/catering">
+                  <div className={`text-lg font-medium transition-colors ${
+                    location === "/catering" ? "text-[#d73a31]" : "text-gray-700 hover:text-[#d73a31]"
+                  }`}>
+                    Catering
+                  </div>
+                </Link>
               </nav>
               
               {/* Cart and User */}

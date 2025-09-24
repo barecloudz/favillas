@@ -81,7 +81,7 @@ const KitchenPage = () => {
   // Filter orders based on active tab
   const filteredOrders = orders ? orders.filter((order: any) => {
     if (activeTab === "pending") return order.status === "pending";
-    if (activeTab === "processing") return order.status === "processing";
+    if (activeTab === "cooking") return order.status === "processing";
     if (activeTab === "completed") return order.status === "completed";
     return true;
   }) : [];
@@ -216,8 +216,8 @@ const KitchenPage = () => {
                     <Badge className="ml-2 bg-red-500">{orders.filter((o: any) => o.status === "pending").length}</Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="processing">
-                  Processing
+                <TabsTrigger value="cooking">
+                  Cooking
                   {orders?.filter((o: any) => o.status === "processing").length > 0 && (
                     <Badge className="ml-2 bg-yellow-500">{orders.filter((o: any) => o.status === "processing").length}</Badge>
                   )}
@@ -237,7 +237,7 @@ const KitchenPage = () => {
             <TabsContent value={activeTab} className="mt-0">
               {filteredOrders.length === 0 ? (
                 <div className="text-center py-12 bg-white rounded-lg shadow">
-                  <p className="text-xl text-gray-500">No {activeTab} orders found</p>
+                  <p className="text-xl text-gray-500">No {activeTab === 'cooking' ? 'cooking' : activeTab} orders found</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -255,7 +255,7 @@ const KitchenPage = () => {
                             ${order.status === 'processing' ? 'bg-yellow-500' : ''}
                             ${order.status === 'completed' ? 'bg-green-500' : ''}
                           `}>
-                            {order.status.toUpperCase()}
+                            {order.status === 'processing' ? 'COOKING' : order.status.toUpperCase()}
                           </Badge>
                         </div>
                         <div className="text-sm text-gray-500">
@@ -327,7 +327,7 @@ const KitchenPage = () => {
                               className="flex-1 bg-yellow-500 hover:bg-yellow-600"
                               onClick={() => updateOrderStatus(order.id, 'processing')}
                             >
-                              Start Order
+                              Start Cooking
                             </Button>
                           )}
                           
