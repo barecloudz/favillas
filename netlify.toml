@@ -223,6 +223,18 @@
   to = "/.netlify/functions/admin-delivery-zones"
   status = 200
 
+# Admin payroll endpoint
+[[redirects]]
+  from = "/api/admin/payroll"
+  to = "/.netlify/functions/admin-payroll"
+  status = 200
+
+# Admin alerts endpoint
+[[redirects]]
+  from = "/api/admin/alerts"
+  to = "/.netlify/functions/admin-alerts"
+  status = 200
+
 # Test deployment endpoint
 [[redirects]]
   from = "/api/test-deployment"
