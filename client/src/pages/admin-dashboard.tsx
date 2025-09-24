@@ -3646,6 +3646,34 @@ const MenuEditor = ({ menuItems }: any) => {
             </Select>
           </div>
 
+          {/* Category Quick Navigation Tabs */}
+          <div className="mb-6">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={categoryFilter === "all" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCategoryFilter("all")}
+                className="mb-2"
+              >
+                All Items ({filteredItems.length})
+              </Button>
+              {sortedCategories.map((category) => {
+                const itemCount = menuItems?.filter(item => item.category === category.name).length || 0;
+                return (
+                  <Button
+                    key={category.id}
+                    variant={categoryFilter === category.name ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCategoryFilter(category.name)}
+                    className="mb-2"
+                  >
+                    {category.name} ({itemCount})
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Menu Items Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredItems.map((item: any) => (
@@ -3662,6 +3690,11 @@ const MenuEditor = ({ menuItems }: any) => {
                     <h3 className="font-semibold text-lg">{item.name}</h3>
                     <Badge variant={item.isAvailable !== false ? "default" : "secondary"}>
                       {item.isAvailable !== false ? "Available" : "Unavailable"}
+                    </Badge>
+                  </div>
+                  <div className="mb-2">
+                    <Badge variant="outline" className="text-xs mb-2">
+                      {item.category}
                     </Badge>
                   </div>
                   <p className="text-gray-600 text-sm mb-2">{item.description}</p>
