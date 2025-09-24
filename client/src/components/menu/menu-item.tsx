@@ -40,11 +40,11 @@ interface MenuItemProps {
 }
 
 const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
-  const { addItem } = useCart();
+  const { addItem, triggerPizzaAnimation } = useCart();
   const [quantity, setQuantity] = useState(1);
 
   // EMERGENCY: Simplified add to cart without complex options
-  const handleSimpleAddToCart = () => {
+  const handleSimpleAddToCart = (event: React.MouseEvent<HTMLButtonElement>) => {
     try {
       addItem({
         id: item.id,
@@ -54,6 +54,10 @@ const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
         selectedOptions: {},
         specialInstructions: ''
       });
+
+      // Trigger pizza animation from the button that was clicked
+      triggerPizzaAnimation(event.currentTarget);
+
       console.log('Item added to cart successfully:', item.name);
     } catch (error) {
       console.error('Error adding item to cart:', error);
@@ -148,7 +152,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
     );
   };
   
-  const handleAddToCart = () => {
+  const handleAddToCart = (event?: React.MouseEvent<HTMLButtonElement>) => {
     const selectedOptions = {
       size: selectedSize,
       toppings: selectedToppings,
@@ -156,7 +160,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
       addOns: selectedAddOns,
       customizations: selectedCustomizations,
     };
-    
+
     addItem({
       id: item.id,
       name: item.name,
@@ -165,7 +169,12 @@ const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
       selectedOptions,
       specialInstructions: specialInstructions.trim().length > 0 ? specialInstructions : undefined,
     });
-    
+
+    // Trigger pizza animation if event is provided
+    if (event) {
+      triggerPizzaAnimation(event.currentTarget);
+    }
+
     // Reset state
     setQuantity(1);
     if (item.options?.sizes) {
@@ -409,10 +418,10 @@ const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
                 >
                   Cancel
                 </Button>
-                <Button 
-                  type="button" 
+                <Button
+                  type="button"
                   className="bg-[#d73a31] hover:bg-[#c73128] text-white"
-                  onClick={handleAddToCart}
+                  onClick={(event) => handleAddToCart(event)}
                 >
                   Add to Cart
                 </Button>

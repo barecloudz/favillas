@@ -32,10 +32,11 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
   choiceItems = [],
   menuItemChoiceGroups = []
 }) => {
-  const { addItem } = useCart();
+  const { addItem, triggerPizzaAnimation } = useCart();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [selectedChoices, setSelectedChoices] = useState<{ [key: string]: string[] }>({});
+  const [triggerElement, setTriggerElement] = useState<HTMLElement | null>(null);
 
   const formatPrice = (price: string | number) => {
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
@@ -106,7 +107,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
   };
 
   // Simple add to cart without choices
-  const handleSimpleAddToCart = () => {
+  const handleSimpleAddToCart = (event: React.MouseEvent<HTMLButtonElement>) => {
     try {
       addItem({
         id: item.id,
@@ -116,6 +117,9 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
         selectedOptions: {},
         specialInstructions: ''
       });
+
+      // Trigger pizza animation from the button that was clicked
+      triggerPizzaAnimation(event.currentTarget);
     } catch (error) {
       console.error('Error adding item to cart:', error);
     }
@@ -162,9 +166,15 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
         specialInstructions: ''
       });
 
+      // Trigger pizza animation from the original trigger element
+      if (triggerElement) {
+        triggerPizzaAnimation(triggerElement);
+      }
+
       setIsDialogOpen(false);
       setSelectedChoices({});
       setQuantity(1);
+      setTriggerElement(null);
     } catch (error) {
       console.error('Error adding item to cart:', error);
     }
@@ -206,7 +216,10 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
           {hasChoices ? (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-[#d73a31] hover:bg-[#c73128] text-white">
+                <Button
+                  className="bg-[#d73a31] hover:bg-[#c73128] text-white"
+                  onClick={(event) => setTriggerElement(event.currentTarget)}
+                >
                   <ShoppingCart className="h-4 w-4 mr-2" />
                   Customize
                 </Button>

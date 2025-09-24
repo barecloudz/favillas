@@ -217,14 +217,49 @@ button, [role="button"] {
   .admin-card-content {
     padding: 1rem !important;
   }
-  
+
   .admin-header {
     padding: 1rem 1.5rem !important;
   }
-  
+
   /* Ensure dropdowns and dialogs fit mobile screens */
   .mobile-dialog {
     max-width: 95vw;
     max-height: 90vh;
   }
+}
+
+/* Pizza emoji flying animation */
+@keyframes pizza-fly {
+  0% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(var(--fly-x), var(--fly-y)) scale(1.2) rotate(180deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(var(--fly-x-end), var(--fly-y-end)) scale(0.5) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.pizza-flying {
+  position: fixed;
+  font-size: 2rem;
+  z-index: 1000;
+  pointer-events: none;
+  animation: pizza-fly 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* Custom animation for cart shake when item is added */
+@keyframes cart-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+.cart-shake {
+  animation: cart-shake 0.3s ease-in-out;
 }

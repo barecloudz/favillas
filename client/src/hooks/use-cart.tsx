@@ -38,6 +38,7 @@ interface CartContextType {
   addPendingItem: (item: CartItem) => void;
   clearPendingItem: () => void;
   addPendingItemToCart: () => void;
+  triggerPizzaAnimation: (startElement: HTMLElement) => void;
 }
 
 // Create context
@@ -299,11 +300,64 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Clear cart
   const clearCart = () => {
     setItems([]);
-    
+
     toast({
       title: "Cart cleared",
       description: "All items removed from your cart",
     });
+  };
+
+  // Pizza animation function
+  const triggerPizzaAnimation = (startElement: HTMLElement) => {
+    // Find cart icon (desktop in header, mobile in bottom navigation)
+    const cartIconDesktop = document.querySelector('[data-cart-icon="desktop"]');
+    const cartIconMobile = document.querySelector('[data-cart-icon="mobile"]');
+
+    // Use mobile cart on small screens, desktop cart on larger screens
+    const isMobile = window.innerWidth < 768;
+    const cartIcon = isMobile ? cartIconMobile : cartIconDesktop;
+
+    if (!cartIcon) {
+      console.warn('Cart icon not found for animation');
+      return;
+    }
+
+    // Get start and end positions
+    const startRect = startElement.getBoundingClientRect();
+    const endRect = cartIcon.getBoundingClientRect();
+
+    // Create flying pizza emoji
+    const pizzaEmoji = document.createElement('div');
+    pizzaEmoji.textContent = '🍕';
+    pizzaEmoji.className = 'pizza-flying';
+
+    // Set starting position
+    pizzaEmoji.style.left = `${startRect.left + startRect.width / 2}px`;
+    pizzaEmoji.style.top = `${startRect.top + startRect.height / 2}px`;
+
+    // Calculate flight path
+    const deltaX = endRect.left + endRect.width / 2 - (startRect.left + startRect.width / 2);
+    const deltaY = endRect.top + endRect.height / 2 - (startRect.top + startRect.height / 2);
+
+    // Set CSS variables for animation
+    pizzaEmoji.style.setProperty('--fly-x', `${deltaX * 0.6}px`);
+    pizzaEmoji.style.setProperty('--fly-y', `${deltaY * 0.6}px`);
+    pizzaEmoji.style.setProperty('--fly-x-end', `${deltaX}px`);
+    pizzaEmoji.style.setProperty('--fly-y-end', `${deltaY}px`);
+
+    // Add to DOM
+    document.body.appendChild(pizzaEmoji);
+
+    // Trigger cart shake animation
+    cartIcon.classList.add('cart-shake');
+
+    // Clean up after animation
+    setTimeout(() => {
+      if (document.body.contains(pizzaEmoji)) {
+        document.body.removeChild(pizzaEmoji);
+      }
+      cartIcon.classList.remove('cart-shake');
+    }, 1200);
   };
   
   // Clean up corrupted items automatically (gentle approach)
@@ -334,6 +388,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         addPendingItem,
         clearPendingItem,
         addPendingItemToCart,
+        triggerPizzaAnimation,
       }}
     >
       {children}

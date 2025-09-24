@@ -20,7 +20,7 @@ interface MenuItemProps {
 }
 
 const MenuItemSimple: React.FC<MenuItemProps> = ({ item }) => {
-  const { addItem } = useCart();
+  const { addItem, triggerPizzaAnimation } = useCart();
 
   const formatPrice = (price: string | number) => {
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
@@ -30,7 +30,7 @@ const MenuItemSimple: React.FC<MenuItemProps> = ({ item }) => {
     return numPrice.toFixed(2);
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (event: React.MouseEvent<HTMLButtonElement>) => {
     try {
       addItem({
         id: item.id,
@@ -40,6 +40,10 @@ const MenuItemSimple: React.FC<MenuItemProps> = ({ item }) => {
         selectedOptions: {},
         specialInstructions: ''
       });
+
+      // Trigger pizza animation from the button that was clicked
+      triggerPizzaAnimation(event.currentTarget);
+
       console.log('✅ Added to cart:', item.name);
     } catch (error) {
       console.error('❌ Error adding to cart:', error);

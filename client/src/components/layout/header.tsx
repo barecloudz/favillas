@@ -122,13 +122,14 @@ const Header = () => {
               
               {/* Cart and User */}
               <div className="flex items-center space-x-4">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={toggleCart}
                   className="relative hover:bg-gray-100"
                   data-cart-button="true"
                   data-desktop-cart="true"
+                  data-cart-icon="desktop"
                 >
                   <ShoppingBag className="h-6 w-6 text-gray-700" />
                   {cartItemCount > 0 && (
@@ -307,12 +308,13 @@ const Header = () => {
               </div>
             </Link>
             
-            <div 
+            <div
               className={`flex flex-col items-center space-y-1 relative transition-colors cursor-pointer ${
                 location === "/checkout" ? "text-[#d73a31]" : "text-gray-600 hover:text-[#d73a31]"
               }`}
               data-cart-button="true"
               data-mobile-cart="true"
+              data-cart-icon="mobile"
               onClick={toggleCart}
             >
               <ShoppingBag className="h-6 w-6" />
