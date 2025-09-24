@@ -70,7 +70,7 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
   const { data: employees } = useQuery({
     queryKey: ["/api/users"],
     queryFn: async () => {
-      const response = await fetch("/api/users", { credentials: 'include' });
+      const response = await apiRequest("GET", "/api/users");
       const data = await response.json();
       return data.filter((user: any) => user.role === 'employee' || user.isAdmin);
     },
@@ -78,13 +78,14 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
 
   // Get schedules for the current view period
   const { data: schedules, isLoading } = useQuery({
-          queryKey: ["/api/admin-schedules", viewDates],
+    queryKey: ["/api/admin-schedules", viewDates],
     queryFn: async () => {
-      const response = await fetch(
-        `/api/admin-schedules?startDate=${viewDates.startDate}&endDate=${viewDates.endDate}`,
-        { credentials: 'include' }
+      const response = await apiRequest(
+        "GET",
+        `/api/admin-schedules?startDate=${viewDates.startDate}&endDate=${viewDates.endDate}`
       );
-      return response.json();
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
     },
   });
 
@@ -224,6 +225,10 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
   };
 
   const groupSchedulesByDate = (schedules: any[]) => {
+    if (!Array.isArray(schedules)) {
+      console.warn('⚠️ groupSchedulesByDate received non-array:', schedules);
+      return {};
+    }
     return schedules.reduce((acc, schedule) => {
       const date = schedule.scheduleDate;
       if (!acc[date]) acc[date] = [];
@@ -492,7 +497,8 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
               <div className="max-h-[70vh] overflow-y-auto mobile-scroll-container">
                 <div className="divide-y divide-gray-200">
                   {employees?.map((employee: any) => {
-                    const employeeSchedules = schedules?.filter((s: any) => s.employeeId === employee.id) || [];
+                    const employeeSchedules = Array.isArray(schedules) ?
+                      schedules.filter((s: any) => s.employeeId === employee.id) : [];
                     const weeklyHours = employeeSchedules.reduce((total: number, schedule: any) => {
                       return total + parseFloat(calculateShiftHours(schedule.startTime, schedule.endTime));
                     }, 0);
@@ -597,7 +603,8 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
                     </thead>
                 <tbody>
                   {employees?.map((employee: any) => {
-                    const employeeSchedules = schedules?.filter((s: any) => s.employeeId === employee.id) || [];
+                    const employeeSchedules = Array.isArray(schedules) ?
+                      schedules.filter((s: any) => s.employeeId === employee.id) : [];
                     const weeklyHours = employeeSchedules.reduce((total: number, schedule: any) => {
                       return total + parseFloat(calculateShiftHours(schedule.startTime, schedule.endTime));
                     }, 0);
@@ -710,29 +717,29 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <div className="text-2xl font-bold text-blue-600">
-                  {schedules?.length || 0}
+                  {Array.isArray(schedules) ? schedules.length : 0}
                 </div>
                 <div className="text-sm text-gray-600">Total Shifts</div>
               </div>
               <div className="text-center p-4 bg-green-50 rounded-lg">
                 <div className="text-2xl font-bold text-green-600">
-                  {new Set(schedules?.map((s: any) => s.employeeId)).size || 0}
+                  {Array.isArray(schedules) ? new Set(schedules.map((s: any) => s.employeeId)).size : 0}
                 </div>
                 <div className="text-sm text-gray-600">Staff Scheduled</div>
               </div>
               <div className="text-center p-4 bg-purple-50 rounded-lg">
                 <div className="text-2xl font-bold text-purple-600">
-                  {schedules?.reduce((total: number, s: any) => 
+                  {Array.isArray(schedules) ? schedules.reduce((total: number, s: any) =>
                     total + parseFloat(calculateShiftHours(s.startTime, s.endTime)), 0
-                  ).toFixed(1) || 0}h
+                  ).toFixed(1) : 0}h
                 </div>
                 <div className="text-sm text-gray-600">Total Hours</div>
               </div>
               <div className="text-center p-4 bg-orange-50 rounded-lg">
                 <div className="text-2xl font-bold text-orange-600">
-                  ${ ((schedules?.reduce((total: number, s: any) => 
+                  ${ ((Array.isArray(schedules) ? schedules.reduce((total: number, s: any) =>
                     total + parseFloat(calculateShiftHours(s.startTime, s.endTime)), 0
-                  ) || 0) * 15).toFixed(0)}
+                  ) : 0) * 15).toFixed(0)}
                 </div>
                 <div className="text-sm text-gray-600">Est. Labor Cost</div>
               </div>
@@ -743,8 +750,9 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
               <h4 className="font-medium text-gray-900 mb-3">Coverage by Position</h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {['kitchen', 'cashier', 'delivery', 'manager'].map(position => {
-                  const positionShifts = schedules?.filter((s: any) => s.position === position) || [];
-                  const positionHours = positionShifts.reduce((total: number, s: any) => 
+                  const positionShifts = Array.isArray(schedules) ?
+                    schedules.filter((s: any) => s.position === position) : [];
+                  const positionHours = positionShifts.reduce((total: number, s: any) =>
                     total + parseFloat(calculateShiftHours(s.startTime, s.endTime)), 0
                   );
                   
@@ -768,14 +776,14 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
             </div>
 
             {/* Warnings & Alerts */}
-            {schedules && schedules.length > 0 && (
+            {Array.isArray(schedules) && schedules.length > 0 && (
               <div className="space-y-2">
                 <h4 className="font-medium text-gray-900">Alerts</h4>
                 <div className="space-y-2">
                   {/* Overtime Warning */}
                   {employees?.some((emp: any) => {
                     const empSchedules = schedules.filter((s: any) => s.employeeId === emp.id);
-                    const hours = empSchedules.reduce((total: number, s: any) => 
+                    const hours = empSchedules.reduce((total: number, s: any) =>
                       total + parseFloat(calculateShiftHours(s.startTime, s.endTime)), 0
                     );
                     return hours > 40;
@@ -793,7 +801,8 @@ const ScheduleCreator: React.FC<ScheduleCreatorProps> = ({ className }) => {
                     const date = createDateFromString(viewDates.startDate);
                     date.setDate(date.getDate() + dayIndex);
                     const dateStr = getLocalDateString(date);
-                    const daySchedules = schedules?.filter((s: any) => s.scheduleDate === dateStr) || [];
+                    const daySchedules = Array.isArray(schedules) ?
+                      schedules.filter((s: any) => s.scheduleDate === dateStr) : [];
                     return daySchedules.length < 2; // Minimum 2 staff per day
                   }) && (
                     <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
