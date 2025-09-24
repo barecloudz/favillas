@@ -22,9 +22,18 @@ export const handler: Handler = async (event, context) => {
 
   console.log('🚀 USERS API CALLED');
   console.log('📋 Request Method:', event.httpMethod);
+  console.log('🔐 Users API auth check starting...');
+  console.log('📋 Headers received:', {
+    hasAuth: !!event.headers.authorization,
+    hasCookies: !!event.headers.cookie,
+    authPreview: event.headers.authorization ? event.headers.authorization.substring(0, 30) + '...' : 'none',
+    origin: event.headers.origin
+  });
 
   // Authenticate using Supabase token
   const authPayload = await authenticateToken(event);
+  console.log('🔐 Auth payload result:', authPayload ? 'SUCCESS' : 'FAILED');
+
   if (!authPayload) {
     console.log('❌ Authentication failed - no valid token');
     return {

@@ -20,9 +20,20 @@ export const handler: Handler = async (event, context) => {
   }
 
   try {
+    console.log('🔐 Admin-schedules auth check starting...');
+    console.log('📋 Headers received:', {
+      hasAuth: !!event.headers.authorization,
+      hasCookies: !!event.headers.cookie,
+      authPreview: event.headers.authorization ? event.headers.authorization.substring(0, 30) + '...' : 'none',
+      origin: event.headers.origin
+    });
+
     // Check authentication
     const authPayload = await authenticateToken(event);
+    console.log('🔐 Auth payload result:', authPayload ? 'SUCCESS' : 'FAILED');
+
     if (!authPayload) {
+      console.log('❌ Authentication failed for admin-schedules');
       return {
         statusCode: 401,
         headers,
@@ -30,14 +41,19 @@ export const handler: Handler = async (event, context) => {
       };
     }
 
+    console.log('✅ Authentication successful for admin-schedules:', authPayload.role);
+
     // Only admin/staff can manage schedules
     if (!isStaff(authPayload)) {
+      console.log('❌ Authorization failed - insufficient role:', authPayload.role);
       return {
         statusCode: 403,
         headers,
         body: JSON.stringify({ error: 'Forbidden - Admin access required' })
       };
     }
+
+    console.log('✅ Authorization successful - user has staff access');
   
   if (event.httpMethod === 'GET') {
     try {
