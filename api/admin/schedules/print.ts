@@ -3,18 +3,18 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import { employeeSchedules, users } from '../../../shared/schema';
-import jwt from 'jsonwebtoken';
+import { authenticateToken, isStaff } from '../../_shared/auth';
 
 let dbConnection: any = null;
 
 function getDB() {
   if (dbConnection) return dbConnection;
-  
+
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     throw new Error('DATABASE_URL environment variable is required');
   }
-  
+
   const sql = postgres(databaseUrl, {
     max: 1,
     idle_timeout: 20,
@@ -22,42 +22,9 @@ function getDB() {
     prepare: false,
     keep_alive: false,
   });
-  
+
   dbConnection = drizzle(sql, { schema: { employeeSchedules, users } });
   return dbConnection;
-}
-
-function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
-  // Check for JWT token in Authorization header first
-  const authHeader = event.headers.authorization;
-  let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
-  // If no Authorization header, check for auth-token cookie
-  if (!token) {
-    const cookies = event.headers.cookie;
-    if (cookies) {
-      const authCookie = cookies.split(';').find((c: string) => c.trim().startsWith('auth-token='));
-      if (authCookie) {
-        token = authCookie.split('=')[1];
-      }
-    }
-  }
-
-  if (!token) {
-    return null;
-  }
-
-  try {
-    const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
-    if (!jwtSecret) {
-      throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
-    }
-
-    const payload = jwt.verify(token, jwtSecret) as { userId: number; username: string; role: string };
-    return payload;
-  } catch (error) {
-    return null;
-  }
 }
 
 function formatTime(timeString: string) {
@@ -120,9 +87,15 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
-  // Authentication not required for print view to support direct links
-  // But we'll check if provided
-  const authPayload = authenticateToken(event);
+  // Authentication required for print view
+  const authPayload = await authenticateToken(event);
+  if (!authPayload || !isStaff(authPayload)) {
+    return {
+      statusCode: 401,
+      headers,
+      body: JSON.stringify({ error: 'Unauthorized' })
+    };
+  }
 
   try {
     const urlParams = new URLSearchParams(event.rawQuery || '');

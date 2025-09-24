@@ -1,51 +1,16 @@
 import { Handler } from '@netlify/functions';
-import jwt from 'jsonwebtoken';
-
-function authenticateToken(event: any): { userId: number; username: string; role: string } | null {
-  // First try to get token from Authorization header
-  let token = null;
-  const authHeader = event.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.split(' ')[1];
-  }
-  
-  // If no token in header, try to get from cookies
-  if (!token) {
-    const cookies = event.headers.cookie;
-    if (cookies) {
-      const authCookie = cookies.split(';').find(cookie => cookie.trim().startsWith('auth-token='));
-      if (authCookie) {
-        token = authCookie.split('=')[1];
-      }
-    }
-  }
-
-  if (!token) {
-    return null;
-  }
-
-  try {
-    const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
-    if (!jwtSecret) {
-      throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
-    }
-
-    const payload = jwt.verify(token, jwtSecret) as { userId: number; username: string; role: string };
-    return payload;
-  } catch (error) {
-    return null;
-  }
-}
+import { authenticateToken, isStaff } from './_shared/auth';
 
 export const handler: Handler = async (event, context) => {
-  // Set CORS headers
+  const origin = event.headers.origin || 'http://localhost:3000';
   const headers = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json',
   };
-  
+
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
@@ -54,29 +19,36 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
-  // Check authentication
-  const authPayload = authenticateToken(event);
-  if (!authPayload) {
-    // Return empty schedules data instead of 401 for unauthenticated users
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify([])
-    };
-  }
+  try {
+    // Check authentication
+    const authPayload = await authenticateToken(event);
+    if (!authPayload) {
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ error: 'Unauthorized' })
+      };
+    }
 
-  // Only admin and manager can manage schedules
-  if (!['admin', 'manager'].includes(authPayload.role)) {
-    return {
-      statusCode: 403,
-      headers,
-      body: JSON.stringify({ error: 'Forbidden - Admin or Manager access required' })
-    };
-  }
+    // Only admin/staff can manage schedules
+    if (!isStaff(authPayload)) {
+      return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({ error: 'Forbidden - Admin access required' })
+      };
+    }
   
   if (event.httpMethod === 'GET') {
     try {
       const { startDate, endDate, employeeId } = event.queryStringParameters || {};
+
+      console.log('📅 Schedule query params:', {
+        startDate,
+        endDate,
+        employeeId,
+        queryString: event.queryStringParameters
+      });
       
       // Import dependencies dynamically
       const { drizzle } = await import('drizzle-orm/postgres-js');
@@ -142,7 +114,16 @@ export const handler: Handler = async (event, context) => {
       }
 
       const schedules = await query;
-      
+
+      console.log('📅 Schedules found:', schedules.length, 'schedules');
+      console.log('📅 Schedule dates:', schedules.map(s => ({
+        id: s.id,
+        employeeName: `${s.employee?.firstName} ${s.employee?.lastName}`,
+        scheduleDate: s.scheduleDate,
+        startTime: s.startTime,
+        endTime: s.endTime
+      })));
+
       return {
         statusCode: 200,
         headers,
@@ -181,18 +162,27 @@ export const handler: Handler = async (event, context) => {
       const db = drizzle(sql);
       
       const scheduleData = JSON.parse(event.body || '{}');
-      
+
+      console.log('📅 Schedule creation data:', {
+        employeeId: scheduleData.employeeId,
+        scheduleDate: scheduleData.scheduleDate,
+        startTime: scheduleData.startTime,
+        endTime: scheduleData.endTime,
+        position: scheduleData.position,
+        rawData: scheduleData
+      });
+
       // Validate required fields
       if (!scheduleData.employeeId || !scheduleData.scheduleDate || !scheduleData.startTime || !scheduleData.endTime) {
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ 
-            message: 'Missing required fields: employeeId, scheduleDate, startTime, endTime' 
+          body: JSON.stringify({
+            message: 'Missing required fields: employeeId, scheduleDate, startTime, endTime'
           })
         };
       }
-      
+
       const newSchedule = await db.insert(employeeSchedules).values({
         employeeId: scheduleData.employeeId,
         scheduleDate: scheduleData.scheduleDate,
@@ -206,7 +196,9 @@ export const handler: Handler = async (event, context) => {
         createdAt: new Date(),
         updatedAt: new Date(),
       }).returning();
-      
+
+      console.log('✅ Schedule created successfully:', newSchedule[0]);
+
       return {
         statusCode: 201,
         headers,
@@ -365,6 +357,18 @@ export const handler: Handler = async (event, context) => {
       statusCode: 405,
       headers,
       body: JSON.stringify({ message: 'Method not allowed' })
+    };
+  }
+
+  } catch (error) {
+    console.error('Admin schedules API error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      })
     };
   }
 };
