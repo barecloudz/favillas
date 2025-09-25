@@ -89,11 +89,46 @@ export const handler: Handler = async (event, context) => {
         VALUES (${categoryName}, ${choiceGroupId}, NOW())
         RETURNING *
       `;
-      
+
+      // Now apply this choice group to all existing menu items in this category
+      const menuItemsInCategory = await sql`
+        SELECT id FROM menu_items
+        WHERE category = ${categoryName} AND is_available = true
+      `;
+
+      let appliedToItems = 0;
+
+      if (menuItemsInCategory.length > 0) {
+        console.log(`Applying choice group ${choiceGroupId} to ${menuItemsInCategory.length} menu items in category "${categoryName}"`);
+
+        // Apply the choice group to each menu item
+        for (const menuItem of menuItemsInCategory) {
+          // Check if association already exists
+          const existingAssociation = await sql`
+            SELECT id FROM menu_item_choice_groups
+            WHERE menu_item_id = ${menuItem.id} AND choice_group_id = ${choiceGroupId}
+          `;
+
+          if (existingAssociation.length === 0) {
+            await sql`
+              INSERT INTO menu_item_choice_groups (menu_item_id, choice_group_id, created_at)
+              VALUES (${menuItem.id}, ${choiceGroupId}, NOW())
+            `;
+            appliedToItems++;
+          }
+        }
+
+        console.log(`Applied choice group to ${appliedToItems} menu items (${menuItemsInCategory.length - appliedToItems} already had it)`);
+      }
+
       return {
         statusCode: 201,
         headers,
-        body: JSON.stringify(result[0])
+        body: JSON.stringify({
+          ...result[0],
+          appliedToMenuItems: appliedToItems,
+          totalMenuItemsInCategory: menuItemsInCategory.length
+        })
       };
 
     } else if (event.httpMethod === 'DELETE') {

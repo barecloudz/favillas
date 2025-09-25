@@ -140,22 +140,62 @@ export const handler: Handler = async (event, context) => {
         };
       }
 
-      // Check if choice group has any choice items
+      // Check if choice group has any related records and delete them first
+
+      // Delete related choice items
       const choiceItems = await sql`
         SELECT COUNT(*) as count FROM choice_items
         WHERE choice_group_id = ${parseInt(groupId)}
       `;
 
-      const hasItems = parseInt(choiceItems[0].count) > 0;
-
-      if (hasItems) {
-        // Delete all related choice items first
+      if (parseInt(choiceItems[0].count) > 0) {
         await sql`
           DELETE FROM choice_items
           WHERE choice_group_id = ${parseInt(groupId)}
         `;
+        console.log(`Deleted ${choiceItems[0].count} choice items for group ${groupId}`);
+      }
 
-        console.log(`Deleted choice items for group ${groupId} before deleting group`);
+      // Delete related half_half_settings
+      const halfHalfSettings = await sql`
+        SELECT COUNT(*) as count FROM half_half_settings
+        WHERE choice_group_id = ${parseInt(groupId)}
+      `;
+
+      if (parseInt(halfHalfSettings[0].count) > 0) {
+        await sql`
+          DELETE FROM half_half_settings
+          WHERE choice_group_id = ${parseInt(groupId)}
+        `;
+        console.log(`Deleted ${halfHalfSettings[0].count} half_half_settings for group ${groupId}`);
+      }
+
+      // Delete related menu_item_choice_groups
+      const menuItemChoiceGroups = await sql`
+        SELECT COUNT(*) as count FROM menu_item_choice_groups
+        WHERE choice_group_id = ${parseInt(groupId)}
+      `;
+
+      if (parseInt(menuItemChoiceGroups[0].count) > 0) {
+        await sql`
+          DELETE FROM menu_item_choice_groups
+          WHERE choice_group_id = ${parseInt(groupId)}
+        `;
+        console.log(`Deleted ${menuItemChoiceGroups[0].count} menu_item_choice_groups for group ${groupId}`);
+      }
+
+      // Delete related category_choice_groups
+      const categoryChoiceGroups = await sql`
+        SELECT COUNT(*) as count FROM category_choice_groups
+        WHERE choice_group_id = ${parseInt(groupId)}
+      `;
+
+      if (parseInt(categoryChoiceGroups[0].count) > 0) {
+        await sql`
+          DELETE FROM category_choice_groups
+          WHERE choice_group_id = ${parseInt(groupId)}
+        `;
+        console.log(`Deleted ${categoryChoiceGroups[0].count} category_choice_groups for group ${groupId}`);
       }
 
       // Now delete the choice group
@@ -173,12 +213,23 @@ export const handler: Handler = async (event, context) => {
         };
       }
 
+      const totalDeleted = parseInt(choiceItems[0].count) +
+                         parseInt(halfHalfSettings[0].count) +
+                         parseInt(menuItemChoiceGroups[0].count) +
+                         parseInt(categoryChoiceGroups[0].count);
+
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           message: 'Choice group deleted successfully',
-          deletedItems: hasItems ? parseInt(choiceItems[0].count) : 0
+          deletedRelatedItems: {
+            choiceItems: parseInt(choiceItems[0].count),
+            halfHalfSettings: parseInt(halfHalfSettings[0].count),
+            menuItemChoiceGroups: parseInt(menuItemChoiceGroups[0].count),
+            categoryChoiceGroups: parseInt(categoryChoiceGroups[0].count),
+            total: totalDeleted
+          }
         })
       };
 
