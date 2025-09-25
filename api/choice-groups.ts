@@ -131,7 +131,7 @@ export const handler: Handler = async (event, context) => {
       // Extract ID from URL path
       const urlParts = event.path?.split('/') || [];
       const groupId = urlParts[urlParts.length - 1];
-      
+
       if (!groupId || isNaN(parseInt(groupId))) {
         return {
           statusCode: 400,
@@ -139,13 +139,32 @@ export const handler: Handler = async (event, context) => {
           body: JSON.stringify({ message: 'Invalid choice group ID' })
         };
       }
-      
+
+      // Check if choice group has any choice items
+      const choiceItems = await sql`
+        SELECT COUNT(*) as count FROM choice_items
+        WHERE choice_group_id = ${parseInt(groupId)}
+      `;
+
+      const hasItems = parseInt(choiceItems[0].count) > 0;
+
+      if (hasItems) {
+        // Delete all related choice items first
+        await sql`
+          DELETE FROM choice_items
+          WHERE choice_group_id = ${parseInt(groupId)}
+        `;
+
+        console.log(`Deleted choice items for group ${groupId} before deleting group`);
+      }
+
+      // Now delete the choice group
       const result = await sql`
-        DELETE FROM choice_groups 
+        DELETE FROM choice_groups
         WHERE id = ${parseInt(groupId)}
         RETURNING *
       `;
-      
+
       if (result.length === 0) {
         return {
           statusCode: 404,
@@ -153,11 +172,14 @@ export const handler: Handler = async (event, context) => {
           body: JSON.stringify({ message: 'Choice group not found' })
         };
       }
-      
+
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({ message: 'Choice group deleted successfully' })
+        body: JSON.stringify({
+          message: 'Choice group deleted successfully',
+          deletedItems: hasItems ? parseInt(choiceItems[0].count) : 0
+        })
       };
 
     } else {
