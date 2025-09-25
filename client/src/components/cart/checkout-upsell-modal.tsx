@@ -347,15 +347,8 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
     }
   };
 
-  // Handle continuing to checkout without upselling
-  const handleNoThanks = () => {
-    // Set session flag to prevent showing again during this session
-    sessionStorage.setItem('upsellShown', 'true');
-    onContinueToCheckout();
-  };
-
-  // Handle continuing after adding items
-  const handleContinueAfterAdd = () => {
+  // Handle proceeding to checkout (used by X button and No Thanks button)
+  const handleProceedToCheckout = () => {
     sessionStorage.setItem('upsellShown', 'true');
     onContinueToCheckout();
   };
@@ -404,13 +397,13 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
   console.log('🎯 [Upsell Modal Debug] All conditions met, showing modal!');
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={() => handleProceedToCheckout()}>
       <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] h-auto p-0 overflow-hidden">
         {/* Header with gradient background */}
         <DialogHeader className="relative bg-gradient-to-r from-[#d73a31] to-[#ff6b5b] text-white p-4 sm:p-8 pb-4 sm:pb-6">
           <div className="absolute inset-0 bg-black opacity-10"></div>
-          <div className="relative flex items-start justify-between gap-4">
-            <div className="flex-1 min-w-0">
+          <div className="relative">
+            <div className="text-center pr-16">
               <DialogTitle className="text-xl sm:text-3xl font-bold mb-2 leading-tight">
                 {selectedCategory ? `Perfect ${selectedCategory} Pairings!` : '🍕 Make Your Order Complete!'}
               </DialogTitle>
@@ -420,13 +413,15 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
                 </p>
               )}
             </div>
+
+            {/* Large circular X button in top right */}
             <Button
               variant="ghost"
               size="icon"
-              onClick={onClose}
-              className="h-8 w-8 sm:h-10 sm:w-10 text-white hover:bg-white/20 hover:text-white flex-shrink-0"
+              onClick={handleProceedToCheckout}
+              className="absolute top-0 right-0 h-12 w-12 sm:h-14 sm:w-14 bg-white/20 hover:bg-white/30 text-white rounded-full border-2 border-white/30 hover:border-white/50 transition-all duration-200 flex-shrink-0"
             >
-              <X className="h-4 w-4 sm:h-5 sm:w-5" />
+              <X className="h-6 w-6 sm:h-7 sm:w-7 font-bold" />
             </Button>
           </div>
         </DialogHeader>
@@ -610,44 +605,20 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
           )}
         </ScrollArea>
 
-        {/* Footer buttons - improved design */}
-        <div className="border-t bg-gradient-to-r from-gray-50 to-white p-4 sm:p-6">
-          <div className="flex flex-col gap-4">
-            <div className="text-center">
-              {!selectedCategory && (
-                <p className="text-xs sm:text-sm text-gray-600">
-                  ✨ <span className="font-semibold">89% of customers</span> who add these items say it made their meal complete!
-                </p>
-              )}
-            </div>
+        {/* Footer with centered No Thanks button */}
+        <div className="border-t bg-gradient-to-r from-gray-50 to-white p-6 sm:p-8">
+          <div className="text-center space-y-4">
+            <p className="text-xs sm:text-sm text-gray-600">
+              ✨ <span className="font-semibold">89% of customers</span> who add these items say it made their meal complete!
+            </p>
 
-            <div className="flex flex-col sm:flex-row gap-3 w-full">
-              <Button
-                variant="outline"
-                onClick={handleNoThanks}
-                className="flex-1 sm:flex-none px-4 sm:px-6 border-gray-300 hover:border-gray-400 text-gray-600 hover:text-gray-700 text-sm"
-              >
-                {selectedCategory ? 'Maybe Later' : 'Skip This Time'}
-              </Button>
-
-              {selectedCategory && categoryItems.length > 0 ? (
-                <Button
-                  onClick={handleContinueAfterAdd}
-                  className="flex-1 sm:flex-none bg-gradient-to-r from-[#d73a31] to-[#ff6b5b] hover:from-[#c73128] hover:to-[#e55a4f] text-white px-4 sm:px-8 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 text-sm"
-                >
-                  Continue to Checkout →
-                </Button>
-              ) : (
-                !selectedCategory && (
-                  <Button
-                    onClick={handleNoThanks}
-                    className="flex-1 sm:flex-none bg-gradient-to-r from-[#d73a31] to-[#ff6b5b] hover:from-[#c73128] hover:to-[#e55a4f] text-white px-4 sm:px-8 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 text-sm"
-                  >
-                    🛒 Proceed to Checkout
-                  </Button>
-                )
-              )}
-            </div>
+            <Button
+              onClick={handleProceedToCheckout}
+              variant="outline"
+              className="px-8 sm:px-12 py-3 border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 text-base font-medium rounded-full shadow-sm hover:shadow-md transition-all duration-200"
+            >
+              No Thanks, Continue to Checkout
+            </Button>
           </div>
         </div>
       </DialogContent>
