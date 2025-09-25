@@ -16672,6 +16672,15 @@ const ExperimentalFeaturesSection = () => {
       'Desserts': true,
       'Wine': false,
       'Beer': false
+    },
+    categoryImages: {
+      'Appetizers': '',
+      'Drinks': '',
+      'Beverages': '',
+      'Sides': '',
+      'Desserts': '',
+      'Wine': '',
+      'Beer': ''
     }
   });
   const { toast } = useToast();
@@ -16719,6 +16728,67 @@ const ExperimentalFeaturesSection = () => {
     toast({
       title: `${categoryName} Upsell ${enabled ? 'Enabled' : 'Disabled'}`,
       description: `${categoryName} will ${enabled ? 'now' : 'no longer'} be shown in checkout upsell prompts`,
+    });
+  };
+
+  const handleImageUpload = (categoryName: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please select an image file (JPG, PNG, GIF, etc.)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please select an image smaller than 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Create object URL for preview
+    const imageUrl = URL.createObjectURL(file);
+
+    setSettings(prev => ({
+      ...prev,
+      categoryImages: {
+        ...prev.categoryImages,
+        [categoryName]: imageUrl
+      }
+    }));
+
+    toast({
+      title: "Image Uploaded",
+      description: `Image set for ${categoryName} category`,
+    });
+  };
+
+  const handleRemoveImage = (categoryName: string) => {
+    const currentImage = settings.categoryImages[categoryName];
+    if (currentImage && currentImage.startsWith('blob:')) {
+      URL.revokeObjectURL(currentImage);
+    }
+
+    setSettings(prev => ({
+      ...prev,
+      categoryImages: {
+        ...prev.categoryImages,
+        [categoryName]: ''
+      }
+    }));
+
+    toast({
+      title: "Image Removed",
+      description: `Image removed from ${categoryName} category`,
     });
   };
 
@@ -16776,24 +16846,83 @@ const ExperimentalFeaturesSection = () => {
                   Select which categories should trigger upsell prompts when missing from customer carts
                 </p>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {Object.entries(settings.upsellCategories).map(([categoryName, enabled]) => (
-                    <div
-                      key={categoryName}
-                      className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
-                        enabled
-                          ? 'border-[#d73a31] bg-red-50'
-                          : 'border-gray-200 bg-gray-50'
-                      }`}
-                    >
-                      <span className="font-medium text-sm">{categoryName}</span>
-                      <Switch
-                        checked={enabled}
-                        onCheckedChange={(checked) => handleToggleCategory(categoryName, checked)}
-                        size="sm"
-                      />
-                    </div>
-                  ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {Object.entries(settings.upsellCategories).map(([categoryName, enabled]) => {
+                    const categoryImage = settings.categoryImages[categoryName];
+                    return (
+                      <div
+                        key={categoryName}
+                        className={`p-4 border-2 rounded-lg transition-all ${
+                          enabled
+                            ? 'border-[#d73a31] bg-red-50'
+                            : 'border-gray-200 bg-gray-50'
+                        }`}
+                      >
+                        {/* Category Header */}
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-semibold text-base">{categoryName}</span>
+                          <Switch
+                            checked={enabled}
+                            onCheckedChange={(checked) => handleToggleCategory(categoryName, checked)}
+                            size="sm"
+                          />
+                        </div>
+
+                        {/* Image Preview */}
+                        <div className="mb-3">
+                          {categoryImage ? (
+                            <div className="relative group">
+                              <img
+                                src={categoryImage}
+                                alt={`${categoryName} preview`}
+                                className="w-full h-24 object-cover rounded-md"
+                              />
+                              <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-md flex items-center justify-center">
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleRemoveImage(categoryName)}
+                                  className="text-xs"
+                                >
+                                  <Trash2 className="w-3 h-3 mr-1" />
+                                  Remove
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="w-full h-24 border-2 border-dashed border-gray-300 rounded-md flex items-center justify-center bg-gray-100">
+                              <div className="text-center">
+                                <Image className="w-8 h-8 text-gray-400 mx-auto mb-1" />
+                                <p className="text-xs text-gray-500">No image set</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Upload Button */}
+                        <div className="relative">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleImageUpload(categoryName, e)}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            id={`upload-${categoryName}`}
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full text-xs"
+                            asChild
+                          >
+                            <label htmlFor={`upload-${categoryName}`} className="cursor-pointer">
+                              <Upload className="w-3 h-3 mr-2" />
+                              {categoryImage ? 'Change Image' : 'Add Image'}
+                            </label>
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -16804,6 +16933,7 @@ const ExperimentalFeaturesSection = () => {
                     <p className="font-medium text-yellow-900 mb-1">Configuration Tips:</p>
                     <ul className="text-yellow-800 space-y-1">
                       <li>• Enable categories that complement your main offerings (drinks with pizza, desserts, etc.)</li>
+                      <li>• Upload custom images for each category to make them more appealing</li>
                       <li>• Keep it focused - too many categories can overwhelm customers</li>
                       <li>• Monitor your analytics to see which upsells perform best</li>
                     </ul>

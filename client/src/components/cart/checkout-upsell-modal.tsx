@@ -213,6 +213,21 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
     return DEFAULT_CATEGORY_ICONS[iconName as keyof typeof DEFAULT_CATEGORY_ICONS] || Utensils;
   };
 
+  // Get category image from experimental settings
+  const getCategoryImage = (categoryName: string): string | null => {
+    const savedSettings = localStorage.getItem('experimentalFeatureSettings');
+    if (savedSettings) {
+      try {
+        const settings = JSON.parse(savedSettings);
+        const image = settings.categoryImages?.[categoryName];
+        return image || null;
+      } catch (error) {
+        console.error('Failed to parse experimental feature settings for images:', error);
+      }
+    }
+    return null;
+  };
+
   // Handle adding item to cart
   const handleAddItem = async (item: MenuItem, event: React.MouseEvent) => {
     setIsAddingItem(true);
@@ -291,104 +306,184 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0">
-        <DialogHeader className="p-6 pb-4">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-2xl font-bold text-[#d73a31]">
-              {selectedCategory ? `Add ${selectedCategory}` : 'Complete Your Order'}
-            </DialogTitle>
+      <DialogContent className="max-w-5xl max-h-[90vh] p-0 overflow-hidden">
+        {/* Header with gradient background */}
+        <DialogHeader className="relative bg-gradient-to-r from-[#d73a31] to-[#ff6b5b] text-white p-8 pb-6">
+          <div className="absolute inset-0 bg-black opacity-10"></div>
+          <div className="relative flex items-center justify-between">
+            <div>
+              <DialogTitle className="text-3xl font-bold mb-2">
+                {selectedCategory ? `Perfect ${selectedCategory} Pairings!` : '🍕 Make Your Order Complete!'}
+              </DialogTitle>
+              {!selectedCategory && (
+                <p className="text-white/90 text-lg">
+                  Save more and get the full experience - these popular items pair perfectly with your order!
+                </p>
+              )}
+            </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="h-8 w-8"
+              className="h-10 w-10 text-white hover:bg-white/20 hover:text-white"
             >
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5" />
             </Button>
           </div>
-          {!selectedCategory && (
-            <p className="text-gray-600 mt-2">
-              Would you like to add any of these to your order?
-            </p>
-          )}
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh] px-6">
+        <ScrollArea className="max-h-[60vh] px-8 py-6">
           {!selectedCategory ? (
-            // Category selection view
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pb-6">
-              {missingCategories.map((category) => {
-                const IconComponent = getCategoryIcon(category);
-                return (
-                  <Card
-                    key={category.id}
-                    className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105 border-2 hover:border-[#d73a31]"
-                    onClick={() => setSelectedCategory(category.name)}
-                  >
-                    <CardContent className="p-6 text-center">
-                      {category.image_url ? (
-                        <img
-                          src={category.image_url}
-                          alt={category.name}
-                          className="w-16 h-16 mx-auto mb-3 rounded-lg object-cover"
-                        />
-                      ) : (
-                        <IconComponent className="w-16 h-16 mx-auto mb-3 text-[#d73a31]" />
-                      )}
-                      <h3 className="font-semibold text-lg">{category.name}</h3>
-                      <p className="text-sm text-gray-500 mt-1">
-                        Tap to browse {category.name.toLowerCase()}
-                      </p>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+            // Category selection view - improved design
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                  💰 Popular Add-Ons - Most Customers Love These!
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {missingCategories.map((category) => {
+                  const IconComponent = getCategoryIcon(category);
+                  const customImage = getCategoryImage(category.name);
+                  const displayImage = customImage || category.image_url;
+
+                  return (
+                    <Card
+                      key={category.id}
+                      className="group cursor-pointer hover:shadow-xl transition-all duration-300 hover:scale-[1.02] border-2 hover:border-[#d73a31] bg-gradient-to-br from-white to-gray-50 hover:from-[#fff5f4] hover:to-[#ffeeed] relative overflow-hidden"
+                      onClick={() => setSelectedCategory(category.name)}
+                    >
+                      {/* Subtle pattern overlay */}
+                      <div className="absolute inset-0 bg-white/50 group-hover:bg-[#d73a31]/5 transition-colors duration-300"></div>
+
+                      <CardContent className="relative p-6 text-center">
+                        <div className="mb-4">
+                          {displayImage ? (
+                            <div className="relative">
+                              <img
+                                src={displayImage}
+                                alt={category.name}
+                                className="w-20 h-20 mx-auto rounded-xl object-cover shadow-md group-hover:shadow-lg transition-shadow duration-300"
+                              />
+                              <div className="absolute -top-2 -right-2 bg-[#d73a31] text-white text-xs font-bold px-2 py-1 rounded-full">
+                                {customImage ? 'CUSTOM' : 'HOT!'}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="relative">
+                              <div className="w-20 h-20 mx-auto bg-gradient-to-br from-[#d73a31] to-[#ff6b5b] rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300">
+                                <IconComponent className="w-10 h-10 text-white" />
+                              </div>
+                              <div className="absolute -top-2 -right-2 bg-[#d73a31] text-white text-xs font-bold px-2 py-1 rounded-full">
+                                NEW!
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <h3 className="font-bold text-xl text-gray-800 mb-2 group-hover:text-[#d73a31] transition-colors duration-300">
+                          {category.name}
+                        </h3>
+
+                        <p className="text-sm text-gray-600 mb-3">
+                          Perfect complement to your meal
+                        </p>
+
+                        <div className="bg-[#d73a31] text-white px-4 py-2 rounded-full text-sm font-semibold group-hover:bg-[#c73128] transition-colors duration-300">
+                          Browse {category.name} →
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
             </div>
           ) : (
-            // Items listing view
+            // Items listing view - improved design
             <div className="pb-6">
               <Button
                 variant="ghost"
                 onClick={() => setSelectedCategory(null)}
-                className="mb-4 text-[#d73a31] hover:text-[#c73128]"
+                className="mb-6 text-[#d73a31] hover:text-[#c73128] hover:bg-[#d73a31]/10 px-0"
               >
-                ← Back to Categories
+                ← Back to All Categories
               </Button>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+                  🔥 Handpicked favorites from our {selectedCategory} menu!
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {categoryItems.map((item) => (
-                  <Card key={item.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-grow">
-                          <h4 className="font-semibold text-lg">{item.name}</h4>
+                  <Card key={item.id} className="group hover:shadow-xl transition-all duration-300 hover:scale-[1.02] border-2 hover:border-[#d73a31] overflow-hidden">
+                    <CardContent className="p-0">
+                      <div className="relative">
+                        {/* Item image or placeholder */}
+                        <div className="relative h-32 bg-gradient-to-br from-gray-100 to-gray-200">
+                          {item.image_url ? (
+                            <img
+                              src={item.image_url}
+                              alt={item.name}
+                              className="w-full h-32 object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-32 bg-gradient-to-br from-[#d73a31]/20 to-[#ff6b5b]/20 flex items-center justify-center">
+                              <div className="w-16 h-16 bg-[#d73a31] rounded-full flex items-center justify-center">
+                                <Utensils className="w-8 h-8 text-white" />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Price badge */}
+                          <div className="absolute top-3 right-3">
+                            <Badge className="bg-green-500 hover:bg-green-500 text-white font-bold text-sm shadow-lg">
+                              ${item.price.toFixed(2)}
+                            </Badge>
+                          </div>
+
+                          {/* Popular badge for some items */}
+                          {item.price < 5 && (
+                            <div className="absolute top-3 left-3">
+                              <Badge className="bg-orange-500 hover:bg-orange-500 text-white font-bold text-xs">
+                                POPULAR
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Item details */}
+                        <div className="p-4">
+                          <h4 className="font-bold text-lg mb-2 text-gray-800 group-hover:text-[#d73a31] transition-colors">
+                            {item.name}
+                          </h4>
+
                           {item.description && (
-                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                            <p className="text-sm text-gray-600 mb-4 line-clamp-2">
                               {item.description}
                             </p>
                           )}
-                          <div className="flex items-center justify-between">
-                            <Badge variant="secondary" className="bg-green-100 text-green-800">
-                              ${item.price.toFixed(2)}
-                            </Badge>
-                            <Button
-                              size="sm"
-                              className="bg-[#d73a31] hover:bg-[#c73128] text-white"
-                              onClick={(e) => handleAddItem(item, e)}
-                              disabled={isAddingItem}
-                            >
-                              <Plus className="h-4 w-4 mr-1" />
-                              Add
-                            </Button>
-                          </div>
+
+                          <Button
+                            className="w-full bg-[#d73a31] hover:bg-[#c73128] text-white font-semibold py-3 text-sm group-hover:shadow-lg transition-all duration-300"
+                            onClick={(e) => handleAddItem(item, e)}
+                            disabled={isAddingItem}
+                          >
+                            {isAddingItem ? (
+                              <div className="flex items-center">
+                                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                                Adding...
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add to Cart
+                              </div>
+                            )}
+                          </Button>
                         </div>
-                        {item.image_url && (
-                          <img
-                            src={item.image_url}
-                            alt={item.name}
-                            className="w-20 h-20 ml-4 rounded-lg object-cover"
-                          />
-                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -396,32 +491,57 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
               </div>
 
               {categoryItems.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No items available in this category right now.</p>
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Coffee className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 text-lg">No items available in this category right now.</p>
+                  <p className="text-gray-400 text-sm mt-2">Check back soon for new additions!</p>
                 </div>
               )}
             </div>
           )}
         </ScrollArea>
 
-        {/* Footer buttons */}
-        <div className="border-t bg-gray-50 p-6 flex justify-between items-center">
-          <Button
-            variant="outline"
-            onClick={handleNoThanks}
-            className="px-6"
-          >
-            No Thanks
-          </Button>
+        {/* Footer buttons - improved design */}
+        <div className="border-t bg-gradient-to-r from-gray-50 to-white p-6">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="flex-1 text-center sm:text-left">
+              {!selectedCategory && (
+                <p className="text-sm text-gray-600 mb-2">
+                  ✨ <span className="font-semibold">89% of customers</span> who add these items say it made their meal complete!
+                </p>
+              )}
+            </div>
 
-          {selectedCategory && categoryItems.length > 0 && (
-            <Button
-              onClick={handleContinueAfterAdd}
-              className="bg-[#d73a31] hover:bg-[#c73128] text-white px-8"
-            >
-              Continue to Checkout
-            </Button>
-          )}
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={handleNoThanks}
+                className="px-6 border-gray-300 hover:border-gray-400 text-gray-600 hover:text-gray-700"
+              >
+                {selectedCategory ? 'Maybe Later' : 'Skip This Time'}
+              </Button>
+
+              {selectedCategory && categoryItems.length > 0 ? (
+                <Button
+                  onClick={handleContinueAfterAdd}
+                  className="bg-gradient-to-r from-[#d73a31] to-[#ff6b5b] hover:from-[#c73128] hover:to-[#e55a4f] text-white px-8 font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  Continue to Checkout →
+                </Button>
+              ) : (
+                !selectedCategory && (
+                  <Button
+                    onClick={handleNoThanks}
+                    className="bg-gradient-to-r from-[#d73a31] to-[#ff6b5b] hover:from-[#c73128] hover:to-[#e55a4f] text-white px-8 font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    🛒 Proceed to Checkout
+                  </Button>
+                )
+              )}
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
