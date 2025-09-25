@@ -437,7 +437,6 @@
   node_bundler = "esbuild"
   # Function bundling optimizations
   included_files = ["!test-*.ts", "!debug-*.ts"]
-  ignore_unused_public_files = true
 
 # Function-specific configurations for optimization
 [functions."health"]
