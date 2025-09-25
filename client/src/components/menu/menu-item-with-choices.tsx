@@ -196,7 +196,16 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
 
       // If this is a size selection (priority 0), collapse the size section
       const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
+      console.log('🔍 [Choice Selection] Group found for collapse check:', {
+        group,
+        groupId: parseInt(groupId),
+        priority: group?.priority,
+        isRadio,
+        shouldCollapse: group && (group.priority || 0) === 0 && isRadio
+      });
+
       if (group && (group.priority || 0) === 0 && isRadio) {
+        console.log('🔍 [Choice Selection] Setting size collapsed to true');
         setSizeCollapsed(true);
       }
 
@@ -365,14 +374,14 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                           {group.isRequired && <span className="text-red-500 ml-1 text-xl">*</span>}
                           {isPrimaryGroup && !isSelected && <span className="text-sm font-normal text-red-500 ml-2 animate-bounce">(Choose Size First!)</span>}
                         </Label>
-                        {group.max_selections && group.max_selections > 1 && (
+                        {group.maxSelections && group.maxSelections > 1 && (
                           <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                            Max {group.max_selections}
+                            Max {group.maxSelections}
                           </span>
                         )}
                       </div>
 
-                      {group.max_selections === 1 ? (
+                      {group.maxSelections === 1 ? (
                         <>
                           {/* Show collapsed view if size is selected and collapsed */}
                           {isPrimaryGroup && sizeCollapsed && selectedChoices[group.id] && selectedChoices[group.id].length > 0 ? (
@@ -554,6 +563,15 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                     {(() => {
                       const sizeGroup = itemChoiceGroups.find(group => (group.priority || 0) === 0);
                       const hasSizeSelected = sizeGroup && selectedChoices[sizeGroup.id] && selectedChoices[sizeGroup.id].length > 0;
+
+                      console.log('🔍 [Add to Cart Button] Debug info:', {
+                        sizeGroup,
+                        selectedChoices,
+                        sizeGroupId: sizeGroup?.id,
+                        sizeGroupSelections: sizeGroup ? selectedChoices[sizeGroup.id] : 'no size group',
+                        hasSizeSelected,
+                        sizeCollapsed
+                      });
 
                       return (
                         <Button
