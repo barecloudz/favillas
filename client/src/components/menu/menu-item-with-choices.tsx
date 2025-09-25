@@ -38,6 +38,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
   const [selectedChoices, setSelectedChoices] = useState<{ [key: string]: string[] }>({});
   const [dynamicPrices, setDynamicPrices] = useState<{ [key: string]: number }>({});
   const [triggerElement, setTriggerElement] = useState<HTMLElement | null>(null);
+  const [sizeCollapsed, setSizeCollapsed] = useState(false);
 
   const formatPrice = (price: string | number) => {
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
@@ -193,6 +194,12 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
         fetchDynamicPrices(allSelected);
       }
 
+      // If this is a size selection (priority 0), collapse the size section
+      const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
+      if (group && (group.priority || 0) === 0 && isRadio) {
+        setSizeCollapsed(true);
+      }
+
       return newChoices;
     });
   };
@@ -273,6 +280,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       setSelectedChoices({});
       setQuantity(1);
       setTriggerElement(null);
+      setSizeCollapsed(false);
     } catch (error) {
       console.error('Error adding item to cart:', error);
     }
@@ -365,48 +373,101 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                       </div>
 
                       {group.max_selections === 1 ? (
-                        <RadioGroup
-                          value={selectedChoices[group.id]?.[0] || ""}
-                          onValueChange={(value) => handleChoiceSelection(group.id.toString(), value, true)}
-                          className="space-y-3"
-                        >
-                          {group.items.map(choiceItem => {
-                            const dynamicPrice = dynamicPrices[choiceItem.id];
-                            const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
-                            const isItemSelected = selectedChoices[group.id]?.includes(choiceItem.id.toString());
+                        <>
+                          {/* Show collapsed view if size is selected and collapsed */}
+                          {isPrimaryGroup && sizeCollapsed && selectedChoices[group.id] && selectedChoices[group.id].length > 0 ? (
+                            <div className="space-y-3">
+                              {(() => {
+                                const selectedItemId = selectedChoices[group.id][0];
+                                const selectedItem = group.items.find(item => item.id.toString() === selectedItemId);
+                                if (!selectedItem) return null;
 
-                            return (
-                            <div key={choiceItem.id} className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all cursor-pointer hover:shadow-md ${
-                              isItemSelected
-                                ? 'border-[#d73a31] bg-red-50 shadow-md'
-                                : 'border-gray-200 bg-white hover:border-gray-300'
-                            }`}>
-                              <div className="flex items-center space-x-3">
-                                <RadioGroupItem value={choiceItem.id.toString()} className="data-[state=checked]:bg-[#d73a31] data-[state=checked]:border-[#d73a31]" />
-                                <div className="flex-1">
-                                  <Label className={`font-medium cursor-pointer ${
-                                    isItemSelected ? 'text-[#d73a31]' : 'text-gray-700'
-                                  }`}>
-                                    {choiceItem.name}
-                                  </Label>
-                                  {choiceItem.description && (
-                                    <p className="text-sm text-gray-500 mt-1">{choiceItem.description}</p>
+                                const dynamicPrice = dynamicPrices[selectedItem.id];
+                                const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(selectedItem.price) || 0;
+
+                                return (
+                                  <div className="flex items-center justify-between p-4 rounded-lg border-2 border-[#d73a31] bg-red-50 shadow-md">
+                                    <div className="flex items-center space-x-3">
+                                      <div className="w-5 h-5 rounded-full bg-[#d73a31] flex items-center justify-center">
+                                        <div className="w-2 h-2 rounded-full bg-white"></div>
+                                      </div>
+                                      <div className="flex-1">
+                                        <Label className="font-medium text-[#d73a31] cursor-pointer">
+                                          {selectedItem.name}
+                                        </Label>
+                                        {selectedItem.description && (
+                                          <p className="text-sm text-gray-600 mt-1">{selectedItem.description}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                      {price > 0 && (
+                                        <Badge className="bg-[#d73a31] text-white text-sm font-bold">
+                                          +${formatPrice(price)}
+                                        </Badge>
+                                      )}
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setSizeCollapsed(false)}
+                                        className="text-[#d73a31] hover:bg-red-100 text-sm font-medium"
+                                      >
+                                        Edit Size
+                                      </Button>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          ) : (
+                            <RadioGroup
+                              value={selectedChoices[group.id]?.[0] || ""}
+                              onValueChange={(value) => handleChoiceSelection(group.id.toString(), value, true)}
+                              className="space-y-3"
+                            >
+                              {group.items.map(choiceItem => {
+                                const dynamicPrice = dynamicPrices[choiceItem.id];
+                                const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
+                                const isItemSelected = selectedChoices[group.id]?.includes(choiceItem.id.toString());
+
+                                return (
+                                <div
+                                  key={choiceItem.id}
+                                  className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all cursor-pointer hover:shadow-md ${
+                                    isItemSelected
+                                      ? 'border-[#d73a31] bg-red-50 shadow-md'
+                                      : 'border-gray-200 bg-white hover:border-gray-300'
+                                  }`}
+                                  onClick={() => handleChoiceSelection(group.id.toString(), choiceItem.id.toString(), true)}
+                                >
+                                  <div className="flex items-center space-x-3">
+                                    <RadioGroupItem value={choiceItem.id.toString()} className="data-[state=checked]:bg-[#d73a31] data-[state=checked]:border-[#d73a31] pointer-events-none" />
+                                    <div className="flex-1">
+                                      <Label className={`font-medium cursor-pointer ${
+                                        isItemSelected ? 'text-[#d73a31]' : 'text-gray-700'
+                                      }`}>
+                                        {choiceItem.name}
+                                      </Label>
+                                      {choiceItem.description && (
+                                        <p className="text-sm text-gray-500 mt-1">{choiceItem.description}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {price > 0 && (
+                                    <Badge className={`text-sm font-bold ${
+                                      isItemSelected
+                                        ? 'bg-[#d73a31] text-white'
+                                        : 'bg-gray-100 text-gray-700'
+                                    }`}>
+                                      +${formatPrice(price)}
+                                    </Badge>
                                   )}
                                 </div>
-                              </div>
-                              {price > 0 && (
-                                <Badge className={`text-sm font-bold ${
-                                  isItemSelected
-                                    ? 'bg-[#d73a31] text-white'
-                                    : 'bg-gray-100 text-gray-700'
-                                }`}>
-                                  +${formatPrice(price)}
-                                </Badge>
-                              )}
-                            </div>
-                            );
-                          })}
-                        </RadioGroup>
+                                );
+                              })}
+                            </RadioGroup>
+                          )}
+                        </>
                       ) : (
                         <div className="grid grid-cols-1 gap-3">
                           {group.items.map(choiceItem => {
@@ -415,16 +476,20 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                             const isItemSelected = selectedChoices[group.id]?.includes(choiceItem.id.toString());
 
                             return (
-                            <div key={choiceItem.id} className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all cursor-pointer hover:shadow-md ${
-                              isItemSelected
-                                ? 'border-green-400 bg-green-50 shadow-md'
-                                : 'border-gray-200 bg-white hover:border-gray-300'
-                            }`}>
+                            <div
+                              key={choiceItem.id}
+                              className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all cursor-pointer hover:shadow-md ${
+                                isItemSelected
+                                  ? 'border-green-400 bg-green-50 shadow-md'
+                                  : 'border-gray-200 bg-white hover:border-gray-300'
+                              }`}
+                              onClick={() => handleChoiceSelection(group.id.toString(), choiceItem.id.toString(), false)}
+                            >
                               <div className="flex items-center space-x-3">
                                 <Checkbox
                                   checked={isItemSelected}
                                   onCheckedChange={() => handleChoiceSelection(group.id.toString(), choiceItem.id.toString(), false)}
-                                  className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500"
+                                  className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 pointer-events-none"
                                 />
                                 <div className="flex-1">
                                   <Label className={`font-medium cursor-pointer ${
