@@ -23,6 +23,7 @@ import MenuItemSimple from "@/components/menu/menu-item-simple";
 import MenuItemWithChoices from "@/components/menu/menu-item-with-choices";
 
 const MenuPage = () => {
+  console.log('🔍 MenuPage component rendering...');
   const [location, navigate] = useLocation();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,47 +47,87 @@ const MenuPage = () => {
   });
 
   // Re-enabled: Choice groups system
-  const { data: choiceGroups = [] } = useQuery({
+  const { data: choiceGroups = [], isError: choiceGroupsError, error: choiceGroupsErrorMsg } = useQuery({
     queryKey: ['choice-groups'],
     queryFn: async () => {
-      const response = await fetch('/api/choice-groups');
-      if (response.ok) {
-        return await response.json();
+      console.log('🔍 Fetching choice groups...');
+      try {
+        const response = await fetch('/api/choice-groups');
+        console.log('🔍 Choice groups response:', response.status, response.statusText);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('🔍 Choice groups data:', data);
+          return data;
+        }
+        console.error('❌ Choice groups failed:', response.status, response.statusText);
+        return [];
+      } catch (error) {
+        console.error('❌ Choice groups error:', error);
+        return [];
       }
-      return [];
     }
   });
 
   const { data: choiceItems = [] } = useQuery({
     queryKey: ['choice-items'],
     queryFn: async () => {
-      const response = await fetch('/api/choice-items');
-      if (response.ok) {
-        return await response.json();
+      console.log('🔍 Fetching choice items...');
+      try {
+        const response = await fetch('/api/choice-items');
+        console.log('🔍 Choice items response:', response.status, response.statusText);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('🔍 Choice items data:', data);
+          return data;
+        }
+        console.error('❌ Choice items failed:', response.status, response.statusText);
+        return [];
+      } catch (error) {
+        console.error('❌ Choice items error:', error);
+        return [];
       }
-      return [];
     }
   });
 
   const { data: categoryChoiceGroups = [] } = useQuery({
     queryKey: ['category-choice-groups'],
     queryFn: async () => {
-      const response = await fetch('/api/category-choice-groups');
-      if (response.ok) {
-        return await response.json();
+      console.log('🔍 Fetching category choice groups...');
+      try {
+        const response = await fetch('/api/category-choice-groups');
+        console.log('🔍 Category choice groups response:', response.status, response.statusText);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('🔍 Category choice groups data:', data);
+          return data;
+        }
+        console.error('❌ Category choice groups failed:', response.status, response.statusText);
+        return [];
+      } catch (error) {
+        console.error('❌ Category choice groups error:', error);
+        return [];
       }
-      return [];
     }
   });
 
   const { data: menuItemChoiceGroups = [] } = useQuery({
     queryKey: ['menu-item-choice-groups'],
     queryFn: async () => {
-      const response = await fetch('/api/menu-item-choice-groups');
-      if (response.ok) {
-        return await response.json();
+      console.log('🔍 Fetching menu item choice groups...');
+      try {
+        const response = await fetch('/api/menu-item-choice-groups');
+        console.log('🔍 Menu item choice groups response:', response.status, response.statusText);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('🔍 Menu item choice groups data:', data);
+          return data;
+        }
+        console.error('❌ Menu item choice groups failed:', response.status, response.statusText);
+        return [];
+      } catch (error) {
+        console.error('❌ Menu item choice groups error:', error);
+        return [];
       }
-      return [];
     }
   });
 
