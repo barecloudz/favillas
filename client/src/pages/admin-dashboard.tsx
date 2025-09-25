@@ -3699,7 +3699,8 @@ const MenuEditor = ({ menuItems }: any) => {
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* REMOVED DUPLICATE SECTION - This menu section was identical to the GloriaFood-style layout below
+      {/* Filters */
       <Card>
         <CardHeader>
           <CardTitle>Menu Categories and Items</CardTitle>
@@ -3848,6 +3849,7 @@ const MenuEditor = ({ menuItems }: any) => {
           </div>
         </CardContent>
       </Card>
+      END REMOVED SECTION */}
 
       {/* GloriaFood-Style Menu Editor Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
