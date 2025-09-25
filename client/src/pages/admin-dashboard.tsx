@@ -3579,6 +3579,7 @@ const MenuEditor = ({ menuItems }: any) => {
   };
 
   const handleUpdateChoiceItem = async (id: number, data: any) => {
+    console.log('💾 Saving choice item:', id, data);
     try {
       // Save the basic choice item data (only the fields that exist in the database)
       const basicData = {
@@ -3586,14 +3587,17 @@ const MenuEditor = ({ menuItems }: any) => {
         price: data.price,
         isDefault: data.isDefault
       };
+      console.log('📝 Basic data to save:', basicData);
       updateChoiceItemMutation.mutate({ id, data: basicData });
 
       // Handle size-based pricing separately
       if (data.enableSizePricing && data.sizePricing) {
+        console.log('🎯 Size pricing enabled, saving rules:', data.sizePricing);
         // Save pricing rules for each size with a price
         for (const [sizeId, price] of Object.entries(data.sizePricing)) {
           if (price && parseFloat(price as string) > 0) {
-            await fetch('/.netlify/functions/choice-pricing', {
+            console.log(`💰 Saving pricing rule: Item ${id}, Size ${sizeId}, Price $${price}`);
+            const response = await fetch('/.netlify/functions/choice-pricing', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -3602,15 +3606,23 @@ const MenuEditor = ({ menuItems }: any) => {
                 price: parseFloat(price as string)
               })
             });
+
+            if (!response.ok) {
+              console.error('❌ Failed to save pricing rule:', response.status, response.statusText);
+            } else {
+              console.log('✅ Pricing rule saved successfully');
+            }
           }
         }
       } else if (!data.enableSizePricing) {
+        console.log('🗑️ Size pricing disabled, removing existing rules');
         // If size pricing is disabled, remove all existing pricing rules for this item
         try {
           const pricingResponse = await fetch('/.netlify/functions/choice-pricing');
           if (pricingResponse.ok) {
             const pricingData = await pricingResponse.json();
             const itemRules = pricingData.pricingRules?.filter((rule: any) => rule.choice_item_id === id) || [];
+            console.log('🔍 Found', itemRules.length, 'existing rules to delete');
 
             // Delete each existing rule
             for (const rule of itemRules) {
@@ -3626,8 +3638,9 @@ const MenuEditor = ({ menuItems }: any) => {
 
       setEditingChoiceItem(null);
       setEditingChoiceItemData({ name: '', description: '', price: '0.00', isDefault: false, sizePricing: {}, pricingCategory: 'pizza', enableSizePricing: false });
+      console.log('✅ Choice item update completed');
     } catch (error) {
-      console.error('Error updating choice item with size pricing:', error);
+      console.error('💥 Error updating choice item with size pricing:', error);
     }
   };
 
@@ -4178,18 +4191,25 @@ const MenuEditor = ({ menuItems }: any) => {
                                       />
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                      <div>
-                                        <Label htmlFor={`edit-item-price-${item.id}`} className="text-sm font-medium">Price</Label>
-                                        <Input
-                                          id={`edit-item-price-${item.id}`}
-                                          type="number"
-                                          step="0.01"
-                                          placeholder="0.00"
-                                          value={editingChoiceItemData.price}
-                                          onChange={(e) => setEditingChoiceItemData({ ...editingChoiceItemData, price: e.target.value })}
-                                          className="text-sm"
-                                        />
-                                      </div>
+                                      {!editingChoiceItemData.enableSizePricing && (
+                                        <div>
+                                          <Label htmlFor={`edit-item-price-${item.id}`} className="text-sm font-medium">Price</Label>
+                                          <Input
+                                            id={`edit-item-price-${item.id}`}
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="0.00"
+                                            value={editingChoiceItemData.price}
+                                            onChange={(e) => setEditingChoiceItemData({ ...editingChoiceItemData, price: e.target.value })}
+                                            className="text-sm"
+                                          />
+                                        </div>
+                                      )}
+                                      {editingChoiceItemData.enableSizePricing && (
+                                        <div className="text-sm text-gray-500 flex items-center">
+                                          <span>Price set by size selection below</span>
+                                        </div>
+                                      )}
                                       <div className="flex items-center space-x-2 pt-6">
                                         <input
                                           type="checkbox"
