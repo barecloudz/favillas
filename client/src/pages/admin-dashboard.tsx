@@ -3044,10 +3044,10 @@ const MenuEditor = ({ menuItems }: any) => {
       toast({ title: "Success", description: message });
       setEditingCategory(null);
 
-      // Simple solution: reload the page after a short delay to show the success message
+      // Reload page to show fresh data (API now has no-cache headers)
       setTimeout(() => {
         window.location.reload();
-      }, 1500);
+      }, 1000);
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message || "Failed to update category", variant: "destructive" });

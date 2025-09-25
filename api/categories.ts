@@ -33,14 +33,13 @@ export const handler: Handler = async (event, context) => {
     'Content-Type': 'application/json',
   };
 
-  // Add caching headers for GET requests
-  const headersWithCache = event.httpMethod === 'GET' ? {
+  // Disable caching for categories to ensure fresh data after updates
+  const headersWithCache = {
     ...headers,
-    // Cache categories for 5 minutes with stale-while-revalidate
-    'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=60',
-    'CDN-Cache-Control': 'max-age=600',
-    'Surrogate-Control': 'max-age=3600'
-  } : headers;
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  };
   
   if (event.httpMethod === 'OPTIONS') {
     return {
