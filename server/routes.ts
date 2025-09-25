@@ -9,7 +9,7 @@ import { storage } from "./storage";
 import { authenticateSupabaseUser, requireAuth } from "./supabase-auth";
 import { setupTimeTrackingRoutes } from "./time-tracking-routes";
 import { db } from "./db";
-import { insertMenuItemSchema, insertOrderSchema, insertOrderItemSchema, insertRewardSchema, insertUserRewardSchema, insertPromoCodeSchema, insertChoiceGroupSchema, insertChoiceItemSchema, insertMenuItemChoiceGroupSchema, insertCategoryChoiceGroupSchema, insertTaxCategorySchema, insertTaxSettingsSchema, insertPauseServiceSchema, orders, orderItems, menuItemChoiceGroups } from "@shared/schema";
+import { insertMenuItemSchema, insertOrderSchema, insertOrderItemSchema, insertRewardSchema, insertUserRewardSchema, insertPromoCodeSchema, insertChoiceGroupSchema, insertChoiceItemSchema, insertMenuItemChoiceGroupSchema, insertCategoryChoiceGroupSchema, insertTaxCategorySchema, insertTaxSettingsSchema, insertPauseServiceSchema, orders, orderItems, menuItemChoiceGroups, menuItems } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { log } from "./vite";
@@ -3049,27 +3049,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const id = parseInt(req.params.id);
+      console.log(`Attempting to delete menu item ${id}`);
 
       // Check for foreign key constraints before attempting deletion
 
+      console.log('Checking for order items...');
       // 1. Check if there are order items using this menu item
       const orderItemsCheck = await db.select()
         .from(orderItems)
         .where(eq(orderItems.menuItemId, id))
         .limit(1);
 
+      console.log(`Found ${orderItemsCheck.length} order items for menu item ${id}`);
       if (orderItemsCheck.length > 0) {
         return res.status(400).json({
           message: "Cannot delete menu item. It is being used in existing orders. Consider marking it as unavailable instead."
         });
       }
 
+      console.log('Checking for menu item choice groups...');
       // 2. Check if there are menu item choice groups using this menu item
       const choiceGroupsCheck = await db.select()
         .from(menuItemChoiceGroups)
         .where(eq(menuItemChoiceGroups.menuItemId, id))
         .limit(1);
 
+      console.log(`Found ${choiceGroupsCheck.length} choice group assignments for menu item ${id}`);
       if (choiceGroupsCheck.length > 0) {
         return res.status(400).json({
           message: "Cannot delete menu item. It has associated choice groups. Please remove the choice group assignments first."
@@ -3077,7 +3082,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // If all checks pass, proceed with deletion
-      await storage.deleteMenuItem(id);
+      console.log(`All checks passed, deleting menu item ${id}`);
+      const result = await db.delete(menuItems)
+        .where(eq(menuItems.id, id))
+        .returning({ id: menuItems.id });
+
+      if (result.length === 0) {
+        return res.status(404).json({ message: "Menu item not found" });
+      }
+
+      console.log(`Successfully deleted menu item ${id}`);
       res.json({ message: "Menu item deleted successfully" });
     } catch (error: any) {
       console.error('Menu item deletion error:', error);
