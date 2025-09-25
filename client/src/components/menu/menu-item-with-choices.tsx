@@ -194,17 +194,18 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
         fetchDynamicPrices(allSelected);
       }
 
-      // If this is a size selection (priority 0), collapse the size section
+      // If this is a size selection, collapse the size section
       const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
       console.log('🔍 [Choice Selection] Group found for collapse check:', {
         group,
         groupId: parseInt(groupId),
         priority: group?.priority,
         isRadio,
-        shouldCollapse: group && (group.priority || 0) === 0 && isRadio
+        isSizeGroup: group?.name === 'Size',
+        shouldCollapse: group && group.name === 'Size' && isRadio
       });
 
-      if (group && (group.priority || 0) === 0 && isRadio) {
+      if (group && group.name === 'Size' && isRadio) {
         console.log('🔍 [Choice Selection] Setting size collapsed to true');
         setSizeCollapsed(true);
       }
@@ -244,8 +245,8 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       return;
     }
 
-    // Special validation for size selection (assuming first priority group is sizes)
-    const sizeGroup = itemChoiceGroups.find(group => (group.priority || 0) === 0);
+    // Special validation for size selection
+    const sizeGroup = itemChoiceGroups.find(group => group.name === 'Size');
     if (sizeGroup && (!selectedChoices[sizeGroup.id] || selectedChoices[sizeGroup.id].length === 0)) {
       alert('Please select a size before adding to cart.');
       return;
@@ -351,7 +352,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
 
                 <div className="space-y-8 py-6">
                   {visibleChoiceGroups.map((group, index) => {
-                    const isPrimaryGroup = (group.priority || 0) === 0; // Usually sizes
+                    const isPrimaryGroup = group.name === 'Size';
                     const isSelected = selectedChoices[group.id] && selectedChoices[group.id].length > 0;
 
                     return (
@@ -561,7 +562,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                     </div>
 
                     {(() => {
-                      const sizeGroup = itemChoiceGroups.find(group => (group.priority || 0) === 0);
+                      const sizeGroup = itemChoiceGroups.find(group => group.name === 'Size');
                       const hasSizeSelected = sizeGroup && selectedChoices[sizeGroup.id] && selectedChoices[sizeGroup.id].length > 0;
 
                       console.log('🔍 [Add to Cart Button] Debug info:', {
