@@ -9636,7 +9636,9 @@ const CreateCategoryForm = ({ onSubmit, onCancel }: { onSubmit: (data: any) => v
 
 const EditCategoryForm = ({ category, onSubmit, onCancel }: { category: any; onSubmit: (data: any) => void; onCancel: () => void }) => {
   const [formData, setFormData] = useState({
-    name: category.name || ""
+    name: category.name || "",
+    order: category.order || 1,
+    isActive: category.isActive !== false
   });
 
   const handleSubmit = (e: React.FormEvent) => {
