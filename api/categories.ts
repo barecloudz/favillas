@@ -144,6 +144,14 @@ export const handler: Handler = async (event, context) => {
 
           // If category name update succeeded and name actually changed, update menu items
           if (result.length > 0 && name !== oldCategoryName) {
+            console.log(`Attempting to update menu items from "${oldCategoryName}" to "${name}"`);
+
+            // First check how many items match the old category name
+            const itemsToUpdate = await sql`
+              SELECT COUNT(*) as count FROM menu_items WHERE category = ${oldCategoryName}
+            `;
+            console.log(`Found ${itemsToUpdate[0].count} items with old category name "${oldCategoryName}"`);
+
             const menuItemsUpdate = await sql`
               UPDATE menu_items
               SET category = ${name}
@@ -151,6 +159,12 @@ export const handler: Handler = async (event, context) => {
             `;
             updatedMenuItems = menuItemsUpdate.count || 0;
             console.log(`Successfully updated ${updatedMenuItems} menu items from "${oldCategoryName}" to "${name}"`);
+
+            // Verify the update worked
+            const verifyUpdate = await sql`
+              SELECT COUNT(*) as count FROM menu_items WHERE category = ${name}
+            `;
+            console.log(`After update: ${verifyUpdate[0].count} items now have category "${name}"`);
           }
         }
 
