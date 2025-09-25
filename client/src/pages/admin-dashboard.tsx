@@ -3285,7 +3285,29 @@ const MenuEditor = ({ menuItems }: any) => {
       }
       groupedChoices[ccg.categoryName].push(ccg.choiceGroupId);
     });
-    setCategoryChoices(groupedChoices);
+
+    // Only update if we don't have local state yet, or if API data is more recent
+    setCategoryChoices(prev => {
+      // If prev is empty, use API data
+      if (Object.keys(prev).length === 0) {
+        return groupedChoices;
+      }
+
+      // Merge API data with local state, preferring local state for immediate UI feedback
+      const merged = { ...groupedChoices };
+
+      // Keep any local additions that might not be in API yet (due to timing)
+      Object.keys(prev).forEach(categoryName => {
+        if (prev[categoryName]) {
+          // Combine API data with local data, removing duplicates
+          const apiChoices = merged[categoryName] || [];
+          const localChoices = prev[categoryName] || [];
+          merged[categoryName] = [...new Set([...apiChoices, ...localChoices])];
+        }
+      });
+
+      return merged;
+    });
   }, [categoryChoiceGroups]);
 
   const createChoiceGroupMutation = useMutation({
@@ -3461,9 +3483,20 @@ const MenuEditor = ({ menuItems }: any) => {
   const toggleChoiceStatus = (id: number) => {
     const choice = choiceGroups.find((c: any) => c.id === id);
     if (choice) {
-      updateChoiceGroupMutation.mutate({ 
-        id, 
-        data: { isActive: !choice.isActive } 
+      // Since isActive field is missing from API response, default to true and toggle to false
+      const currentStatus = choice.isActive !== false; // true if undefined or true
+      console.log('🔄 Toggling choice status:', { id, currentStatus, newStatus: !currentStatus });
+      updateChoiceGroupMutation.mutate({
+        id,
+        data: {
+          isActive: !currentStatus,
+          // Include required fields to avoid validation errors
+          name: choice.name,
+          description: choice.description || '',
+          order: choice.order || 0,
+          minSelections: choice.minSelections || 0,
+          isRequired: choice.isRequired || false
+        }
       });
     }
   };
@@ -4045,7 +4078,7 @@ const MenuEditor = ({ menuItems }: any) => {
                               toggleChoiceStatus(choice.id);
                             }}
                           >
-                            {choice.isActive ? "Deactivate" : "Activate"}
+                            {(choice.isActive !== false) ? "Deactivate" : "Activate"}
                           </Button>
                           <Button 
                             variant="ghost" 
