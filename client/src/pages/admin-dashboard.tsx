@@ -2954,6 +2954,7 @@ const MenuEditor = ({ menuItems }: any) => {
   });
 
   const [availableSizes, setAvailableSizes] = useState<any[]>([]);
+  const [isSavingPricing, setIsSavingPricing] = useState(false);
 
   // Fetch size choices for a specific category
   const fetchSizesForCategory = async (category: string) => {
@@ -3580,17 +3581,9 @@ const MenuEditor = ({ menuItems }: any) => {
 
   const handleUpdateChoiceItem = async (id: number, data: any) => {
     console.log('💾 Saving choice item:', id, data);
+    setIsSavingPricing(true);
     try {
-      // Save the basic choice item data (only the fields that exist in the database)
-      const basicData = {
-        name: data.name,
-        price: data.price,
-        isDefault: data.isDefault
-      };
-      console.log('📝 Basic data to save:', basicData);
-      updateChoiceItemMutation.mutate({ id, data: basicData });
-
-      // Handle size-based pricing separately
+      // Handle size-based pricing first (before closing dialog)
       if (data.enableSizePricing && data.sizePricing) {
         console.log('🎯 Size pricing enabled, saving rules:', data.sizePricing);
         // Save pricing rules for each size with a price
@@ -3609,6 +3602,8 @@ const MenuEditor = ({ menuItems }: any) => {
 
             if (!response.ok) {
               console.error('❌ Failed to save pricing rule:', response.status, response.statusText);
+              const errorText = await response.text();
+              console.error('Error details:', errorText);
             } else {
               console.log('✅ Pricing rule saved successfully');
             }
@@ -3636,11 +3631,25 @@ const MenuEditor = ({ menuItems }: any) => {
         }
       }
 
+      // Save the basic choice item data after pricing rules are saved
+      const basicData = {
+        name: data.name,
+        price: data.price,
+        isDefault: data.isDefault
+      };
+      console.log('📝 Basic data to save:', basicData);
+      updateChoiceItemMutation.mutate({ id, data: basicData });
+
+      // Wait a moment for mutation to complete before closing dialog
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       setEditingChoiceItem(null);
       setEditingChoiceItemData({ name: '', description: '', price: '0.00', isDefault: false, sizePricing: {}, pricingCategory: 'pizza', enableSizePricing: false });
       console.log('✅ Choice item update completed');
     } catch (error) {
       console.error('💥 Error updating choice item with size pricing:', error);
+    } finally {
+      setIsSavingPricing(false);
     }
   };
 
