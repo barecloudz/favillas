@@ -3702,7 +3702,7 @@ const MenuEditor = ({ menuItems }: any) => {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle>Menu Items</CardTitle>
+          <CardTitle>Menu Categories and Items</CardTitle>
         </CardHeader>
         <CardContent>
           {/* Search Bar */}
