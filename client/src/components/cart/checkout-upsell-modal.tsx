@@ -408,12 +408,12 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={() => handleProceedToCheckout()}>
-      <DialogContent className="max-w-5xl w-[95vw] max-h-[85vh] h-auto p-0 overflow-hidden flex flex-col">
+      <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] min-h-[60vh] p-0 flex flex-col">
         {/* Header with gradient background */}
         <DialogHeader className="relative bg-gradient-to-r from-[#d73a31] to-[#ff6b5b] text-white p-4 sm:p-8 pb-4 sm:pb-6">
           <div className="absolute inset-0 bg-black opacity-10"></div>
           <div className="relative">
-            <div className="text-center pr-16">
+            <div className="text-center">
               <DialogTitle className="text-2xl sm:text-4xl font-extrabold mb-3 leading-tight tracking-wide">
                 {selectedCategory ? `Perfect ${selectedCategory} Pairings!` : '🍕 Make Your Order Complete!'}
               </DialogTitle>
@@ -423,20 +423,10 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
                 </p>
               )}
             </div>
-
-            {/* Large circular X button in top right */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleProceedToCheckout}
-              className="absolute top-0 right-0 h-12 w-12 sm:h-14 sm:w-14 bg-white/20 hover:bg-white/30 text-white rounded-full border-2 border-white/30 hover:border-white/50 transition-all duration-200 flex-shrink-0"
-            >
-              <X className="h-6 w-6 sm:h-7 sm:w-7 font-bold" />
-            </Button>
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-4 sm:px-8 py-4 sm:py-6">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-4 sm:py-6">
           {!selectedCategory ? (
             // Category selection view - improved design
             <div className="space-y-6">
@@ -613,7 +603,7 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
               )}
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         {/* Footer with centered button - now fixed at bottom */}
         <div className="border-t bg-gradient-to-r from-gray-50 to-white p-6 sm:p-8 flex-shrink-0">

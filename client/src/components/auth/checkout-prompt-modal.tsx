@@ -21,7 +21,7 @@ const CheckoutPromptModal: React.FC<CheckoutPromptModalProps> = ({
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[480px] max-h-[90vh] flex flex-col">
         <DialogHeader className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#d73a31]/10">
             <ShoppingCart className="h-8 w-8 text-[#d73a31]" />
@@ -34,7 +34,7 @@ const CheckoutPromptModal: React.FC<CheckoutPromptModalProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-6">
+        <div className="flex-1 overflow-y-auto py-6">
           {/* Benefits section */}
           <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4 mb-6">
             <div className="flex items-center gap-2 mb-3">
@@ -87,7 +87,7 @@ const CheckoutPromptModal: React.FC<CheckoutPromptModalProps> = ({
           </div>
         </div>
 
-        <DialogFooter className="flex-col space-y-2">
+        <DialogFooter className="flex-col space-y-2 flex-shrink-0 border-t pt-4">
           <div className="relative w-full">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-gray-200" />
