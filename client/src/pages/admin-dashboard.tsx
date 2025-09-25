@@ -3044,11 +3044,18 @@ const MenuEditor = ({ menuItems }: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/menu"] });
       queryClient.invalidateQueries({ queryKey: ["/api/menu-items"] });
 
-      // Force a complete page refresh of data
+      // Force a complete page refresh of data with more aggressive cache clearing
+      queryClient.removeQueries({ queryKey: ["/api/categories"] });
+      queryClient.removeQueries({ queryKey: ["/api/menu"] });
+
       setTimeout(() => {
         queryClient.refetchQueries({ queryKey: ["/api/categories"] });
         queryClient.refetchQueries({ queryKey: ["/api/menu"] });
+        refetchCategories(); // Force explicit refetch again
       }, 100);
+
+      // Also try immediate refetch
+      refetchCategories();
 
       const updatedItems = result?.updatedMenuItems || 0;
       const message = updatedItems > 0
