@@ -3654,6 +3654,7 @@ const MenuEditor = ({ menuItems }: any) => {
   };
 
   const handleEditChoiceItem = async (item: any) => {
+    console.log('✏️ Editing choice item:', item);
     setEditingChoiceItem(item);
 
     // Load existing size pricing data
@@ -3662,33 +3663,52 @@ const MenuEditor = ({ menuItems }: any) => {
     let pricingCategory = 'pizza';
 
     try {
+      console.log('🔍 Loading existing pricing rules for item:', item.id);
       const pricingResponse = await fetch('/.netlify/functions/choice-pricing');
       if (pricingResponse.ok) {
         const data = await pricingResponse.json();
+        console.log('📊 All pricing rules:', data);
         const itemPricingRules = data.pricingRules?.filter((rule: any) => rule.choice_item_id === item.id) || [];
+        console.log('🎯 Pricing rules for this item:', itemPricingRules);
 
         if (itemPricingRules.length > 0) {
           enableSizePricing = true;
+          console.log('✅ Size pricing enabled - found', itemPricingRules.length, 'rules');
 
           // Determine category based on the first pricing rule
           const firstRule = itemPricingRules[0];
           const conditionName = firstRule.condition_choice_name?.toLowerCase() || '';
+          console.log('🔍 Analyzing condition name:', conditionName);
+
           if (conditionName.includes('10') || conditionName.includes('14') || conditionName.includes('16') || conditionName.includes('sicilian')) {
             pricingCategory = 'pizza';
           } else if (conditionName.includes('small') || conditionName.includes('medium') || conditionName.includes('large')) {
             // Check if it's calzone or stromboli based on context (this could be enhanced)
             pricingCategory = 'calzone'; // Default to calzone, user can change if needed
           }
+          console.log('📂 Determined category:', pricingCategory);
 
           // Build sizePricing object using actual choice item IDs
           itemPricingRules.forEach((rule: any) => {
             sizePricing[rule.condition_choice_item_id] = rule.price.toString();
+            console.log(`💰 Loaded price: Size ID ${rule.condition_choice_item_id} = $${rule.price}`);
           });
+        } else {
+          console.log('❌ No pricing rules found for this item');
         }
+      } else {
+        console.error('❌ Failed to load pricing data:', pricingResponse.status);
       }
     } catch (error) {
-      console.error('Error loading size pricing:', error);
+      console.error('💥 Error loading size pricing:', error);
     }
+
+    console.log('🏗️ Setting edit data:', {
+      name: item.name,
+      enableSizePricing,
+      pricingCategory,
+      sizePricing
+    });
 
     setEditingChoiceItemData({
       name: item.name,
@@ -3702,6 +3722,7 @@ const MenuEditor = ({ menuItems }: any) => {
 
     // If size pricing is enabled, fetch the available sizes
     if (enableSizePricing) {
+      console.log('📐 Fetching sizes for category:', pricingCategory);
       await fetchSizesForCategory(pricingCategory);
     }
   };
