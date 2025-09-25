@@ -3232,10 +3232,19 @@ const MenuEditor = ({ menuItems }: any) => {
     queryKey: ['choice-groups'],
     queryFn: async () => {
       console.log('🔍 Fetching choice groups...');
-      const response = await apiRequest('GET', '/api/choice-groups');
-      const data = await response.json();
-      console.log('📦 Choice groups response:', data);
-      return data;
+      try {
+        const response = await apiRequest('GET', '/api/choice-groups');
+        if (!response.ok) {
+          console.error('❌ Choice groups API failed:', response.status, response.statusText);
+          return [];
+        }
+        const data = await response.json();
+        console.log('📦 Choice groups response:', data, 'Length:', data?.length || 0);
+        return data || [];
+      } catch (error) {
+        console.error('💥 Choice groups fetch error:', error);
+        return [];
+      }
     }
   });
 
@@ -3243,10 +3252,19 @@ const MenuEditor = ({ menuItems }: any) => {
     queryKey: ['choice-items'],
     queryFn: async () => {
       console.log('🔍 Fetching choice items...');
-      const response = await apiRequest('GET', '/api/choice-items');
-      const data = await response.json();
-      console.log('📦 Choice items response:', data);
-      return data;
+      try {
+        const response = await apiRequest('GET', '/api/choice-items');
+        if (!response.ok) {
+          console.error('❌ Choice items API failed:', response.status, response.statusText);
+          return [];
+        }
+        const data = await response.json();
+        console.log('📦 Choice items response:', data, 'Length:', data?.length || 0);
+        return data || [];
+      } catch (error) {
+        console.error('💥 Choice items fetch error:', error);
+        return [];
+      }
     }
   });
 
