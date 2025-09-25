@@ -46,8 +46,10 @@ export const handler: Handler = async (event, context) => {
 
     if (event.httpMethod === 'GET') {
       const dbChoiceItems = await sql`
-        SELECT * FROM choice_items
-        ORDER BY choice_group_id ASC, name ASC
+        SELECT ci.*, cg.name as choice_group_name
+        FROM choice_items ci
+        JOIN choice_groups cg ON ci.choice_group_id = cg.id
+        ORDER BY ci.choice_group_id ASC, ci.name ASC
       `;
 
       // Transform database fields to match frontend expectations
@@ -57,6 +59,7 @@ export const handler: Handler = async (event, context) => {
         name: item.name,
         price: item.price,
         isDefault: item.is_default,
+        choice_group_name: item.choice_group_name,
         created_at: item.created_at
       }));
 

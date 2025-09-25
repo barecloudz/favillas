@@ -3580,10 +3580,15 @@ const MenuEditor = ({ menuItems }: any) => {
 
   const handleUpdateChoiceItem = async (id: number, data: any) => {
     try {
-      // Save the basic choice item data
-      updateChoiceItemMutation.mutate({ id, data });
+      // Save the basic choice item data (only the fields that exist in the database)
+      const basicData = {
+        name: data.name,
+        price: data.price,
+        isDefault: data.isDefault
+      };
+      updateChoiceItemMutation.mutate({ id, data: basicData });
 
-      // Handle size-based pricing
+      // Handle size-based pricing separately
       if (data.enableSizePricing && data.sizePricing) {
         // Save pricing rules for each size with a price
         for (const [sizeId, price] of Object.entries(data.sizePricing)) {
@@ -3599,7 +3604,7 @@ const MenuEditor = ({ menuItems }: any) => {
             });
           }
         }
-      } else {
+      } else if (!data.enableSizePricing) {
         // If size pricing is disabled, remove all existing pricing rules for this item
         try {
           const pricingResponse = await fetch('/.netlify/functions/choice-pricing');
