@@ -3700,7 +3700,7 @@ const MenuEditor = ({ menuItems }: any) => {
       </div>
 
       {/* REMOVED DUPLICATE SECTION - This menu section was identical to the GloriaFood-style layout below
-      {/* Filters */
+      Filters comment removed to avoid nested comment syntax error */
       <Card>
         <CardHeader>
           <CardTitle>Menu Categories and Items</CardTitle>
