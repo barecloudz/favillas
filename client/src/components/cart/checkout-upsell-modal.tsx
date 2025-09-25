@@ -50,6 +50,59 @@ const DEFAULT_CATEGORY_ICONS = {
   'Salads': Utensils,
 };
 
+// Category color schemes
+const CATEGORY_COLORS = {
+  'Drinks': {
+    gradient: 'from-blue-500 to-cyan-500',
+    hoverGradient: 'hover:from-blue-600 hover:to-cyan-600',
+    cardBg: 'hover:from-blue-50 hover:to-cyan-50',
+    border: 'hover:border-blue-400',
+    badge: 'bg-blue-500',
+    text: 'group-hover:text-blue-600'
+  },
+  'Desserts': {
+    gradient: 'from-pink-500 to-rose-500',
+    hoverGradient: 'hover:from-pink-600 hover:to-rose-600',
+    cardBg: 'hover:from-pink-50 hover:to-rose-50',
+    border: 'hover:border-pink-400',
+    badge: 'bg-pink-500',
+    text: 'group-hover:text-pink-600'
+  },
+  'Sides': {
+    gradient: 'from-orange-500 to-amber-500',
+    hoverGradient: 'hover:from-orange-600 hover:to-amber-600',
+    cardBg: 'hover:from-orange-50 hover:to-amber-50',
+    border: 'hover:border-orange-400',
+    badge: 'bg-orange-500',
+    text: 'group-hover:text-orange-600'
+  },
+  'Appetizers': {
+    gradient: 'from-green-500 to-emerald-500',
+    hoverGradient: 'hover:from-green-600 hover:to-emerald-600',
+    cardBg: 'hover:from-green-50 hover:to-emerald-50',
+    border: 'hover:border-green-400',
+    badge: 'bg-green-500',
+    text: 'group-hover:text-green-600'
+  },
+  // Fallback for other categories
+  'Wine': {
+    gradient: 'from-purple-500 to-violet-500',
+    hoverGradient: 'hover:from-purple-600 hover:to-violet-600',
+    cardBg: 'hover:from-purple-50 hover:to-violet-50',
+    border: 'hover:border-purple-400',
+    badge: 'bg-purple-500',
+    text: 'group-hover:text-purple-600'
+  },
+  'Beer': {
+    gradient: 'from-yellow-500 to-orange-500',
+    hoverGradient: 'hover:from-yellow-600 hover:to-orange-600',
+    cardBg: 'hover:from-yellow-50 hover:to-orange-50',
+    border: 'hover:border-yellow-400',
+    badge: 'bg-yellow-500',
+    text: 'group-hover:text-yellow-600'
+  }
+};
+
 const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
   isOpen,
   onClose,
@@ -115,11 +168,10 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 
     // Create fallback categories if API fails
     const fallbackCategories: Category[] = [
-      { id: 1, name: 'Appetizers', is_upsell_enabled: true },
-      { id: 2, name: 'Drinks', is_upsell_enabled: true },
-      { id: 3, name: 'Beverages', is_upsell_enabled: true },
-      { id: 4, name: 'Sides', is_upsell_enabled: true },
-      { id: 5, name: 'Desserts', is_upsell_enabled: true },
+      { id: 1, name: 'Drinks', is_upsell_enabled: true },
+      { id: 2, name: 'Desserts', is_upsell_enabled: true },
+      { id: 3, name: 'Sides', is_upsell_enabled: true },
+      { id: 4, name: 'Appetizers', is_upsell_enabled: true },
     ];
 
     // Use API categories or fallback
@@ -157,7 +209,7 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 
     // Get admin settings for enabled categories
     const savedSettings = localStorage.getItem('experimentalFeatureSettings');
-    let enabledUpsellCategories: string[] = ['Appetizers', 'Drinks', 'Beverages', 'Sides', 'Desserts']; // Default
+    let enabledUpsellCategories: string[] = ['Drinks', 'Desserts', 'Sides', 'Appetizers']; // Default
 
     if (savedSettings) {
       try {
@@ -229,6 +281,18 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
       }
     }
     return null;
+  };
+
+  // Get category colors
+  const getCategoryColors = (categoryName: string) => {
+    return CATEGORY_COLORS[categoryName as keyof typeof CATEGORY_COLORS] || {
+      gradient: 'from-gray-500 to-slate-500',
+      hoverGradient: 'hover:from-gray-600 hover:to-slate-600',
+      cardBg: 'hover:from-gray-50 hover:to-slate-50',
+      border: 'hover:border-gray-400',
+      badge: 'bg-gray-500',
+      text: 'group-hover:text-gray-600'
+    };
   };
 
   // Handle adding item to cart
@@ -382,15 +446,16 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
                   const IconComponent = getCategoryIcon(category);
                   const customImage = getCategoryImage(category.name);
                   const displayImage = customImage || category.image_url;
+                  const colors = getCategoryColors(category.name);
 
                   return (
                     <Card
                       key={category.id}
-                      className="group cursor-pointer hover:shadow-xl transition-all duration-300 hover:scale-[1.02] border-2 hover:border-[#d73a31] bg-gradient-to-br from-white to-gray-50 hover:from-[#fff5f4] hover:to-[#ffeeed] relative overflow-hidden"
+                      className={`group cursor-pointer hover:shadow-xl transition-all duration-300 hover:scale-[1.02] border-2 ${colors.border} bg-gradient-to-br from-white to-gray-50 ${colors.cardBg} relative overflow-hidden`}
                       onClick={() => setSelectedCategory(category.name)}
                     >
                       {/* Subtle pattern overlay */}
-                      <div className="absolute inset-0 bg-white/50 group-hover:bg-[#d73a31]/5 transition-colors duration-300"></div>
+                      <div className="absolute inset-0 bg-white/50 group-hover:bg-white/20 transition-colors duration-300"></div>
 
                       <CardContent className="relative p-6 text-center">
                         <div className="mb-4">
@@ -401,23 +466,23 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
                                 alt={category.name}
                                 className="w-20 h-20 mx-auto rounded-xl object-cover shadow-md group-hover:shadow-lg transition-shadow duration-300"
                               />
-                              <div className="absolute -top-2 -right-2 bg-[#d73a31] text-white text-xs font-bold px-2 py-1 rounded-full">
+                              <div className={`absolute -top-2 -right-2 ${colors.badge} text-white text-xs font-bold px-2 py-1 rounded-full`}>
                                 {customImage ? 'CUSTOM' : 'HOT!'}
                               </div>
                             </div>
                           ) : (
                             <div className="relative">
-                              <div className="w-20 h-20 mx-auto bg-gradient-to-br from-[#d73a31] to-[#ff6b5b] rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300">
+                              <div className={`w-20 h-20 mx-auto bg-gradient-to-br ${colors.gradient} ${colors.hoverGradient} rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300`}>
                                 <IconComponent className="w-10 h-10 text-white" />
                               </div>
-                              <div className="absolute -top-2 -right-2 bg-[#d73a31] text-white text-xs font-bold px-2 py-1 rounded-full">
+                              <div className={`absolute -top-2 -right-2 ${colors.badge} text-white text-xs font-bold px-2 py-1 rounded-full`}>
                                 NEW!
                               </div>
                             </div>
                           )}
                         </div>
 
-                        <h3 className="font-bold text-xl text-gray-800 mb-2 group-hover:text-[#d73a31] transition-colors duration-300">
+                        <h3 className={`font-bold text-xl text-gray-800 mb-2 ${colors.text} transition-colors duration-300`}>
                           {category.name}
                         </h3>
 
@@ -425,7 +490,7 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
                           Perfect complement to your meal
                         </p>
 
-                        <div className="bg-[#d73a31] text-white px-4 py-2 rounded-full text-sm font-semibold group-hover:bg-[#c73128] transition-colors duration-300">
+                        <div className={`${colors.badge} hover:opacity-90 text-white px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 shadow-md group-hover:shadow-lg`}>
                           Browse {category.name} →
                         </div>
                       </CardContent>

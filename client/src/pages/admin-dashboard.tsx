@@ -16665,20 +16665,18 @@ const ExperimentalFeaturesSection = () => {
   const [settings, setSettings] = useState({
     checkoutUpsellEnabled: true,
     upsellCategories: {
-      'Appetizers': true,
       'Drinks': true,
-      'Beverages': true,
-      'Sides': true,
       'Desserts': true,
+      'Sides': true,
+      'Appetizers': true,
       'Wine': false,
       'Beer': false
     },
     categoryImages: {
-      'Appetizers': '',
       'Drinks': '',
-      'Beverages': '',
-      'Sides': '',
       'Desserts': '',
+      'Sides': '',
+      'Appetizers': '',
       'Wine': '',
       'Beer': ''
     }
