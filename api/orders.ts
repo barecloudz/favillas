@@ -1071,6 +1071,56 @@ export const handler: Handler = async (event, context) => {
           }
         }
 
+        // Send order confirmation email (non-blocking)
+        try {
+          const customerEmail = orderData.email || authPayload?.email;
+          const customerName = authPayload?.firstName || authPayload?.username || 'Valued Customer';
+
+          if (customerEmail) {
+            console.log('📧 Orders API: Sending order confirmation email to:', customerEmail);
+
+            // Prepare order data for email template
+            const emailOrderData = {
+              orderNumber: newOrder.id.toString(),
+              items: transformedItems.map(item => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+                customizations: item.options ? Object.values(item.options).filter(Boolean) : undefined
+              })),
+              subtotal: serverCalculatedOrder.subtotal,
+              tax: serverCalculatedOrder.tax,
+              total: serverCalculatedOrder.total,
+              deliveryAddress: orderData.address || undefined,
+              estimatedTime: orderData.fulfillmentTime === 'asap' ? '30-40 minutes' :
+                           orderData.scheduledTime ? new Date(orderData.scheduledTime).toLocaleString() : '30-40 minutes',
+              paymentMethod: orderData.paymentMethod || 'Credit Card'
+            };
+
+            // Send email asynchronously (don't block order completion)
+            fetch(`${process.env.SITE_URL || 'https://pizzaspinrewards.com'}/api/email/send-order-confirmation`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                customerEmail,
+                customerName,
+                orderData: emailOrderData
+              })
+            }).then(response => {
+              if (response.ok) {
+                console.log('✅ Orders API: Order confirmation email sent successfully');
+              } else {
+                console.error('❌ Orders API: Failed to send order confirmation email');
+              }
+            }).catch(error => {
+              console.error('❌ Orders API: Error sending order confirmation email:', error);
+            });
+          }
+        } catch (emailError) {
+          console.error('❌ Orders API: Non-critical email error:', emailError);
+          // Don't fail the order if email fails
+        }
+
         console.log('✅ Orders API: Order creation completed successfully');
 
         return {

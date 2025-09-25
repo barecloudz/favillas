@@ -24,13 +24,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  Loader2, 
-  ChefHat, 
-  Users, 
-  Pizza, 
-  BarChart3, 
-  Settings, 
+import {
+  Loader2,
+  ChefHat,
+  Users,
+  Pizza,
+  BarChart3,
+  Settings,
   Plus,
   Edit,
   Trash2,
@@ -48,6 +48,11 @@ import {
   Mail,
   FileText,
   Download,
+  ChevronRight,
+  ChevronLeft,
+  CheckCircle,
+  TrendingUp,
+  AlertTriangle,
   Upload,
   Link,
   Share2,
@@ -12262,14 +12267,93 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
   ]);
 
   const [isCreatingCampaign, setIsCreatingCampaign] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     name: "",
     subject: "",
     content: "",
-    audienceType: "all"
+    audienceType: "all",
+    ctaText: "",
+    ctaUrl: "",
+    template: "default",
+    headerImage: "",
+    accentColor: "#d73a31"
   });
 
   const marketingOptInUsers = users?.filter(user => user.marketingOptIn && user.role === "customer") || [];
+
+  const sendCampaign = async () => {
+    if (!formData.name || !formData.subject || !formData.content) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const response = await apiRequest('/api/email/send-campaign', {
+        method: 'POST',
+        body: JSON.stringify({
+          campaignName: formData.name,
+          subject: formData.subject,
+          content: formData.content,
+          ctaText: formData.ctaText || undefined,
+          ctaUrl: formData.ctaUrl || undefined,
+          recipientType: formData.audienceType,
+          template: formData.template,
+          accentColor: formData.accentColor
+        })
+      });
+
+      if (response.success) {
+        toast({
+          title: "Campaign Sent!",
+          description: `Successfully sent to ${response.sentSuccessfully} recipients`
+        });
+
+        // Add the new campaign to the list
+        const newCampaign = {
+          id: Date.now(),
+          name: formData.name,
+          subject: formData.subject,
+          status: "sent",
+          recipients: response.sentSuccessfully,
+          openRate: 0,
+          clickRate: 0,
+          sentAt: new Date().toISOString()
+        };
+
+        setCampaigns(prev => [newCampaign, ...prev]);
+
+        // Reset form
+        setFormData({
+          name: "",
+          subject: "",
+          content: "",
+          audienceType: "all",
+          ctaText: "",
+          ctaUrl: ""
+        });
+        setIsCreatingCampaign(false);
+      } else {
+        throw new Error(response.error || 'Failed to send campaign');
+      }
+    } catch (error) {
+      console.error('Campaign send error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send campaign",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -12282,39 +12366,77 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
       </div>
 
       {/* Campaign Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{campaigns.length}</div>
-            <div className="text-sm text-gray-500">Total Campaigns</div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-bold text-blue-700">{campaigns.length}</div>
+                <div className="text-sm font-medium text-blue-600">Total Campaigns</div>
+              </div>
+              <div className="p-3 bg-blue-200 rounded-full">
+                <Mail className="h-6 w-6 text-blue-700" />
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{marketingOptInUsers.length}</div>
-            <div className="text-sm text-gray-500">Subscribers</div>
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-bold text-green-700">{marketingOptInUsers.length}</div>
+                <div className="text-sm font-medium text-green-600">Active Subscribers</div>
+              </div>
+              <div className="p-3 bg-green-200 rounded-full">
+                <Users className="h-6 w-6 text-green-700" />
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">28.3%</div>
-            <div className="text-sm text-gray-500">Avg Open Rate</div>
+        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-bold text-orange-700">28.3%</div>
+                <div className="text-sm font-medium text-orange-600">Avg Open Rate</div>
+              </div>
+              <div className="p-3 bg-orange-200 rounded-full">
+                <Eye className="h-6 w-6 text-orange-700" />
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">6.8%</div>
-            <div className="text-sm text-gray-500">Avg Click Rate</div>
+        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-bold text-purple-700">6.8%</div>
+                <div className="text-sm font-medium text-purple-600">Avg Click Rate</div>
+              </div>
+              <div className="p-3 bg-purple-200 rounded-full">
+                <BarChart3 className="h-6 w-6 text-purple-700" />
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Campaigns List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Email Campaigns</CardTitle>
+      <Card className="shadow-lg border-0">
+        <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-xl text-gray-900">Recent Campaigns</CardTitle>
+              <CardDescription className="text-gray-600 mt-1">
+                Manage and track your email marketing campaigns
+              </CardDescription>
+            </div>
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+              {campaigns.length} campaigns
+            </Badge>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="overflow-x-auto mobile-scroll-container touch-pan-x">
             <table className="w-full">
               <thead>
@@ -12366,64 +12488,298 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
         </CardContent>
       </Card>
 
-      {/* Create Campaign Dialog */}
+      {/* Enhanced Create Campaign Dialog */}
       <Dialog open={isCreatingCampaign} onOpenChange={setIsCreatingCampaign}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Create Email Campaign</DialogTitle>
-            <DialogDescription>
-              Create a new email campaign to send to your customers.
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="text-2xl flex items-center">
+              <Mail className="mr-3 h-6 w-6 text-[#d73a31]" />
+              Create Email Campaign
+            </DialogTitle>
+            <DialogDescription className="text-base">
+              Design and send professional email campaigns to your customers
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="campaign-name">Campaign Name</Label>
-              <Input
-                id="campaign-name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Monthly Newsletter"
-              />
+
+          <div className="flex gap-6 mt-6">
+            {/* Left Panel - Form */}
+            <div className="flex-1 space-y-6">
+              {/* Step Indicator */}
+              <div className="flex items-center space-x-2 mb-6">
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+                  currentStep >= 1 ? 'bg-[#d73a31] text-white' : 'bg-gray-200 text-gray-600'
+                }`}>1</div>
+                <div className={`h-px flex-1 ${currentStep >= 2 ? 'bg-[#d73a31]' : 'bg-gray-200'}`}></div>
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+                  currentStep >= 2 ? 'bg-[#d73a31] text-white' : 'bg-gray-200 text-gray-600'
+                }`}>2</div>
+                <div className={`h-px flex-1 ${currentStep >= 3 ? 'bg-[#d73a31]' : 'bg-gray-200'}`}></div>
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+                  currentStep >= 3 ? 'bg-[#d73a31] text-white' : 'bg-gray-200 text-gray-600'
+                }`}>3</div>
+              </div>
+
+              {/* Step 1: Template Selection */}
+              {currentStep === 1 && (
+                <div className="space-y-6">
+                  <h3 className="text-lg font-semibold">Choose Template</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div
+                      className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                        formData.template === 'default' ? 'border-[#d73a31] bg-red-50' : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                      onClick={() => setFormData({ ...formData, template: 'default' })}
+                    >
+                      <div className="text-center">
+                        <div className="w-full h-24 bg-gradient-to-r from-[#d73a31] to-[#e74c3c] rounded mb-3 flex items-center justify-center">
+                          <span className="text-white font-bold">🍕</span>
+                        </div>
+                        <h4 className="font-medium">Classic Pizza</h4>
+                        <p className="text-sm text-gray-600">Traditional design with pizza branding</p>
+                      </div>
+                    </div>
+                    <div
+                      className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                        formData.template === 'modern' ? 'border-[#d73a31] bg-red-50' : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                      onClick={() => setFormData({ ...formData, template: 'modern' })}
+                    >
+                      <div className="text-center">
+                        <div className="w-full h-24 bg-gradient-to-r from-blue-500 to-purple-600 rounded mb-3 flex items-center justify-center">
+                          <span className="text-white font-bold">✨</span>
+                        </div>
+                        <h4 className="font-medium">Modern</h4>
+                        <p className="text-sm text-gray-600">Clean, contemporary design</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Customize Colors</h4>
+                    <div className="flex items-center space-x-4">
+                      <Label htmlFor="accent-color">Accent Color</Label>
+                      <Input
+                        id="accent-color"
+                        type="color"
+                        value={formData.accentColor}
+                        onChange={(e) => setFormData({ ...formData, accentColor: e.target.value })}
+                        className="w-20 h-10"
+                      />
+                      <span className="text-sm text-gray-600">{formData.accentColor}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button onClick={() => setCurrentStep(2)}>
+                      Next: Content <ChevronRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Content */}
+              {currentStep === 2 && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Campaign Content</h3>
+                    <Button variant="outline" onClick={() => setCurrentStep(1)}>
+                      <ChevronLeft className="mr-2 h-4 w-4" /> Back
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="campaign-name">Campaign Name</Label>
+                      <Input
+                        id="campaign-name"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        placeholder="Monthly Newsletter"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="email-subject">Email Subject</Label>
+                      <Input
+                        id="email-subject"
+                        value={formData.subject}
+                        onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                        placeholder="🍕 Don't miss our latest offers!"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="audience">Target Audience</Label>
+                    <Select value={formData.audienceType} onValueChange={(value) => setFormData({ ...formData, audienceType: value })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">🎯 All Subscribers ({marketingOptInUsers.length})</SelectItem>
+                        <SelectItem value="recent">🆕 Recent Customers</SelectItem>
+                        <SelectItem value="inactive">💤 Inactive Customers</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="email-content">Email Content</Label>
+                    <Textarea
+                      id="email-content"
+                      rows={10}
+                      value={formData.content}
+                      onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                      placeholder="Hi [Customer Name],&#10;&#10;We're excited to share our latest offers with you! This week only, enjoy:&#10;&#10;• 20% off all large pizzas&#10;• Free delivery on orders over $25&#10;• Buy 2 get 1 FREE on appetizers&#10;&#10;Don't miss out - these deals end Sunday!"
+                      className="font-mono text-sm"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="cta-text">Call-to-Action Button</Label>
+                      <Input
+                        id="cta-text"
+                        value={formData.ctaText}
+                        onChange={(e) => setFormData({ ...formData, ctaText: e.target.value })}
+                        placeholder="Order Now"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="cta-url">Button Link</Label>
+                      <Input
+                        id="cta-url"
+                        value={formData.ctaUrl}
+                        onChange={(e) => setFormData({ ...formData, ctaUrl: e.target.value })}
+                        placeholder="https://favillaspizzeria.com/menu"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <Button variant="outline" onClick={() => setShowPreview(true)}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Preview Email
+                    </Button>
+                    <Button onClick={() => setCurrentStep(3)}>
+                      Next: Review <ChevronRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Review & Send */}
+              {currentStep === 3 && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Review & Send</h3>
+                    <Button variant="outline" onClick={() => setCurrentStep(2)}>
+                      <ChevronLeft className="mr-2 h-4 w-4" /> Back
+                    </Button>
+                  </div>
+
+                  <Card className="p-6">
+                    <h4 className="font-semibold mb-4">Campaign Summary</h4>
+                    <dl className="space-y-3">
+                      <div className="flex justify-between">
+                        <dt className="text-gray-600">Campaign Name:</dt>
+                        <dd className="font-medium">{formData.name || 'Untitled Campaign'}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-gray-600">Subject Line:</dt>
+                        <dd className="font-medium">{formData.subject || 'No subject'}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-gray-600">Recipients:</dt>
+                        <dd className="font-medium text-green-600">{marketingOptInUsers.length} subscribers</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-gray-600">Template:</dt>
+                        <dd className="font-medium capitalize">{formData.template}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-gray-600">Call-to-Action:</dt>
+                        <dd className="font-medium">{formData.ctaText || 'None'}</dd>
+                      </div>
+                    </dl>
+                  </Card>
+
+                  <div className="flex justify-between space-x-3">
+                    <div className="flex space-x-2">
+                      <Button variant="outline" onClick={() => setShowPreview(true)}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        Final Preview
+                      </Button>
+                      <Button variant="outline" disabled={isSending}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        Save Draft
+                      </Button>
+                    </div>
+                    <Button
+                      onClick={sendCampaign}
+                      disabled={isSending || !formData.name || !formData.subject || !formData.content}
+                      className="bg-[#d73a31] hover:bg-[#c73128]"
+                    >
+                      {isSending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Sending to {marketingOptInUsers.length} subscribers...
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="mr-2 h-4 w-4" />
+                          Send Campaign
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
-            <div>
-              <Label htmlFor="email-subject">Email Subject</Label>
-              <Input
-                id="email-subject"
-                value={formData.subject}
-                onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                placeholder="Check out our latest offers!"
-              />
+
+            {/* Right Panel - Live Preview */}
+            <div className="w-96 bg-gray-50 rounded-lg p-4 border">
+              <h4 className="font-semibold mb-4 text-center">Email Preview</h4>
+              <div className="bg-white rounded border shadow-sm min-h-96">
+                <div
+                  className="p-4 text-white text-center rounded-t"
+                  style={{ background: `linear-gradient(135deg, ${formData.accentColor}, ${formData.accentColor}dd)` }}
+                >
+                  <h2 className="text-xl font-bold">🍕 Favilla's Pizzeria</h2>
+                  <p className="opacity-90 text-sm">Your favorite pizza just got better!</p>
+                </div>
+                <div className="p-6">
+                  <p className="text-lg mb-4" style={{ color: formData.accentColor }}>
+                    Hi Valued Customer!
+                  </p>
+                  <div className="text-gray-700 whitespace-pre-line mb-6">
+                    {formData.content || "Your email content will appear here as you type..."}
+                  </div>
+                  {formData.ctaText && (
+                    <div className="text-center mb-6">
+                      <button
+                        className="px-6 py-3 text-white font-semibold rounded-lg shadow-md"
+                        style={{ backgroundColor: formData.accentColor }}
+                      >
+                        {formData.ctaText}
+                      </button>
+                    </div>
+                  )}
+                  <div className="text-xs text-gray-500 text-center pt-4 border-t">
+                    <p>Favilla's Pizzeria | favillaspizzeria.com</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <Label htmlFor="audience">Audience</Label>
-              <Select value={formData.audienceType} onValueChange={(value) => setFormData({ ...formData, audienceType: value })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Subscribers ({marketingOptInUsers.length})</SelectItem>
-                  <SelectItem value="recent">Recent Customers</SelectItem>
-                  <SelectItem value="inactive">Inactive Customers</SelectItem>
-                </SelectContent>
-              </Select>
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-between items-center pt-4 border-t">
+            <div className="text-sm text-gray-600">
+              Step {currentStep} of 3
             </div>
-            <div>
-              <Label htmlFor="email-content">Email Content</Label>
-              <Textarea
-                id="email-content"
-                rows={8}
-                value={formData.content}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                placeholder="Write your email content here..."
-              />
-            </div>
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setIsCreatingCampaign(false)}>
-                Cancel
-              </Button>
-              <Button variant="outline">Save as Draft</Button>
-              <Button>Send Campaign</Button>
-            </div>
+            <Button variant="outline" onClick={() => setIsCreatingCampaign(false)} disabled={isSending}>
+              Cancel
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -12437,7 +12793,7 @@ const SMSMarketingTab = ({ users }: { users: any[] }) => {
     {
       id: 1,
       name: "Flash Sale Alert",
-      message: "🍕 FLASH SALE: 20% off all pizzas today only! Order now: favillas.com/order",
+      message: "🍕 FLASH SALE: 20% off all pizzas today only! Order now: favillaspizzeria.com/order",
       status: "sent",
       recipients: 850,
       deliveryRate: 98.2,
@@ -12446,42 +12802,150 @@ const SMSMarketingTab = ({ users }: { users: any[] }) => {
     }
   ]);
 
+  const [isCreatingSMS, setIsCreatingSMS] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    message: "",
+    audienceType: "all"
+  });
+
   const usersWithPhone = users?.filter(user => user.phone && user.marketingOptIn && user.role === "customer") || [];
+
+  const sendSMSCampaign = async () => {
+    if (!formData.name || !formData.message) {
+      toast({
+        title: "Error",
+        description: "Please fill in campaign name and message",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (formData.message.length > 160) {
+      toast({
+        title: "Message Too Long",
+        description: "SMS messages must be 160 characters or less",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const response = await apiRequest('/api/sms/send-campaign', {
+        method: 'POST',
+        body: JSON.stringify({
+          campaignName: formData.name,
+          message: formData.message,
+          recipientType: formData.audienceType
+        })
+      });
+
+      if (response.success) {
+        toast({
+          title: "SMS Campaign Sent!",
+          description: `Successfully sent to ${response.sentSuccessfully} phone numbers`
+        });
+
+        // Add the new campaign to the list
+        const newCampaign = {
+          id: Date.now(),
+          name: formData.name,
+          message: formData.message,
+          status: "sent",
+          recipients: response.sentSuccessfully,
+          deliveryRate: 98.0,
+          responseRate: 0,
+          sentAt: new Date().toISOString()
+        };
+
+        setCampaigns(prev => [newCampaign, ...prev]);
+
+        // Reset form
+        setFormData({
+          name: "",
+          message: "",
+          audienceType: "all"
+        });
+        setIsCreatingSMS(false);
+      } else {
+        throw new Error(response.error || 'Failed to send SMS campaign');
+      }
+    } catch (error) {
+      console.error('SMS campaign send error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send SMS campaign",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">SMS Marketing</h3>
-        <Button>
+        <Button onClick={() => setIsCreatingSMS(true)} className="bg-[#d73a31] hover:bg-[#c73128]">
           <MessageSquare className="h-4 w-4 mr-2" />
           Create SMS Campaign
         </Button>
       </div>
 
       {/* SMS Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{campaigns.length}</div>
-            <div className="text-sm text-gray-500">SMS Campaigns</div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-bold text-indigo-700">{campaigns.length}</div>
+                <div className="text-sm font-medium text-indigo-600">SMS Campaigns</div>
+              </div>
+              <div className="p-3 bg-indigo-200 rounded-full">
+                <MessageSquare className="h-6 w-6 text-indigo-700" />
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{usersWithPhone.length}</div>
-            <div className="text-sm text-gray-500">Phone Subscribers</div>
+        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-bold text-emerald-700">{usersWithPhone.length}</div>
+                <div className="text-sm font-medium text-emerald-600">Phone Subscribers</div>
+              </div>
+              <div className="p-3 bg-emerald-200 rounded-full">
+                <Phone className="h-6 w-6 text-emerald-700" />
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">98.2%</div>
-            <div className="text-sm text-gray-500">Delivery Rate</div>
+        <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100 border-cyan-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-bold text-cyan-700">98.2%</div>
+                <div className="text-sm font-medium text-cyan-600">Delivery Rate</div>
+              </div>
+              <div className="p-3 bg-cyan-200 rounded-full">
+                <CheckCircle className="h-6 w-6 text-cyan-700" />
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">12.5%</div>
-            <div className="text-sm text-gray-500">Response Rate</div>
+        <Card className="bg-gradient-to-br from-rose-50 to-rose-100 border-rose-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-bold text-rose-700">12.5%</div>
+                <div className="text-sm font-medium text-rose-600">Response Rate</div>
+              </div>
+              <div className="p-3 bg-rose-200 rounded-full">
+                <TrendingUp className="h-6 w-6 text-rose-700" />
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -12580,6 +13044,124 @@ const SMSMarketingTab = ({ users }: { users: any[] }) => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Create SMS Campaign Dialog */}
+      <Dialog open={isCreatingSMS} onOpenChange={setIsCreatingSMS}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="text-xl flex items-center">
+              <MessageSquare className="mr-3 h-5 w-5 text-[#d73a31]" />
+              Create SMS Campaign
+            </DialogTitle>
+            <DialogDescription>
+              Send SMS messages to customers who have opted in to marketing communications
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 pt-4">
+            <div>
+              <Label htmlFor="sms-campaign-name">Campaign Name</Label>
+              <Input
+                id="sms-campaign-name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Flash Sale Alert"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="sms-audience">Target Audience</Label>
+              <Select value={formData.audienceType} onValueChange={(value) => setFormData({ ...formData, audienceType: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">📱 All Phone Subscribers ({usersWithPhone.length})</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label htmlFor="sms-message">SMS Message</Label>
+                <div className="text-sm text-gray-500">
+                  {formData.message.length}/160 characters
+                </div>
+              </div>
+              <Textarea
+                id="sms-message"
+                rows={4}
+                value={formData.message}
+                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                placeholder="🍕 FLASH SALE: 20% off all pizzas today only! Order at favillaspizzeria.com - Reply STOP to opt out"
+                className={`font-mono text-sm ${formData.message.length > 160 ? 'border-red-300 bg-red-50' : ''}`}
+              />
+              {formData.message.length > 160 && (
+                <p className="text-sm text-red-600 mt-1">
+                  ⚠️ Message is too long. SMS messages should be 160 characters or less.
+                </p>
+              )}
+            </div>
+
+            {/* SMS Preview */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h4 className="font-medium mb-3 flex items-center">
+                <Phone className="mr-2 h-4 w-4" />
+                SMS Preview
+              </h4>
+              <div className="bg-white border rounded-lg p-3 max-w-xs">
+                <div className="text-xs text-gray-500 mb-2">From: Favilla's Pizzeria</div>
+                <div className="text-sm">
+                  {formData.message || "Your SMS message will appear here..."}
+                </div>
+              </div>
+            </div>
+
+            {/* Compliance Reminder */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-start">
+                <AlertTriangle className="h-5 w-5 text-yellow-600 mr-2 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-yellow-800 mb-1">SMS Compliance Reminder</h4>
+                  <ul className="text-sm text-yellow-700 space-y-1">
+                    <li>• Include business name and opt-out instructions</li>
+                    <li>• Only send between 8 AM - 9 PM local time</li>
+                    <li>• Keep messages concise and valuable</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center pt-6 border-t">
+            <div className="text-sm text-gray-600">
+              Recipients: {usersWithPhone.length} phone subscribers
+            </div>
+            <div className="flex space-x-3">
+              <Button variant="outline" onClick={() => setIsCreatingSMS(false)} disabled={isSending}>
+                Cancel
+              </Button>
+              <Button
+                onClick={sendSMSCampaign}
+                disabled={isSending || !formData.name || !formData.message || formData.message.length > 160}
+                className="bg-[#d73a31] hover:bg-[#c73128]"
+              >
+                {isSending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending to {usersWithPhone.length} phones...
+                  </>
+                ) : (
+                  <>
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    Send SMS Campaign
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
