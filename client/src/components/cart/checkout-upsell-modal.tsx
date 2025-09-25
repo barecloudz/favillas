@@ -62,18 +62,38 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
   const { toast } = useToast();
 
   // Fetch categories
-  const { data: categories = [] } = useQuery<Category[]>({
+  const { data: categories = [], isLoading: categoriesLoading, error: categoriesError } = useQuery<Category[]>({
     queryKey: ['/api/categories'],
     queryFn: async () => {
+      console.log('🔍 [Categories API] Fetching categories...');
       const response = await fetch('/api/categories');
+      console.log('🔍 [Categories API] Response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
-        return Array.isArray(data) ? data : [];
+        console.log('🔍 [Categories API] Raw data:', data);
+
+        if (Array.isArray(data)) {
+          console.log('🔍 [Categories API] Valid array with', data.length, 'items');
+          return data;
+        } else {
+          console.error('🔍 [Categories API] Data is not an array:', typeof data);
+          return [];
+        }
+      } else {
+        console.error('🔍 [Categories API] Request failed:', response.statusText);
+        return [];
       }
-      return [];
     },
-    enabled: isOpen
+    enabled: isOpen,
+    retry: 1,
+    staleTime: 5 * 60 * 1000 // 5 minutes
   });
+
+  // Log categories loading state
+  React.useEffect(() => {
+    console.log('🔍 [Categories State] Loading:', categoriesLoading, 'Error:', categoriesError, 'Data:', categories);
+  }, [categoriesLoading, categoriesError, categories]);
 
   // Fetch menu items
   const { data: menuItems = [] } = useQuery<MenuItem[]>({
@@ -93,10 +113,23 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
   const getMissingCategories = (): Category[] => {
     console.log('🔍 [Category Analysis] Starting analysis...');
 
+    // Create fallback categories if API fails
+    const fallbackCategories: Category[] = [
+      { id: 1, name: 'Appetizers', is_upsell_enabled: true },
+      { id: 2, name: 'Drinks', is_upsell_enabled: true },
+      { id: 3, name: 'Beverages', is_upsell_enabled: true },
+      { id: 4, name: 'Sides', is_upsell_enabled: true },
+      { id: 5, name: 'Desserts', is_upsell_enabled: true },
+    ];
+
+    // Use API categories or fallback
+    const workingCategories = Array.isArray(categories) && categories.length > 0 ? categories : fallbackCategories;
+    console.log('🔍 [Category Analysis] Using categories:', workingCategories.map(c => c.name));
+
     // Ensure we have arrays to work with
-    if (!Array.isArray(categories) || !Array.isArray(menuItems) || !Array.isArray(cartItems)) {
+    if (!Array.isArray(workingCategories) || !Array.isArray(menuItems) || !Array.isArray(cartItems)) {
       console.log('🔍 [Category Analysis] Invalid data types:', {
-        categories: Array.isArray(categories),
+        categories: Array.isArray(workingCategories),
         menuItems: Array.isArray(menuItems),
         cartItems: Array.isArray(cartItems)
       });
@@ -104,7 +137,7 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
     }
 
     console.log('🔍 [Category Analysis] Data available:', {
-      categories: categories.length,
+      categories: workingCategories.length,
       menuItems: menuItems.length,
       cartItems: cartItems.length
     });
@@ -140,10 +173,10 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
     }
 
     console.log('🔍 [Category Analysis] Enabled upsell categories:', enabledUpsellCategories);
-    console.log('🔍 [Category Analysis] Available categories from API:', categories.map(c => c.name));
+    console.log('🔍 [Category Analysis] Available categories from API:', workingCategories.map(c => c.name));
 
     // Filter categories that are enabled for upselling and not in cart
-    const missingCategories = categories.filter(category => {
+    const missingCategories = workingCategories.filter(category => {
       const isEnabled = enabledUpsellCategories.includes(category.name);
       const notInCart = !cartCategories.has(category.name);
       const upsellEnabled = category.is_upsell_enabled !== false;
@@ -227,6 +260,21 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
   if (!isOpen) {
     console.log('🎯 [Upsell Modal Debug] Modal not open, returning null');
     return null;
+  }
+
+  // Wait for categories to load before determining if we have missing categories
+  if (categoriesLoading) {
+    console.log('🎯 [Upsell Modal Debug] Categories still loading, showing loading state');
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-md">
+          <div className="p-8 text-center">
+            <div className="animate-spin w-8 h-8 border-2 border-[#d73a31] border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p>Loading recommendations...</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
   }
 
   if (missingCategories.length === 0) {
