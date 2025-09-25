@@ -1047,8 +1047,10 @@ const CheckoutPage = () => {
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleSubmitOrder} className="space-y-6">
-                      <div>
-                        <Label htmlFor="phone">Phone Number</Label>
+                      <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+                        <Label htmlFor="phone" className="text-red-700 font-semibold flex items-center gap-2">
+                          📞 Phone Number <span className="text-red-600 text-sm">(Required)</span>
+                        </Label>
                         <Input
                           id="phone"
                           type="tel"
@@ -1056,6 +1058,7 @@ const CheckoutPage = () => {
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
                           required
+                          className="mt-2 border-2 border-red-300 focus:border-red-500 focus:ring-red-500 bg-white"
                         />
                         {user && !phone && (
                           <p className="text-xs text-gray-500 mt-1">
