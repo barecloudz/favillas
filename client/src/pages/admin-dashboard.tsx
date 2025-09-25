@@ -905,7 +905,7 @@ const AdminDashboard = () => {
     const primaryTabsHrefs = ["dashboard", "orders"];
     const categoryTabsHrefs = [
       "analytics", "reports", 
-      "menu-editor", "pricing", "out-of-stock", "multi-location",
+      "menu-editor", "pricing", "out-of-stock", "multi-location", "experimental",
       "frontend", "qr-codes", "widget", "smart-links", "printer", "receipt-templates", "scheduling", "reservations", 
       "vacation-mode", "delivery", "taxation",
       "promo-codes", "rewards", "subscribed-users", "kickstarter", "email-campaigns", "sms-marketing", "local-seo",
@@ -1069,6 +1069,7 @@ const AdminDashboard = () => {
         { name: "Pricing", icon: DollarSign, href: "pricing" },
         { name: "Out of Stock", icon: Package, href: "out-of-stock" },
         { name: "Multi-location", icon: Store, href: "multi-location" },
+        { name: "Experimental Features", icon: Zap, href: "experimental" },
       ]
     },
     {
@@ -1373,8 +1374,11 @@ const AdminDashboard = () => {
             {activeTab === "menu-editor" && (
               <MenuEditor menuItems={menuItems} />
             )}
-            
-            
+
+            {activeTab === "experimental" && (
+              <ExperimentalFeaturesSection />
+            )}
+
             {activeTab === "frontend" && (
               <FrontendCustomization />
             )}
@@ -16654,6 +16658,176 @@ const EditRateForm = ({ user, onSubmit, onCancel, isLoading }: {
         </Button>
       </DialogFooter>
     </form>
+  );
+};
+
+const ExperimentalFeaturesSection = () => {
+  const [settings, setSettings] = useState({
+    checkoutUpsellEnabled: true,
+    upsellCategories: {
+      'Appetizers': true,
+      'Drinks': true,
+      'Beverages': true,
+      'Sides': true,
+      'Desserts': true,
+      'Wine': false,
+      'Beer': false
+    }
+  });
+  const { toast } = useToast();
+
+  // Load experimental settings on component mount
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('experimentalFeatureSettings');
+    if (savedSettings) {
+      try {
+        setSettings(JSON.parse(savedSettings));
+      } catch (error) {
+        console.error('Failed to parse experimental feature settings:', error);
+      }
+    }
+  }, []);
+
+  // Save settings whenever they change
+  useEffect(() => {
+    localStorage.setItem('experimentalFeatureSettings', JSON.stringify(settings));
+  }, [settings]);
+
+  const handleToggleUpsell = (enabled: boolean) => {
+    setSettings(prev => ({
+      ...prev,
+      checkoutUpsellEnabled: enabled
+    }));
+
+    toast({
+      title: enabled ? "Checkout Upsell Enabled" : "Checkout Upsell Disabled",
+      description: enabled
+        ? "Customers will see upsell prompts at checkout for missing categories"
+        : "Checkout upsell prompts are now disabled",
+    });
+  };
+
+  const handleToggleCategory = (categoryName: string, enabled: boolean) => {
+    setSettings(prev => ({
+      ...prev,
+      upsellCategories: {
+        ...prev.upsellCategories,
+        [categoryName]: enabled
+      }
+    }));
+
+    toast({
+      title: `${categoryName} Upsell ${enabled ? 'Enabled' : 'Disabled'}`,
+      description: `${categoryName} will ${enabled ? 'now' : 'no longer'} be shown in checkout upsell prompts`,
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Experimental Features</h2>
+          <p className="text-gray-600">
+            Beta features and advanced functionality that can be toggled on/off
+          </p>
+        </div>
+        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+          <Zap className="w-3 h-3 mr-1" />
+          BETA
+        </Badge>
+      </div>
+
+      {/* Checkout Upsell Feature */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <ShoppingCart className="w-5 h-5 text-[#d73a31]" />
+                Checkout Upselling
+              </CardTitle>
+              <CardDescription>
+                Show customers additional items they haven't ordered when they go to checkout
+              </CardDescription>
+            </div>
+            <Switch
+              checked={settings.checkoutUpsellEnabled}
+              onCheckedChange={handleToggleUpsell}
+            />
+          </div>
+        </CardHeader>
+
+        {settings.checkoutUpsellEnabled && (
+          <CardContent className="pt-0">
+            <div className="space-y-4">
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-medium text-blue-900 mb-2">How it works:</h4>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• When customers click checkout, we analyze their cart</li>
+                  <li>• If they're missing items from enabled categories below, we show them a modal</li>
+                  <li>• They can browse and add items from missing categories or skip</li>
+                  <li>• Once they add items or click "No Thanks", they won't see it again in that session</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-medium mb-3">Upsell Categories</h4>
+                <p className="text-sm text-gray-600 mb-4">
+                  Select which categories should trigger upsell prompts when missing from customer carts
+                </p>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {Object.entries(settings.upsellCategories).map(([categoryName, enabled]) => (
+                    <div
+                      key={categoryName}
+                      className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
+                        enabled
+                          ? 'border-[#d73a31] bg-red-50'
+                          : 'border-gray-200 bg-gray-50'
+                      }`}
+                    >
+                      <span className="font-medium text-sm">{categoryName}</span>
+                      <Switch
+                        checked={enabled}
+                        onCheckedChange={(checked) => handleToggleCategory(categoryName, checked)}
+                        size="sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-medium text-yellow-900 mb-1">Configuration Tips:</p>
+                    <ul className="text-yellow-800 space-y-1">
+                      <li>• Enable categories that complement your main offerings (drinks with pizza, desserts, etc.)</li>
+                      <li>• Keep it focused - too many categories can overwhelm customers</li>
+                      <li>• Monitor your analytics to see which upsells perform best</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Future experimental features can be added here */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-gray-400">
+            <Zap className="w-5 h-5" />
+            More Features Coming Soon
+          </CardTitle>
+          <CardDescription>
+            Additional experimental features will appear here as they're developed
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    </div>
   );
 };
 

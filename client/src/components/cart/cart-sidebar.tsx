@@ -12,6 +12,7 @@ import { ShoppingCart, X, Trash2, Plus, Minus, Pizza, Edit } from "lucide-react"
 import { Link } from "wouter";
 import CheckoutPromptModal from "@/components/auth/checkout-prompt-modal";
 import LoginModal from "@/components/auth/login-modal";
+import CheckoutUpsellModal from "@/components/cart/checkout-upsell-modal";
 
 const CartSidebar: React.FC = () => {
   const {
@@ -70,6 +71,7 @@ const CartSidebar: React.FC = () => {
   const [showCheckoutPrompt, setShowCheckoutPrompt] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [showUpsellModal, setShowUpsellModal] = useState(false);
   
   // Close cart when clicking outside
   useEffect(() => {
@@ -156,12 +158,39 @@ const CartSidebar: React.FC = () => {
     setEditedInstructions("");
   };
 
+  // Check if upselling should be shown
+  const shouldShowUpsell = () => {
+    // Check if already shown this session
+    if (sessionStorage.getItem('upsellShown') === 'true') {
+      return false;
+    }
+
+    // Check if experimental feature is enabled
+    const savedSettings = localStorage.getItem('experimentalFeatureSettings');
+    if (savedSettings) {
+      try {
+        const settings = JSON.parse(savedSettings);
+        return settings.checkoutUpsellEnabled === true;
+      } catch (error) {
+        console.error('Failed to parse experimental feature settings:', error);
+      }
+    }
+
+    // Default to enabled for better upselling (can be changed via admin panel)
+    return true;
+  };
+
   // Handle checkout button click
   const handleCheckoutClick = () => {
     if (user) {
-      // User is logged in, proceed to checkout
-      toggleCart();
-      navigate("/checkout");
+      // User is logged in, check if we should show upsell
+      if (shouldShowUpsell()) {
+        setShowUpsellModal(true);
+      } else {
+        // Proceed directly to checkout
+        toggleCart();
+        navigate("/checkout");
+      }
     } else {
       // User is not logged in, show checkout prompt
       setShowCheckoutPrompt(true);
@@ -183,7 +212,23 @@ const CartSidebar: React.FC = () => {
 
   const handleContinueAsGuest = () => {
     setShowCheckoutPrompt(false);
-    closeCart();
+    // Check if we should show upsell for guest users too
+    if (shouldShowUpsell()) {
+      setShowUpsellModal(true);
+    } else {
+      closeCart();
+      navigate("/checkout");
+    }
+  };
+
+  // Handle upsell modal actions
+  const handleUpsellClose = () => {
+    setShowUpsellModal(false);
+  };
+
+  const handleContinueToCheckout = () => {
+    setShowUpsellModal(false);
+    toggleCart();
     navigate("/checkout");
   };
 
@@ -470,6 +515,14 @@ const CartSidebar: React.FC = () => {
         onSignIn={handleSignIn}
         onSignUp={handleSignUp}
         onContinueAsGuest={handleContinueAsGuest}
+      />
+
+      {/* Checkout Upsell Modal */}
+      <CheckoutUpsellModal
+        isOpen={showUpsellModal}
+        onClose={handleUpsellClose}
+        onContinueToCheckout={handleContinueToCheckout}
+        cartItems={items}
       />
 
       {/* Login Modal */}
