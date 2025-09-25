@@ -113,6 +113,21 @@ export const handler: Handler = async (event, context) => {
       const updateData = JSON.parse(event.body || '{}');
       const { name, order, isActive } = updateData;
 
+      // First, get the current category to check if name is changing
+      const currentCategory = await sql`
+        SELECT * FROM categories WHERE id = ${parseInt(categoryId)}
+      `;
+
+      if (currentCategory.length === 0) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ message: 'Category not found' })
+        };
+      }
+
+      const oldCategoryName = currentCategory[0].name;
+
       // Build dynamic update query to avoid undefined values
       const updateFields = [];
       const updateValues = [];
@@ -149,6 +164,17 @@ export const handler: Handler = async (event, context) => {
       `;
 
       const result = await sql.unsafe(query, [parseInt(categoryId), ...updateValues]);
+
+      // If the category name changed, update all menu items that reference the old name
+      if (name !== undefined && name !== oldCategoryName) {
+        const menuItemsUpdated = await sql`
+          UPDATE menu_items
+          SET category = ${name}
+          WHERE category = ${oldCategoryName}
+        `;
+
+        console.log(`Updated ${menuItemsUpdated.count || 0} menu items from category "${oldCategoryName}" to "${name}"`);
+      }
 
       if (result.length === 0) {
         return {
