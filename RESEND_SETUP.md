@@ -6,7 +6,7 @@ Add the following environment variables to your Netlify deployment:
 
 ### Required Variables:
 ```
-RESEND_API_KEY=re_U8ggpTTw_AvKKUQV2W5jGZgeuiZoqtABY
+RESEND_API_KEY=your_resend_api_key_here
 SITE_URL=https://pizzaspinrewards.com
 ```
 
@@ -20,7 +20,7 @@ SITE_URL=https://pizzaspinrewards.com
 
 2. **Via Netlify CLI:**
    ```bash
-   netlify env:set RESEND_API_KEY "re_U8ggpTTw_AvKKUQV2W5jGZgeuiZoqtABY"
+   netlify env:set RESEND_API_KEY "your_resend_api_key_here"
    netlify env:set SITE_URL "https://pizzaspinrewards.com"
    ```
 
