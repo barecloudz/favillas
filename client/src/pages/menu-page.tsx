@@ -71,7 +71,7 @@ const MenuPage = () => {
   const { data: categoryChoiceGroups = [] } = useQuery({
     queryKey: ['category-choice-groups'],
     queryFn: async () => {
-      const response = await fetch('/.netlify/functions/category-choice-groups');
+      const response = await fetch('/api/category-choice-groups');
       if (response.ok) {
         return await response.json();
       }
@@ -82,7 +82,7 @@ const MenuPage = () => {
   const { data: menuItemChoiceGroups = [] } = useQuery({
     queryKey: ['menu-item-choice-groups'],
     queryFn: async () => {
-      const response = await fetch('/.netlify/functions/menu-item-choice-groups');
+      const response = await fetch('/api/menu-item-choice-groups');
       if (response.ok) {
         return await response.json();
       }

@@ -3344,7 +3344,7 @@ const MenuEditor = ({ menuItems }: any) => {
   const { data: categoryChoiceGroups = [] } = useQuery({
     queryKey: ['category-choice-groups'],
     queryFn: async () => {
-      const response = await apiRequest('GET', '/.netlify/functions/category-choice-groups');
+      const response = await apiRequest('GET', '/api/category-choice-groups');
       return response.json();
     }
   });
@@ -3495,7 +3495,7 @@ const MenuEditor = ({ menuItems }: any) => {
 
   // Category choice group mutations
   const createCategoryChoiceGroupMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('POST', '/.netlify/functions/category-choice-groups', data),
+    mutationFn: (data: any) => apiRequest('POST', '/api/category-choice-groups', data),
     onSuccess: () => {
       // Refetch data to update UI
       queryClient.invalidateQueries({ queryKey: ['category-choice-groups'] });
@@ -3522,7 +3522,7 @@ const MenuEditor = ({ menuItems }: any) => {
       if (!record) {
         throw new Error('Record not found');
       }
-      return apiRequest('DELETE', `/.netlify/functions/category-choice-groups/${record.id}`);
+      return apiRequest('DELETE', `/api/category-choice-groups/${record.id}`);
     },
     onSuccess: () => {
       // Refetch data to update UI
