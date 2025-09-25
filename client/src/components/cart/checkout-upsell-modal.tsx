@@ -91,19 +91,36 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 
   // Detect missing categories based on cart contents
   const getMissingCategories = (): Category[] => {
+    console.log('🔍 [Category Analysis] Starting analysis...');
+
     // Ensure we have arrays to work with
     if (!Array.isArray(categories) || !Array.isArray(menuItems) || !Array.isArray(cartItems)) {
+      console.log('🔍 [Category Analysis] Invalid data types:', {
+        categories: Array.isArray(categories),
+        menuItems: Array.isArray(menuItems),
+        cartItems: Array.isArray(cartItems)
+      });
       return [];
     }
+
+    console.log('🔍 [Category Analysis] Data available:', {
+      categories: categories.length,
+      menuItems: menuItems.length,
+      cartItems: cartItems.length
+    });
 
     // Get categories from cart items
     const cartCategories = new Set(
       cartItems.map(item => {
         // Try to find the category from menu items or use a fallback
         const menuItem = menuItems.find(mi => mi.id === item.id);
-        return menuItem?.category || 'Pizza'; // Default to Pizza if not found
+        const category = menuItem?.category || 'Pizza'; // Default to Pizza if not found
+        console.log('🔍 [Category Analysis] Cart item:', item.name, '→ Category:', category);
+        return category;
       })
     );
+
+    console.log('🔍 [Category Analysis] Cart categories found:', Array.from(cartCategories));
 
     // Get admin settings for enabled categories
     const savedSettings = localStorage.getItem('experimentalFeatureSettings');
@@ -122,12 +139,28 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
       }
     }
 
+    console.log('🔍 [Category Analysis] Enabled upsell categories:', enabledUpsellCategories);
+    console.log('🔍 [Category Analysis] Available categories from API:', categories.map(c => c.name));
+
     // Filter categories that are enabled for upselling and not in cart
-    return categories.filter(category =>
-      enabledUpsellCategories.includes(category.name) &&
-      category.is_upsell_enabled !== false && // Default to enabled if not set
-      !cartCategories.has(category.name)
-    );
+    const missingCategories = categories.filter(category => {
+      const isEnabled = enabledUpsellCategories.includes(category.name);
+      const notInCart = !cartCategories.has(category.name);
+      const upsellEnabled = category.is_upsell_enabled !== false;
+
+      console.log('🔍 [Category Analysis] Category check:', {
+        name: category.name,
+        isEnabled,
+        notInCart,
+        upsellEnabled,
+        shouldInclude: isEnabled && notInCart && upsellEnabled
+      });
+
+      return isEnabled && notInCart && upsellEnabled;
+    });
+
+    console.log('🔍 [Category Analysis] Final missing categories:', missingCategories.map(c => c.name));
+    return missingCategories;
   };
 
   // Get category-specific menu items
