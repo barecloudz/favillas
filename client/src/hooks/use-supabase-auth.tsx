@@ -7,6 +7,7 @@ import { apiRequest, queryClient } from '../lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { mapSupabaseUser, MappedUser } from '@/lib/user-mapping';
 import { useLocation } from 'wouter';
+import { EmailConfirmationModal } from '@/components/auth/email-confirmation-modal';
 
 type LoginData = Pick<InsertUser, "username" | "password">;
 
@@ -29,6 +30,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<MappedUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showEmailConfirmationModal, setShowEmailConfirmationModal] = useState(false);
+  const [confirmationEmail, setConfirmationEmail] = useState<string>('');
   const { toast } = useToast();
   const [, navigate] = useLocation();
 
@@ -71,6 +74,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(updatedProfile);
         console.log('✅ User profile refreshed with contact info');
       }
+    }
+  };
+
+  // Handle email confirmation modal
+  const handleEmailConfirmation = () => {
+    setShowEmailConfirmationModal(false);
+    setConfirmationEmail('');
+    // Navigate back to auth screen unless user is already logged in
+    if (!user || (user as any).emailConfirmationRequired) {
+      navigate('/auth?tab=login');
     }
   };
 
@@ -445,11 +458,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(mappedUser);
 
       if ((user as any).emailConfirmationRequired) {
-        toast({
-          title: "Registration successful!",
-          description: `Please check your email (${user.email}) and click the confirmation link to complete your account setup.`,
-          duration: 8000, // Show longer for email confirmation
-        });
+        setConfirmationEmail(user.email || '');
+        setShowEmailConfirmationModal(true);
       } else {
         toast({
           title: "Registration successful",
@@ -503,6 +513,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshUserProfile
     }}>
       {children}
+      <EmailConfirmationModal
+        open={showEmailConfirmationModal}
+        email={confirmationEmail}
+        onConfirmation={handleEmailConfirmation}
+      />
     </AuthContext.Provider>
   );
 }
