@@ -128,58 +128,62 @@ export const handler: Handler = async (event, context) => {
 
       const oldCategoryName = currentCategory[0].name;
 
-      // Build dynamic update query to avoid undefined values
-      const updateFields = [];
-      const updateValues = [];
-      let parameterIndex = 2; // Start at $2 since $1 is categoryId
+      // Use simple, direct update queries instead of complex dynamic queries
+      let result = currentCategory; // Default to current category
+      let updatedMenuItems = 0;
 
-      if (name !== undefined) {
-        updateFields.push('name = $' + parameterIndex);
-        updateValues.push(name);
-        parameterIndex++;
-      }
+      try {
+        // Update category name if provided
+        if (name !== undefined) {
+          result = await sql`
+            UPDATE categories
+            SET name = ${name}
+            WHERE id = ${parseInt(categoryId)}
+            RETURNING *
+          `;
 
-      if (order !== undefined) {
-        updateFields.push('"order" = $' + parameterIndex);
-        updateValues.push(order);
-        parameterIndex++;
-      }
+          // If category name update succeeded and name actually changed, update menu items
+          if (result.length > 0 && name !== oldCategoryName) {
+            const menuItemsUpdate = await sql`
+              UPDATE menu_items
+              SET category = ${name}
+              WHERE category = ${oldCategoryName}
+            `;
+            updatedMenuItems = menuItemsUpdate.count || 0;
+            console.log(`Successfully updated ${updatedMenuItems} menu items from "${oldCategoryName}" to "${name}"`);
+          }
+        }
 
-      if (isActive !== undefined) {
-        updateFields.push('is_active = $' + parameterIndex);
-        updateValues.push(isActive);
-        parameterIndex++;
-      }
+        // Update order if provided (separate query)
+        if (order !== undefined && result.length > 0) {
+          result = await sql`
+            UPDATE categories
+            SET "order" = ${order}
+            WHERE id = ${parseInt(categoryId)}
+            RETURNING *
+          `;
+        }
 
-      if (updateFields.length === 0) {
+        // Update active status if provided (separate query)
+        if (isActive !== undefined && result.length > 0) {
+          result = await sql`
+            UPDATE categories
+            SET is_active = ${isActive}
+            WHERE id = ${parseInt(categoryId)}
+            RETURNING *
+          `;
+        }
+
+      } catch (error: any) {
+        console.error('Category update error:', error);
         return {
-          statusCode: 400,
+          statusCode: 500,
           headers,
-          body: JSON.stringify({ message: 'No valid fields to update' })
+          body: JSON.stringify({
+            message: 'Category update failed',
+            error: error.message
+          })
         };
-      }
-
-      // Construct and execute the dynamic update query
-      const query = `
-        UPDATE categories
-        SET ${updateFields.join(', ')}
-        WHERE id = $1
-        RETURNING *
-      `;
-
-      const result = await sql.unsafe(query, [parseInt(categoryId), ...updateValues]);
-
-      // ONLY update menu items if the category update was successful
-      if (result.length > 0 && name !== undefined && name !== oldCategoryName) {
-        const menuItemsUpdated = await sql`
-          UPDATE menu_items
-          SET category = ${name}
-          WHERE category = ${oldCategoryName}
-        `;
-
-        console.log(`Updated ${menuItemsUpdated.count || 0} menu items from category "${oldCategoryName}" to "${name}"`);
-      } else if (name !== undefined && name !== oldCategoryName) {
-        console.error(`Category update failed - NOT updating menu items. Would have orphaned items.`);
       }
 
       if (result.length === 0) {
@@ -193,7 +197,10 @@ export const handler: Handler = async (event, context) => {
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify(result[0])
+        body: JSON.stringify({
+          ...result[0],
+          updatedMenuItems: updatedMenuItems
+        })
       };
 
     } else if (event.httpMethod === 'DELETE') {
