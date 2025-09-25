@@ -3533,15 +3533,6 @@ const MenuEditor = ({ menuItems }: any) => {
     .filter((choice: any) => choice.isActive)
     .sort((a: any, b: any) => a.order - b.order);
 
-  // Debug logging for choices
-  console.log('🔍 Debug choice data:', {
-    choiceGroups: choiceGroups,
-    choiceGroupsLength: choiceGroups.length,
-    sortedChoices: sortedChoices,
-    sortedChoicesLength: sortedChoices.length,
-    choiceItems: choiceItems,
-    choiceItemsLength: choiceItems.length
-  });
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
