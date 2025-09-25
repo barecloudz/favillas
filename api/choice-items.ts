@@ -102,15 +102,68 @@ export const handler: Handler = async (event, context) => {
         };
       }
       
-      const { choiceGroupId, name, price, isDefault } = JSON.parse(event.body || '{}');
+      const updateData = JSON.parse(event.body || '{}');
+      const { choiceGroupId, name, price, isDefault } = updateData;
 
-      const result = await sql`
+      // Get current item to check what needs updating
+      const currentItem = await sql`
+        SELECT * FROM choice_items WHERE id = ${parseInt(itemId)}
+      `;
+
+      if (currentItem.length === 0) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ message: 'Choice item not found' })
+        };
+      }
+
+      // Build dynamic update query to avoid undefined values
+      const updateFields = [];
+      const updateValues = [];
+      let parameterIndex = 2; // Start at $2 since $1 is itemId
+
+      if (choiceGroupId !== undefined) {
+        updateFields.push('choice_group_id = $' + parameterIndex);
+        updateValues.push(choiceGroupId);
+        parameterIndex++;
+      }
+
+      if (name !== undefined) {
+        updateFields.push('name = $' + parameterIndex);
+        updateValues.push(name);
+        parameterIndex++;
+      }
+
+      if (price !== undefined) {
+        updateFields.push('price = $' + parameterIndex);
+        updateValues.push(price);
+        parameterIndex++;
+      }
+
+      if (isDefault !== undefined) {
+        updateFields.push('is_default = $' + parameterIndex);
+        updateValues.push(isDefault);
+        parameterIndex++;
+      }
+
+      if (updateFields.length === 0) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ message: 'No valid fields to update' })
+        };
+      }
+
+      // Execute the dynamic update query
+      const query = `
         UPDATE choice_items
-        SET choice_group_id = ${choiceGroupId}, name = ${name}, price = ${price},
-            is_default = ${isDefault}
-        WHERE id = ${parseInt(itemId)}
+        SET ${updateFields.join(', ')}
+        WHERE id = $1
         RETURNING *
       `;
+
+      const result = await sql.unsafe(query, [parseInt(itemId), ...updateValues]);
       
       if (result.length === 0) {
         return {
