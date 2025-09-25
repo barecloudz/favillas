@@ -68,7 +68,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       if (!group) return null;
 
       const items = choiceItems
-        .filter(ci => ci.choice_group_id === group.id)
+        .filter(ci => ci.choiceGroupId === group.id)
         .sort((a, b) => a.order - b.order);
 
       console.log(`🔍 [MenuItemWithChoices] Found ${items.length} choice items for group "${group.name}":`, items);
