@@ -9,7 +9,7 @@ import { storage } from "./storage";
 import { authenticateSupabaseUser, requireAuth } from "./supabase-auth";
 import { setupTimeTrackingRoutes } from "./time-tracking-routes";
 import { db } from "./db";
-import { insertMenuItemSchema, insertOrderSchema, insertOrderItemSchema, insertRewardSchema, insertUserRewardSchema, insertPromoCodeSchema, insertChoiceGroupSchema, insertChoiceItemSchema, insertMenuItemChoiceGroupSchema, insertCategoryChoiceGroupSchema, insertTaxCategorySchema, insertTaxSettingsSchema, insertPauseServiceSchema, orders, orderItems } from "@shared/schema";
+import { insertMenuItemSchema, insertOrderSchema, insertOrderItemSchema, insertRewardSchema, insertUserRewardSchema, insertPromoCodeSchema, insertChoiceGroupSchema, insertChoiceItemSchema, insertMenuItemChoiceGroupSchema, insertCategoryChoiceGroupSchema, insertTaxCategorySchema, insertTaxSettingsSchema, insertPauseServiceSchema, orders, orderItems, menuItemChoiceGroups } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { log } from "./vite";
@@ -3049,31 +3049,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const id = parseInt(req.params.id);
-      
-      // Check if there are any orders using this menu item
-      const orders = await storage.getAllOrders();
-      const ordersUsingMenuItem = orders.filter((order: any) => {
-        // This is a simplified check - in a real app you'd query order items directly
-        return order.items && order.items.some((item: any) => item.menuItemId === id);
-      });
-      
-      if (ordersUsingMenuItem.length > 0) {
-        return res.status(400).json({ 
-          message: "Cannot delete menu item. It is being used in existing orders. Consider marking it as unavailable instead.",
-          ordersCount: ordersUsingMenuItem.length
-        });
-      }
-      
-      await storage.deleteMenuItem(id);
-      res.json({ message: "Menu item deleted successfully" });
-    } catch (error: any) {
-      // Check if it's a foreign key constraint error
-      if (error.message && error.message.includes("foreign key constraint")) {
-        return res.status(400).json({ 
+
+      // Check for foreign key constraints before attempting deletion
+
+      // 1. Check if there are order items using this menu item
+      const orderItemsCheck = await db.select()
+        .from(orderItems)
+        .where(eq(orderItems.menuItemId, id))
+        .limit(1);
+
+      if (orderItemsCheck.length > 0) {
+        return res.status(400).json({
           message: "Cannot delete menu item. It is being used in existing orders. Consider marking it as unavailable instead."
         });
       }
-      res.status(500).json({ message: error.message });
+
+      // 2. Check if there are menu item choice groups using this menu item
+      const choiceGroupsCheck = await db.select()
+        .from(menuItemChoiceGroups)
+        .where(eq(menuItemChoiceGroups.menuItemId, id))
+        .limit(1);
+
+      if (choiceGroupsCheck.length > 0) {
+        return res.status(400).json({
+          message: "Cannot delete menu item. It has associated choice groups. Please remove the choice group assignments first."
+        });
+      }
+
+      // If all checks pass, proceed with deletion
+      await storage.deleteMenuItem(id);
+      res.json({ message: "Menu item deleted successfully" });
+    } catch (error: any) {
+      console.error('Menu item deletion error:', error);
+      res.status(500).json({
+        message: "Failed to process menu item request",
+        error: error.message
+      });
     }
   });
 
