@@ -2943,11 +2943,17 @@ const MenuEditor = ({ menuItems }: any) => {
     price: '0.00', 
     isDefault: false 
   });
-  const [editingChoiceItemData, setEditingChoiceItemData] = useState({ 
-    name: '', 
-    description: '', 
-    price: '0.00', 
-    isDefault: false 
+  const [editingChoiceItemData, setEditingChoiceItemData] = useState({
+    name: '',
+    description: '',
+    price: '0.00',
+    isDefault: false,
+    sizePricing: {
+      '10': '',
+      '14': '',
+      '16': '',
+      'sicilian': ''
+    }
   });
 
   // Enhanced categories with order and more specific pizza categories
@@ -3527,19 +3533,90 @@ const MenuEditor = ({ menuItems }: any) => {
     }
   };
 
-  const handleUpdateChoiceItem = (id: number, data: any) => {
-    updateChoiceItemMutation.mutate({ id, data });
-    setEditingChoiceItem(null);
-    setEditingChoiceItemData({ name: '', description: '', price: '0.00', isDefault: false });
+  const handleUpdateChoiceItem = async (id: number, data: any) => {
+    try {
+      // Save the basic choice item data
+      updateChoiceItemMutation.mutate({ id, data });
+
+      // Save size-based pricing if provided
+      if (data.sizePricing) {
+        // First, get size choice items (we need their IDs)
+        const sizesResponse = await fetch('/.netlify/functions/choice-items');
+        if (sizesResponse.ok) {
+          const allChoiceItems = await sizesResponse.json();
+          const sizeItems = allChoiceItems.filter((item: any) =>
+            item.choice_group_name && item.choice_group_name.toLowerCase().includes('size')
+          );
+
+          // Create pricing rules for each size
+          for (const [sizeKey, price] of Object.entries(data.sizePricing)) {
+            if (price && parseFloat(price as string) > 0) {
+              const sizeItem = sizeItems.find((item: any) => {
+                const name = item.name.toLowerCase();
+                if (sizeKey === '10') return name.includes('10') || name.includes('small');
+                if (sizeKey === '14') return name.includes('14') || name.includes('medium');
+                if (sizeKey === '16') return name.includes('16') || name.includes('large');
+                if (sizeKey === 'sicilian') return name.includes('sicilian');
+                return false;
+              });
+
+              if (sizeItem) {
+                await fetch('/.netlify/functions/choice-pricing', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    choiceItemId: id,
+                    conditionChoiceItemId: sizeItem.id,
+                    price: parseFloat(price as string)
+                  })
+                });
+              }
+            }
+          }
+        }
+      }
+
+      setEditingChoiceItem(null);
+      setEditingChoiceItemData({ name: '', description: '', price: '0.00', isDefault: false, sizePricing: { '10': '', '14': '', '16': '', 'sicilian': '' } });
+    } catch (error) {
+      console.error('Error updating choice item with size pricing:', error);
+    }
   };
 
-  const handleEditChoiceItem = (item: any) => {
+  const handleEditChoiceItem = async (item: any) => {
     setEditingChoiceItem(item);
+
+    // Load existing size pricing data
+    let sizePricing = { '10': '', '14': '', '16': '', 'sicilian': '' };
+    try {
+      const pricingResponse = await fetch('/.netlify/functions/choice-pricing');
+      if (pricingResponse.ok) {
+        const data = await pricingResponse.json();
+        const itemPricingRules = data.pricingRules?.filter((rule: any) => rule.choice_item_id === item.id) || [];
+
+        itemPricingRules.forEach((rule: any) => {
+          const conditionName = rule.condition_choice_name?.toLowerCase() || '';
+          if (conditionName.includes('10') || conditionName.includes('small')) {
+            sizePricing['10'] = rule.price.toString();
+          } else if (conditionName.includes('14') || conditionName.includes('medium')) {
+            sizePricing['14'] = rule.price.toString();
+          } else if (conditionName.includes('16') || conditionName.includes('large')) {
+            sizePricing['16'] = rule.price.toString();
+          } else if (conditionName.includes('sicilian')) {
+            sizePricing['sicilian'] = rule.price.toString();
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error loading size pricing:', error);
+    }
+
     setEditingChoiceItemData({
       name: item.name,
       description: item.description || '',
       price: item.price || '0.00',
-      isDefault: item.isDefault || false
+      isDefault: item.isDefault || false,
+      sizePricing
     });
   };
 
@@ -4060,6 +4137,81 @@ const MenuEditor = ({ menuItems }: any) => {
                                         <Label htmlFor={`edit-item-default-${item.id}`} className="text-sm">Pre-select</Label>
                                       </div>
                                     </div>
+
+                                    {/* Size-Based Pricing for Pizza Toppings */}
+                                    {(choice.name.toLowerCase().includes('topping') || choice.name.toLowerCase().includes('addon')) && (
+                                      <div className="border rounded-lg p-3 bg-gray-50">
+                                        <Label className="text-sm font-medium mb-2 block">Size-Based Pricing (Pizza/Calzone/Stromboli)</Label>
+                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                          <div>
+                                            <Label htmlFor={`edit-10-price-${item.id}`} className="text-xs">10" Pizza</Label>
+                                            <Input
+                                              id={`edit-10-price-${item.id}`}
+                                              type="number"
+                                              step="0.01"
+                                              placeholder="1.50"
+                                              value={editingChoiceItemData.sizePricing?.['10'] || ''}
+                                              onChange={(e) => setEditingChoiceItemData({
+                                                ...editingChoiceItemData,
+                                                sizePricing: { ...editingChoiceItemData.sizePricing, '10': e.target.value }
+                                              })}
+                                              className="text-xs h-8"
+                                            />
+                                          </div>
+                                          <div>
+                                            <Label htmlFor={`edit-14-price-${item.id}`} className="text-xs">14" Pizza</Label>
+                                            <Input
+                                              id={`edit-14-price-${item.id}`}
+                                              type="number"
+                                              step="0.01"
+                                              placeholder="2.30"
+                                              value={editingChoiceItemData.sizePricing?.['14'] || ''}
+                                              onChange={(e) => setEditingChoiceItemData({
+                                                ...editingChoiceItemData,
+                                                sizePricing: { ...editingChoiceItemData.sizePricing, '14': e.target.value }
+                                              })}
+                                              className="text-xs h-8"
+                                            />
+                                          </div>
+                                          <div>
+                                            <Label htmlFor={`edit-16-price-${item.id}`} className="text-xs">16" Pizza</Label>
+                                            <Input
+                                              id={`edit-16-price-${item.id}`}
+                                              type="number"
+                                              step="0.01"
+                                              placeholder="2.80"
+                                              value={editingChoiceItemData.sizePricing?.['16'] || ''}
+                                              onChange={(e) => setEditingChoiceItemData({
+                                                ...editingChoiceItemData,
+                                                sizePricing: { ...editingChoiceItemData.sizePricing, '16': e.target.value }
+                                              })}
+                                              className="text-xs h-8"
+                                            />
+                                          </div>
+                                          <div>
+                                            <Label htmlFor={`edit-sicilian-price-${item.id}`} className="text-xs">Sicilian</Label>
+                                            <Input
+                                              id={`edit-sicilian-price-${item.id}`}
+                                              type="number"
+                                              step="0.01"
+                                              placeholder="3.30"
+                                              value={editingChoiceItemData.sizePricing?.['sicilian'] || ''}
+                                              onChange={(e) => setEditingChoiceItemData({
+                                                ...editingChoiceItemData,
+                                                sizePricing: { ...editingChoiceItemData.sizePricing, 'sicilian': e.target.value }
+                                              })}
+                                              className="text-xs h-8"
+                                            />
+                                          </div>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                          Leave empty to use base price. Regular toppings: 10"($1.50), 14"($2.30), 16"($2.80), Sicilian($3.30)
+                                          <br />
+                                          Specialty toppings: 10"($2.00), 14"($3.30), 16"($4.30), Sicilian($4.30)
+                                        </p>
+                                      </div>
+                                    )}
+
                                     <div className="flex space-x-2">
                                       <Button 
                                         size="sm"
@@ -4073,7 +4225,7 @@ const MenuEditor = ({ menuItems }: any) => {
                                         size="sm"
                                         onClick={() => {
                                           setEditingChoiceItem(null);
-                                          setEditingChoiceItemData({ name: '', description: '', price: '0.00', isDefault: false });
+                                          setEditingChoiceItemData({ name: '', description: '', price: '0.00', isDefault: false, sizePricing: { '10': '', '14': '', '16': '', 'sicilian': '' } });
                                         }}
                                       >
                                         Cancel
@@ -4121,8 +4273,6 @@ const MenuEditor = ({ menuItems }: any) => {
             </CardContent>
           </Card>
 
-          {/* Conditional Pricing Management */}
-          <ConditionalPricingCard />
         </div>
       </div>
 
