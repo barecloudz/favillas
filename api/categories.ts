@@ -169,8 +169,8 @@ export const handler: Handler = async (event, context) => {
 
       const result = await sql.unsafe(query, [parseInt(categoryId), ...updateValues]);
 
-      // If the category name changed, update all menu items that reference the old name
-      if (name !== undefined && name !== oldCategoryName) {
+      // ONLY update menu items if the category update was successful
+      if (result.length > 0 && name !== undefined && name !== oldCategoryName) {
         const menuItemsUpdated = await sql`
           UPDATE menu_items
           SET category = ${name}
@@ -178,6 +178,8 @@ export const handler: Handler = async (event, context) => {
         `;
 
         console.log(`Updated ${menuItemsUpdated.count || 0} menu items from category "${oldCategoryName}" to "${name}"`);
+      } else if (name !== undefined && name !== oldCategoryName) {
+        console.error(`Category update failed - NOT updating menu items. Would have orphaned items.`);
       }
 
       if (result.length === 0) {
