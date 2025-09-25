@@ -2934,8 +2934,8 @@ const MenuEditor = ({ menuItems }: any) => {
   const [expandedChoices, setExpandedChoices] = useState<Set<number>>(new Set());
   const [isCreateChoiceOpen, setIsCreateChoiceOpen] = useState(false);
   const [editingChoice, setEditingChoice] = useState<any>(null);
-  const [newChoiceData, setNewChoiceData] = useState({ name: '', description: '' });
-  const [editingChoiceData, setEditingChoiceData] = useState({ name: '', description: '' });
+  const [newChoiceData, setNewChoiceData] = useState({ name: '', description: '', priority: 0 });
+  const [editingChoiceData, setEditingChoiceData] = useState({ name: '', description: '', priority: 0 });
   const [editingChoiceItem, setEditingChoiceItem] = useState<any>(null);
   const [newChoiceItemData, setNewChoiceItemData] = useState({ 
     name: '', 
@@ -4306,12 +4306,24 @@ const MenuEditor = ({ menuItems }: any) => {
                 onChange={(e) => setNewChoiceData({ ...newChoiceData, description: e.target.value })}
               />
             </div>
+            <div>
+              <Label htmlFor="priority">Priority (Display Order)</Label>
+              <Input
+                id="priority"
+                type="number"
+                min="0"
+                placeholder="0 = first, higher numbers show later"
+                value={newChoiceData.priority || 0}
+                onChange={(e) => setNewChoiceData({ ...newChoiceData, priority: parseInt(e.target.value) || 0 })}
+              />
+              <small className="text-gray-500">Lower numbers display first (e.g., sizes should be 1, toppings should be 2)</small>
+            </div>
             <div className="flex space-x-2">
               <Button 
                 onClick={() => {
                   if (newChoiceData.name) {
                     handleCreateChoice(newChoiceData);
-                    setNewChoiceData({ name: '', description: '' });
+                    setNewChoiceData({ name: '', description: '', priority: 0 });
                   }
                 }}
                 disabled={!newChoiceData.name}
@@ -4356,12 +4368,24 @@ const MenuEditor = ({ menuItems }: any) => {
                   onChange={(e) => setEditingChoiceData({ ...editingChoiceData, description: e.target.value })}
                 />
               </div>
+              <div>
+                <Label htmlFor="edit-priority">Priority (Display Order)</Label>
+                <Input
+                  id="edit-priority"
+                  type="number"
+                  min="0"
+                  placeholder="0 = first, higher numbers show later"
+                  value={editingChoiceData.priority || editingChoice.priority || 0}
+                  onChange={(e) => setEditingChoiceData({ ...editingChoiceData, priority: parseInt(e.target.value) || 0 })}
+                />
+                <small className="text-gray-500">Lower numbers display first (e.g., sizes should be 1, toppings should be 2)</small>
+              </div>
               <div className="flex space-x-2">
                 <Button 
                   onClick={() => {
                     if (editingChoiceData.name) {
                       handleUpdateChoice(editingChoice.id, editingChoiceData);
-                      setEditingChoiceData({ name: '', description: '' });
+                      setEditingChoiceData({ name: '', description: '', priority: 0 });
                     }
                   }}
                   disabled={!editingChoiceData.name}
@@ -11738,6 +11762,221 @@ const ReportsSection = ({ analytics, orders }: any) => {
   );
 };
 
+// Conditional Pricing Management Component
+const ConditionalPricingCard = () => {
+  const [pricingRules, setPricingRules] = useState<any[]>([]);
+  const [choiceItems, setChoiceItems] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [newRule, setNewRule] = useState({
+    choiceItemId: '',
+    conditionChoiceItemId: '',
+    price: ''
+  });
+  const { toast } = useToast();
+
+  // Fetch pricing rules and choice items
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const [rulesResponse, choicesResponse] = await Promise.all([
+        apiRequest('GET', '/api/choice-pricing'),
+        apiRequest('GET', '/api/choice-items')
+      ]);
+
+      setPricingRules(rulesResponse.pricingRules || []);
+      setChoiceItems(choicesResponse || []);
+    } catch (error: any) {
+      toast({
+        title: "Load Failed",
+        description: error.message || "Failed to load pricing data.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleCreateRule = async () => {
+    if (!newRule.choiceItemId || !newRule.conditionChoiceItemId || !newRule.price) {
+      toast({
+        title: "Invalid Data",
+        description: "Please fill in all fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await apiRequest('PUT', '/api/choice-pricing', {
+        choiceItemId: parseInt(newRule.choiceItemId),
+        conditionChoiceItemId: parseInt(newRule.conditionChoiceItemId),
+        price: parseFloat(newRule.price)
+      });
+
+      toast({
+        title: "Rule Created",
+        description: "Conditional pricing rule created successfully.",
+      });
+
+      setNewRule({ choiceItemId: '', conditionChoiceItemId: '', price: '' });
+      fetchData();
+    } catch (error: any) {
+      toast({
+        title: "Creation Failed",
+        description: error.message || "Failed to create pricing rule.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteRule = async (ruleId: number) => {
+    if (!confirm('Are you sure you want to delete this pricing rule?')) return;
+
+    try {
+      await apiRequest('DELETE', `/api/choice-pricing/${ruleId}`);
+      toast({
+        title: "Rule Deleted",
+        description: "Pricing rule deleted successfully.",
+      });
+      fetchData();
+    } catch (error: any) {
+      toast({
+        title: "Deletion Failed",
+        description: error.message || "Failed to delete pricing rule.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Group choice items by group for easier selection
+  const groupedChoices = choiceItems.reduce((acc: any, item: any) => {
+    const groupName = item.choice_group_name || 'Other';
+    if (!acc[groupName]) acc[groupName] = [];
+    acc[groupName].push(item);
+    return acc;
+  }, {});
+
+  if (isLoading) {
+    return <div className="flex justify-center py-8">Loading pricing rules...</div>;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Conditional Pricing</CardTitle>
+        <CardDescription>
+          Set different prices for choices based on other selections (e.g., topping prices based on pizza size)
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Create New Rule */}
+        <div className="border rounded-lg p-4">
+          <h4 className="font-medium mb-3">Create New Pricing Rule</h4>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div>
+              <Label>Choice Item (will have dynamic price)</Label>
+              <Select value={newRule.choiceItemId} onValueChange={(value) => setNewRule({...newRule, choiceItemId: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select choice item" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(groupedChoices).map(([groupName, items]: [string, any]) => (
+                    <div key={groupName}>
+                      <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase">{groupName}</div>
+                      {items.map((item: any) => (
+                        <SelectItem key={item.id} value={item.id.toString()}>
+                          {item.name} (${item.price})
+                        </SelectItem>
+                      ))}
+                    </div>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>When This Choice is Selected</Label>
+              <Select value={newRule.conditionChoiceItemId} onValueChange={(value) => setNewRule({...newRule, conditionChoiceItemId: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select condition" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(groupedChoices).map(([groupName, items]: [string, any]) => (
+                    <div key={groupName}>
+                      <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase">{groupName}</div>
+                      {items.map((item: any) => (
+                        <SelectItem key={item.id} value={item.id.toString()}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </div>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Price ($)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={newRule.price}
+                onChange={(e) => setNewRule({...newRule, price: e.target.value})}
+              />
+            </div>
+
+            <Button onClick={handleCreateRule}>
+              Create Rule
+            </Button>
+          </div>
+        </div>
+
+        {/* Existing Rules */}
+        {pricingRules.length > 0 ? (
+          <div>
+            <h4 className="font-medium mb-3">Existing Pricing Rules</h4>
+            <div className="space-y-2">
+              {pricingRules.map((rule: any) => (
+                <div key={rule.id} className="flex items-center justify-between p-3 border rounded">
+                  <div className="flex-1">
+                    <div className="font-medium">
+                      {rule.choice_item_name} costs ${rule.price}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      when {rule.condition_choice_name} is selected
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {rule.choice_group_name} → {rule.condition_group_name}
+                    </div>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleDeleteRule(rule.id)}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            No conditional pricing rules yet. Create your first rule above.
+            <br />
+            <small>Example: Set pepperoni to cost $3.00 when Large size is selected</small>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 // Pricing Management Tab
 const PricingTab = ({ menuItems }: { menuItems: any[] }) => {
   const [priceChanges, setPriceChanges] = useState<{ [key: number]: string }>({});
@@ -11873,6 +12112,9 @@ const PricingTab = ({ menuItems }: { menuItems: any[] }) => {
           </CardContent>
         </Card>
       )}
+
+      {/* Conditional Pricing Management */}
+      <ConditionalPricingCard />
 
       {/* Menu Items Table */}
       <Card>

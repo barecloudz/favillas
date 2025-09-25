@@ -47,7 +47,7 @@ export const handler: Handler = async (event, context) => {
     if (event.httpMethod === 'GET') {
       const dbChoiceGroups = await sql`
         SELECT * FROM choice_groups
-        ORDER BY name ASC
+        ORDER BY priority ASC, name ASC
       `;
 
       // Transform database fields to match frontend expectations
@@ -58,6 +58,7 @@ export const handler: Handler = async (event, context) => {
         minSelections: group.min_selections,
         maxSelections: group.max_selections,
         isRequired: group.is_required,
+        priority: group.priority || 0,
         created_at: group.created_at
       }));
 
@@ -68,7 +69,7 @@ export const handler: Handler = async (event, context) => {
       };
 
     } else if (event.httpMethod === 'POST') {
-      const { name, description, minSelections, maxSelections, isRequired } = JSON.parse(event.body || '{}');
+      const { name, description, minSelections, maxSelections, isRequired, priority } = JSON.parse(event.body || '{}');
       
       if (!name) {
         return {
@@ -79,8 +80,8 @@ export const handler: Handler = async (event, context) => {
       }
       
       const result = await sql`
-        INSERT INTO choice_groups (name, description, min_selections, max_selections, is_required, created_at)
-        VALUES (${name}, ${description || ''}, ${minSelections || 0}, ${maxSelections || 1}, ${isRequired || false}, NOW())
+        INSERT INTO choice_groups (name, description, min_selections, max_selections, is_required, priority, created_at)
+        VALUES (${name}, ${description || ''}, ${minSelections || 0}, ${maxSelections || 1}, ${isRequired || false}, ${priority || 0}, NOW())
         RETURNING *
       `;
       
@@ -103,12 +104,12 @@ export const handler: Handler = async (event, context) => {
         };
       }
       
-      const { name, description, minSelections, maxSelections, isRequired } = JSON.parse(event.body || '{}');
+      const { name, description, minSelections, maxSelections, isRequired, priority } = JSON.parse(event.body || '{}');
       
       const result = await sql`
         UPDATE choice_groups
         SET name = ${name}, description = ${description}, min_selections = ${minSelections},
-            max_selections = ${maxSelections}, is_required = ${isRequired}
+            max_selections = ${maxSelections}, is_required = ${isRequired}, priority = ${priority || 0}
         WHERE id = ${parseInt(groupId)}
         RETURNING *
       `;
