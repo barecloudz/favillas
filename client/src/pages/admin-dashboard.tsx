@@ -4120,6 +4120,9 @@ const MenuEditor = ({ menuItems }: any) => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Conditional Pricing Management */}
+          <ConditionalPricingCard />
         </div>
       </div>
 
@@ -11853,12 +11856,12 @@ const ConditionalPricingCard = () => {
   };
 
   // Group choice items by group for easier selection
-  const groupedChoices = choiceItems.reduce((acc: any, item: any) => {
+  const groupedChoices = Array.isArray(choiceItems) ? choiceItems.reduce((acc: any, item: any) => {
     const groupName = item.choice_group_name || 'Other';
     if (!acc[groupName]) acc[groupName] = [];
     acc[groupName].push(item);
     return acc;
-  }, {});
+  }, {}) : {};
 
   if (isLoading) {
     return <div className="flex justify-center py-8">Loading pricing rules...</div>;
@@ -12112,9 +12115,6 @@ const PricingTab = ({ menuItems }: { menuItems: any[] }) => {
           </CardContent>
         </Card>
       )}
-
-      {/* Conditional Pricing Management */}
-      <ConditionalPricingCard />
 
       {/* Menu Items Table */}
       <Card>
