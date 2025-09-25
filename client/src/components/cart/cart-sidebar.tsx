@@ -72,7 +72,15 @@ const CartSidebar: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [showUpsellModal, setShowUpsellModal] = useState(false);
-  
+
+  // Temporary debug function - remove in production
+  useEffect(() => {
+    (window as any).clearUpsellSession = () => {
+      sessionStorage.removeItem('upsellShown');
+      console.log('🧹 Cleared upsell session flag - upsell will show again');
+    };
+  }, []);
+
   // Close cart when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -160,16 +168,25 @@ const CartSidebar: React.FC = () => {
 
   // Check if upselling should be shown
   const shouldShowUpsell = () => {
+    console.log('🔍 [Upsell Debug] Checking if upsell should show...');
+
     // Check if already shown this session
-    if (sessionStorage.getItem('upsellShown') === 'true') {
+    const upsellShown = sessionStorage.getItem('upsellShown');
+    console.log('🔍 [Upsell Debug] upsellShown session storage:', upsellShown);
+    if (upsellShown === 'true') {
+      console.log('🔍 [Upsell Debug] Upsell already shown this session, skipping');
       return false;
     }
 
     // Check if experimental feature is enabled
     const savedSettings = localStorage.getItem('experimentalFeatureSettings');
+    console.log('🔍 [Upsell Debug] experimentalFeatureSettings:', savedSettings);
+
     if (savedSettings) {
       try {
         const settings = JSON.parse(savedSettings);
+        console.log('🔍 [Upsell Debug] Parsed settings:', settings);
+        console.log('🔍 [Upsell Debug] checkoutUpsellEnabled:', settings.checkoutUpsellEnabled);
         return settings.checkoutUpsellEnabled === true;
       } catch (error) {
         console.error('Failed to parse experimental feature settings:', error);
@@ -177,21 +194,32 @@ const CartSidebar: React.FC = () => {
     }
 
     // Default to enabled for better upselling (can be changed via admin panel)
+    console.log('🔍 [Upsell Debug] No settings found, defaulting to enabled');
     return true;
   };
 
   // Handle checkout button click
   const handleCheckoutClick = () => {
+    console.log('🛒 [Checkout Debug] Checkout button clicked');
+    console.log('🛒 [Checkout Debug] User:', user ? 'logged in' : 'not logged in');
+    console.log('🛒 [Checkout Debug] Cart items:', items);
+
     if (user) {
       // User is logged in, check if we should show upsell
-      if (shouldShowUpsell()) {
+      const shouldUpsell = shouldShowUpsell();
+      console.log('🛒 [Checkout Debug] Should show upsell:', shouldUpsell);
+
+      if (shouldUpsell) {
+        console.log('🛒 [Checkout Debug] Showing upsell modal');
         setShowUpsellModal(true);
       } else {
+        console.log('🛒 [Checkout Debug] Proceeding directly to checkout');
         // Proceed directly to checkout
         toggleCart();
         navigate("/checkout");
       }
     } else {
+      console.log('🛒 [Checkout Debug] User not logged in, showing checkout prompt');
       // User is not logged in, show checkout prompt
       setShowCheckoutPrompt(true);
     }

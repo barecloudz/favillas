@@ -183,10 +183,30 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
   const missingCategories = getMissingCategories();
   const categoryItems = selectedCategory ? getCategoryItems(selectedCategory) : [];
 
+  console.log('🎯 [Upsell Modal Debug] Props and state:', {
+    isOpen,
+    missingCategories: missingCategories.length,
+    upsellShown: sessionStorage.getItem('upsellShown'),
+    cartItems: cartItems.length
+  });
+
   // Don't show modal if no missing categories or already shown this session
-  if (!isOpen || missingCategories.length === 0 || sessionStorage.getItem('upsellShown') === 'true') {
+  if (!isOpen) {
+    console.log('🎯 [Upsell Modal Debug] Modal not open, returning null');
     return null;
   }
+
+  if (missingCategories.length === 0) {
+    console.log('🎯 [Upsell Modal Debug] No missing categories, returning null');
+    return null;
+  }
+
+  if (sessionStorage.getItem('upsellShown') === 'true') {
+    console.log('🎯 [Upsell Modal Debug] Already shown this session, returning null');
+    return null;
+  }
+
+  console.log('🎯 [Upsell Modal Debug] All conditions met, showing modal!');
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
