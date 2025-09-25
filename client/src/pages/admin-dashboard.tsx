@@ -3036,34 +3036,18 @@ const MenuEditor = ({ menuItems }: any) => {
     onSuccess: (result) => {
       console.log("Category update result:", result);
 
-      // Invalidate and refetch categories
-      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
-      refetchCategories();
-
-      // Also invalidate menu items since category changes affect them
-      queryClient.invalidateQueries({ queryKey: ["/api/menu"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/menu-items"] });
-
-      // Force a complete page refresh of data with more aggressive cache clearing
-      queryClient.removeQueries({ queryKey: ["/api/categories"] });
-      queryClient.removeQueries({ queryKey: ["/api/menu"] });
-
-      setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["/api/categories"] });
-        queryClient.refetchQueries({ queryKey: ["/api/menu"] });
-        refetchCategories(); // Force explicit refetch again
-      }, 100);
-
-      // Also try immediate refetch
-      refetchCategories();
-
       const updatedItems = result?.updatedMenuItems || 0;
       const message = updatedItems > 0
-        ? `Category updated successfully! Moved ${updatedItems} menu items.`
-        : "Category updated successfully!";
+        ? `Category updated successfully! Moved ${updatedItems} menu items. Page will refresh.`
+        : "Category updated successfully! Page will refresh.";
 
       toast({ title: "Success", description: message });
       setEditingCategory(null);
+
+      // Simple solution: reload the page after a short delay to show the success message
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message || "Failed to update category", variant: "destructive" });
