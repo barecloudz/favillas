@@ -3033,10 +3033,29 @@ const MenuEditor = ({ menuItems }: any) => {
 
   const updateCategoryMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) => apiRequest("PUT", `/api/categories/${id}`, data),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      console.log("Category update result:", result);
+
+      // Invalidate and refetch categories
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
-      refetchCategories(); // Explicit refetch
-      toast({ title: "Success", description: "Category updated successfully!" });
+      refetchCategories();
+
+      // Also invalidate menu items since category changes affect them
+      queryClient.invalidateQueries({ queryKey: ["/api/menu"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/menu-items"] });
+
+      // Force a complete page refresh of data
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ["/api/categories"] });
+        queryClient.refetchQueries({ queryKey: ["/api/menu"] });
+      }, 100);
+
+      const updatedItems = result?.updatedMenuItems || 0;
+      const message = updatedItems > 0
+        ? `Category updated successfully! Moved ${updatedItems} menu items.`
+        : "Category updated successfully!";
+
+      toast({ title: "Success", description: message });
       setEditingCategory(null);
     },
     onError: (error: any) => {
