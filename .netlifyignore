@@ -1,0 +1,18 @@
+# Exclude debug and test functions from production builds
+api/debug-*.ts
+api/test-*.ts
+api/db-test*.ts
+api/login-debug*.ts
+api/login-test*.ts
+
+# Exclude development files
+*.log
+*.tmp
+.env.local
+.env.development
+
+# Exclude unnecessary build artifacts
+node_modules/.cache
+.vite-cache
+dist/server
+coverage

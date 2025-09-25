@@ -1,5 +1,5 @@
 [build]
-  command = "npm install && npm run build"
+  command = "npm ci --production=false --audit=false --fund=false && npm run build"
   publish = "dist/public"
 
 [build.environment]
@@ -8,8 +8,14 @@
   NPM_CONFIG_AUDIT = "false"
   DISABLE_OPENCOLLECTIVE = "true"
   SECRETS_SCAN_ENABLED = "false"
-  NODE_OPTIONS = "--max-old-space-size=3072"
+  NODE_OPTIONS = "--max-old-space-size=4096"
   NETLIFY_USE_YARN = "false"
+  # Build performance optimizations
+  NODE_ENV = "production"
+  NETLIFY_SKIP_EDGE_FUNCTIONS_BUNDLING = "true"
+  # Cache optimizations
+  NPM_CONFIG_PREFER_OFFLINE = "true"
+  NPM_CONFIG_NO_PROGRESS = "true"
 
 # Health check endpoint
 [[redirects]]
@@ -429,6 +435,9 @@
 [functions]
   directory = "api"
   node_bundler = "esbuild"
+  # Function bundling optimizations
+  included_files = ["!test-*.ts", "!debug-*.ts"]
+  ignore_unused_public_files = true
 
 # Function-specific configurations for optimization
 [functions."health"]

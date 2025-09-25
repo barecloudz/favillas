@@ -228,6 +228,13 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       return;
     }
 
+    // Special validation for size selection (assuming first priority group is sizes)
+    const sizeGroup = itemChoiceGroups.find(group => (group.priority || 0) === 0);
+    if (sizeGroup && (!selectedChoices[sizeGroup.id] || selectedChoices[sizeGroup.id].length === 0)) {
+      alert('Please select a size before adding to cart.');
+      return;
+    }
+
     // Build options array
     const options: any[] = [];
     Object.entries(selectedChoices).forEach(([groupId, selections]) => {
@@ -315,21 +322,43 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                   Customize
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>{item.name}</DialogTitle>
+              <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white to-gray-50">
+                <DialogHeader className="pb-6 border-b border-gray-200">
+                  <DialogTitle className="text-2xl font-bold text-center text-gray-800">
+                    Customize Your {item.name}
+                  </DialogTitle>
+                  <p className="text-center text-gray-600 mt-2">
+                    Make it exactly how you like it!
+                  </p>
                 </DialogHeader>
 
-                <div className="space-y-6">
-                  {visibleChoiceGroups.map(group => (
-                    <div key={group.id} className="space-y-3">
+                <div className="space-y-8 py-6">
+                  {visibleChoiceGroups.map((group, index) => {
+                    const isPrimaryGroup = (group.priority || 0) === 0; // Usually sizes
+                    const isSelected = selectedChoices[group.id] && selectedChoices[group.id].length > 0;
+
+                    return (
+                    <div key={group.id} className={`space-y-4 p-4 rounded-xl border-2 transition-all ${
+                      isPrimaryGroup
+                        ? isSelected
+                          ? 'border-[#d73a31] bg-red-50/50 shadow-lg'
+                          : 'border-red-200 bg-red-50/30 shadow-md animate-pulse'
+                        : isSelected
+                          ? 'border-green-300 bg-green-50/50 shadow-md'
+                          : 'border-gray-200 bg-white shadow-sm hover:shadow-md'
+                    }`}>
                       <div className="flex justify-between items-center">
-                        <Label className="text-base font-semibold">
+                        <Label className={`text-lg font-bold flex items-center gap-2 ${
+                          isPrimaryGroup ? 'text-[#d73a31]' : 'text-gray-800'
+                        }`}>
+                          {isPrimaryGroup && <span className="text-2xl">🍕</span>}
+                          {!isPrimaryGroup && group.name.toLowerCase().includes('topping') && <span className="text-xl">🧀</span>}
                           {group.name}
-                          {group.isRequired && <span className="text-red-500 ml-1">*</span>}
+                          {group.isRequired && <span className="text-red-500 ml-1 text-xl">*</span>}
+                          {isPrimaryGroup && !isSelected && <span className="text-sm font-normal text-red-500 ml-2 animate-bounce">(Choose Size First!)</span>}
                         </Label>
                         {group.max_selections && group.max_selections > 1 && (
-                          <span className="text-sm text-gray-500">
+                          <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
                             Max {group.max_selections}
                           </span>
                         )}
@@ -339,88 +368,152 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                         <RadioGroup
                           value={selectedChoices[group.id]?.[0] || ""}
                           onValueChange={(value) => handleChoiceSelection(group.id.toString(), value, true)}
+                          className="space-y-3"
                         >
-                          {group.items.map(choiceItem => (
-                            <div key={choiceItem.id} className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value={choiceItem.id.toString()} />
-                                <Label className="font-normal">
-                                  {choiceItem.name}
+                          {group.items.map(choiceItem => {
+                            const dynamicPrice = dynamicPrices[choiceItem.id];
+                            const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
+                            const isItemSelected = selectedChoices[group.id]?.includes(choiceItem.id.toString());
+
+                            return (
+                            <div key={choiceItem.id} className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all cursor-pointer hover:shadow-md ${
+                              isItemSelected
+                                ? 'border-[#d73a31] bg-red-50 shadow-md'
+                                : 'border-gray-200 bg-white hover:border-gray-300'
+                            }`}>
+                              <div className="flex items-center space-x-3">
+                                <RadioGroupItem value={choiceItem.id.toString()} className="data-[state=checked]:bg-[#d73a31] data-[state=checked]:border-[#d73a31]" />
+                                <div className="flex-1">
+                                  <Label className={`font-medium cursor-pointer ${
+                                    isItemSelected ? 'text-[#d73a31]' : 'text-gray-700'
+                                  }`}>
+                                    {choiceItem.name}
+                                  </Label>
                                   {choiceItem.description && (
-                                    <span className="text-sm text-gray-500 block">{choiceItem.description}</span>
+                                    <p className="text-sm text-gray-500 mt-1">{choiceItem.description}</p>
                                   )}
-                                </Label>
+                                </div>
                               </div>
-                              {(() => {
-                                const dynamicPrice = dynamicPrices[choiceItem.id];
-                                const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
-                                return price > 0 && (
-                                  <Badge variant="secondary">+${formatPrice(price)}</Badge>
-                                );
-                              })()}
+                              {price > 0 && (
+                                <Badge className={`text-sm font-bold ${
+                                  isItemSelected
+                                    ? 'bg-[#d73a31] text-white'
+                                    : 'bg-gray-100 text-gray-700'
+                                }`}>
+                                  +${formatPrice(price)}
+                                </Badge>
+                              )}
                             </div>
-                          ))}
+                            );
+                          })}
                         </RadioGroup>
                       ) : (
-                        <div className="space-y-2">
-                          {group.items.map(choiceItem => (
-                            <div key={choiceItem.id} className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
+                        <div className="grid grid-cols-1 gap-3">
+                          {group.items.map(choiceItem => {
+                            const dynamicPrice = dynamicPrices[choiceItem.id];
+                            const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
+                            const isItemSelected = selectedChoices[group.id]?.includes(choiceItem.id.toString());
+
+                            return (
+                            <div key={choiceItem.id} className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all cursor-pointer hover:shadow-md ${
+                              isItemSelected
+                                ? 'border-green-400 bg-green-50 shadow-md'
+                                : 'border-gray-200 bg-white hover:border-gray-300'
+                            }`}>
+                              <div className="flex items-center space-x-3">
                                 <Checkbox
-                                  checked={selectedChoices[group.id]?.includes(choiceItem.id.toString()) || false}
+                                  checked={isItemSelected}
                                   onCheckedChange={() => handleChoiceSelection(group.id.toString(), choiceItem.id.toString(), false)}
+                                  className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500"
                                 />
-                                <Label className="font-normal">
-                                  {choiceItem.name}
+                                <div className="flex-1">
+                                  <Label className={`font-medium cursor-pointer ${
+                                    isItemSelected ? 'text-green-700' : 'text-gray-700'
+                                  }`}>
+                                    {choiceItem.name}
+                                  </Label>
                                   {choiceItem.description && (
-                                    <span className="text-sm text-gray-500 block">{choiceItem.description}</span>
+                                    <p className="text-sm text-gray-500 mt-1">{choiceItem.description}</p>
                                   )}
-                                </Label>
+                                </div>
                               </div>
-                              {(() => {
-                                const dynamicPrice = dynamicPrices[choiceItem.id];
-                                const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
-                                return price > 0 && (
-                                  <Badge variant="secondary">+${formatPrice(price)}</Badge>
-                                );
-                              })()}
+                              {price > 0 && (
+                                <Badge className={`text-sm font-bold ${
+                                  isItemSelected
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-gray-100 text-gray-700'
+                                }`}>
+                                  +${formatPrice(price)}
+                                </Badge>
+                              )}
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
 
-                  <div className="flex items-center justify-between pt-4 border-t">
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        disabled={quantity <= 1}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                      <span className="w-8 text-center">{quantity}</span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setQuantity(quantity + 1)}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-xl border-2 border-gray-200 mt-8">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-4">
+                        <span className="text-sm font-medium text-gray-700">Quantity:</span>
+                        <div className="flex items-center space-x-2 bg-white rounded-lg border border-gray-300">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                            disabled={quantity <= 1}
+                            className="h-8 w-8 p-0 hover:bg-gray-100"
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <span className="w-8 text-center font-semibold">{quantity}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setQuantity(quantity + 1)}
+                            className="h-8 w-8 p-0 hover:bg-gray-100"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-600">Total Price</p>
+                        <p className="text-2xl font-bold text-[#d73a31]">
+                          ${formatPrice(calculateTotalPrice() * quantity)}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-lg font-bold">
-                      Total: ${formatPrice(calculateTotalPrice() * quantity)}
-                    </div>
+
+                    {(() => {
+                      const sizeGroup = itemChoiceGroups.find(group => (group.priority || 0) === 0);
+                      const hasSizeSelected = sizeGroup && selectedChoices[sizeGroup.id] && selectedChoices[sizeGroup.id].length > 0;
+
+                      return (
+                        <Button
+                          className={`w-full py-4 text-lg font-bold transition-all transform hover:scale-105 ${
+                            hasSizeSelected
+                              ? 'bg-[#d73a31] hover:bg-[#c73128] text-white shadow-lg'
+                              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          }`}
+                          onClick={handleAddToCartWithChoices}
+                          disabled={!hasSizeSelected}
+                        >
+                          {hasSizeSelected ? (
+                            <>
+                              <ShoppingCart className="h-5 w-5 mr-2" />
+                              Add to Cart - ${formatPrice(calculateTotalPrice() * quantity)}
+                            </>
+                          ) : (
+                            'Please Select a Size First'
+                          )}
+                        </Button>
+                      );
+                    })()}
                   </div>
-
-                  <Button
-                    className="w-full bg-[#d73a31] hover:bg-[#c73128] text-white"
-                    onClick={handleAddToCartWithChoices}
-                  >
-                    Add to Cart
-                  </Button>
                 </div>
               </DialogContent>
             </Dialog>
