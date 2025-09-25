@@ -2948,13 +2948,58 @@ const MenuEditor = ({ menuItems }: any) => {
     description: '',
     price: '0.00',
     isDefault: false,
-    sizePricing: {
-      '10': '',
-      '14': '',
-      '16': '',
-      'sicilian': ''
-    }
+    sizePricing: {},
+    pricingCategory: 'pizza', // pizza, calzone, stromboli
+    enableSizePricing: false
   });
+
+  const [availableSizes, setAvailableSizes] = useState<any[]>([]);
+
+  // Fetch size choices for a specific category
+  const fetchSizesForCategory = async (category: string) => {
+    try {
+      const response = await fetch('/.netlify/functions/choice-items');
+      if (response.ok) {
+        const allChoiceItems = await response.json();
+
+        // Find size choice groups that apply to this category
+        const sizeItems = allChoiceItems.filter((item: any) => {
+          const groupName = item.choice_group_name?.toLowerCase() || '';
+          return groupName.includes('size');
+        });
+
+        // Filter sizes based on category
+        let categorySizes = sizeItems;
+
+        if (category === 'pizza') {
+          categorySizes = sizeItems.filter((item: any) => {
+            const name = item.name.toLowerCase();
+            return name.includes('10') || name.includes('14') || name.includes('16') || name.includes('sicilian');
+          });
+        } else if (category === 'calzone' || category === 'stromboli') {
+          categorySizes = sizeItems.filter((item: any) => {
+            const name = item.name.toLowerCase();
+            return name.includes('small') || name.includes('medium') || name.includes('large');
+          });
+        }
+
+        setAvailableSizes(categorySizes);
+
+        // Initialize sizePricing object with empty values for all available sizes
+        const newSizePricing = {};
+        categorySizes.forEach((size: any) => {
+          newSizePricing[size.id] = '';
+        });
+
+        setEditingChoiceItemData(prev => ({
+          ...prev,
+          sizePricing: newSizePricing
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching sizes for category:', error);
+    }
+  };
 
   // Enhanced categories with order and more specific pizza categories
   // Fetch categories from API
@@ -3538,46 +3583,44 @@ const MenuEditor = ({ menuItems }: any) => {
       // Save the basic choice item data
       updateChoiceItemMutation.mutate({ id, data });
 
-      // Save size-based pricing if provided
-      if (data.sizePricing) {
-        // First, get size choice items (we need their IDs)
-        const sizesResponse = await fetch('/.netlify/functions/choice-items');
-        if (sizesResponse.ok) {
-          const allChoiceItems = await sizesResponse.json();
-          const sizeItems = allChoiceItems.filter((item: any) =>
-            item.choice_group_name && item.choice_group_name.toLowerCase().includes('size')
-          );
+      // Handle size-based pricing
+      if (data.enableSizePricing && data.sizePricing) {
+        // Save pricing rules for each size with a price
+        for (const [sizeId, price] of Object.entries(data.sizePricing)) {
+          if (price && parseFloat(price as string) > 0) {
+            await fetch('/.netlify/functions/choice-pricing', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                choiceItemId: id,
+                conditionChoiceItemId: parseInt(sizeId),
+                price: parseFloat(price as string)
+              })
+            });
+          }
+        }
+      } else {
+        // If size pricing is disabled, remove all existing pricing rules for this item
+        try {
+          const pricingResponse = await fetch('/.netlify/functions/choice-pricing');
+          if (pricingResponse.ok) {
+            const pricingData = await pricingResponse.json();
+            const itemRules = pricingData.pricingRules?.filter((rule: any) => rule.choice_item_id === id) || [];
 
-          // Create pricing rules for each size
-          for (const [sizeKey, price] of Object.entries(data.sizePricing)) {
-            if (price && parseFloat(price as string) > 0) {
-              const sizeItem = sizeItems.find((item: any) => {
-                const name = item.name.toLowerCase();
-                if (sizeKey === '10') return name.includes('10') || name.includes('small');
-                if (sizeKey === '14') return name.includes('14') || name.includes('medium');
-                if (sizeKey === '16') return name.includes('16') || name.includes('large');
-                if (sizeKey === 'sicilian') return name.includes('sicilian');
-                return false;
+            // Delete each existing rule
+            for (const rule of itemRules) {
+              await fetch(`/.netlify/functions/choice-pricing/${rule.id}`, {
+                method: 'DELETE'
               });
-
-              if (sizeItem) {
-                await fetch('/.netlify/functions/choice-pricing', {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    choiceItemId: id,
-                    conditionChoiceItemId: sizeItem.id,
-                    price: parseFloat(price as string)
-                  })
-                });
-              }
             }
           }
+        } catch (error) {
+          console.error('Error removing existing pricing rules:', error);
         }
       }
 
       setEditingChoiceItem(null);
-      setEditingChoiceItemData({ name: '', description: '', price: '0.00', isDefault: false, sizePricing: { '10': '', '14': '', '16': '', 'sicilian': '' } });
+      setEditingChoiceItemData({ name: '', description: '', price: '0.00', isDefault: false, sizePricing: {}, pricingCategory: 'pizza', enableSizePricing: false });
     } catch (error) {
       console.error('Error updating choice item with size pricing:', error);
     }
@@ -3587,25 +3630,34 @@ const MenuEditor = ({ menuItems }: any) => {
     setEditingChoiceItem(item);
 
     // Load existing size pricing data
-    let sizePricing = { '10': '', '14': '', '16': '', 'sicilian': '' };
+    let sizePricing = {};
+    let enableSizePricing = false;
+    let pricingCategory = 'pizza';
+
     try {
       const pricingResponse = await fetch('/.netlify/functions/choice-pricing');
       if (pricingResponse.ok) {
         const data = await pricingResponse.json();
         const itemPricingRules = data.pricingRules?.filter((rule: any) => rule.choice_item_id === item.id) || [];
 
-        itemPricingRules.forEach((rule: any) => {
-          const conditionName = rule.condition_choice_name?.toLowerCase() || '';
-          if (conditionName.includes('10') || conditionName.includes('small')) {
-            sizePricing['10'] = rule.price.toString();
-          } else if (conditionName.includes('14') || conditionName.includes('medium')) {
-            sizePricing['14'] = rule.price.toString();
-          } else if (conditionName.includes('16') || conditionName.includes('large')) {
-            sizePricing['16'] = rule.price.toString();
-          } else if (conditionName.includes('sicilian')) {
-            sizePricing['sicilian'] = rule.price.toString();
+        if (itemPricingRules.length > 0) {
+          enableSizePricing = true;
+
+          // Determine category based on the first pricing rule
+          const firstRule = itemPricingRules[0];
+          const conditionName = firstRule.condition_choice_name?.toLowerCase() || '';
+          if (conditionName.includes('10') || conditionName.includes('14') || conditionName.includes('16') || conditionName.includes('sicilian')) {
+            pricingCategory = 'pizza';
+          } else if (conditionName.includes('small') || conditionName.includes('medium') || conditionName.includes('large')) {
+            // Check if it's calzone or stromboli based on context (this could be enhanced)
+            pricingCategory = 'calzone'; // Default to calzone, user can change if needed
           }
-        });
+
+          // Build sizePricing object using actual choice item IDs
+          itemPricingRules.forEach((rule: any) => {
+            sizePricing[rule.condition_choice_item_id] = rule.price.toString();
+          });
+        }
       }
     } catch (error) {
       console.error('Error loading size pricing:', error);
@@ -3616,8 +3668,15 @@ const MenuEditor = ({ menuItems }: any) => {
       description: item.description || '',
       price: item.price || '0.00',
       isDefault: item.isDefault || false,
-      sizePricing
+      sizePricing,
+      pricingCategory,
+      enableSizePricing
     });
+
+    // If size pricing is enabled, fetch the available sizes
+    if (enableSizePricing) {
+      await fetchSizesForCategory(pricingCategory);
+    }
   };
 
   // Drag and drop handlers for choices
@@ -4138,77 +4197,85 @@ const MenuEditor = ({ menuItems }: any) => {
                                       </div>
                                     </div>
 
-                                    {/* Size-Based Pricing for Pizza Toppings */}
+                                    {/* Size-Based Pricing for Toppings */}
                                     {(choice.name.toLowerCase().includes('topping') || choice.name.toLowerCase().includes('addon')) && (
                                       <div className="border rounded-lg p-3 bg-gray-50">
-                                        <Label className="text-sm font-medium mb-2 block">Size-Based Pricing (Pizza/Calzone/Stromboli)</Label>
-                                        <div className="grid grid-cols-2 gap-2 text-xs">
-                                          <div>
-                                            <Label htmlFor={`edit-10-price-${item.id}`} className="text-xs">10" Pizza</Label>
-                                            <Input
-                                              id={`edit-10-price-${item.id}`}
-                                              type="number"
-                                              step="0.01"
-                                              placeholder="1.50"
-                                              value={editingChoiceItemData.sizePricing?.['10'] || ''}
-                                              onChange={(e) => setEditingChoiceItemData({
+                                        <div className="flex items-center space-x-2 mb-3">
+                                          <input
+                                            type="checkbox"
+                                            id={`enable-size-pricing-${item.id}`}
+                                            checked={editingChoiceItemData.enableSizePricing}
+                                            onChange={(e) => {
+                                              setEditingChoiceItemData({
                                                 ...editingChoiceItemData,
-                                                sizePricing: { ...editingChoiceItemData.sizePricing, '10': e.target.value }
-                                              })}
-                                              className="text-xs h-8"
-                                            />
-                                          </div>
-                                          <div>
-                                            <Label htmlFor={`edit-14-price-${item.id}`} className="text-xs">14" Pizza</Label>
-                                            <Input
-                                              id={`edit-14-price-${item.id}`}
-                                              type="number"
-                                              step="0.01"
-                                              placeholder="2.30"
-                                              value={editingChoiceItemData.sizePricing?.['14'] || ''}
-                                              onChange={(e) => setEditingChoiceItemData({
-                                                ...editingChoiceItemData,
-                                                sizePricing: { ...editingChoiceItemData.sizePricing, '14': e.target.value }
-                                              })}
-                                              className="text-xs h-8"
-                                            />
-                                          </div>
-                                          <div>
-                                            <Label htmlFor={`edit-16-price-${item.id}`} className="text-xs">16" Pizza</Label>
-                                            <Input
-                                              id={`edit-16-price-${item.id}`}
-                                              type="number"
-                                              step="0.01"
-                                              placeholder="2.80"
-                                              value={editingChoiceItemData.sizePricing?.['16'] || ''}
-                                              onChange={(e) => setEditingChoiceItemData({
-                                                ...editingChoiceItemData,
-                                                sizePricing: { ...editingChoiceItemData.sizePricing, '16': e.target.value }
-                                              })}
-                                              className="text-xs h-8"
-                                            />
-                                          </div>
-                                          <div>
-                                            <Label htmlFor={`edit-sicilian-price-${item.id}`} className="text-xs">Sicilian</Label>
-                                            <Input
-                                              id={`edit-sicilian-price-${item.id}`}
-                                              type="number"
-                                              step="0.01"
-                                              placeholder="3.30"
-                                              value={editingChoiceItemData.sizePricing?.['sicilian'] || ''}
-                                              onChange={(e) => setEditingChoiceItemData({
-                                                ...editingChoiceItemData,
-                                                sizePricing: { ...editingChoiceItemData.sizePricing, 'sicilian': e.target.value }
-                                              })}
-                                              className="text-xs h-8"
-                                            />
-                                          </div>
+                                                enableSizePricing: e.target.checked
+                                              });
+                                              if (e.target.checked) {
+                                                fetchSizesForCategory(editingChoiceItemData.pricingCategory);
+                                              }
+                                            }}
+                                            className="rounded"
+                                          />
+                                          <Label htmlFor={`enable-size-pricing-${item.id}`} className="text-sm font-medium">
+                                            Enable Size-Based Pricing
+                                          </Label>
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-1">
-                                          Leave empty to use base price. Regular toppings: 10"($1.50), 14"($2.30), 16"($2.80), Sicilian($3.30)
-                                          <br />
-                                          Specialty toppings: 10"($2.00), 14"($3.30), 16"($4.30), Sicilian($4.30)
-                                        </p>
+
+                                        {editingChoiceItemData.enableSizePricing && (
+                                          <>
+                                            <div className="mb-3">
+                                              <Label className="text-xs font-medium">Category:</Label>
+                                              <select
+                                                value={editingChoiceItemData.pricingCategory}
+                                                onChange={(e) => {
+                                                  setEditingChoiceItemData({
+                                                    ...editingChoiceItemData,
+                                                    pricingCategory: e.target.value
+                                                  });
+                                                  fetchSizesForCategory(e.target.value);
+                                                }}
+                                                className="w-full text-xs p-2 border rounded mt-1"
+                                              >
+                                                <option value="pizza">Pizza</option>
+                                                <option value="calzone">Calzone</option>
+                                                <option value="stromboli">Stromboli</option>
+                                              </select>
+                                            </div>
+
+                                            {availableSizes.length > 0 && (
+                                              <div>
+                                                <Label className="text-xs font-medium mb-2 block">Pricing by Size:</Label>
+                                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                                  {availableSizes.map((size) => (
+                                                    <div key={size.id}>
+                                                      <Label htmlFor={`edit-size-${size.id}-${item.id}`} className="text-xs">
+                                                        {size.name}
+                                                      </Label>
+                                                      <Input
+                                                        id={`edit-size-${size.id}-${item.id}`}
+                                                        type="number"
+                                                        step="0.01"
+                                                        placeholder="0.00"
+                                                        value={editingChoiceItemData.sizePricing?.[size.id] || ''}
+                                                        onChange={(e) => setEditingChoiceItemData({
+                                                          ...editingChoiceItemData,
+                                                          sizePricing: {
+                                                            ...editingChoiceItemData.sizePricing,
+                                                            [size.id]: e.target.value
+                                                          }
+                                                        })}
+                                                        className="text-xs h-8"
+                                                      />
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-2">
+                                                  Leave empty to use base price. Prices will apply when the corresponding size is selected.
+                                                </p>
+                                              </div>
+                                            )}
+                                          </>
+                                        )}
                                       </div>
                                     )}
 
@@ -4225,7 +4292,7 @@ const MenuEditor = ({ menuItems }: any) => {
                                         size="sm"
                                         onClick={() => {
                                           setEditingChoiceItem(null);
-                                          setEditingChoiceItemData({ name: '', description: '', price: '0.00', isDefault: false, sizePricing: { '10': '', '14': '', '16': '', 'sicilian': '' } });
+                                          setEditingChoiceItemData({ name: '', description: '', price: '0.00', isDefault: false, sizePricing: {}, pricingCategory: 'pizza', enableSizePricing: false });
                                         }}
                                       >
                                         Cancel
