@@ -71,7 +71,7 @@ const MenuPage = () => {
   const { data: categoryChoiceGroups = [] } = useQuery({
     queryKey: ['category-choice-groups'],
     queryFn: async () => {
-      const response = await fetch('/api/category-choice-groups');
+      const response = await fetch('/.netlify/functions/category-choice-groups');
       if (response.ok) {
         return await response.json();
       }
@@ -82,7 +82,7 @@ const MenuPage = () => {
   const { data: menuItemChoiceGroups = [] } = useQuery({
     queryKey: ['menu-item-choice-groups'],
     queryFn: async () => {
-      const response = await fetch('/api/menu-item-choice-groups');
+      const response = await fetch('/.netlify/functions/menu-item-choice-groups');
       if (response.ok) {
         return await response.json();
       }
@@ -188,13 +188,13 @@ const MenuPage = () => {
     
     // Get choice groups assigned directly to this menu item
     const directGroups = menuItemChoiceGroups
-      .filter((micg: any) => micg.menuItemId === item.id)
-      .map((micg: any) => micg.choiceGroupId);
-    
+      .filter((micg: any) => micg.menu_item_id === item.id)
+      .map((micg: any) => micg.choice_group_id);
+
     // Get choice groups assigned to this item's category
     const categoryGroups = categoryChoiceGroups
-      .filter((ccg: any) => ccg.categoryName === item.category)
-      .map((ccg: any) => ccg.choiceGroupId);
+      .filter((ccg: any) => ccg.category_name === item.category)
+      .map((ccg: any) => ccg.choice_group_id);
     
     // Combine and deduplicate
     const allGroupIds = [...new Set([...directGroups, ...categoryGroups])];

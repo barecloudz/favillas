@@ -3344,7 +3344,7 @@ const MenuEditor = ({ menuItems }: any) => {
   const { data: categoryChoiceGroups = [] } = useQuery({
     queryKey: ['category-choice-groups'],
     queryFn: async () => {
-      const response = await apiRequest('GET', '/api/category-choice-groups');
+      const response = await apiRequest('GET', '/.netlify/functions/category-choice-groups');
       return response.json();
     }
   });
@@ -3353,10 +3353,10 @@ const MenuEditor = ({ menuItems }: any) => {
   React.useEffect(() => {
     const groupedChoices: {[key: string]: number[]} = {};
     categoryChoiceGroups.forEach((ccg: any) => {
-      if (!groupedChoices[ccg.categoryName]) {
-        groupedChoices[ccg.categoryName] = [];
+      if (!groupedChoices[ccg.category_name]) {
+        groupedChoices[ccg.category_name] = [];
       }
-      groupedChoices[ccg.categoryName].push(ccg.choiceGroupId);
+      groupedChoices[ccg.category_name].push(ccg.choice_group_id);
     });
 
     // Only update if we don't have local state yet, or if API data is more recent
@@ -3495,7 +3495,7 @@ const MenuEditor = ({ menuItems }: any) => {
 
   // Category choice group mutations
   const createCategoryChoiceGroupMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('POST', '/api/category-choice-groups', data),
+    mutationFn: (data: any) => apiRequest('POST', '/.netlify/functions/category-choice-groups', data),
     onSuccess: () => {
       // Refetch data to update UI
       queryClient.invalidateQueries({ queryKey: ['category-choice-groups'] });
@@ -3516,13 +3516,13 @@ const MenuEditor = ({ menuItems }: any) => {
   const deleteCategoryChoiceGroupMutation = useMutation({
     mutationFn: async (data: { categoryName: string; choiceGroupId: number }) => {
       // Find the record to delete
-      const record = categoryChoiceGroups.find((ccg: any) => 
-        ccg.categoryName === data.categoryName && ccg.choiceGroupId === data.choiceGroupId
+      const record = categoryChoiceGroups.find((ccg: any) =>
+        ccg.category_name === data.categoryName && ccg.choice_group_id === data.choiceGroupId
       );
       if (!record) {
         throw new Error('Record not found');
       }
-      return apiRequest('DELETE', `/api/category-choice-groups/${record.id}`);
+      return apiRequest('DELETE', `/.netlify/functions/category-choice-groups/${record.id}`);
     },
     onSuccess: () => {
       // Refetch data to update UI
