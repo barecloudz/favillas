@@ -2987,15 +2987,21 @@ const MenuEditor = ({ menuItems }: any) => {
         setAvailableSizes(categorySizes);
 
         // Initialize sizePricing object with empty values for all available sizes
-        const newSizePricing = {};
-        categorySizes.forEach((size: any) => {
-          newSizePricing[size.id] = '';
-        });
+        // BUT preserve any existing values
+        setEditingChoiceItemData(prev => {
+          const newSizePricing = { ...prev.sizePricing }; // Keep existing prices
+          categorySizes.forEach((size: any) => {
+            // Only set empty string if no price exists
+            if (!newSizePricing[size.id]) {
+              newSizePricing[size.id] = '';
+            }
+          });
 
-        setEditingChoiceItemData(prev => ({
-          ...prev,
-          sizePricing: newSizePricing
-        }));
+          return {
+            ...prev,
+            sizePricing: newSizePricing
+          };
+        });
       }
     } catch (error) {
       console.error('Error fetching sizes for category:', error);
@@ -3585,11 +3591,9 @@ const MenuEditor = ({ menuItems }: any) => {
     try {
       // Handle size-based pricing first (before closing dialog)
       if (data.enableSizePricing && data.sizePricing) {
-        console.log('🎯 Size pricing enabled, saving rules:', data.sizePricing);
         // Save pricing rules for each size with a price
         for (const [sizeId, price] of Object.entries(data.sizePricing)) {
           if (price && parseFloat(price as string) > 0) {
-            console.log(`💰 Saving pricing rule: Item ${id}, Size ${sizeId}, Price $${price}`);
             const response = await fetch('/.netlify/functions/choice-pricing', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
@@ -3691,10 +3695,7 @@ const MenuEditor = ({ menuItems }: any) => {
           // Build sizePricing object using actual choice item IDs
           itemPricingRules.forEach((rule: any) => {
             sizePricing[rule.condition_choice_item_id] = rule.price.toString();
-            console.log(`💰 Loaded price: Size ID ${rule.condition_choice_item_id} = $${rule.price}`);
           });
-        } else {
-          console.log('❌ No pricing rules found for this item');
         }
       } else {
         console.error('❌ Failed to load pricing data:', pricingResponse.status);
