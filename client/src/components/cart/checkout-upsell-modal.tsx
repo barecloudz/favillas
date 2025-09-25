@@ -67,7 +67,8 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
     queryFn: async () => {
       const response = await fetch('/api/categories');
       if (response.ok) {
-        return await response.json();
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
       }
       return [];
     },
@@ -76,19 +77,25 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 
   // Fetch menu items
   const { data: menuItems = [] } = useQuery<MenuItem[]>({
-    queryKey: ['/api/menu-items'],
+    queryKey: ['/api/menu'],
     queryFn: async () => {
-      const response = await fetch('/api/menu-items');
+      const response = await fetch('/api/menu');
       if (response.ok) {
-        return await response.json();
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
       }
       return [];
     },
-    enabled: isOpen && selectedCategory !== null
+    enabled: isOpen
   });
 
   // Detect missing categories based on cart contents
   const getMissingCategories = (): Category[] => {
+    // Ensure we have arrays to work with
+    if (!Array.isArray(categories) || !Array.isArray(menuItems) || !Array.isArray(cartItems)) {
+      return [];
+    }
+
     // Get categories from cart items
     const cartCategories = new Set(
       cartItems.map(item => {
@@ -125,9 +132,12 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 
   // Get category-specific menu items
   const getCategoryItems = (categoryName: string): MenuItem[] => {
+    if (!Array.isArray(menuItems)) {
+      return [];
+    }
     return menuItems.filter(item =>
       item.category === categoryName &&
-      item.is_available
+      item.is_available !== false // Default to available if not set
     ).slice(0, 6); // Limit to 6 items for better UX
   };
 
