@@ -198,10 +198,13 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 
   // Get category-specific menu items
   const getCategoryItems = (categoryName: string): MenuItem[] => {
-    if (!Array.isArray(menuItems)) {
+    if (!Array.isArray(menuItems) || !categoryName) {
       return [];
     }
     return menuItems.filter(item =>
+      item &&
+      item.id &&
+      item.name &&
       item.category === categoryName &&
       item.is_available !== false // Default to available if not set
     ).slice(0, 6); // Limit to 6 items for better UX
@@ -230,22 +233,54 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 
   // Handle adding item to cart
   const handleAddItem = async (item: MenuItem, event: React.MouseEvent) => {
-    setIsAddingItem(true);
+    try {
+      setIsAddingItem(true);
 
-    const cartItem: CartItem = {
-      id: item.id,
-      name: item.name,
-      price: item.price,
-      quantity: 1,
-      selectedOptions: {},
-    };
+      // Validate item data
+      if (!item || !item.id || !item.name) {
+        console.error('Invalid item data:', item);
+        toast({
+          title: "Error",
+          description: "Unable to add item to cart. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
 
-    addItem(cartItem);
+      const cartItem: CartItem = {
+        id: item.id,
+        name: item.name,
+        price: item.price || 0, // Default to 0 if price is undefined
+        quantity: 1,
+        selectedOptions: {},
+      };
 
-    // Trigger animation
-    triggerPizzaAnimation(event.currentTarget as HTMLElement);
+      addItem(cartItem);
 
-    setTimeout(() => setIsAddingItem(false), 300);
+      // Show success feedback
+      toast({
+        title: "Added to Cart!",
+        description: `${item.name} has been added to your cart.`,
+      });
+
+      // Trigger animation if possible
+      try {
+        if (event.currentTarget) {
+          triggerPizzaAnimation(event.currentTarget as HTMLElement);
+        }
+      } catch (animError) {
+        console.warn('Animation failed:', animError);
+      }
+    } catch (error) {
+      console.error('Error adding item to cart:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add item to cart. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setTimeout(() => setIsAddingItem(false), 300);
+    }
   };
 
   // Handle continuing to checkout without upselling
@@ -306,17 +341,17 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] p-0 overflow-hidden">
+      <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] h-auto p-0 overflow-hidden">
         {/* Header with gradient background */}
-        <DialogHeader className="relative bg-gradient-to-r from-[#d73a31] to-[#ff6b5b] text-white p-8 pb-6">
+        <DialogHeader className="relative bg-gradient-to-r from-[#d73a31] to-[#ff6b5b] text-white p-4 sm:p-8 pb-4 sm:pb-6">
           <div className="absolute inset-0 bg-black opacity-10"></div>
-          <div className="relative flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-3xl font-bold mb-2">
+          <div className="relative flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <DialogTitle className="text-xl sm:text-3xl font-bold mb-2 leading-tight">
                 {selectedCategory ? `Perfect ${selectedCategory} Pairings!` : '🍕 Make Your Order Complete!'}
               </DialogTitle>
               {!selectedCategory && (
-                <p className="text-white/90 text-lg">
+                <p className="text-white/90 text-sm sm:text-lg">
                   Save more and get the full experience - these popular items pair perfectly with your order!
                 </p>
               )}
@@ -325,14 +360,14 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="h-10 w-10 text-white hover:bg-white/20 hover:text-white"
+              className="h-8 w-8 sm:h-10 sm:w-10 text-white hover:bg-white/20 hover:text-white flex-shrink-0"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </div>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh] px-8 py-6">
+        <ScrollArea className="max-h-[60vh] px-4 sm:px-8 py-4 sm:py-6">
           {!selectedCategory ? (
             // Category selection view - improved design
             <div className="space-y-6">
@@ -416,7 +451,7 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 {categoryItems.map((item) => (
                   <Card key={item.id} className="group hover:shadow-xl transition-all duration-300 hover:scale-[1.02] border-2 hover:border-[#d73a31] overflow-hidden">
                     <CardContent className="p-0">
@@ -440,12 +475,12 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
                           {/* Price badge */}
                           <div className="absolute top-3 right-3">
                             <Badge className="bg-green-500 hover:bg-green-500 text-white font-bold text-sm shadow-lg">
-                              ${item.price.toFixed(2)}
+                              ${item.price ? Number(item.price).toFixed(2) : '0.00'}
                             </Badge>
                           </div>
 
                           {/* Popular badge for some items */}
-                          {item.price < 5 && (
+                          {item.price && Number(item.price) < 5 && (
                             <div className="absolute top-3 left-3">
                               <Badge className="bg-orange-500 hover:bg-orange-500 text-white font-bold text-xs">
                                 POPULAR
@@ -491,12 +526,19 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
               </div>
 
               {categoryItems.length === 0 && (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Coffee className="w-8 h-8 text-gray-400" />
+                <div className="text-center py-8 sm:py-12">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Coffee className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
                   </div>
-                  <p className="text-gray-500 text-lg">No items available in this category right now.</p>
-                  <p className="text-gray-400 text-sm mt-2">Check back soon for new additions!</p>
+                  <p className="text-gray-500 text-base sm:text-lg">No items available in this category right now.</p>
+                  <p className="text-gray-400 text-xs sm:text-sm mt-2">Check back soon for new additions!</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedCategory(null)}
+                    className="mt-4 text-sm"
+                  >
+                    ← Browse Other Categories
+                  </Button>
                 </div>
               )}
             </div>
@@ -504,21 +546,21 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
         </ScrollArea>
 
         {/* Footer buttons - improved design */}
-        <div className="border-t bg-gradient-to-r from-gray-50 to-white p-6">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="flex-1 text-center sm:text-left">
+        <div className="border-t bg-gradient-to-r from-gray-50 to-white p-4 sm:p-6">
+          <div className="flex flex-col gap-4">
+            <div className="text-center">
               {!selectedCategory && (
-                <p className="text-sm text-gray-600 mb-2">
+                <p className="text-xs sm:text-sm text-gray-600">
                   ✨ <span className="font-semibold">89% of customers</span> who add these items say it made their meal complete!
                 </p>
               )}
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3 w-full">
               <Button
                 variant="outline"
                 onClick={handleNoThanks}
-                className="px-6 border-gray-300 hover:border-gray-400 text-gray-600 hover:text-gray-700"
+                className="flex-1 sm:flex-none px-4 sm:px-6 border-gray-300 hover:border-gray-400 text-gray-600 hover:text-gray-700 text-sm"
               >
                 {selectedCategory ? 'Maybe Later' : 'Skip This Time'}
               </Button>
@@ -526,7 +568,7 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
               {selectedCategory && categoryItems.length > 0 ? (
                 <Button
                   onClick={handleContinueAfterAdd}
-                  className="bg-gradient-to-r from-[#d73a31] to-[#ff6b5b] hover:from-[#c73128] hover:to-[#e55a4f] text-white px-8 font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="flex-1 sm:flex-none bg-gradient-to-r from-[#d73a31] to-[#ff6b5b] hover:from-[#c73128] hover:to-[#e55a4f] text-white px-4 sm:px-8 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 text-sm"
                 >
                   Continue to Checkout →
                 </Button>
@@ -534,7 +576,7 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
                 !selectedCategory && (
                   <Button
                     onClick={handleNoThanks}
-                    className="bg-gradient-to-r from-[#d73a31] to-[#ff6b5b] hover:from-[#c73128] hover:to-[#e55a4f] text-white px-8 font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                    className="flex-1 sm:flex-none bg-gradient-to-r from-[#d73a31] to-[#ff6b5b] hover:from-[#c73128] hover:to-[#e55a4f] text-white px-4 sm:px-8 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 text-sm"
                   >
                     🛒 Proceed to Checkout
                   </Button>
