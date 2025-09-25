@@ -111,6 +111,8 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isAddingItem, setIsAddingItem] = useState(false);
+  const [hasAddedItems, setHasAddedItems] = useState(false);
+  const [showKeepLookingModal, setShowKeepLookingModal] = useState(false);
   const { addItem, triggerPizzaAnimation } = useCart();
   const { toast } = useToast();
 
@@ -321,6 +323,9 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 
       addItem(cartItem);
 
+      // Mark that items have been added
+      setHasAddedItems(true);
+
       // Show success feedback
       toast({
         title: "Added to Cart!",
@@ -335,6 +340,11 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
       } catch (animError) {
         console.warn('Animation failed:', animError);
       }
+
+      // Show the keep looking modal after a brief delay
+      setTimeout(() => {
+        setShowKeepLookingModal(true);
+      }, 500);
     } catch (error) {
       console.error('Error adding item to cart:', error);
       toast({
@@ -398,17 +408,17 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={() => handleProceedToCheckout()}>
-      <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] h-auto p-0 overflow-hidden">
+      <DialogContent className="max-w-5xl w-[95vw] max-h-[85vh] h-auto p-0 overflow-hidden flex flex-col">
         {/* Header with gradient background */}
         <DialogHeader className="relative bg-gradient-to-r from-[#d73a31] to-[#ff6b5b] text-white p-4 sm:p-8 pb-4 sm:pb-6">
           <div className="absolute inset-0 bg-black opacity-10"></div>
           <div className="relative">
             <div className="text-center pr-16">
-              <DialogTitle className="text-xl sm:text-3xl font-bold mb-2 leading-tight">
+              <DialogTitle className="text-2xl sm:text-4xl font-extrabold mb-3 leading-tight tracking-wide">
                 {selectedCategory ? `Perfect ${selectedCategory} Pairings!` : '🍕 Make Your Order Complete!'}
               </DialogTitle>
               {!selectedCategory && (
-                <p className="text-white/90 text-sm sm:text-lg">
+                <p className="text-white/90 text-base sm:text-xl font-medium">
                   Save more and get the full experience - these popular items pair perfectly with your order!
                 </p>
               )}
@@ -426,7 +436,7 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh] px-4 sm:px-8 py-4 sm:py-6">
+        <ScrollArea className="flex-1 px-4 sm:px-8 py-4 sm:py-6">
           {!selectedCategory ? (
             // Category selection view - improved design
             <div className="space-y-6">
@@ -605,8 +615,8 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
           )}
         </ScrollArea>
 
-        {/* Footer with centered No Thanks button */}
-        <div className="border-t bg-gradient-to-r from-gray-50 to-white p-6 sm:p-8">
+        {/* Footer with centered button - now fixed at bottom */}
+        <div className="border-t bg-gradient-to-r from-gray-50 to-white p-6 sm:p-8 flex-shrink-0">
           <div className="text-center space-y-4">
             <p className="text-xs sm:text-sm text-gray-600">
               ✨ <span className="font-semibold">89% of customers</span> who add these items say it made their meal complete!
@@ -617,11 +627,51 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
               variant="outline"
               className="px-8 sm:px-12 py-3 border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 text-base font-medium rounded-full shadow-sm hover:shadow-md transition-all duration-200"
             >
-              No Thanks, Continue to Checkout
+              {hasAddedItems ? "Proceed to Checkout" : "No Thanks, Continue to Checkout"}
             </Button>
           </div>
         </div>
       </DialogContent>
+
+      {/* Keep Looking Overlay Modal */}
+      {showKeepLookingModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
+          <div className="bg-white rounded-xl shadow-2xl p-6 sm:p-8 max-w-md w-[90vw] mx-4">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+
+              <h3 className="text-xl font-bold text-gray-900">Item Added!</h3>
+              <p className="text-gray-600">Would you like to keep looking for more items to add to your order?</p>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <Button
+                  onClick={() => setShowKeepLookingModal(false)}
+                  className="flex-1 bg-[#d73a31] hover:bg-[#c73128] text-white font-semibold py-3"
+                >
+                  Yes Please!
+                </Button>
+
+                <Button
+                  onClick={() => {
+                    setShowKeepLookingModal(false);
+                    handleProceedToCheckout();
+                  }}
+                  variant="outline"
+                  className="flex-1 border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold py-3"
+                >
+                  Proceed to Checkout
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Dialog>
   );
 };
