@@ -422,7 +422,6 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                           ) : (
                             <RadioGroup
                               value={selectedChoices[group.id]?.[0] || ""}
-                              onValueChange={(value) => handleChoiceSelection(group.id.toString(), value, true)}
                               className="space-y-3"
                             >
                               {group.items.map(choiceItem => {
@@ -488,7 +487,6 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                               <div className="flex items-center space-x-3">
                                 <Checkbox
                                   checked={isItemSelected}
-                                  onCheckedChange={() => handleChoiceSelection(group.id.toString(), choiceItem.id.toString(), false)}
                                   className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 pointer-events-none"
                                 />
                                 <div className="flex-1">
