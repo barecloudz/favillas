@@ -12270,6 +12270,8 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
   const [isSending, setIsSending] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [viewingCampaign, setViewingCampaign] = useState(null);
+  const [isViewingCampaign, setIsViewingCampaign] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     subject: "",
@@ -12353,6 +12355,63 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
     } finally {
       setIsSending(false);
     }
+  };
+
+  const viewCampaign = (campaign) => {
+    setViewingCampaign(campaign);
+    setIsViewingCampaign(true);
+  };
+
+  const sendDraftCampaign = async (campaign) => {
+    setIsSending(true);
+    try {
+      const response = await apiRequest('/api/email/send-campaign', {
+        method: 'POST',
+        body: JSON.stringify({
+          campaignName: campaign.name,
+          subject: campaign.subject,
+          content: campaign.content || 'Draft campaign content',
+          ctaText: campaign.ctaText || undefined,
+          ctaUrl: campaign.ctaUrl || undefined,
+          recipientType: 'all',
+          template: campaign.template || 'default',
+          accentColor: campaign.accentColor || '#d73a31'
+        })
+      });
+
+      if (response.success) {
+        toast({
+          title: "Draft Campaign Sent!",
+          description: `Successfully sent to ${response.sentSuccessfully} recipients`
+        });
+
+        // Update the campaign status
+        setCampaigns(prev => prev.map(c =>
+          c.id === campaign.id
+            ? { ...c, status: 'sent', recipients: response.sentSuccessfully, sentAt: new Date().toISOString() }
+            : c
+        ));
+      } else {
+        throw new Error(response.error || 'Failed to send campaign');
+      }
+    } catch (error) {
+      console.error('Campaign send error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send campaign",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const deleteCampaign = (campaignId) => {
+    setCampaigns(prev => prev.filter(c => c.id !== campaignId));
+    toast({
+      title: "Campaign Deleted",
+      description: "The campaign has been successfully deleted"
+    });
   };
 
   return (
@@ -12472,12 +12531,38 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
                     </td>
                     <td className="py-2">
                       <div className="flex space-x-2">
-                        <Button variant="outline" size="sm">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => viewCampaign(campaign)}
+                        >
+                          <Eye className="mr-1 h-3 w-3" />
                           {campaign.status === "draft" ? "Edit" : "View"}
                         </Button>
                         {campaign.status === "draft" && (
-                          <Button size="sm">Send</Button>
+                          <Button
+                            size="sm"
+                            onClick={() => sendDraftCampaign(campaign)}
+                            disabled={isSending}
+                            className="bg-[#d73a31] hover:bg-[#c73128]"
+                          >
+                            {isSending ? (
+                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            ) : (
+                              <Mail className="mr-1 h-3 w-3" />
+                            )}
+                            Send
+                          </Button>
                         )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => deleteCampaign(campaign.id)}
+                          className="text-red-600 hover:text-red-700 hover:border-red-300"
+                        >
+                          <Trash2 className="mr-1 h-3 w-3" />
+                          Delete
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -12783,6 +12868,104 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* View Campaign Dialog */}
+      <Dialog open={isViewingCampaign} onOpenChange={setIsViewingCampaign}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Eye className="mr-3 h-5 w-5 text-[#d73a31]" />
+              Campaign Details
+            </DialogTitle>
+          </DialogHeader>
+
+          {viewingCampaign && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Campaign Name</Label>
+                  <p className="mt-1 text-lg font-semibold">{viewingCampaign.name}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Status</Label>
+                  <div className="mt-1">
+                    <Badge variant={viewingCampaign.status === "sent" ? "default" : "secondary"}>
+                      {viewingCampaign.status}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-gray-600">Subject Line</Label>
+                <p className="mt-1 text-base">{viewingCampaign.subject}</p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Recipients</Label>
+                  <p className="mt-1 text-2xl font-bold text-green-600">
+                    {viewingCampaign.recipients.toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Open Rate</Label>
+                  <p className="mt-1 text-2xl font-bold text-blue-600">{viewingCampaign.openRate}%</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Click Rate</Label>
+                  <p className="mt-1 text-2xl font-bold text-purple-600">{viewingCampaign.clickRate}%</p>
+                </div>
+              </div>
+
+              {viewingCampaign.sentAt && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Sent Date</Label>
+                  <p className="mt-1 text-base">
+                    {new Date(viewingCampaign.sentAt).toLocaleString()}
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <Label className="text-sm font-medium text-gray-600">Email Content Preview</Label>
+                <div className="mt-2 border rounded-lg p-4 bg-gray-50">
+                  <div className="bg-white rounded border shadow-sm max-w-md mx-auto">
+                    <div className="p-4 text-white text-center rounded-t bg-gradient-to-r from-[#d73a31] to-[#e74c3c]">
+                      <h2 className="text-lg font-bold">🍕 Favilla's Pizzeria</h2>
+                      <p className="opacity-90 text-sm">Your favorite pizza just got better!</p>
+                    </div>
+                    <div className="p-4">
+                      <p className="text-base mb-4 text-[#d73a31]">Hi Valued Customer!</p>
+                      <div className="text-gray-700 text-sm">
+                        {viewingCampaign.content || "No content available for this campaign."}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <Button variant="outline" onClick={() => setIsViewingCampaign(false)}>
+                  Close
+                </Button>
+                {viewingCampaign.status === "draft" && (
+                  <Button
+                    onClick={() => {
+                      setIsViewingCampaign(false);
+                      sendDraftCampaign(viewingCampaign);
+                    }}
+                    className="bg-[#d73a31] hover:bg-[#c73128]"
+                  >
+                    <Mail className="mr-2 h-4 w-4" />
+                    Send Now
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -12804,6 +12987,8 @@ const SMSMarketingTab = ({ users }: { users: any[] }) => {
 
   const [isCreatingSMS, setIsCreatingSMS] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [viewingSMSCampaign, setViewingSMSCampaign] = useState(null);
+  const [isViewingSMSCampaign, setIsViewingSMSCampaign] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     message: "",
@@ -12882,6 +13067,58 @@ const SMSMarketingTab = ({ users }: { users: any[] }) => {
     } finally {
       setIsSending(false);
     }
+  };
+
+  const viewSMSCampaign = (campaign) => {
+    setViewingSMSCampaign(campaign);
+    setIsViewingSMSCampaign(true);
+  };
+
+  const sendDraftSMSCampaign = async (campaign) => {
+    setIsSending(true);
+    try {
+      const response = await apiRequest('/api/sms/send-campaign', {
+        method: 'POST',
+        body: JSON.stringify({
+          campaignName: campaign.name,
+          message: campaign.message,
+          recipientType: 'all'
+        })
+      });
+
+      if (response.success) {
+        toast({
+          title: "Draft SMS Campaign Sent!",
+          description: `Successfully sent to ${response.sentSuccessfully} phone numbers`
+        });
+
+        // Update the campaign status
+        setCampaigns(prev => prev.map(c =>
+          c.id === campaign.id
+            ? { ...c, status: 'sent', recipients: response.sentSuccessfully, sentAt: new Date().toISOString() }
+            : c
+        ));
+      } else {
+        throw new Error(response.error || 'Failed to send SMS campaign');
+      }
+    } catch (error) {
+      console.error('SMS campaign send error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send SMS campaign",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const deleteSMSCampaign = (campaignId) => {
+    setCampaigns(prev => prev.filter(c => c.id !== campaignId));
+    toast({
+      title: "SMS Campaign Deleted",
+      description: "The SMS campaign has been successfully deleted"
+    });
   };
 
   return (
@@ -12998,6 +13235,7 @@ const SMSMarketingTab = ({ users }: { users: any[] }) => {
                   <th className="text-left py-2">Delivery Rate</th>
                   <th className="text-left py-2">Response Rate</th>
                   <th className="text-left py-2">Sent Date</th>
+                  <th className="text-left py-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -13017,6 +13255,42 @@ const SMSMarketingTab = ({ users }: { users: any[] }) => {
                     <td className="py-2">{campaign.responseRate}%</td>
                     <td className="py-2">
                       {new Date(campaign.sentAt).toLocaleDateString()}
+                    </td>
+                    <td className="py-2">
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => viewSMSCampaign(campaign)}
+                        >
+                          <Eye className="mr-1 h-3 w-3" />
+                          {campaign.status === "draft" ? "Edit" : "View"}
+                        </Button>
+                        {campaign.status === "draft" && (
+                          <Button
+                            size="sm"
+                            onClick={() => sendDraftSMSCampaign(campaign)}
+                            disabled={isSending}
+                            className="bg-[#d73a31] hover:bg-[#c73128]"
+                          >
+                            {isSending ? (
+                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            ) : (
+                              <MessageSquare className="mr-1 h-3 w-3" />
+                            )}
+                            Send
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => deleteSMSCampaign(campaign.id)}
+                          className="text-red-600 hover:text-red-700 hover:border-red-300"
+                        >
+                          <Trash2 className="mr-1 h-3 w-3" />
+                          Delete
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -13160,6 +13434,103 @@ const SMSMarketingTab = ({ users }: { users: any[] }) => {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View SMS Campaign Dialog */}
+      <Dialog open={isViewingSMSCampaign} onOpenChange={setIsViewingSMSCampaign}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <MessageSquare className="mr-3 h-5 w-5 text-[#d73a31]" />
+              SMS Campaign Details
+            </DialogTitle>
+          </DialogHeader>
+
+          {viewingSMSCampaign && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Campaign Name</Label>
+                  <p className="mt-1 text-lg font-semibold">{viewingSMSCampaign.name}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Status</Label>
+                  <div className="mt-1">
+                    <Badge variant="default">{viewingSMSCampaign.status}</Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Recipients</Label>
+                  <p className="mt-1 text-2xl font-bold text-green-600">
+                    {viewingSMSCampaign.recipients.toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Delivery Rate</Label>
+                  <p className="mt-1 text-2xl font-bold text-blue-600">{viewingSMSCampaign.deliveryRate}%</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Response Rate</Label>
+                  <p className="mt-1 text-2xl font-bold text-purple-600">{viewingSMSCampaign.responseRate}%</p>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-gray-600">Sent Date</Label>
+                <p className="mt-1 text-base">
+                  {new Date(viewingSMSCampaign.sentAt).toLocaleString()}
+                </p>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-gray-600">SMS Message</Label>
+                <div className="mt-2 border rounded-lg p-4 bg-gray-50">
+                  <div className="bg-white border rounded-lg p-3 max-w-xs">
+                    <div className="text-xs text-gray-500 mb-2">From: Favilla's Pizzeria</div>
+                    <div className="text-sm">
+                      {viewingSMSCampaign.message}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-medium text-blue-800 mb-2">Message Details</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-blue-600">Character Count:</span>
+                    <span className="font-medium ml-2">{viewingSMSCampaign.message.length}/160</span>
+                  </div>
+                  <div>
+                    <span className="text-blue-600">Message Type:</span>
+                    <span className="font-medium ml-2">SMS Marketing</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <Button variant="outline" onClick={() => setIsViewingSMSCampaign(false)}>
+                  Close
+                </Button>
+                {viewingSMSCampaign.status === "draft" && (
+                  <Button
+                    onClick={() => {
+                      setIsViewingSMSCampaign(false);
+                      sendDraftSMSCampaign(viewingSMSCampaign);
+                    }}
+                    className="bg-[#d73a31] hover:bg-[#c73128]"
+                  >
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    Send Now
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
