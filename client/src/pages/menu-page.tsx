@@ -185,7 +185,7 @@ const MenuPage = () => {
   // Get choice groups for a specific item
   const getItemChoiceGroups = (item: any) => {
     const relevantGroups: any[] = [];
-    
+
     // Get choice groups assigned directly to this menu item
     const directGroups = menuItemChoiceGroups
       .filter((micg: any) => micg.menu_item_id === item.id)
@@ -195,9 +195,19 @@ const MenuPage = () => {
     const categoryGroups = categoryChoiceGroups
       .filter((ccg: any) => ccg.category_name === item.category)
       .map((ccg: any) => ccg.choice_group_id);
-    
+
     // Combine and deduplicate
     const allGroupIds = [...new Set([...directGroups, ...categoryGroups])];
+
+    console.log(`🔍 Debug for item "${item.name}" (category: ${item.category}):`, {
+      menuItemChoiceGroups: menuItemChoiceGroups.length,
+      categoryChoiceGroups: categoryChoiceGroups.length,
+      directGroups,
+      categoryGroups,
+      allGroupIds,
+      choiceGroups: choiceGroups.length,
+      choiceItems: choiceItems.length
+    });
     
     // Get the actual choice group objects
     allGroupIds.forEach(groupId => {
