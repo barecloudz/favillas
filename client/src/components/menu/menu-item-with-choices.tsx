@@ -49,16 +49,29 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
 
   // Get choice groups for this menu item, sorted by priority
   const getItemChoiceGroups = () => {
+    console.log(`🔍 [MenuItemWithChoices] Processing item "${item.name}" (id: ${item.id})`);
+    console.log(`🔍 [MenuItemWithChoices] Available data:`, {
+      menuItemChoiceGroups: menuItemChoiceGroups.length,
+      choiceGroups: choiceGroups.length,
+      choiceItems: choiceItems.length
+    });
+
     const itemChoiceGroupIds = menuItemChoiceGroups
       .filter(micg => micg.menu_item_id === item.id);
 
-    return itemChoiceGroupIds.map(micg => {
+    console.log(`🔍 [MenuItemWithChoices] Found ${itemChoiceGroupIds.length} choice group assignments for this item:`, itemChoiceGroupIds);
+
+    const result = itemChoiceGroupIds.map(micg => {
       const group = choiceGroups.find(cg => cg.id === micg.choice_group_id);
+      console.log(`🔍 [MenuItemWithChoices] Looking for choice group ${micg.choice_group_id}, found:`, group);
+
       if (!group) return null;
 
       const items = choiceItems
         .filter(ci => ci.choice_group_id === group.id)
         .sort((a, b) => a.order - b.order);
+
+      console.log(`🔍 [MenuItemWithChoices] Found ${items.length} choice items for group "${group.name}":`, items);
 
       return {
         ...group,
@@ -66,6 +79,9 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
         isRequired: micg.is_required
       };
     }).filter(Boolean).sort((a, b) => (a.priority || 0) - (b.priority || 0));
+
+    console.log(`🔍 [MenuItemWithChoices] Final result for item "${item.name}":`, result);
+    return result;
   };
 
   const itemChoiceGroups = getItemChoiceGroups();
