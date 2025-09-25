@@ -3548,8 +3548,8 @@ const MenuEditor = ({ menuItems }: any) => {
 
   // Get sorted choices
   const sortedChoices = choiceGroups
-    .filter((choice: any) => choice.isActive)
-    .sort((a: any, b: any) => a.order - b.order);
+    .filter((choice: any) => choice.isActive !== false) // Show if isActive is true or undefined
+    .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
 
 
   const formatCurrency = (amount: number) => {
