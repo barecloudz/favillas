@@ -131,20 +131,24 @@ export const handler: Handler = async (event, context) => {
       // Build dynamic update query to avoid undefined values
       const updateFields = [];
       const updateValues = [];
+      let parameterIndex = 2; // Start at $2 since $1 is categoryId
 
       if (name !== undefined) {
-        updateFields.push('name = $' + (updateFields.length + 2)); // +2 because categoryId is $1
+        updateFields.push('name = $' + parameterIndex);
         updateValues.push(name);
+        parameterIndex++;
       }
 
       if (order !== undefined) {
-        updateFields.push('"order" = $' + (updateFields.length + 2));
+        updateFields.push('"order" = $' + parameterIndex);
         updateValues.push(order);
+        parameterIndex++;
       }
 
       if (isActive !== undefined) {
-        updateFields.push('is_active = $' + (updateFields.length + 2));
+        updateFields.push('is_active = $' + parameterIndex);
         updateValues.push(isActive);
+        parameterIndex++;
       }
 
       if (updateFields.length === 0) {
