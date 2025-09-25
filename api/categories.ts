@@ -101,7 +101,7 @@ export const handler: Handler = async (event, context) => {
       // Extract ID from URL path
       const urlParts = event.path?.split('/') || [];
       const categoryId = urlParts[urlParts.length - 1];
-      
+
       if (!categoryId || isNaN(parseInt(categoryId))) {
         return {
           statusCode: 400,
@@ -109,16 +109,47 @@ export const handler: Handler = async (event, context) => {
           body: JSON.stringify({ message: 'Invalid category ID' })
         };
       }
-      
-      const { name, order, isActive } = JSON.parse(event.body || '{}');
-      
-      const result = await sql`
+
+      const updateData = JSON.parse(event.body || '{}');
+      const { name, order, isActive } = updateData;
+
+      // Build dynamic update query to avoid undefined values
+      const updateFields = [];
+      const updateValues = [];
+
+      if (name !== undefined) {
+        updateFields.push('name = $' + (updateFields.length + 2)); // +2 because categoryId is $1
+        updateValues.push(name);
+      }
+
+      if (order !== undefined) {
+        updateFields.push('"order" = $' + (updateFields.length + 2));
+        updateValues.push(order);
+      }
+
+      if (isActive !== undefined) {
+        updateFields.push('is_active = $' + (updateFields.length + 2));
+        updateValues.push(isActive);
+      }
+
+      if (updateFields.length === 0) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ message: 'No valid fields to update' })
+        };
+      }
+
+      // Construct and execute the dynamic update query
+      const query = `
         UPDATE categories
-        SET name = ${name}, "order" = ${order}, is_active = ${isActive}
-        WHERE id = ${parseInt(categoryId)}
+        SET ${updateFields.join(', ')}
+        WHERE id = $1
         RETURNING *
       `;
-      
+
+      const result = await sql.unsafe(query, [parseInt(categoryId), ...updateValues]);
+
       if (result.length === 0) {
         return {
           statusCode: 404,
@@ -126,7 +157,7 @@ export const handler: Handler = async (event, context) => {
           body: JSON.stringify({ message: 'Category not found' })
         };
       }
-      
+
       return {
         statusCode: 200,
         headers,
