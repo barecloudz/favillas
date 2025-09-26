@@ -919,7 +919,7 @@ export const handler: Handler = async (event, context) => {
             });
 
             // Use atomic transaction for points operations to prevent race conditions
-            await sql.begin(async (sql) => {
+            const pointsResult = await sql.begin(async (sql) => {
               console.log('🔒 Orders API: Starting atomic transaction for points award');
 
               if (userId) {
@@ -963,15 +963,50 @@ export const handler: Handler = async (event, context) => {
                   }
 
                   console.log('✅ Orders API: Points awarded successfully - Total:', pointsToAward, 'points');
+                  return { success: true, pointsAwarded: pointsToAward, userType: 'legacy' };
+                } else {
+                  console.log('❌ Orders API: Legacy user not found in users table');
+                  return { success: false, reason: 'Legacy user not found' };
                 }
               } else if (supabaseUserId) {
                 // Supabase user - award points using supabase_user_id
                 console.log('🎁 Orders API: Awarding points to Supabase user:', supabaseUserId);
 
+                // First check if user exists in users table
+                const userExists = await sql`SELECT id FROM users WHERE supabase_user_id = ${supabaseUserId}`;
+                console.log('🎁 Orders API: Supabase user exists check:', userExists.length > 0, 'for user:', supabaseUserId);
+
+                if (userExists.length === 0) {
+                  console.log('❌ Orders API: Supabase user not found in users table, creating...');
+                  // Create user record first
+                  try {
+                    await sql`
+                      INSERT INTO users (
+                        supabase_user_id, username, email, role, phone, address, city, state, zip_code,
+                        first_name, last_name, password, created_at, updated_at
+                      ) VALUES (
+                        ${supabaseUserId},
+                        'customer_user',
+                        'customer@example.com',
+                        'customer',
+                        '', '', '', '', '',
+                        'Customer', 'User',
+                        'SUPABASE_USER',
+                        NOW(), NOW()
+                      )
+                      ON CONFLICT (supabase_user_id) DO NOTHING
+                    `;
+                    console.log('✅ Orders API: Created missing Supabase user record');
+                  } catch (createUserError) {
+                    console.error('❌ Orders API: Failed to create Supabase user record:', createUserError);
+                  }
+                }
+
                 // Record points transaction in audit table
                 const pointsTransaction = await sql`
                   INSERT INTO points_transactions (user_id, supabase_user_id, order_id, type, points, description, order_amount, created_at)
                   VALUES (NULL, ${supabaseUserId}, ${newOrder.id}, 'earned', ${pointsToAward}, ${'Order #' + newOrder.id}, ${newOrder.total}, NOW())
+                  ON CONFLICT (order_id, supabase_user_id) DO NOTHING
                   RETURNING id
                 `;
                 console.log('✅ Orders API: Supabase points transaction created:', pointsTransaction[0]?.id);
@@ -990,12 +1025,19 @@ export const handler: Handler = async (event, context) => {
                 console.log('✅ Orders API: Supabase user points updated with UPSERT:', userPointsUpdate[0]);
 
                 console.log('✅ Orders API: Points awarded successfully to Supabase user - Total:', pointsToAward, 'points');
+                return { success: true, pointsAwarded: pointsToAward, userType: 'supabase' };
               }
             });
+
+            console.log('🎁 Orders API: Points transaction result:', pointsResult);
+
           } catch (pointsError) {
             console.error('❌ Orders API: Error awarding points:', pointsError);
+            console.error('❌ Orders API: Points error stack:', pointsError.stack);
             // Don't fail the order if points fail
           }
+        } else {
+          console.log('⚠️ Orders API: No user ID available for points awarding');
         }
 
         // ShipDay integration for delivery orders (only after payment confirmation)
