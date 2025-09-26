@@ -1,4 +1,5 @@
 # Claude Code Memory File - Pizza Spin Rewards
+<!-- Testing deploy preview workflow -->
 
 ## Available CLI Tools
 - **Supabase CLI** - Available for database management and authentication
