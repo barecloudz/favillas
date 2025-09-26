@@ -166,7 +166,6 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 
   // Detect missing categories based on cart contents
   const getMissingCategories = (): Category[] => {
-    console.log('🔍 [Category Analysis] Starting analysis...');
 
     // Create fallback categories if API fails
     const fallbackCategories: Category[] = [
@@ -178,23 +177,12 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 
     // Use API categories or fallback
     const workingCategories = Array.isArray(categories) && categories.length > 0 ? categories : fallbackCategories;
-    console.log('🔍 [Category Analysis] Using categories:', workingCategories.map(c => c.name));
 
     // Ensure we have arrays to work with
     if (!Array.isArray(workingCategories) || !Array.isArray(menuItems) || !Array.isArray(cartItems)) {
-      console.log('🔍 [Category Analysis] Invalid data types:', {
-        categories: Array.isArray(workingCategories),
-        menuItems: Array.isArray(menuItems),
-        cartItems: Array.isArray(cartItems)
-      });
       return [];
     }
 
-    console.log('🔍 [Category Analysis] Data available:', {
-      categories: workingCategories.length,
-      menuItems: menuItems.length,
-      cartItems: cartItems.length
-    });
 
     // Get categories from cart items
     const cartCategories = new Set(
@@ -202,12 +190,10 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
         // Try to find the category from menu items or use a fallback
         const menuItem = menuItems.find(mi => mi.id === item.id);
         const category = menuItem?.category || 'Pizza'; // Default to Pizza if not found
-        console.log('🔍 [Category Analysis] Cart item:', item.name, '→ Category:', category);
         return category;
       })
     );
 
-    console.log('🔍 [Category Analysis] Cart categories found:', Array.from(cartCategories));
 
     // Get admin settings for enabled categories
     const savedSettings = localStorage.getItem('experimentalFeatureSettings');
@@ -226,8 +212,6 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
       }
     }
 
-    console.log('🔍 [Category Analysis] Enabled upsell categories:', enabledUpsellCategories);
-    console.log('🔍 [Category Analysis] Available categories from API:', workingCategories.map(c => c.name));
 
     // Filter categories that are enabled for upselling and not in cart
     const missingCategories = workingCategories.filter(category => {
@@ -235,18 +219,10 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
       const notInCart = !cartCategories.has(category.name);
       const upsellEnabled = category.is_upsell_enabled !== false;
 
-      console.log('🔍 [Category Analysis] Category check:', {
-        name: category.name,
-        isEnabled,
-        notInCart,
-        upsellEnabled,
-        shouldInclude: isEnabled && notInCart && upsellEnabled
-      });
 
       return isEnabled && notInCart && upsellEnabled;
     });
 
-    console.log('🔍 [Category Analysis] Final missing categories:', missingCategories.map(c => c.name));
     return missingCategories;
   };
 

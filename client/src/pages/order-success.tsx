@@ -74,36 +74,79 @@ const OrderSuccessPage = () => {
         });
       }
     } else if (paymentIntentParam) {
-      // New flow: payment succeeded, order was created via webhook
-      console.log('💳 Payment intent detected, order should have been created via webhook');
+      // New flow: payment succeeded, now create order from stored data
+      console.log('💳 Payment intent detected, creating order from stored data');
 
-      // Clear pending order data since payment was successful
-      sessionStorage.removeItem('pendingOrderData');
-      console.log('✅ Cleared pending order data from sessionStorage');
+      // Get the pending order data from sessionStorage
+      const pendingOrderDataStr = sessionStorage.getItem('pendingOrderData');
+      if (pendingOrderDataStr) {
+        try {
+          const pendingOrderData = JSON.parse(pendingOrderDataStr);
+          console.log('📦 Creating order from stored data:', pendingOrderData);
 
-      // For new flow, we don't have the order ID immediately
-      // The webhook should have created the order, but we need to wait a moment for it to complete
-      // Show success message and clear cart for now
+          // Create the order now that payment has succeeded
+          const createOrderAsync = async () => {
+            try {
+              const response = await apiRequest('/api/orders', {
+                method: 'POST',
+                body: JSON.stringify(pendingOrderData),
+              });
+
+              if (response.ok) {
+                const createdOrder = await response.json();
+                console.log('✅ Order created successfully:', createdOrder);
+                setOrderId(createdOrder.id);
+                setOrder(createdOrder);
+
+                // Store order for guest users
+                if (!user) {
+                  const guestOrderKey = `guestOrder_${createdOrder.id}`;
+                  localStorage.setItem(guestOrderKey, JSON.stringify(createdOrder));
+                }
+
+                toast({
+                  title: "Order Created Successfully!",
+                  description: `Order #${createdOrder.id} has been placed.`,
+                });
+              } else {
+                const errorData = await response.json();
+                console.error('❌ Failed to create order:', errorData);
+                toast({
+                  title: "Payment Successful",
+                  description: "Your payment was processed, but there was an issue creating your order. Please contact us.",
+                  variant: "destructive",
+                });
+              }
+            } catch (error) {
+              console.error('💥 Error creating order:', error);
+              toast({
+                title: "Payment Successful",
+                description: "Your payment was processed, but there was an issue creating your order. Please contact us.",
+                variant: "destructive",
+              });
+            } finally {
+              setIsLoading(false);
+            }
+          };
+
+          createOrderAsync();
+        } catch (error) {
+          console.error('❌ Error parsing pending order data:', error);
+          setIsLoading(false);
+        }
+
+        // Clear pending order data since we've processed it
+        sessionStorage.removeItem('pendingOrderData');
+        console.log('✅ Cleared pending order data from sessionStorage');
+      } else {
+        console.warn('⚠️ No pending order data found in sessionStorage');
+        setIsLoading(false);
+      }
+
+      // Clear cart for successful payment
       if (!cartCleared) {
         clearCart();
         setCartCleared(true);
-        toast({
-          title: "Payment Successful!",
-          description: "Your order is being processed. You should receive confirmation shortly.",
-        });
-      }
-
-      // Try to find the order by looking for recent orders (for authenticated users)
-      // or show generic success for guest users
-      if (user) {
-        // Set a timeout to check for the order after webhook processing
-        setTimeout(() => {
-          // This will trigger the order fetching logic below
-          setIsLoading(false);
-        }, 3000);
-      } else {
-        // Guest user - just show success without order details
-        setIsLoading(false);
       }
     } else {
       // No order ID or payment intent, redirect to home
