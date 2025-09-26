@@ -669,7 +669,7 @@ const CheckoutPage = () => {
         menuItemId: item.id,
         quantity: item.quantity,
         price: (item.price * item.quantity).toString(),
-        options: item.selectedOptions || {},
+        options: item.options || item.selectedOptions || [],
         specialInstructions: item.specialInstructions || "",
       }));
     
@@ -762,12 +762,19 @@ const CheckoutPage = () => {
                 <CardContent>
                   <div className="space-y-4">
                     {items.filter(item => item && item.id && item.name).map((item) => (
-                      <div key={`${item.id}-${JSON.stringify(item.selectedOptions)}`} className="flex justify-between items-center py-2 border-b">
+                      <div key={`${item.id}-${JSON.stringify(item.options || item.selectedOptions)}`} className="flex justify-between items-center py-2 border-b">
                         <div className="flex items-center">
                           <div className="ml-4">
                             <p className="font-medium">{item.name}</p>
                             <p className="text-sm text-gray-500">
                               {item.selectedOptions?.size && `Size: ${item.selectedOptions.size}`}
+                              {/* Show add-ons */}
+                              {item.options && item.options.length > 0 && (
+                                <span className="block">
+                                  Add-ons: {item.options.map(opt => opt.name).join(', ')}
+                                  {` (+$${item.options.reduce((sum, opt) => sum + opt.price, 0).toFixed(2)})`}
+                                </span>
+                              )}
                               {item.specialInstructions && (
                                 <span className="block italic">"{item.specialInstructions}"</span>
                               )}
