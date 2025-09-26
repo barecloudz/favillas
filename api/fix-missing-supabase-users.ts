@@ -40,20 +40,50 @@ export const handler: Handler = async (event, context) => {
   try {
     const sql = getDB();
 
-    console.log('🔍 Looking for orders with missing user records...');
+    console.log('🔍 Analyzing Supabase user situation...');
 
-    // Find orders that have supabase_user_ids but no corresponding user records
-    const ordersWithMissingUsers = await sql`
+    // First, let's see what we have
+    const allOrderUsers = await sql`
       SELECT DISTINCT o.supabase_user_id, COUNT(*) as order_count, SUM(o.total::numeric) as total_spent
       FROM orders o
-      LEFT JOIN users u ON u.supabase_user_id = o.supabase_user_id
       WHERE o.supabase_user_id IS NOT NULL
-        AND u.supabase_user_id IS NULL
         AND o.payment_status = 'succeeded'
       GROUP BY o.supabase_user_id
     `;
 
-    console.log(`📊 Found ${ordersWithMissingUsers.length} Supabase users with orders but no user records`);
+    console.log(`📊 Found ${allOrderUsers.length} distinct Supabase users with successful orders`);
+
+    // Check which ones have user records
+    const usersWithRecords = await sql`
+      SELECT DISTINCT u.supabase_user_id, u.id, u.email, u.role
+      FROM users u
+      WHERE u.supabase_user_id IS NOT NULL
+    `;
+
+    console.log(`👥 Found ${usersWithRecords.length} users with database records`);
+
+    // Check which ones have points records
+    const usersWithPoints = await sql`
+      SELECT DISTINCT up.supabase_user_id, up.points, up.total_earned
+      FROM user_points up
+      WHERE up.supabase_user_id IS NOT NULL
+    `;
+
+    console.log(`🎁 Found ${usersWithPoints.length} users with points records`);
+
+    // Find orders that have supabase_user_ids but no corresponding user records OR no points records
+    const ordersWithMissingUsers = await sql`
+      SELECT DISTINCT o.supabase_user_id, COUNT(*) as order_count, SUM(o.total::numeric) as total_spent
+      FROM orders o
+      LEFT JOIN users u ON u.supabase_user_id = o.supabase_user_id
+      LEFT JOIN user_points up ON up.supabase_user_id = o.supabase_user_id
+      WHERE o.supabase_user_id IS NOT NULL
+        AND o.payment_status = 'succeeded'
+        AND (u.supabase_user_id IS NULL OR up.supabase_user_id IS NULL)
+      GROUP BY o.supabase_user_id
+    `;
+
+    console.log(`🔍 Found ${ordersWithMissingUsers.length} Supabase users missing user records OR points records`);
 
     const fixes = [];
 
@@ -143,6 +173,18 @@ export const handler: Handler = async (event, context) => {
       headers,
       body: JSON.stringify({
         message: `Fixed ${fixes.length} users with missing records`,
+        diagnostics: {
+          total_order_users: allOrderUsers.length,
+          users_with_records: usersWithRecords.length,
+          users_with_points: usersWithPoints.length,
+          users_missing_records_or_points: ordersWithMissingUsers.length
+        },
+        detailed_analysis: {
+          all_order_users: allOrderUsers,
+          users_with_records: usersWithRecords,
+          users_with_points: usersWithPoints,
+          missing_users: ordersWithMissingUsers
+        },
         fixes: fixes,
         summary: {
           total_users_fixed: fixes.filter(f => !f.error).length,
