@@ -113,6 +113,20 @@ export const handler: Handler = async (event, context) => {
 
       console.log('✅ Created Supabase user record:', newUser[0]);
 
+      // Also create user points record for rewards system
+      try {
+        const pointsRecord = await sql`
+          INSERT INTO user_points (supabase_user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
+          VALUES (${authPayload.supabaseUserId}, 0, 0, 0, NOW(), NOW(), NOW())
+          ON CONFLICT (supabase_user_id) DO NOTHING
+          RETURNING *
+        `;
+        console.log('✅ Created user points record:', pointsRecord[0]);
+      } catch (pointsError) {
+        console.error('❌ Failed to create points record (will retry later):', pointsError);
+        // Don't fail user creation if points creation fails
+      }
+
       return {
         statusCode: 201,
         headers,

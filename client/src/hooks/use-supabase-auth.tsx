@@ -112,10 +112,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (completeProfile) {
               setUser(completeProfile);
             } else {
-              // Fallback to basic mapping if profile fetch fails
-              const mappedUser = mapSupabaseUser(session?.user || null);
-              setUser(mappedUser);
-              console.log('⚠️ Fallback to basic Supabase user mapping');
+              // No profile found - this might be a new user, try to create database record
+              console.log('🔍 No user profile found, attempting to create database record for new user');
+
+              try {
+                const createResponse = await apiRequest('POST', '/api/create-current-user');
+                const createResult = await createResponse.json();
+                console.log('✅ Created new user record:', createResult);
+
+                // Now try to fetch the profile again
+                const newProfile = await fetchUserProfile();
+                if (newProfile) {
+                  setUser(newProfile);
+                } else {
+                  // Still couldn't fetch, use basic mapping
+                  const mappedUser = mapSupabaseUser(session?.user || null);
+                  setUser(mappedUser);
+                  console.log('⚠️ Created user but still using basic mapping');
+                }
+              } catch (createError) {
+                console.warn('⚠️ Failed to create user record:', createError);
+                // Fallback to basic mapping if user creation fails
+                const mappedUser = mapSupabaseUser(session?.user || null);
+                setUser(mappedUser);
+                console.log('⚠️ Fallback to basic Supabase user mapping');
+              }
             }
           } catch (profileError) {
             console.warn('⚠️ Failed to fetch complete profile, using basic mapping:', profileError);
