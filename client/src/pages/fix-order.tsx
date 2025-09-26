@@ -67,10 +67,10 @@ const FixOrderPage = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-amber-500" />
-            Fix Order 167
+            Fix Orphaned Orders
           </CardTitle>
           <CardDescription>
-            Retroactively associate order 167 with your account and award missing points.
+            Find and fix any orders that weren't properly associated with your account, and award missing points.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -81,11 +81,28 @@ const FixOrderPage = () => {
                 <span className="font-medium">Order Fixed Successfully!</span>
               </div>
               <div className="mt-2 text-sm text-green-700">
-                <p>Order ID: {result.orderId}</p>
-                <p>Points Awarded: {result.pointsAwarded}</p>
-                <p>New Balance: {result.newBalance} points</p>
-                {result.alreadyAwarded && (
-                  <p className="text-amber-700">Note: Points were already awarded for this order.</p>
+                {result.fixedOrders ? (
+                  <>
+                    <p>Orders Fixed: {result.fixedOrders.length}</p>
+                    <p>Total Points Awarded: {result.totalPointsAwarded}</p>
+                    <p>New Balance: {result.newBalance} points</p>
+                    <div className="mt-2">
+                      {result.fixedOrders.map((order: any) => (
+                        <div key={order.orderId} className="text-xs">
+                          Order #{order.orderId}: +{order.pointsAwarded} points
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p>Order ID: {result.orderId}</p>
+                    <p>Points Awarded: {result.pointsAwarded}</p>
+                    <p>New Balance: {result.newBalance} points</p>
+                    {result.alreadyAwarded && (
+                      <p className="text-amber-700">Note: Points were already awarded for this order.</p>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -96,7 +113,7 @@ const FixOrderPage = () => {
               className="w-full"
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Fix Order & Award Points
+              Find & Fix Orphaned Orders
             </Button>
           )}
         </CardContent>
