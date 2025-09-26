@@ -114,16 +114,31 @@ export const handler: Handler = async (event, context) => {
       }
 
       // Update user points balance with the total
-      const finalBalance = await sql`
-        INSERT INTO user_points (supabase_user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
-        VALUES (${supabaseUserId}, ${totalPointsToAward}, ${totalPointsToAward}, 0, NOW(), NOW(), NOW())
-        ON CONFLICT (supabase_user_id) DO UPDATE SET
-          points = user_points.points + ${totalPointsToAward},
-          total_earned = user_points.total_earned + ${totalPointsToAward},
-          last_earned_at = NOW(),
-          updated_at = NOW()
-        RETURNING points, total_earned
+      // First check if user points record exists
+      const existingPoints = await sql`
+        SELECT points, total_earned FROM user_points WHERE supabase_user_id = ${supabaseUserId}
       `;
+
+      let finalBalance;
+      if (existingPoints.length > 0) {
+        // Update existing record
+        finalBalance = await sql`
+          UPDATE user_points
+          SET points = points + ${totalPointsToAward},
+              total_earned = total_earned + ${totalPointsToAward},
+              last_earned_at = NOW(),
+              updated_at = NOW()
+          WHERE supabase_user_id = ${supabaseUserId}
+          RETURNING points, total_earned
+        `;
+      } else {
+        // Create new record
+        finalBalance = await sql`
+          INSERT INTO user_points (supabase_user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
+          VALUES (${supabaseUserId}, ${totalPointsToAward}, ${totalPointsToAward}, 0, NOW(), NOW(), NOW())
+          RETURNING points, total_earned
+        `;
+      }
 
       return {
         transactionsCreated: transactionCount,
