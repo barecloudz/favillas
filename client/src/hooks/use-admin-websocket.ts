@@ -192,25 +192,33 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
 
         if (response.ok) {
           const orders = await response.json();
-          console.log('📊 Polling response:', { ordersCount: orders.length, orders: orders.map(o => ({ id: o.id, created_at: o.created_at })) });
+          console.log('📊 Polling response:', { ordersCount: orders.length, orders: orders.map(o => ({ id: o.id, created_at: o.created_at, status: o.status, payment_status: o.payment_status })) });
 
-          if (orders.length > 0) {
-            const latestOrder = orders[0];
+          // Filter for confirmed orders only (exclude pending orders that haven't been paid)
+          const confirmedOrders = orders.filter((order: any) =>
+            order.status !== 'pending' || order.payment_status === 'succeeded'
+          );
+
+          console.log('✅ Confirmed orders:', confirmedOrders.length, 'of', orders.length, 'total orders');
+
+          if (confirmedOrders.length > 0) {
+            const latestOrder = confirmedOrders[0];
             const latestOrderId = latestOrder.id;
 
-            console.log('🆔 Latest order ID:', latestOrderId, 'Last checked:', lastCheckedOrderRef.current);
+            console.log('🆔 Latest confirmed order ID:', latestOrderId, 'Last checked:', lastCheckedOrderRef.current);
 
-            // On first run, just store the latest order ID without notification
+            // On first run, just store the latest confirmed order ID without notification
             if (lastCheckedOrderRef.current === null) {
               lastCheckedOrderRef.current = latestOrderId;
-              console.log('📝 Initial setup - storing latest order ID:', latestOrderId);
+              console.log('📝 Initial setup - storing latest confirmed order ID:', latestOrderId);
               return;
             }
 
-            // Check if this is a new order
+            // Check if this is a new confirmed order
             if (lastCheckedOrderRef.current !== latestOrderId) {
-              console.log('🔔 NEW ORDER DETECTED via polling!');
+              console.log('🔔 NEW CONFIRMED ORDER DETECTED via polling!');
               console.log('📦 Order details:', latestOrder);
+              console.log('💳 Payment status:', latestOrder.payment_status);
 
               // Play notification sound
               playNotificationSound();
@@ -223,7 +231,7 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
               // Update the last checked order
               lastCheckedOrderRef.current = latestOrderId;
             } else {
-              console.log('✅ No new orders since last check');
+              console.log('✅ No new confirmed orders since last check');
             }
           } else {
             console.log('📭 No orders found');
