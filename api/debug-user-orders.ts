@@ -47,7 +47,7 @@ export const handler: Handler = async (event, context) => {
 
   // Require authentication
   const authPayload = await authenticateToken(event);
-  if (!authPayload || !authPayload.isSupabase) {
+  if (!authPayload) {
     return {
       statusCode: 401,
       headers,
@@ -57,20 +57,39 @@ export const handler: Handler = async (event, context) => {
 
   try {
     const sql = getDB();
-    const supabaseUserId = authPayload.supabaseUserId;
 
-    console.log('🔍 DEBUG: Analyzing orders for Supabase user:', supabaseUserId);
+    // Get target user - could be from query param for admin or current user
+    const params = new URLSearchParams(event.queryStringParameters || {});
+    const targetUserId = params.get('userId');
+    const targetUserEmail = params.get('userEmail') || 'barecloudz@gmail.com'; // Default to your email
 
-    // Get user profile info
-    const userProfile = await sql`
-      SELECT id, phone, supabase_user_id, username, email FROM users WHERE supabase_user_id = ${supabaseUserId}
-    `;
+    let userProfile;
+
+    if (targetUserId) {
+      // Admin looking up specific user by ID
+      userProfile = await sql`
+        SELECT id, phone, supabase_user_id, username, email FROM users WHERE id = ${targetUserId}
+      `;
+    } else if (authPayload.supabaseUserId) {
+      // Supabase user looking up their own orders
+      userProfile = await sql`
+        SELECT id, phone, supabase_user_id, username, email FROM users WHERE supabase_user_id = ${authPayload.supabaseUserId}
+      `;
+    } else {
+      // Admin or legacy user - look up by email
+      userProfile = await sql`
+        SELECT id, phone, supabase_user_id, username, email FROM users WHERE email = ${targetUserEmail}
+      `;
+    }
 
     if (userProfile.length === 0) {
       return {
         statusCode: 404,
         headers,
-        body: JSON.stringify({ error: 'User profile not found' })
+        body: JSON.stringify({
+          error: 'User profile not found',
+          searchedFor: targetUserId || authPayload.supabaseUserId || targetUserEmail
+        })
       };
     }
 
@@ -89,19 +108,36 @@ export const handler: Handler = async (event, context) => {
     `;
 
     // Get points transactions for this user
-    const pointsTransactions = await sql`
-      SELECT order_id, points, description, created_at
-      FROM points_transactions
-      WHERE supabase_user_id = ${supabaseUserId}
-      ORDER BY created_at DESC
-    `;
+    let pointsTransactions;
+    let pointsBalance;
 
-    // Get current points balance
-    const pointsBalance = await sql`
-      SELECT points, total_earned, total_redeemed
-      FROM user_points
-      WHERE supabase_user_id = ${supabaseUserId}
-    `;
+    if (user.supabase_user_id) {
+      pointsTransactions = await sql`
+        SELECT order_id, points, description, created_at
+        FROM points_transactions
+        WHERE supabase_user_id = ${user.supabase_user_id}
+        ORDER BY created_at DESC
+      `;
+
+      pointsBalance = await sql`
+        SELECT points, total_earned, total_redeemed
+        FROM user_points
+        WHERE supabase_user_id = ${user.supabase_user_id}
+      `;
+    } else {
+      pointsTransactions = await sql`
+        SELECT order_id, points, description, created_at
+        FROM points_transactions
+        WHERE user_id = ${user.id}
+        ORDER BY created_at DESC
+      `;
+
+      pointsBalance = await sql`
+        SELECT points, total_earned, total_redeemed
+        FROM user_points
+        WHERE user_id = ${user.id}
+      `;
+    }
 
     // Calculate missing points
     const orderIds = allOrdersWithPhone.map(o => o.id);
