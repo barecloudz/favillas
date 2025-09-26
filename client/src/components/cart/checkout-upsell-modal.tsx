@@ -621,47 +621,63 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
             </Button>
           </div>
         </div>
-      </DialogContent>
 
-      {/* Keep Looking Overlay Modal */}
-      {showKeepLookingModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
-          <div className="bg-white rounded-xl shadow-2xl p-6 sm:p-8 max-w-md w-[90vw] mx-4">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
+        {/* Keep Looking Overlay Modal - Inside main dialog */}
+        {showKeepLookingModal && (
+          <div
+            className="absolute inset-0 bg-black/50 flex items-center justify-center z-50"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowKeepLookingModal(false);
+                console.log('Backdrop clicked - closing overlay modal');
+              }
+            }}
+          >
+            <div className="bg-white rounded-xl shadow-2xl p-6 sm:p-8 max-w-md w-[90vw] mx-4">
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
                 </div>
-              </div>
 
-              <h3 className="text-xl font-bold text-gray-900">Item Added!</h3>
-              <p className="text-gray-600">Would you like to keep looking for more items to add to your order?</p>
+                <h3 className="text-xl font-bold text-gray-900">Item Added!</h3>
+                <p className="text-gray-600">Would you like to keep looking for more items to add to your order?</p>
 
-              <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                <Button
-                  onClick={() => setShowKeepLookingModal(false)}
-                  className="flex-1 bg-[#d73a31] hover:bg-[#c73128] text-white font-semibold py-3"
-                >
-                  Yes Please!
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                  <Button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowKeepLookingModal(false);
+                      console.log('Keep looking button clicked - modal should close');
+                    }}
+                    className="flex-1 bg-[#d73a31] hover:bg-[#c73128] text-white font-semibold py-3"
+                  >
+                    Yes Please!
+                  </Button>
 
-                <Button
-                  onClick={() => {
-                    setShowKeepLookingModal(false);
-                    handleProceedToCheckout();
-                  }}
-                  variant="outline"
-                  className="flex-1 border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold py-3"
-                >
-                  Proceed to Checkout
-                </Button>
+                  <Button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('Proceed to checkout button clicked from overlay');
+                      setShowKeepLookingModal(false);
+                      handleProceedToCheckout();
+                    }}
+                    variant="outline"
+                    className="flex-1 border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold py-3"
+                  >
+                    Proceed to Checkout
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </DialogContent>
     </Dialog>
   );
 };
