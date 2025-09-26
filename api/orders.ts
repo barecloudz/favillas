@@ -344,6 +344,14 @@ export const handler: Handler = async (event, context) => {
         let userId = null;
         let supabaseUserId = null;
 
+        console.log('🔍 Orders API: AUTH PAYLOAD DEBUG:', {
+          hasAuthPayload: !!authPayload,
+          isSupabase: authPayload?.isSupabase,
+          supabaseUserId: authPayload?.supabaseUserId,
+          userId: authPayload?.userId,
+          username: authPayload?.username
+        });
+
         if (authPayload) {
           if (authPayload.isSupabase) {
             // Supabase user - use supabase_user_id only
@@ -890,7 +898,15 @@ export const handler: Handler = async (event, context) => {
           try {
             const pointsToAward = Math.floor(parseFloat(newOrder.total));
             const userIdentifier = userId || supabaseUserId;
-            console.log('🎁 Orders API: Awarding points to user:', userIdentifier, 'Points:', pointsToAward, 'Total:', newOrder.total);
+            console.log('🎁 Orders API: POINTS AWARD DEBUG:', {
+              userType: userId ? 'legacy' : 'supabase',
+              userId,
+              supabaseUserId,
+              userIdentifier,
+              pointsToAward,
+              orderTotal: newOrder.total,
+              orderId: newOrder.id
+            });
 
             // Use atomic transaction for points operations to prevent race conditions
             await sql.begin(async (sql) => {
