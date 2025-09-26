@@ -70,7 +70,7 @@ const FixOrderPage = () => {
             Fix Orphaned Orders
           </CardTitle>
           <CardDescription>
-            Find and fix any orders that weren't properly associated with your account, and award missing points.
+            Find and fix ALL orders from the last 30 days that weren't properly associated with your account, and award missing points.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -113,7 +113,7 @@ const FixOrderPage = () => {
               className="w-full"
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Find & Fix Orphaned Orders
+              Find & Fix ALL My Orders (30 days)
             </Button>
           )}
         </CardContent>

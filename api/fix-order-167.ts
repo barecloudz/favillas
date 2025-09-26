@@ -92,7 +92,7 @@ export const handler: Handler = async (event, context) => {
       WHERE user_id IS NULL
         AND supabase_user_id IS NULL
         AND phone = ${userPhone}
-        AND created_at > NOW() - INTERVAL '7 days'
+        AND created_at > NOW() - INTERVAL '30 days'
       ORDER BY created_at DESC
     `;
 
