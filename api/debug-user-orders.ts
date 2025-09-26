@@ -1,5 +1,6 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
+import { authenticateToken, AuthPayload } from './_shared/auth';
 
 let dbConnection: any = null;
 
@@ -23,10 +24,12 @@ function getDB() {
 }
 
 export const handler: Handler = async (event, context) => {
+  const origin = event.headers.origin || 'http://localhost:3000';
   const headers = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json',
   };
 
@@ -34,100 +37,128 @@ export const handler: Handler = async (event, context) => {
     return { statusCode: 200, headers, body: '' };
   }
 
+  if (event.httpMethod !== 'GET') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ error: 'Method not allowed' })
+    };
+  }
+
+  // Require authentication
+  const authPayload = await authenticateToken(event);
+  if (!authPayload || !authPayload.isSupabase) {
+    return {
+      statusCode: 401,
+      headers,
+      body: JSON.stringify({ error: 'Unauthorized' })
+    };
+  }
+
   try {
     const sql = getDB();
+    const supabaseUserId = authPayload.supabaseUserId;
 
-    // UUID: bd3e778e-c5f1-4eec-8436-0a9ff3c5cf9a
-    const oldUserId = 3174987662; // Original 8-char conversion (would have caused overflow)
-    const newUserId = 13402295;   // New safe 6-char conversion
-    const uuid = 'bd3e778e-c5f1-4eec-8436-0a9ff3c5cf9a';
+    console.log('🔍 DEBUG: Analyzing orders for Supabase user:', supabaseUserId);
 
-    console.log('🔍 Searching for orders with different user ID formats...');
+    // Get user profile info
+    const userProfile = await sql`
+      SELECT id, phone, supabase_user_id, username, email FROM users WHERE supabase_user_id = ${supabaseUserId}
+    `;
 
-    // Search for orders with various possible user ID formats
-    const searchResults = {
-      uuid_string: [],
-      old_user_id: [],
-      new_user_id: [],
-      all_orders_count: 0
+    if (userProfile.length === 0) {
+      return {
+        statusCode: 404,
+        headers,
+        body: JSON.stringify({ error: 'User profile not found' })
+      };
+    }
+
+    const user = userProfile[0];
+    const userPhone = user.phone;
+
+    console.log('👤 User info:', { id: user.id, phone: userPhone, email: user.email });
+
+    // Get all orders with this phone number (last 30 days)
+    const allOrdersWithPhone = await sql`
+      SELECT id, user_id, supabase_user_id, total, phone, created_at, status
+      FROM orders
+      WHERE phone = ${userPhone}
+        AND created_at > NOW() - INTERVAL '30 days'
+      ORDER BY created_at DESC
+    `;
+
+    // Get points transactions for this user
+    const pointsTransactions = await sql`
+      SELECT order_id, points, description, created_at
+      FROM points_transactions
+      WHERE supabase_user_id = ${supabaseUserId}
+      ORDER BY created_at DESC
+    `;
+
+    // Get current points balance
+    const pointsBalance = await sql`
+      SELECT points, total_earned, total_redeemed
+      FROM user_points
+      WHERE supabase_user_id = ${supabaseUserId}
+    `;
+
+    // Calculate missing points
+    const orderIds = allOrdersWithPhone.map(o => o.id);
+    const ordersWithPoints = pointsTransactions.map(pt => pt.order_id);
+    const ordersWithoutPoints = allOrdersWithPhone.filter(order => !ordersWithPoints.includes(order.id));
+
+    const totalSpent = allOrdersWithPhone.reduce((sum, order) => sum + parseFloat(order.total), 0);
+    const expectedPoints = Math.floor(totalSpent);
+    const actualPoints = pointsBalance[0]?.points || 0;
+    const missingPoints = expectedPoints - actualPoints;
+
+    const debugInfo = {
+      user: {
+        id: user.id,
+        supabaseUserId: user.supabase_user_id,
+        phone: userPhone,
+        email: user.email
+      },
+      summary: {
+        totalOrders: allOrdersWithPhone.length,
+        ordersWithoutPoints: ordersWithoutPoints.length,
+        totalSpent: totalSpent.toFixed(2),
+        expectedPoints,
+        actualPoints,
+        missingPoints
+      },
+      orderDetails: allOrdersWithPhone.map(order => ({
+        id: order.id,
+        total: parseFloat(order.total),
+        hasPoints: ordersWithPoints.includes(order.id),
+        associatedWithUser: !!order.supabase_user_id,
+        created: order.created_at,
+        status: order.status
+      })),
+      ordersNeedingPoints: ordersWithoutPoints.map(order => ({
+        id: order.id,
+        total: parseFloat(order.total),
+        pointsToAward: Math.floor(parseFloat(order.total)),
+        associatedWithUser: !!order.supabase_user_id
+      }))
     };
 
-    try {
-      // Try with UUID string
-      const uuidOrders = await sql`SELECT * FROM orders WHERE user_id = ${uuid} OR user_id::text = ${uuid}`;
-      searchResults.uuid_string = uuidOrders;
-      console.log(`Found ${uuidOrders.length} orders with UUID string`);
-    } catch (e) {
-      console.log('UUID string search failed:', e.message);
-    }
-
-    try {
-      // Try with old user ID (this might fail due to integer overflow)
-      const oldOrders = await sql`SELECT * FROM orders WHERE user_id = ${oldUserId}`;
-      searchResults.old_user_id = oldOrders;
-      console.log(`Found ${oldOrders.length} orders with old user ID ${oldUserId}`);
-    } catch (e) {
-      console.log('Old user ID search failed:', e.message);
-    }
-
-    try {
-      // Try with new user ID
-      const newOrders = await sql`SELECT * FROM orders WHERE user_id = ${newUserId}`;
-      searchResults.new_user_id = newOrders;
-      console.log(`Found ${newOrders.length} orders with new user ID ${newUserId}`);
-    } catch (e) {
-      console.log('New user ID search failed:', e.message);
-    }
-
-    // Get total orders count for reference
-    try {
-      const allOrders = await sql`SELECT COUNT(*) as count FROM orders`;
-      searchResults.all_orders_count = parseInt(allOrders[0].count);
-      console.log(`Total orders in database: ${searchResults.all_orders_count}`);
-    } catch (e) {
-      console.log('Total count failed:', e.message);
-    }
-
-    // Search for orders with email address as fallback
-    try {
-      const emailOrders = await sql`
-        SELECT o.*, o.user_id as stored_user_id
-        FROM orders o
-        WHERE o.customer_email = 'blake@martindale.co'
-        ORDER BY o.created_at DESC
-        LIMIT 20
-      `;
-      searchResults.email_orders = emailOrders;
-      console.log(`Found ${emailOrders.length} orders with email blake@martindale.co`);
-    } catch (e) {
-      console.log('Email search failed:', e.message);
-    }
+    console.log('📊 DEBUG: Order analysis complete:', debugInfo);
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({
-        uuid,
-        oldUserId,
-        newUserId,
-        searchResults,
-        summary: {
-          uuid_orders: searchResults.uuid_string?.length || 0,
-          old_id_orders: searchResults.old_user_id?.length || 0,
-          new_id_orders: searchResults.new_user_id?.length || 0,
-          email_orders: searchResults.email_orders?.length || 0,
-          total_orders: searchResults.all_orders_count
-        }
-      })
+      body: JSON.stringify(debugInfo)
     };
 
   } catch (error) {
-    console.error('❌ Debug search failed:', error);
+    console.error('❌ DEBUG: Error analyzing orders:', error);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        error: 'Debug search failed',
+        error: 'Failed to analyze orders',
         details: error instanceof Error ? error.message : 'Unknown error'
       })
     };
