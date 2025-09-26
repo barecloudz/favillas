@@ -203,8 +203,8 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
       }
     };
 
-    // Start polling every 10 seconds
-    pollingIntervalRef.current = setInterval(checkForNewOrders, 10000);
+    // Start polling every 30 seconds (less aggressive than 10s)
+    pollingIntervalRef.current = setInterval(checkForNewOrders, 30000);
 
     // Check immediately
     checkForNewOrders();
@@ -235,8 +235,14 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
 
     if (isNetlifyProduction) {
       console.log('Admin WebSocket disabled in production (Netlify deployment)');
-      console.log('🔄 Starting polling-based notifications for production...');
-      startPollingNotifications();
+
+      // Only start polling if notifications are enabled
+      if (options.enableSounds) {
+        console.log('🔄 Starting polling-based notifications for production...');
+        startPollingNotifications();
+      } else {
+        console.log('🔇 Notifications disabled - skipping polling');
+      }
       return;
     }
 
