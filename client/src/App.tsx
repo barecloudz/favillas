@@ -19,6 +19,7 @@ import ProfilePage from "@/pages/profile-page";
 import KitchenPage from "@/pages/kitchen-page";
 import AdminDashboard from "@/pages/admin-dashboard";
 import TestPage from "@/pages/test-page";
+import FixOrderPage from "@/pages/fix-order";
 import EmployeeClockPage from "@/pages/employee-clock";
 import { AuthProvider } from "@/hooks/use-supabase-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -50,6 +51,7 @@ function Router() {
         <Route path="/catering" component={CateringPage} />
         <Route path="/display" component={CustomerDisplay} />
         <Route path="/test" component={TestPage} />
+        <Route path="/fix-order" component={FixOrderPage} />
         <Route path="/checkout" component={CheckoutPage} />
         <Route path="/order-success" component={OrderSuccessPage} />
         <Route path="/orders" component={OrdersPage} />
