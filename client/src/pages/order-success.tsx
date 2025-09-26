@@ -84,10 +84,11 @@ const OrderSuccessPage = () => {
           const pendingOrderData = JSON.parse(pendingOrderDataStr);
           console.log('📦 Creating order from stored data:', pendingOrderData);
 
-          // Create the order now that payment has succeeded
+          // Create the order now that payment has succeeded (only once)
           const createOrderAsync = async () => {
             try {
-              const createdOrder = await apiRequest('POST', '/api/orders', pendingOrderData);
+              const response = await apiRequest('POST', '/api/orders', pendingOrderData);
+              const createdOrder = await response.json();
               console.log('✅ Order created successfully:', createdOrder);
               setOrderId(createdOrder.id);
               setOrder(createdOrder);
@@ -101,6 +102,16 @@ const OrderSuccessPage = () => {
               // Clear pending order data only after successful creation
               sessionStorage.removeItem('pendingOrderData');
               console.log('✅ Order created and cleared pending data from sessionStorage');
+
+              // Clear cart immediately after successful order creation
+              if (!cartCleared) {
+                clearCart();
+                setCartCleared(true);
+              }
+
+              // Invalidate orders queries to trigger refresh in admin dashboard
+              queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/kitchen/orders'] });
 
               toast({
                 title: "Order Created Successfully!",
@@ -118,7 +129,14 @@ const OrderSuccessPage = () => {
             }
           };
 
-          createOrderAsync();
+          // Only create order if we haven't already processed this payment intent
+          if (!sessionStorage.getItem(`processed_${paymentIntentParam}`)) {
+            sessionStorage.setItem(`processed_${paymentIntentParam}`, 'true');
+            createOrderAsync();
+          } else {
+            console.log('💡 Payment intent already processed, skipping order creation');
+            setIsLoading(false);
+          }
         } catch (error) {
           console.error('❌ Error parsing pending order data:', error);
           setIsLoading(false);
