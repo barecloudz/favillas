@@ -78,9 +78,97 @@ export const handler: Handler = async (event, context) => {
     if (stripeEvent.type === 'payment_intent.succeeded') {
       const paymentIntent = stripeEvent.data.object as Stripe.PaymentIntent;
       const orderId = paymentIntent.metadata.orderId;
+      const orderDataString = paymentIntent.metadata.orderData;
 
-      if (!orderId) {
-        console.warn('⚠️ PaymentIntent succeeded but no orderId in metadata');
+      console.log(`💳 Payment succeeded for PaymentIntent: ${paymentIntent.id}`);
+      console.log(`💳 Metadata - orderId: ${orderId}, has orderData: ${!!orderDataString}`);
+
+      const sql = getDB();
+
+      if (orderId) {
+        // Old flow: Update existing order payment status
+        console.log(`💳 Processing payment for existing order #${orderId}`);
+
+        // Update order payment status
+        const updatedOrders = await sql`
+          UPDATE orders
+          SET payment_status = 'completed', payment_intent_id = ${paymentIntent.id}
+          WHERE id = ${parseInt(orderId)}
+          RETURNING *
+        `;
+
+        if (updatedOrders.length === 0) {
+          console.warn(`⚠️ Order ${orderId} not found for payment confirmation`);
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({ error: 'Order not found' })
+          };
+        }
+
+        const order = updatedOrders[0];
+        console.log(`✅ Order #${orderId} payment status updated to completed`);
+
+      } else if (orderDataString) {
+        // New flow: Create order from stored order data
+        console.log(`💳 Creating new order from payment data`);
+
+        try {
+          const orderData = JSON.parse(orderDataString);
+          console.log(`💳 Parsed order data:`, {
+            hasItems: !!orderData.items,
+            itemsCount: orderData.items?.length || 0,
+            total: orderData.total,
+            orderType: orderData.orderType
+          });
+
+          // Set payment status to completed/succeeded since payment just succeeded
+          orderData.paymentStatus = 'succeeded';
+          orderData.status = 'confirmed';
+
+          // Create the order by calling the orders API internally
+          const orderCreationResult = await fetch(`${process.env.SITE_URL || 'http://localhost:8888'}/api/orders`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              // No authorization header needed for order creation from webhook
+            },
+            body: JSON.stringify(orderData)
+          });
+
+          if (orderCreationResult.ok) {
+            const createdOrder = await orderCreationResult.json();
+            console.log(`✅ Order created successfully from payment data: Order #${createdOrder.id}`);
+
+            // Update the order with the payment intent ID
+            await sql`
+              UPDATE orders
+              SET payment_intent_id = ${paymentIntent.id}
+              WHERE id = ${createdOrder.id}
+            `;
+            console.log(`✅ Order #${createdOrder.id} updated with payment intent ID`);
+
+          } else {
+            const errorText = await orderCreationResult.text();
+            console.error(`❌ Failed to create order from payment data:`, orderCreationResult.status, errorText);
+            return {
+              statusCode: 500,
+              headers,
+              body: JSON.stringify({ error: 'Failed to create order from payment data' })
+            };
+          }
+
+        } catch (orderDataError) {
+          console.error(`❌ Error processing order data from payment:`, orderDataError);
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ error: 'Failed to process order data from payment' })
+          };
+        }
+
+      } else {
+        console.warn('⚠️ PaymentIntent succeeded but no orderId or orderData in metadata');
         return {
           statusCode: 200,
           headers,
@@ -88,33 +176,7 @@ export const handler: Handler = async (event, context) => {
         };
       }
 
-      console.log(`💳 Payment succeeded for order #${orderId}`);
-
-      const sql = getDB();
-
-      // Update order payment status
-      const updatedOrders = await sql`
-        UPDATE orders
-        SET payment_status = 'completed', payment_intent_id = ${paymentIntent.id}
-        WHERE id = ${parseInt(orderId)}
-        RETURNING *
-      `;
-
-      if (updatedOrders.length === 0) {
-        console.warn(`⚠️ Order ${orderId} not found for payment confirmation`);
-        return {
-          statusCode: 404,
-          headers,
-          body: JSON.stringify({ error: 'Order not found' })
-        };
-      }
-
-      const order = updatedOrders[0];
-      console.log(`✅ Order #${orderId} payment status updated to completed`);
-
-      // Ship Day integration moved to order status change (when cooking starts)
-      // This ensures orders are only sent to Ship Day when ready to prepare
-      console.log(`✅ Payment confirmed for order #${orderId}. Ship Day integration will trigger when order starts cooking.`);
+      console.log(`✅ Payment processing completed successfully`);
     }
 
     return {

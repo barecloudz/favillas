@@ -43,15 +43,28 @@ const OrderSuccessPage = () => {
   // Initialize WebSocket for real-time updates
   useWebSocket();
 
-  // Get order ID from URL params
+  // Get order ID from URL params or payment intent
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const id = params.get('orderId');
-    if (id) {
-      setOrderId(parseInt(id));
+    const orderIdParam = params.get('orderId');
+    const paymentIntentParam = params.get('payment_intent');
+    const paymentIntentClientSecretParam = params.get('payment_intent_client_secret');
+
+    console.log('🔍 Order Success Page params:', {
+      orderId: orderIdParam,
+      paymentIntent: paymentIntentParam,
+      paymentIntentClientSecret: !!paymentIntentClientSecretParam
+    });
+
+    if (orderIdParam) {
+      // Old flow: direct order ID
+      setOrderId(parseInt(orderIdParam));
+
+      // Clear pending order data from sessionStorage since payment was successful
+      sessionStorage.removeItem('pendingOrderData');
+      console.log('✅ Cleared pending order data from sessionStorage');
 
       // Clear cart immediately for guest users when we have an order ID
-      // This ensures the cart is cleared even if we can't fetch order details
       if (!user && !cartCleared) {
         clearCart();
         setCartCleared(true);
@@ -60,8 +73,41 @@ const OrderSuccessPage = () => {
           description: "Your order has been placed. Check your phone for updates.",
         });
       }
+    } else if (paymentIntentParam) {
+      // New flow: payment succeeded, order was created via webhook
+      console.log('💳 Payment intent detected, order should have been created via webhook');
+
+      // Clear pending order data since payment was successful
+      sessionStorage.removeItem('pendingOrderData');
+      console.log('✅ Cleared pending order data from sessionStorage');
+
+      // For new flow, we don't have the order ID immediately
+      // The webhook should have created the order, but we need to wait a moment for it to complete
+      // Show success message and clear cart for now
+      if (!cartCleared) {
+        clearCart();
+        setCartCleared(true);
+        toast({
+          title: "Payment Successful!",
+          description: "Your order is being processed. You should receive confirmation shortly.",
+        });
+      }
+
+      // Try to find the order by looking for recent orders (for authenticated users)
+      // or show generic success for guest users
+      if (user) {
+        // Set a timeout to check for the order after webhook processing
+        setTimeout(() => {
+          // This will trigger the order fetching logic below
+          setIsLoading(false);
+        }, 3000);
+      } else {
+        // Guest user - just show success without order details
+        setIsLoading(false);
+      }
     } else {
-      // If no order ID, redirect to home
+      // No order ID or payment intent, redirect to home
+      console.warn('⚠️ No order ID or payment intent found, redirecting to home');
       navigate("/");
     }
   }, [navigate, user, cartCleared, clearCart, toast]);

@@ -57,14 +57,14 @@ export const handler: Handler = async (event, context) => {
 
   try {
     const requestBody = JSON.parse(event.body || '{}');
-    const { amount, orderId } = requestBody;
-    
-    if (!amount || !orderId) {
+    const { amount, orderId, orderData } = requestBody;
+
+    if (!amount) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ 
-          message: 'Missing required fields: amount and orderId' 
+        body: JSON.stringify({
+          message: 'Missing required field: amount'
         })
       };
     }
@@ -74,17 +74,18 @@ export const handler: Handler = async (event, context) => {
       amount: Math.round(amount * 100), // Convert to cents
       currency: "usd",
       metadata: {
-        orderId: orderId.toString(),
+        ...(orderId && { orderId: orderId.toString() }),
+        ...(orderData && { orderData: JSON.stringify(orderData) }),
         userId: "guest" // For guest users
       }
     });
-    
-    // Update the order with the payment intent ID
+
+    // Update the order with the payment intent ID (only if orderId exists - for old flow)
     if (orderId) {
       try {
         const sql = getDB();
         await sql`
-          UPDATE orders 
+          UPDATE orders
           SET payment_intent_id = ${paymentIntent.id}
           WHERE id = ${orderId}
         `;

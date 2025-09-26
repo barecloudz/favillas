@@ -27,13 +27,13 @@ if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 // CheckoutForm with Stripe integration
-const CheckoutForm = ({ orderId, clientSecret }: { orderId: number, clientSecret: string }) => {
+const CheckoutForm = ({ orderId, clientSecret }: { orderId?: number | null, clientSecret: string }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const [location, navigate] = useLocation();
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -46,7 +46,7 @@ const CheckoutForm = ({ orderId, clientSecret }: { orderId: number, clientSecret
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: `${window.location.origin}/order-success?orderId=${orderId}`,
+        return_url: `${window.location.origin}/order-success`,
       },
       redirect: "always",
     });
@@ -469,7 +469,7 @@ const CheckoutPage = () => {
 
   // Create payment intent mutation
   const createPaymentIntentMutation = useMutation({
-    mutationFn: async (data: { amount: number; orderId: number }) => {
+    mutationFn: async (data: { amount: number; orderId?: number | null; orderData?: any }) => {
       const res = await apiRequest("POST", "/api/create-payment-intent", data);
       return await res.json();
     },
@@ -764,15 +764,16 @@ const CheckoutPage = () => {
       }
     }
 
-    createOrderMutation.mutate({
-      userId: user?.id || null, // Allow null for guest users
-      status: "pending",
-      total: totals.finalTotal.toString(), // Store the final total (what customer actually pays)
+    // Store order data for after payment confirmation (don't create order yet)
+    const pendingOrderData = {
+      userId: user?.id || null,
+      status: "confirmed", // Will be confirmed after payment
+      total: totals.finalTotal.toString(),
       tax: tax.toString(),
       tip: totals.tip.toString(),
-      deliveryFee: orderType === "delivery" ? deliveryFee.toString() : "0", // Dynamic delivery fee based on distance
+      deliveryFee: orderType === "delivery" ? deliveryFee.toString() : "0",
       orderType,
-      paymentStatus: "pending",
+      paymentStatus: "succeeded", // Will be set after payment
       specialInstructions,
       address: orderType === "delivery" ? address : "",
       addressData: orderType === "delivery" ? parsedAddressData : null,
@@ -780,16 +781,25 @@ const CheckoutPage = () => {
       items: orderItems,
       fulfillmentTime,
       scheduledTime: fulfillmentTime === "scheduled" ? scheduledTime : null,
-      // Include voucher information
       voucherCode: appliedVoucher?.voucher_code || null,
       voucherDiscount: totals.voucherDiscount || 0,
-      // Include metadata for breakdown
       orderMetadata: {
         subtotal: total,
         discount: totals.discount,
         voucherDiscount: totals.voucherDiscount,
         finalSubtotal: totals.finalSubtotal
       }
+    };
+
+    // Store in sessionStorage for payment completion
+    sessionStorage.setItem('pendingOrderData', JSON.stringify(pendingOrderData));
+    console.log('💾 Stored pending order data for after payment:', pendingOrderData);
+
+    // Create payment intent directly (no order created yet)
+    createPaymentIntentMutation.mutate({
+      amount: totals.finalTotal,
+      orderId: null, // No order ID yet - order will be created after payment
+      orderData: pendingOrderData // Send order data to payment intent
     });
   };
 
@@ -1280,9 +1290,9 @@ const CheckoutPage = () => {
                         appearance: { theme: 'stripe' } 
                       }}
                     >
-                      <CheckoutForm 
-                        orderId={orderId!} 
-                        clientSecret={clientSecret} 
+                      <CheckoutForm
+                        orderId={orderId}
+                        clientSecret={clientSecret}
                       />
                     </Elements>
                   ) : (
