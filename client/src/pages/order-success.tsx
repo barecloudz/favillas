@@ -428,7 +428,8 @@ Thank you for choosing Favilla's NY Pizza!
     }
   };
 
-  if (isLoading || orderLoading) {
+  // Show loading if main loading is true, order query is loading, or if we have a user and orderId but no order data yet (and no error)
+  if (isLoading || orderLoading || (user && orderId && !order && !orderError)) {
     return (
       <>
         <Helmet>
@@ -447,7 +448,8 @@ Thank you for choosing Favilla's NY Pizza!
 
   // Show order not found only if we're done loading and still have no order data for authenticated users
   // Guest users should see the success page even without order details
-  if (!order && user && !isLoading && !orderLoading) {
+  // Also check if we actually have an orderId - if we don't have one yet, don't show not found
+  if (!order && user && !isLoading && !orderLoading && orderId && orderError) {
     return (
       <>
         <Helmet>
