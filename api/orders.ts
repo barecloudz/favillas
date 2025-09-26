@@ -928,6 +928,18 @@ export const handler: Handler = async (event, context) => {
                 console.log('🎁 Orders API: Legacy user exists check:', userExists.length > 0, 'for user:', userId);
 
                 if (userExists.length > 0) {
+                  // Check if points transaction already exists for this order
+                  const existingTransaction = await sql`
+                    SELECT id FROM points_transactions
+                    WHERE order_id = ${newOrder.id} AND user_id = ${userId}
+                  `;
+
+                  if (existingTransaction.length > 0) {
+                    console.log('⚠️ Orders API: Points transaction already exists for legacy user order:', existingTransaction[0].id);
+                    console.log('⚠️ Orders API: Skipping points award - order may have been processed already');
+                    return { success: false, reason: 'Points already awarded for this order', transactionId: existingTransaction[0].id };
+                  }
+
                   // Record points transaction in audit table
                   const pointsTransaction = await sql`
                     INSERT INTO points_transactions (user_id, order_id, type, points, description, order_amount, created_at)
@@ -1002,14 +1014,28 @@ export const handler: Handler = async (event, context) => {
                   }
                 }
 
-                // Record points transaction in audit table
-                const pointsTransaction = await sql`
-                  INSERT INTO points_transactions (user_id, supabase_user_id, order_id, type, points, description, order_amount, created_at)
-                  VALUES (NULL, ${supabaseUserId}, ${newOrder.id}, 'earned', ${pointsToAward}, ${'Order #' + newOrder.id}, ${newOrder.total}, NOW())
-                  ON CONFLICT (order_id, supabase_user_id) DO NOTHING
-                  RETURNING id
+                // Check if points transaction already exists for this order
+                const existingTransaction = await sql`
+                  SELECT id FROM points_transactions
+                  WHERE order_id = ${newOrder.id} AND supabase_user_id = ${supabaseUserId}
                 `;
-                console.log('✅ Orders API: Supabase points transaction created:', pointsTransaction[0]?.id);
+
+                let pointsTransactionId = existingTransaction[0]?.id;
+
+                if (!pointsTransactionId) {
+                  // Record points transaction in audit table
+                  const pointsTransaction = await sql`
+                    INSERT INTO points_transactions (user_id, supabase_user_id, order_id, type, points, description, order_amount, created_at)
+                    VALUES (NULL, ${supabaseUserId}, ${newOrder.id}, 'earned', ${pointsToAward}, ${'Order #' + newOrder.id}, ${newOrder.total}, NOW())
+                    RETURNING id
+                  `;
+                  pointsTransactionId = pointsTransaction[0]?.id;
+                  console.log('✅ Orders API: Supabase points transaction created:', pointsTransactionId);
+                } else {
+                  console.log('⚠️ Orders API: Points transaction already exists for this order:', pointsTransactionId);
+                  console.log('⚠️ Orders API: Skipping points award - order may have been processed already');
+                  return { success: false, reason: 'Points already awarded for this order', transactionId: pointsTransactionId };
+                }
 
                 // Use UPSERT with optimistic locking for Supabase user points
                 const userPointsUpdate = await sql`
