@@ -61,3 +61,6 @@ debug-*.js
 fix-*.js
 check-*.js
 mock-*.js
+
+# Sensitive environment variable files
+Loctite
