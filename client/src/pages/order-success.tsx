@@ -445,28 +445,9 @@ Thank you for choosing Favilla's NY Pizza!
     );
   }
 
-  // Show loading while order is being created or fetched
-  if (isLoading) {
-    return (
-      <>
-        <Helmet>
-          <title>Processing Order | Favilla's NY Pizza</title>
-        </Helmet>
-        <main className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#d73a31] mx-auto mb-4"></div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Processing Your Order</h1>
-            <p className="text-gray-600">Please wait while we confirm your order details...</p>
-          </div>
-        </main>
-        <Footer />
-      </>
-    );
-  }
-
   // Show order not found only if we're done loading and still have no order data for authenticated users
   // Guest users should see the success page even without order details
-  if (!order && user && !isLoading) {
+  if (!order && user && !isLoading && !orderLoading) {
     return (
       <>
         <Helmet>
@@ -539,10 +520,63 @@ Thank you for choosing Favilla's NY Pizza!
                               )}
                               {item.options && (
                                 <p className="text-sm text-gray-500">
-                                  {Array.isArray(item.options)
-                                    ? item.options.map(opt => `${opt.itemName || opt.name} (+$${opt.price})`).join(', ')
-                                    : Object.entries(item.options).map(([key, value]) => `${key}: ${value}`).join(', ')
-                                  }
+                                  {(() => {
+                                    let options = item.options;
+
+                                    console.log('🔍 DEBUG: Processing item options:', {
+                                      itemName: item.name,
+                                      rawOptions: options,
+                                      optionsType: typeof options,
+                                      isArray: Array.isArray(options),
+                                      stringLength: typeof options === 'string' ? options.length : 'N/A'
+                                    });
+
+                                    // If options is a string, try to parse it as JSON
+                                    if (typeof options === 'string') {
+                                      try {
+                                        // Handle potential double-encoding or character index issues
+                                        if (options.startsWith('[') || options.startsWith('{')) {
+                                          options = JSON.parse(options);
+                                        } else {
+                                          // This might be corrupted data - log it and skip
+                                          console.warn('🚨 Corrupted options string detected:', options.substring(0, 50) + '...');
+                                          return null; // Don't display corrupted options
+                                        }
+                                      } catch (e) {
+                                        console.warn('❌ Failed to parse options as JSON:', {
+                                          error: e.message,
+                                          optionsPreview: options.substring(0, 100)
+                                        });
+                                        return null; // Don't display unparseable options
+                                      }
+                                    }
+
+                                    // Handle array format (new system)
+                                    if (Array.isArray(options)) {
+                                      const validOptions = options.filter(opt => opt && (opt.itemName || opt.name));
+                                      if (validOptions.length === 0) return null;
+
+                                      return 'Add-ons: ' + validOptions.map(opt => {
+                                        const name = opt.itemName || opt.name || 'Unknown';
+                                        const price = opt.price ? ` (+$${parseFloat(opt.price).toFixed(2)})` : '';
+                                        return `${name}${price}`;
+                                      }).join(', ');
+                                    }
+
+                                    // Handle object format (fallback)
+                                    if (options && typeof options === 'object') {
+                                      const entries = Object.entries(options).filter(([key, value]) =>
+                                        value !== null && value !== undefined && value !== ''
+                                      );
+                                      if (entries.length === 0) return null;
+
+                                      return 'Add-ons: ' + entries.map(([key, value]) => `${key}: ${value}`).join(', ');
+                                    }
+
+                                    // If we get here, options is not in a recognizable format
+                                    console.warn('🚨 Unrecognized options format:', options);
+                                    return null;
+                                  })()}
                                 </p>
                               )}
                             </div>
