@@ -147,7 +147,6 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 
   // Log categories loading state
   React.useEffect(() => {
-    console.log('🔍 [Categories State] Loading:', categoriesLoading, 'Error:', categoriesError, 'Data:', categories);
   }, [categoriesLoading, categoriesError, categories]);
 
   // Fetch menu items
@@ -342,22 +341,14 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
   const missingCategories = getMissingCategories();
   const categoryItems = selectedCategory ? getCategoryItems(selectedCategory) : [];
 
-  console.log('🎯 [Upsell Modal Debug] Props and state:', {
-    isOpen,
-    missingCategories: missingCategories.length,
-    upsellShown: sessionStorage.getItem('upsellShown'),
-    cartItems: cartItems.length
-  });
 
   // Don't show modal if no missing categories or already shown this session
   if (!isOpen) {
-    console.log('🎯 [Upsell Modal Debug] Modal not open, returning null');
     return null;
   }
 
   // Wait for categories to load before determining if we have missing categories
   if (categoriesLoading) {
-    console.log('🎯 [Upsell Modal Debug] Categories still loading, showing loading state');
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-md">
@@ -371,16 +362,13 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
   }
 
   if (missingCategories.length === 0) {
-    console.log('🎯 [Upsell Modal Debug] No missing categories, returning null');
     return null;
   }
 
   if (sessionStorage.getItem('upsellShown') === 'true') {
-    console.log('🎯 [Upsell Modal Debug] Already shown this session, returning null');
     return null;
   }
 
-  console.log('🎯 [Upsell Modal Debug] All conditions met, showing modal!');
 
   return (
     <Dialog open={isOpen} onOpenChange={() => handleProceedToCheckout()}>
