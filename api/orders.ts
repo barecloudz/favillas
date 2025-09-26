@@ -895,7 +895,7 @@ export const handler: Handler = async (event, context) => {
           }
         }
 
-        // Award points for authenticated users (1 point per $1 spent) with race condition protection
+        // Award points for authenticated users (1 point per $1 spent) with enhanced error handling
         console.log('🎁 Orders API: POINTS ELIGIBILITY CHECK:', {
           hasUserId: !!userId,
           hasSupabaseUserId: !!supabaseUserId,
@@ -923,135 +923,11 @@ export const handler: Handler = async (event, context) => {
               console.log('🔒 Orders API: Starting atomic transaction for points award');
 
               if (userId) {
-                // Legacy user - check if they exist in users table
-                const userExists = await sql`SELECT id FROM users WHERE id = ${userId}`;
-                console.log('🎁 Orders API: Legacy user exists check:', userExists.length > 0, 'for user:', userId);
-
-                if (userExists.length > 0) {
-                  // Check if points transaction already exists for this order
-                  const existingTransaction = await sql`
-                    SELECT id FROM points_transactions
-                    WHERE order_id = ${newOrder.id} AND user_id = ${userId}
-                  `;
-
-                  if (existingTransaction.length > 0) {
-                    console.log('⚠️ Orders API: Points transaction already exists for legacy user order:', existingTransaction[0].id);
-                    console.log('⚠️ Orders API: Skipping points award - order may have been processed already');
-                    return { success: false, reason: 'Points already awarded for this order', transactionId: existingTransaction[0].id };
-                  }
-
-                  // Record points transaction in audit table
-                  const pointsTransaction = await sql`
-                    INSERT INTO points_transactions (user_id, order_id, type, points, description, order_amount, created_at)
-                    VALUES (${userId}, ${newOrder.id}, 'earned', ${pointsToAward}, ${'Order #' + newOrder.id}, ${newOrder.total}, NOW())
-                    RETURNING id
-                  `;
-                  console.log('✅ Orders API: Points transaction created:', pointsTransaction[0]?.id);
-
-                  // Use UPSERT with optimistic locking for user_points table
-                  const userPointsUpdate = await sql`
-                    INSERT INTO user_points (user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
-                    VALUES (${userId}, ${pointsToAward}, ${pointsToAward}, 0, NOW(), NOW(), NOW())
-                    ON CONFLICT (user_id) DO UPDATE SET
-                      points = user_points.points + ${pointsToAward},
-                      total_earned = user_points.total_earned + ${pointsToAward},
-                      last_earned_at = NOW(),
-                      updated_at = NOW()
-                    RETURNING user_id, points, total_earned
-                  `;
-                  console.log('✅ Orders API: User points updated with UPSERT:', userPointsUpdate[0]);
-
-                  // Also update legacy rewards column for backward compatibility
-                  try {
-                    await sql`
-                      UPDATE users
-                      SET rewards = (SELECT points FROM user_points WHERE user_id = ${userId}), updated_at = NOW()
-                      WHERE id = ${userId}
-                    `;
-                    console.log('✅ Orders API: Legacy rewards column updated');
-                  } catch (legacyUpdateError) {
-                    console.error('❌ Orders API: Legacy rewards update failed:', legacyUpdateError);
-                    // Don't throw - this is just for backward compatibility
-                  }
-
-                  console.log('✅ Orders API: Points awarded successfully - Total:', pointsToAward, 'points');
-                  return { success: true, pointsAwarded: pointsToAward, userType: 'legacy' };
-                } else {
-                  console.log('❌ Orders API: Legacy user not found in users table');
-                  return { success: false, reason: 'Legacy user not found' };
-                }
+                // Legacy user points logic
+                return await awardPointsToLegacyUser(sql, userId, newOrder, pointsToAward);
               } else if (supabaseUserId) {
-                // Supabase user - award points using supabase_user_id
-                console.log('🎁 Orders API: Awarding points to Supabase user:', supabaseUserId);
-
-                // First check if user exists in users table
-                const userExists = await sql`SELECT id FROM users WHERE supabase_user_id = ${supabaseUserId}`;
-                console.log('🎁 Orders API: Supabase user exists check:', userExists.length > 0, 'for user:', supabaseUserId);
-
-                if (userExists.length === 0) {
-                  console.log('❌ Orders API: Supabase user not found in users table, creating...');
-                  // Create user record first
-                  try {
-                    await sql`
-                      INSERT INTO users (
-                        supabase_user_id, username, email, role, phone, address, city, state, zip_code,
-                        first_name, last_name, password, created_at, updated_at
-                      ) VALUES (
-                        ${supabaseUserId},
-                        'customer_user',
-                        'customer@example.com',
-                        'customer',
-                        '', '', '', '', '',
-                        'Customer', 'User',
-                        'SUPABASE_USER',
-                        NOW(), NOW()
-                      )
-                      ON CONFLICT (supabase_user_id) DO NOTHING
-                    `;
-                    console.log('✅ Orders API: Created missing Supabase user record');
-                  } catch (createUserError) {
-                    console.error('❌ Orders API: Failed to create Supabase user record:', createUserError);
-                  }
-                }
-
-                // Check if points transaction already exists for this order
-                const existingTransaction = await sql`
-                  SELECT id FROM points_transactions
-                  WHERE order_id = ${newOrder.id} AND supabase_user_id = ${supabaseUserId}
-                `;
-
-                let pointsTransactionId = existingTransaction[0]?.id;
-
-                if (!pointsTransactionId) {
-                  // Record points transaction in audit table
-                  const pointsTransaction = await sql`
-                    INSERT INTO points_transactions (user_id, supabase_user_id, order_id, type, points, description, order_amount, created_at)
-                    VALUES (NULL, ${supabaseUserId}, ${newOrder.id}, 'earned', ${pointsToAward}, ${'Order #' + newOrder.id}, ${newOrder.total}, NOW())
-                    RETURNING id
-                  `;
-                  pointsTransactionId = pointsTransaction[0]?.id;
-                  console.log('✅ Orders API: Supabase points transaction created:', pointsTransactionId);
-                } else {
-                  console.log('⚠️ Orders API: Points transaction already exists for this order:', pointsTransactionId);
-                  console.log('⚠️ Orders API: Skipping points award - order may have been processed already');
-                  return { success: false, reason: 'Points already awarded for this order', transactionId: pointsTransactionId };
-                }
-
-                // Use UPSERT with optimistic locking for Supabase user points
-                const userPointsUpdate = await sql`
-                  INSERT INTO user_points (user_id, supabase_user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
-                  VALUES (NULL, ${supabaseUserId}, ${pointsToAward}, ${pointsToAward}, 0, NOW(), NOW(), NOW())
-                  ON CONFLICT (supabase_user_id) DO UPDATE SET
-                    points = user_points.points + ${pointsToAward},
-                    total_earned = user_points.total_earned + ${pointsToAward},
-                    last_earned_at = NOW(),
-                    updated_at = NOW()
-                  RETURNING supabase_user_id, points, total_earned
-                `;
-                console.log('✅ Orders API: Supabase user points updated with UPSERT:', userPointsUpdate[0]);
-
-                console.log('✅ Orders API: Points awarded successfully to Supabase user - Total:', pointsToAward, 'points');
-                return { success: true, pointsAwarded: pointsToAward, userType: 'supabase' };
+                // Supabase user points logic
+                return await awardPointsToSupabaseUser(sql, supabaseUserId, newOrder, pointsToAward, authPayload);
               }
             });
 
@@ -1060,10 +936,171 @@ export const handler: Handler = async (event, context) => {
           } catch (pointsError) {
             console.error('❌ Orders API: Error awarding points:', pointsError);
             console.error('❌ Orders API: Points error stack:', pointsError.stack);
+            console.error('❌ Orders API: Points error details:', {
+              name: pointsError.name,
+              message: pointsError.message,
+              constraint: pointsError.constraint,
+              table: pointsError.table,
+              column: pointsError.column
+            });
             // Don't fail the order if points fail
           }
         } else {
           console.log('⚠️ Orders API: No user ID available for points awarding');
+        }
+
+        // Helper function for legacy user points
+        async function awardPointsToLegacyUser(sql, userId, newOrder, pointsToAward) {
+          // Check if user exists in users table
+          const userExists = await sql`SELECT id FROM users WHERE id = ${userId}`;
+          console.log('🎁 Orders API: Legacy user exists check:', userExists.length > 0, 'for user:', userId);
+
+          if (userExists.length === 0) {
+            console.log('❌ Orders API: Legacy user not found in users table');
+            return { success: false, reason: 'Legacy user not found' };
+          }
+
+          // Check if points transaction already exists for this order
+          const existingTransaction = await sql`
+            SELECT id FROM points_transactions
+            WHERE order_id = ${newOrder.id} AND user_id = ${userId}
+          `;
+
+          if (existingTransaction.length > 0) {
+            console.log('⚠️ Orders API: Points transaction already exists for legacy user order:', existingTransaction[0].id);
+            return { success: false, reason: 'Points already awarded for this order', transactionId: existingTransaction[0].id };
+          }
+
+          // Record points transaction in audit table
+          const pointsTransaction = await sql`
+            INSERT INTO points_transactions (user_id, order_id, type, points, description, order_amount, created_at)
+            VALUES (${userId}, ${newOrder.id}, 'earned', ${pointsToAward}, ${'Order #' + newOrder.id}, ${newOrder.total}, NOW())
+            RETURNING id
+          `;
+          console.log('✅ Orders API: Points transaction created:', pointsTransaction[0]?.id);
+
+          // Use UPSERT with optimistic locking for user_points table
+          const userPointsUpdate = await sql`
+            INSERT INTO user_points (user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
+            VALUES (${userId}, ${pointsToAward}, ${pointsToAward}, 0, NOW(), NOW(), NOW())
+            ON CONFLICT (user_id) DO UPDATE SET
+              points = user_points.points + ${pointsToAward},
+              total_earned = user_points.total_earned + ${pointsToAward},
+              last_earned_at = NOW(),
+              updated_at = NOW()
+            RETURNING user_id, points, total_earned
+          `;
+          console.log('✅ Orders API: User points updated with UPSERT:', userPointsUpdate[0]);
+
+          // Also update legacy rewards column for backward compatibility
+          try {
+            await sql`
+              UPDATE users
+              SET rewards = (SELECT points FROM user_points WHERE user_id = ${userId}), updated_at = NOW()
+              WHERE id = ${userId}
+            `;
+            console.log('✅ Orders API: Legacy rewards column updated');
+          } catch (legacyUpdateError) {
+            console.error('❌ Orders API: Legacy rewards update failed:', legacyUpdateError);
+            // Don't throw - this is just for backward compatibility
+          }
+
+          console.log('✅ Orders API: Points awarded successfully - Total:', pointsToAward, 'points');
+          return { success: true, pointsAwarded: pointsToAward, userType: 'legacy' };
+        }
+
+        // Helper function for Supabase user points with robust error handling
+        async function awardPointsToSupabaseUser(sql, supabaseUserId, newOrder, pointsToAward, authPayload) {
+          console.log('🎁 Orders API: Awarding points to Supabase user:', supabaseUserId);
+
+          // Ensure user exists in users table - create if needed with proper data
+          let userRecord = await sql`SELECT id, email, first_name, last_name FROM users WHERE supabase_user_id = ${supabaseUserId}`;
+
+          if (userRecord.length === 0) {
+            console.log('❌ Orders API: Supabase user not found in users table, creating...');
+            try {
+              const userData = {
+                supabaseUserId: supabaseUserId,
+                email: authPayload?.email || 'customer@example.com',
+                firstName: authPayload?.firstName || 'Customer',
+                lastName: authPayload?.lastName || 'User',
+                username: authPayload?.email || `customer_${supabaseUserId.substring(0, 8)}`
+              };
+
+              await sql`
+                INSERT INTO users (
+                  supabase_user_id, username, email, role, phone, address, city, state, zip_code,
+                  first_name, last_name, password, created_at, updated_at
+                ) VALUES (
+                  ${userData.supabaseUserId},
+                  ${userData.username},
+                  ${userData.email},
+                  'customer',
+                  '', '', '', '', '',
+                  ${userData.firstName}, ${userData.lastName},
+                  'SUPABASE_USER',
+                  NOW(), NOW()
+                )
+                ON CONFLICT (supabase_user_id) DO UPDATE SET
+                  email = EXCLUDED.email,
+                  first_name = EXCLUDED.first_name,
+                  last_name = EXCLUDED.last_name,
+                  updated_at = NOW()
+              `;
+              console.log('✅ Orders API: Created/updated Supabase user record');
+            } catch (createUserError) {
+              console.error('❌ Orders API: Failed to create Supabase user record:', createUserError);
+              // Continue with points awarding even if user creation fails
+            }
+          }
+
+          // Check if points transaction already exists for this order
+          const existingTransaction = await sql`
+            SELECT id FROM points_transactions
+            WHERE order_id = ${newOrder.id} AND supabase_user_id = ${supabaseUserId}
+          `;
+
+          if (existingTransaction.length > 0) {
+            console.log('⚠️ Orders API: Points transaction already exists for this order:', existingTransaction[0].id);
+            return { success: false, reason: 'Points already awarded for this order', transactionId: existingTransaction[0].id };
+          }
+
+          // Record points transaction in audit table with enhanced error handling
+          let pointsTransactionId;
+          try {
+            const pointsTransaction = await sql`
+              INSERT INTO points_transactions (user_id, supabase_user_id, order_id, type, points, description, order_amount, created_at)
+              VALUES (NULL, ${supabaseUserId}, ${newOrder.id}, 'earned', ${pointsToAward}, ${'Order #' + newOrder.id}, ${newOrder.total}, NOW())
+              RETURNING id
+            `;
+            pointsTransactionId = pointsTransaction[0]?.id;
+            console.log('✅ Orders API: Supabase points transaction created:', pointsTransactionId);
+          } catch (transactionError) {
+            console.error('❌ Orders API: Failed to create points transaction:', transactionError);
+            throw transactionError;
+          }
+
+          // Use robust UPSERT for Supabase user points with better error handling
+          try {
+            const userPointsUpdate = await sql`
+              INSERT INTO user_points (user_id, supabase_user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
+              VALUES (NULL, ${supabaseUserId}, ${pointsToAward}, ${pointsToAward}, 0, NOW(), NOW(), NOW())
+              ON CONFLICT (supabase_user_id) DO UPDATE SET
+                points = COALESCE(user_points.points, 0) + ${pointsToAward},
+                total_earned = COALESCE(user_points.total_earned, 0) + ${pointsToAward},
+                last_earned_at = NOW(),
+                updated_at = NOW()
+              RETURNING supabase_user_id, points, total_earned
+            `;
+            console.log('✅ Orders API: Supabase user points updated with UPSERT:', userPointsUpdate[0]);
+
+            console.log('✅ Orders API: Points awarded successfully to Supabase user - Total:', pointsToAward, 'points');
+            return { success: true, pointsAwarded: pointsToAward, userType: 'supabase', transactionId: pointsTransactionId };
+          } catch (pointsUpdateError) {
+            console.error('❌ Orders API: Failed to update user points:', pointsUpdateError);
+            // If points update fails, we should rollback the transaction by throwing
+            throw pointsUpdateError;
+          }
         }
 
         // ShipDay integration for delivery orders (only after payment confirmation)
