@@ -63,13 +63,27 @@ export const handler: Handler = async (event, context) => {
         LIMIT 10
       `;
 
+      // Also show recent orders for debugging
+      const recentOrders = await sql`
+        SELECT id, user_id, supabase_user_id, total, status, payment_status, created_at
+        FROM orders
+        WHERE created_at > NOW() - INTERVAL '24 hours'
+        ORDER BY created_at DESC
+        LIMIT 5
+      `;
+
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           legacyUsers: users,
           supabaseUsers: supabaseUsers,
-          message: 'Current user roles and points'
+          recentOrders: recentOrders,
+          message: 'Current user roles, points, and recent orders',
+          instructions: {
+            changeRole: 'POST with { "action": "changeRole", "supabaseUserId": "your-id", "newRole": "customer" }',
+            testTheory: 'The theory is that admin users are not earning points because they have role="admin" instead of role="customer"'
+          }
         })
       };
     }
