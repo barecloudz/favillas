@@ -349,7 +349,9 @@ export const handler: Handler = async (event, context) => {
           isSupabase: authPayload?.isSupabase,
           supabaseUserId: authPayload?.supabaseUserId,
           userId: authPayload?.userId,
-          username: authPayload?.username
+          username: authPayload?.username,
+          role: authPayload?.role,
+          isAdminRole: authPayload?.role === 'admin'
         });
 
         if (authPayload) {
@@ -894,6 +896,14 @@ export const handler: Handler = async (event, context) => {
         }
 
         // Award points for authenticated users (1 point per $1 spent) with race condition protection
+        console.log('🎁 Orders API: POINTS ELIGIBILITY CHECK:', {
+          hasUserId: !!userId,
+          hasSupabaseUserId: !!supabaseUserId,
+          userRole: authPayload?.role,
+          shouldAwardPoints: !!(userId || supabaseUserId),
+          isAdmin: authPayload?.role === 'admin'
+        });
+
         if (userId || supabaseUserId) {
           try {
             const pointsToAward = Math.floor(parseFloat(newOrder.total));
