@@ -87,36 +87,25 @@ const OrderSuccessPage = () => {
           // Create the order now that payment has succeeded
           const createOrderAsync = async () => {
             try {
-              const response = await apiRequest('/api/orders', {
-                method: 'POST',
-                body: JSON.stringify(pendingOrderData),
-              });
+              const createdOrder = await apiRequest('POST', '/api/orders', pendingOrderData);
+              console.log('✅ Order created successfully:', createdOrder);
+              setOrderId(createdOrder.id);
+              setOrder(createdOrder);
 
-              if (response.ok) {
-                const createdOrder = await response.json();
-                console.log('✅ Order created successfully:', createdOrder);
-                setOrderId(createdOrder.id);
-                setOrder(createdOrder);
-
-                // Store order for guest users
-                if (!user) {
-                  const guestOrderKey = `guestOrder_${createdOrder.id}`;
-                  localStorage.setItem(guestOrderKey, JSON.stringify(createdOrder));
-                }
-
-                toast({
-                  title: "Order Created Successfully!",
-                  description: `Order #${createdOrder.id} has been placed.`,
-                });
-              } else {
-                const errorData = await response.json();
-                console.error('❌ Failed to create order:', errorData);
-                toast({
-                  title: "Payment Successful",
-                  description: "Your payment was processed, but there was an issue creating your order. Please contact us.",
-                  variant: "destructive",
-                });
+              // Store order for guest users
+              if (!user) {
+                const guestOrderKey = `guestOrder_${createdOrder.id}`;
+                localStorage.setItem(guestOrderKey, JSON.stringify(createdOrder));
               }
+
+              // Clear pending order data only after successful creation
+              sessionStorage.removeItem('pendingOrderData');
+              console.log('✅ Order created and cleared pending data from sessionStorage');
+
+              toast({
+                title: "Order Created Successfully!",
+                description: `Order #${createdOrder.id} has been placed.`,
+              });
             } catch (error) {
               console.error('💥 Error creating order:', error);
               toast({
@@ -134,10 +123,6 @@ const OrderSuccessPage = () => {
           console.error('❌ Error parsing pending order data:', error);
           setIsLoading(false);
         }
-
-        // Clear pending order data since we've processed it
-        sessionStorage.removeItem('pendingOrderData');
-        console.log('✅ Cleared pending order data from sessionStorage');
       } else {
         console.warn('⚠️ No pending order data found in sessionStorage');
         setIsLoading(false);
