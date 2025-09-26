@@ -36,7 +36,7 @@ export const handler: Handler = async (event, context) => {
 
   try {
     const sql = getDB();
-    const supabaseUserId = 'bd3e778e-c5f1-4eec-8436-0a9ff3c5cf9a';
+    const supabaseUserId = 'fc644776-1ca0-46ad-ae6c-8f753478374b'; // Updated to correct user ID
 
     // Check user points record
     const userPoints = await sql`
