@@ -25,7 +25,7 @@ function getDB() {
 export const handler: Handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Content-Type': 'application/json',
   };
@@ -37,6 +37,34 @@ export const handler: Handler = async (event, context) => {
   try {
     const sql = getDB();
     const supabaseUserId = 'fc644776-1ca0-46ad-ae6c-8f753478374b'; // Updated to correct user ID
+    const oldUserId = 'bd3e778e-c5f1-4eec-8436-0a9ff3c5cf9a';
+
+    // If this is a POST request, perform the fix
+    if (event.httpMethod === 'POST') {
+      console.log('🔧 FIXING: Transferring points to correct user ID');
+
+      // Simply update the user ID on the record with 2180 points
+      await sql`
+        UPDATE user_points
+        SET supabase_user_id = ${supabaseUserId}
+        WHERE supabase_user_id = ${oldUserId} AND points > 1000
+      `;
+
+      // Update transactions too
+      await sql`
+        UPDATE points_transactions
+        SET supabase_user_id = ${supabaseUserId}
+        WHERE supabase_user_id = ${oldUserId}
+      `;
+
+      // Delete duplicate 0-point records
+      await sql`
+        DELETE FROM user_points
+        WHERE supabase_user_id = ${supabaseUserId} AND points = 0
+      `;
+
+      console.log('✅ Fix completed');
+    }
 
     // Check user points record
     const userPoints = await sql`
