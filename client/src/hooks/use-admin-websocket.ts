@@ -34,6 +34,23 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
     if (!audioContextRef.current && typeof window !== 'undefined') {
       try {
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+        // Add user interaction listeners to enable audio context
+        const enableAudio = async () => {
+          if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+            try {
+              await audioContextRef.current.resume();
+              console.log('🔊 Audio context enabled for notifications');
+            } catch (error) {
+              console.warn('Failed to resume audio context:', error);
+            }
+          }
+        };
+
+        // Enable audio on any user interaction
+        ['click', 'touchstart', 'keydown'].forEach(event => {
+          document.addEventListener(event, enableAudio, { once: true });
+        });
       } catch (error) {
         console.warn('Audio context not available:', error);
       }
