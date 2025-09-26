@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from './use-supabase-auth';
+import { supabase } from '@/lib/supabase';
 
 interface AdminWebSocketMessage {
   type: string;
@@ -171,9 +172,21 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
     const checkForNewOrders = async () => {
       try {
         console.log('🔍 Polling for new orders...');
+
+        // Get the current auth session (same method as other API calls)
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        console.log('🔑 Auth token available:', !!token);
+
+        if (!token) {
+          console.warn('⚠️ No auth token available - skipping polling');
+          return;
+        }
+
         const response = await fetch('/api/orders?limit=5', {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('supabase_access_token')}`
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
         });
 
