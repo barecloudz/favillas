@@ -665,13 +665,28 @@ const CheckoutPage = () => {
     // Create order - filter out any corrupted items
     const orderItems = items
       .filter(item => item && item.id && item.name && item.price && item.quantity)
-      .map(item => ({
-        menuItemId: item.id,
-        quantity: item.quantity,
-        price: (item.price * item.quantity).toString(),
-        options: item.options || item.selectedOptions || [],
-        specialInstructions: item.specialInstructions || "",
-      }));
+      .map(item => {
+        console.log('🔍 CHECKOUT DEBUG - Processing cart item for order:', {
+          itemName: item.name,
+          itemId: item.id,
+          hasOptions: !!item.options,
+          optionsType: typeof item.options,
+          optionsLength: Array.isArray(item.options) ? item.options.length : 'N/A',
+          optionsContent: item.options,
+          hasSelectedOptions: !!item.selectedOptions,
+          selectedOptionsType: typeof item.selectedOptions,
+          selectedOptionsContent: item.selectedOptions,
+          finalOptions: item.options || item.selectedOptions || []
+        });
+
+        return {
+          menuItemId: item.id,
+          quantity: item.quantity,
+          price: (item.price * item.quantity).toString(),
+          options: item.options || item.selectedOptions || [],
+          specialInstructions: item.specialInstructions || "",
+        };
+      });
     
     // Parse address for ShipDay if delivery order
     let parsedAddressData = null;
@@ -690,7 +705,6 @@ const CheckoutPage = () => {
 
     // Store order data for after payment confirmation (don't create order yet)
     const pendingOrderData = {
-      userId: user?.id || null,
       status: "pending", // Will be updated to confirmed after payment processing
       total: totals.finalTotal.toString(),
       tax: tax.toString(),
