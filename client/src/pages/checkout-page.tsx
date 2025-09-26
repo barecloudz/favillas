@@ -586,7 +586,10 @@ const CheckoutPage = () => {
   // Handle form submission
   const handleSubmitOrder = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    console.log('🚀 NEW CHECKOUT FLOW - handleSubmitOrder called at:', new Date().toISOString());
+    console.log('🔄 This should NOT create an order immediately - only store data and create payment intent');
+
     // Allow guest checkout - just require phone number
     if (!phone) {
       toast({
@@ -714,6 +717,9 @@ const CheckoutPage = () => {
     // Store in sessionStorage for payment completion
     sessionStorage.setItem('pendingOrderData', JSON.stringify(pendingOrderData));
     console.log('💾 Stored pending order data for after payment:', pendingOrderData);
+
+    console.log('⚡ About to create payment intent with orderId: null (NEW FLOW)');
+    console.log('⚡ If you see an order being created now, there is a bug somewhere!');
 
     // Create payment intent directly (no order created yet)
     createPaymentIntentMutation.mutate({
