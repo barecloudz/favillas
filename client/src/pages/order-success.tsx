@@ -445,9 +445,28 @@ Thank you for choosing Favilla's NY Pizza!
     );
   }
 
-  // Show order not found only if we're an authenticated user without order data
+  // Show loading while order is being created or fetched
+  if (isLoading) {
+    return (
+      <>
+        <Helmet>
+          <title>Processing Order | Favilla's NY Pizza</title>
+        </Helmet>
+        <main className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#d73a31] mx-auto mb-4"></div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Processing Your Order</h1>
+            <p className="text-gray-600">Please wait while we confirm your order details...</p>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  // Show order not found only if we're done loading and still have no order data for authenticated users
   // Guest users should see the success page even without order details
-  if (!order && user) {
+  if (!order && user && !isLoading) {
     return (
       <>
         <Helmet>
