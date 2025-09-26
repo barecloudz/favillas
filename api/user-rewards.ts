@@ -135,19 +135,24 @@ export const handler: Handler = async (event, context) => {
       // Handle Supabase user (Google OAuth)
       console.log('🔑 Processing Supabase user rewards:', authPayload.supabaseUserId);
 
-      // Get user's current points using supabase_user_id
+      // Get user's current points using supabase_user_id (aggregate if multiple records)
       console.log('🔍 Querying user_points for supabaseUserId:', authPayload.supabaseUserId);
       const userPointsRecord = await sql`
         SELECT
-          points,
-          total_earned,
-          total_redeemed,
-          last_earned_at,
-          updated_at
+          SUM(points) as points,
+          SUM(total_earned) as total_earned,
+          SUM(total_redeemed) as total_redeemed,
+          MAX(last_earned_at) as last_earned_at,
+          MAX(updated_at) as updated_at
         FROM user_points
         WHERE supabase_user_id = ${authPayload.supabaseUserId}
+        GROUP BY supabase_user_id
       `;
       console.log('🔍 User points query result:', userPointsRecord.length, 'records found');
+
+      if (userPointsRecord.length > 0) {
+        console.log('📊 Aggregated points data:', userPointsRecord[0]);
+      }
 
       if (userPointsRecord.length === 0) {
         console.log('📋 No user_points record found for Supabase user, creating one');
