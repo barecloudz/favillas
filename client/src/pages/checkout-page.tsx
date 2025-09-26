@@ -385,87 +385,7 @@ const CheckoutPage = () => {
     },
   });
 
-  // Create order mutation
-  const createOrderMutation = useMutation({
-    mutationFn: async (orderData: any) => {
-      const res = await apiRequest("POST", "/api/orders", orderData);
-      return await res.json();
-    },
-    onSuccess: async (data) => {
-      setOrderId(data.id);
-
-      // For guest users, store order details in localStorage for the confirmation page
-      if (!user) {
-        const guestOrderData = {
-          ...data,
-          items: items,
-          orderType: orderType,
-          fulfillmentTime: fulfillmentTime,
-          scheduledTime: scheduledTime,
-          phone: phone,
-          address: address,
-          addressData: addressData,
-          specialInstructions: specialInstructions,
-          total: totals.finalTotal.toString(),
-          tax: totals.tax.toString(),
-          tip: totals.tip.toString(),
-          deliveryFee: orderType === 'delivery' ? deliveryFee.toString() : '0',
-          appliedPromoCode: appliedPromoCode,
-          appliedVoucher: appliedVoucher,
-          createdAt: new Date().toISOString(),
-          status: 'pending'
-        };
-
-        const guestOrderKey = `guestOrder_${data.id}`;
-        localStorage.setItem(guestOrderKey, JSON.stringify(guestOrderData));
-        console.log('💾 Stored guest order details in localStorage:', guestOrderData);
-      }
-
-      // Save contact information to user profile for future orders
-      if (user && (phone || address || addressData?.city || addressData?.state || addressData?.zipCode)) {
-        try {
-          console.log('💾 Saving contact information to user profile:', { phone, address, addressData });
-
-          // Extract address components if we have addressData
-          const contactData: { phone?: string; address?: string; city?: string; state?: string; zip_code?: string } = {};
-
-          if (phone) contactData.phone = phone;
-          if (addressData) {
-            if (addressData.street) contactData.address = addressData.street;
-            if (addressData.city) contactData.city = addressData.city;
-            if (addressData.state) contactData.state = addressData.state;
-            if (addressData.zipCode) contactData.zip_code = addressData.zipCode;
-          } else if (address) {
-            // Fallback: just save the full address string
-            contactData.address = address;
-          }
-
-          await updateUserProfileMutation.mutateAsync(contactData);
-          console.log('✅ Contact information saved to user profile');
-
-          // Refresh user profile to get updated data
-          await refreshUserProfile();
-          console.log('✅ User profile refreshed after contact info update');
-        } catch (error) {
-          console.warn('⚠️ Failed to save contact information to user profile:', error);
-          // Don't block the checkout process if profile update fails
-        }
-      }
-
-      // Create payment intent
-      createPaymentIntentMutation.mutate({
-        amount: totals.finalTotal,
-        orderId: data.id,
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Failed to create order",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  // Remove old createOrderMutation - orders are now created after payment succeeds
 
   // Create payment intent mutation
   const createPaymentIntentMutation = useMutation({
@@ -1254,12 +1174,12 @@ const CheckoutPage = () => {
                         />
                       </div>
                       
-                      <Button 
-                        type="submit" 
+                      <Button
+                        type="submit"
                         className="w-full bg-[#d73a31] hover:bg-[#c73128]"
-                        disabled={createOrderMutation.isPending}
+                        disabled={createPaymentIntentMutation.isPending}
                       >
-                        {createOrderMutation.isPending ? (
+                        {createPaymentIntentMutation.isPending ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
                             Processing...
