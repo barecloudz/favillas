@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './use-supabase-auth';
 import { supabase } from '@/lib/supabase';
 
@@ -19,6 +20,7 @@ interface AdminWebSocketHookOptions {
 
 export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -222,6 +224,11 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
 
               // Play notification sound
               playNotificationSound();
+
+              // Invalidate all order-related queries to refresh the UI
+              queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/kitchen/orders'] });
+              console.log('🔄 Invalidated order queries to refresh UI');
 
               // Call callback if provided
               if (options.onNewOrder) {
