@@ -87,7 +87,14 @@ const OrderSuccessPage = () => {
           // Create the order now that payment has succeeded (only once)
           const createOrderAsync = async () => {
             try {
-              const response = await apiRequest('POST', '/api/orders', pendingOrderData);
+              // Update order data to reflect successful payment (keep status as pending for kitchen display)
+              const confirmedOrderData = {
+                ...pendingOrderData,
+                status: "pending",
+                paymentStatus: "succeeded"
+              };
+
+              const response = await apiRequest('POST', '/api/orders', confirmedOrderData);
               const createdOrder = await response.json();
               console.log('✅ Order created successfully:', createdOrder);
               setOrderId(createdOrder.id);

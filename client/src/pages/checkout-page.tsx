@@ -691,13 +691,13 @@ const CheckoutPage = () => {
     // Store order data for after payment confirmation (don't create order yet)
     const pendingOrderData = {
       userId: user?.id || null,
-      status: "confirmed", // Will be confirmed after payment
+      status: "pending", // Will be updated to confirmed after payment processing
       total: totals.finalTotal.toString(),
       tax: tax.toString(),
       tip: totals.tip.toString(),
       deliveryFee: orderType === "delivery" ? deliveryFee.toString() : "0",
       orderType,
-      paymentStatus: "succeeded", // Will be set after payment
+      paymentStatus: "pending", // Will be set to succeeded after payment confirmation
       specialInstructions,
       address: orderType === "delivery" ? address : "",
       addressData: orderType === "delivery" ? parsedAddressData : null,
