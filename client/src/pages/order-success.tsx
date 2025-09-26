@@ -518,9 +518,12 @@ Thank you for choosing Favilla's NY Pizza!
                               {item.specialInstructions && (
                                 <p className="text-sm text-gray-500">Note: {item.specialInstructions}</p>
                               )}
-                              {item.options && Object.keys(item.options).length > 0 && (
+                              {item.options && (
                                 <p className="text-sm text-gray-500">
-                                  {Object.entries(item.options).map(([key, value]) => `${key}: ${value}`).join(', ')}
+                                  {Array.isArray(item.options)
+                                    ? item.options.map(opt => `${opt.itemName || opt.name} (+$${opt.price})`).join(', ')
+                                    : Object.entries(item.options).map(([key, value]) => `${key}: ${value}`).join(', ')
+                                  }
                                 </p>
                               )}
                             </div>
