@@ -52,7 +52,8 @@ function authenticateToken(event: any): { userId: number | null; supabaseUserId:
       if (payload.iss && payload.iss.includes('supabase')) {
         // This is a Supabase token, extract user ID
         const supabaseUserId = payload.sub;
-        console.log('✅ Supabase user ID:', supabaseUserId);
+        console.log('✅ Supabase user ID from token:', supabaseUserId);
+        console.log('📧 Email from token:', payload.email);
 
         // For Supabase users, return the UUID directly
         return {
@@ -135,6 +136,7 @@ export const handler: Handler = async (event, context) => {
       console.log('🔑 Processing Supabase user rewards:', authPayload.supabaseUserId);
 
       // Get user's current points using supabase_user_id
+      console.log('🔍 Querying user_points for supabaseUserId:', authPayload.supabaseUserId);
       const userPointsRecord = await sql`
         SELECT
           points,
@@ -145,6 +147,7 @@ export const handler: Handler = async (event, context) => {
         FROM user_points
         WHERE supabase_user_id = ${authPayload.supabaseUserId}
       `;
+      console.log('🔍 User points query result:', userPointsRecord.length, 'records found');
 
       if (userPointsRecord.length === 0) {
         console.log('📋 No user_points record found for Supabase user, creating one');
@@ -169,19 +172,25 @@ export const handler: Handler = async (event, context) => {
           console.log('✅ Created Supabase user record');
         }
 
-        // Create user_points record
-        await sql`
-          INSERT INTO user_points (supabase_user_id, points, total_earned, total_redeemed, created_at, updated_at)
-          VALUES (${authPayload.supabaseUserId}, 0, 0, 0, NOW(), NOW())
-          ON CONFLICT DO NOTHING
+        // Create user_points record only if none exists
+        const existingPointsRecord = await sql`
+          SELECT * FROM user_points WHERE supabase_user_id = ${authPayload.supabaseUserId}
         `;
 
-        // Create initial transaction
-        await sql`
-          INSERT INTO points_transactions (supabase_user_id, type, points, description, created_at)
-          VALUES (${authPayload.supabaseUserId}, 'signup', 0, 'Supabase user account created with 0 points', NOW())
-          ON CONFLICT DO NOTHING
-        `;
+        if (existingPointsRecord.length === 0) {
+          await sql`
+            INSERT INTO user_points (supabase_user_id, points, total_earned, total_redeemed, created_at, updated_at)
+            VALUES (${authPayload.supabaseUserId}, 0, 0, 0, NOW(), NOW())
+          `;
+        }
+
+        // Create initial transaction only if no points record existed
+        if (existingPointsRecord.length === 0) {
+          await sql`
+            INSERT INTO points_transactions (supabase_user_id, type, points, description, created_at)
+            VALUES (${authPayload.supabaseUserId}, 'signup', 0, 'Supabase user account created with 0 points', NOW())
+          `;
+        }
 
         console.log('✅ Initialized Supabase user points');
 
