@@ -170,7 +170,8 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
   const startPollingNotifications = useCallback(() => {
     const checkForNewOrders = async () => {
       try {
-        const response = await fetch('/api/orders?limit=1&sort=desc', {
+        console.log('🔍 Polling for new orders...');
+        const response = await fetch('/api/orders?limit=5', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('supabase_access_token')}`
           }
@@ -178,13 +179,25 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
 
         if (response.ok) {
           const orders = await response.json();
+          console.log('📊 Polling response:', { ordersCount: orders.length, orders: orders.map(o => ({ id: o.id, created_at: o.created_at })) });
+
           if (orders.length > 0) {
             const latestOrder = orders[0];
             const latestOrderId = latestOrder.id;
 
+            console.log('🆔 Latest order ID:', latestOrderId, 'Last checked:', lastCheckedOrderRef.current);
+
+            // On first run, just store the latest order ID without notification
+            if (lastCheckedOrderRef.current === null) {
+              lastCheckedOrderRef.current = latestOrderId;
+              console.log('📝 Initial setup - storing latest order ID:', latestOrderId);
+              return;
+            }
+
             // Check if this is a new order
-            if (lastCheckedOrderRef.current && lastCheckedOrderRef.current !== latestOrderId) {
-              console.log('🔔 New order detected via polling:', latestOrder);
+            if (lastCheckedOrderRef.current !== latestOrderId) {
+              console.log('🔔 NEW ORDER DETECTED via polling!');
+              console.log('📦 Order details:', latestOrder);
 
               // Play notification sound
               playNotificationSound();
@@ -193,18 +206,25 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
               if (options.onNewOrder) {
                 options.onNewOrder(latestOrder);
               }
-            }
 
-            lastCheckedOrderRef.current = latestOrderId;
+              // Update the last checked order
+              lastCheckedOrderRef.current = latestOrderId;
+            } else {
+              console.log('✅ No new orders since last check');
+            }
+          } else {
+            console.log('📭 No orders found');
           }
+        } else {
+          console.error('❌ Failed to fetch orders:', response.status, response.statusText);
         }
       } catch (error) {
-        console.warn('Failed to poll for new orders:', error);
+        console.error('💥 Polling error:', error);
       }
     };
 
-    // Start polling every 30 seconds (less aggressive than 10s)
-    pollingIntervalRef.current = setInterval(checkForNewOrders, 30000);
+    // Start polling every 5 seconds for responsive notifications
+    pollingIntervalRef.current = setInterval(checkForNewOrders, 5000);
 
     // Check immediately
     checkForNewOrders();
