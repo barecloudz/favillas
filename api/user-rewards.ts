@@ -1,6 +1,6 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
-import { authenticateToken, getUserId } from './_shared/auth';
+import jwt from 'jsonwebtoken';
 
 let dbConnection: any = null;
 

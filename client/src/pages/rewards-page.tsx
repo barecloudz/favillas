@@ -43,9 +43,9 @@ const RewardsPage = () => {
 
   // Fetch user's points and rewards data
   const { data: userData, isLoading: userLoading, error: userError } = useQuery({
-    queryKey: ["/api/user/rewards"],
+    queryKey: ["/api/user-rewards"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/user/rewards");
+      const response = await apiRequest("GET", "/api/user-rewards");
       const data = await response.json();
       // Ensure we have valid user data with defaults
       return {
@@ -123,7 +123,7 @@ const RewardsPage = () => {
       });
 
       // Refresh user data, redemptions, and active vouchers
-      queryClient.invalidateQueries({ queryKey: ["/api/user/rewards"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-rewards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/redemptions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/active-vouchers"] });
     },
