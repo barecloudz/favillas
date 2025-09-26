@@ -23,6 +23,8 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const reconnectAttemptsRef = useRef<number>(0);
   const maxReconnectAttempts = 3;
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastCheckedOrderRef = useRef<string | null>(null);
 
   // Initialize audio context for sound notifications
   const initAudioContext = useCallback(() => {
@@ -164,6 +166,57 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
     }
   }, [options.enableSounds, options.soundType, options.volume, options.customSoundUrl]);
 
+  // Polling-based notifications for production (Netlify)
+  const startPollingNotifications = useCallback(() => {
+    const checkForNewOrders = async () => {
+      try {
+        const response = await fetch('/api/orders?limit=1&sort=desc', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('supabase_access_token')}`
+          }
+        });
+
+        if (response.ok) {
+          const orders = await response.json();
+          if (orders.length > 0) {
+            const latestOrder = orders[0];
+            const latestOrderId = latestOrder.id;
+
+            // Check if this is a new order
+            if (lastCheckedOrderRef.current && lastCheckedOrderRef.current !== latestOrderId) {
+              console.log('🔔 New order detected via polling:', latestOrder);
+
+              // Play notification sound
+              playNotificationSound();
+
+              // Call callback if provided
+              if (options.onNewOrder) {
+                options.onNewOrder(latestOrder);
+              }
+            }
+
+            lastCheckedOrderRef.current = latestOrderId;
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to poll for new orders:', error);
+      }
+    };
+
+    // Start polling every 10 seconds
+    pollingIntervalRef.current = setInterval(checkForNewOrders, 10000);
+
+    // Check immediately
+    checkForNewOrders();
+  }, [options.onNewOrder, playNotificationSound]);
+
+  const stopPollingNotifications = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, []);
+
   const connect = useCallback(() => {
     if (!user?.id) return;
 
@@ -182,6 +235,8 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
 
     if (isNetlifyProduction) {
       console.log('Admin WebSocket disabled in production (Netlify deployment)');
+      console.log('🔄 Starting polling-based notifications for production...');
+      startPollingNotifications();
       return;
     }
 
@@ -278,9 +333,12 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
       wsRef.current = null;
     }
 
+    // Stop polling notifications
+    stopPollingNotifications();
+
     // Reset reconnection attempts when manually disconnecting
     reconnectAttemptsRef.current = 0;
-  }, []);
+  }, [stopPollingNotifications]);
 
   useEffect(() => {
     if (user?.id) {
