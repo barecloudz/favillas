@@ -75,8 +75,14 @@ export const handler: Handler = async (event, context) => {
       currency: "usd",
       metadata: {
         ...(orderId && { orderId: orderId.toString() }),
-        ...(orderData && { orderData: JSON.stringify(orderData) }),
-        userId: "guest" // For guest users
+        // Store only essential order info in Stripe metadata (500 char limit)
+        ...(orderData && {
+          userId: orderData.userId || "guest",
+          orderType: orderData.orderType || "pickup",
+          total: orderData.total,
+          phone: orderData.phone || "",
+          itemCount: orderData.items?.length?.toString() || "0"
+        })
       }
     });
 
