@@ -45,11 +45,14 @@ export const handler: Handler = async (event, context) => {
   try {
     const sql = getDB();
 
-    // Hardcoded for your account - no auth needed
+    // UPDATED: Transfer points to correct user ID
     const userPhone = '8039774285';
-    const supabaseUserId = 'bd3e778e-c5f1-4eec-8436-0a9ff3c5cf9a'; // Your Supabase ID
+    const oldSupabaseUserId = 'bd3e778e-c5f1-4eec-8436-0a9ff3c5cf9a'; // Old incorrect ID
+    const correctSupabaseUserId = 'fc644776-1ca0-46ad-ae6c-8f753478374b'; // Correct current ID
 
-    console.log('🎁 EMERGENCY POINTS FIX: Starting massive points award for user:', supabaseUserId);
+    console.log('🔄 TRANSFERRING POINTS from', oldSupabaseUserId, 'to', correctSupabaseUserId);
+
+    console.log('🎁 EMERGENCY POINTS FIX: Starting massive points award for user:', correctSupabaseUserId);
 
     // Get all orders that need points
     const ordersNeedingPoints = [
@@ -98,44 +101,70 @@ export const handler: Handler = async (event, context) => {
 
       // Create points transactions for each order
       for (const order of ordersNeedingPoints) {
-        // Check if points transaction already exists
+        // Check if points transaction already exists for either user ID
         const existingTransaction = await sql`
           SELECT id FROM points_transactions
-          WHERE order_id = ${order.id} AND supabase_user_id = ${supabaseUserId}
+          WHERE order_id = ${order.id} AND (supabase_user_id = ${correctSupabaseUserId} OR supabase_user_id = ${oldSupabaseUserId})
         `;
 
         if (existingTransaction.length === 0) {
           await sql`
             INSERT INTO points_transactions (supabase_user_id, order_id, type, points, description, order_amount, created_at)
-            VALUES (${supabaseUserId}, ${order.id}, 'earned', ${order.pointsToAward}, ${'Order #' + order.id + ' (EMERGENCY FIX)'}, ${order.total}, NOW())
+            VALUES (${correctSupabaseUserId}, ${order.id}, 'earned', ${order.pointsToAward}, ${'Order #' + order.id + ' (TRANSFERRED TO CORRECT USER)'}, ${order.total}, NOW())
           `;
           transactionCount++;
+        } else {
+          // Update existing transaction to correct user ID
+          await sql`
+            UPDATE points_transactions
+            SET supabase_user_id = ${correctSupabaseUserId},
+                description = description || ' (TRANSFERRED TO CORRECT USER)'
+            WHERE order_id = ${order.id} AND supabase_user_id = ${oldSupabaseUserId}
+          `;
         }
       }
 
-      // Update user points balance with the total
-      // First check if user points record exists
-      const existingPoints = await sql`
-        SELECT points, total_earned FROM user_points WHERE supabase_user_id = ${supabaseUserId}
+      // Transfer points balance to correct user
+      // First get old points record
+      const oldPoints = await sql`
+        SELECT points, total_earned, total_redeemed FROM user_points WHERE supabase_user_id = ${oldSupabaseUserId}
+      `;
+
+      // Check if correct user already has points record
+      const existingCorrectPoints = await sql`
+        SELECT points, total_earned FROM user_points WHERE supabase_user_id = ${correctSupabaseUserId}
       `;
 
       let finalBalance;
-      if (existingPoints.length > 0) {
-        // Update existing record
-        finalBalance = await sql`
-          UPDATE user_points
-          SET points = points + ${totalPointsToAward},
-              total_earned = total_earned + ${totalPointsToAward},
-              last_earned_at = NOW(),
-              updated_at = NOW()
-          WHERE supabase_user_id = ${supabaseUserId}
-          RETURNING points, total_earned
-        `;
+
+      if (oldPoints.length > 0) {
+        if (existingCorrectPoints.length > 0) {
+          // Merge old points into existing correct user record
+          finalBalance = await sql`
+            UPDATE user_points
+            SET points = points + ${oldPoints[0].points},
+                total_earned = total_earned + ${oldPoints[0].total_earned},
+                total_redeemed = total_redeemed + ${oldPoints[0].total_redeemed},
+                last_earned_at = NOW(),
+                updated_at = NOW()
+            WHERE supabase_user_id = ${correctSupabaseUserId}
+            RETURNING points, total_earned
+          `;
+        } else {
+          // Transfer old points record to correct user
+          finalBalance = await sql`
+            UPDATE user_points
+            SET supabase_user_id = ${correctSupabaseUserId},
+                updated_at = NOW()
+            WHERE supabase_user_id = ${oldSupabaseUserId}
+            RETURNING points, total_earned
+          `;
+        }
       } else {
-        // Create new record
+        // No old points found, create new record for correct user
         finalBalance = await sql`
           INSERT INTO user_points (supabase_user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
-          VALUES (${supabaseUserId}, ${totalPointsToAward}, ${totalPointsToAward}, 0, NOW(), NOW(), NOW())
+          VALUES (${correctSupabaseUserId}, ${totalPointsToAward}, ${totalPointsToAward}, 0, NOW(), NOW(), NOW())
           RETURNING points, total_earned
         `;
       }
