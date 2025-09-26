@@ -168,7 +168,7 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
     if (!user?.id) return;
 
     // Temporary debugging flag - disable WebSocket completely
-    const isWebSocketDisabled = true; // Set to false to re-enable WebSocket
+    const isWebSocketDisabled = false; // Set to false to re-enable WebSocket
 
     if (isWebSocketDisabled) {
       console.log('🚫 Admin WebSocket temporarily disabled for debugging');
