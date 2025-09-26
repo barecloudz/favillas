@@ -48,12 +48,15 @@ export const handler: Handler = async (event, context) => {
       ORDER BY created_at DESC
     `;
 
-    const pointsTransactions = await sql`
-      SELECT order_id, points, description, created_at
-      FROM points_transactions
-      WHERE order_id IN (${orders.map(o => o.id)})
-      ORDER BY created_at DESC
-    `;
+    let pointsTransactions = [];
+    if (orders.length > 0) {
+      pointsTransactions = await sql`
+        SELECT order_id, points, description, created_at
+        FROM points_transactions
+        WHERE order_id = ANY(${orders.map(o => o.id)})
+        ORDER BY created_at DESC
+      `;
+    }
 
     const ordersWithPoints = pointsTransactions.map(pt => pt.order_id);
     const ordersWithoutPoints = orders.filter(order => !ordersWithPoints.includes(order.id));
