@@ -1,0 +1,145 @@
+33 environment variables for project favillasnypizza in the dev context 
+| RESEND_API_KEY                       | ***************************************
+*********** | All                     |
+| SESSION_SECRET                       | ***************************************
+*********** | All                     |
+| SHIPDAY_API_KEY                      | ***************************************
+*********** | All                     |
+| SHIPDAY_RESTAURANT_ID                | ***************************************
+*********** | All                     |
+| SHIPDAY_WEBHOOK_TOKEN                | ***************************************
+*********** | All                     |
+| SHIPDAY_WEBHOOK_URL                  | ***************************************
+*********** | All                     |
+| SITE_URL                             | ***************************************
+*********** | All                     |
+| STRIPE_SECRET_KEY                    | ***************************************
+*********** | All                     |
+| STRIPE_WEBHOOK_SECRET                | ***************************************
+*********** | All                     |
+| SUPABASE_SERVICE_ROLE_KEY            | ***************************************
+*********** | All                     |
+| SUPABASE_URL                         | ***************************************
+*********** | All                     |
+| TWILIO_ACCOUNT_SID                   | ***************************************
+*********** | All                     |
+| TWILIO_AUTH_TOKEN                    | ***************************************
+*********** | All                     |
+| TWILIO_PHONE_NUMBER                  | ***************************************
+*********** | All                     |
+| VITE_GOOGLE_MAPS_API_KEY             | ***************************************
+*********** | All                     |
+| VITE_STRIPE_PUBLIC_KEY               | ***************************************
+*********** | All                     |
+| VITE_SUPABASE_ANON_KEY               | ***************************************
+*********** | All                     |
+| VITE_SUPABASE_URL                    | ***************************************
+*********** | All                     |
+| SECRETS_SCAN_ENABLED                 | ***************************************
+*********** | Builds, Post processing |
+| NETLIFY_SKIP_EDGE_FUNCTIONS_BUNDLING | ***************************************
+*********** | Builds, Post processing |
+| NPM_CONFIG_PREFER_OFFLINE            | ***************************************
+*********** | Builds, Post processing |
+| NPM_CONFIG_NO_PROGRESS               | ***************************************
+*********** | Builds, Post processing |
+'-------------------------------------------------------------------------------
+--------------------------------------'
+? Show values? (y/N) [21D[21C[2K[G? Show values? (y/N) y[22D[22C[2K[G? Show values? Yes[18D[18C
+[2K[1A[2K[1A[2K[G
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G| RESEND_API_KEY                       | re_U8ggpTTw_AvKKUQV2W5jGZgeuiZoqtABY   
+                                                                                
+                                                                                
+                     | All                     |
+| SESSION_SECRET                       | 
+14e4eacfed948455cb693806587bc214b1fd2cd0e0356f6141c5ac17525cd45a4b54876146f196e5
+76c270f994d305d55d89c65533e75c02eb576b42c4229185d                               
+                                                            | All               
+      |
+| SHIPDAY_API_KEY                      | ovg42Kyozc.umlFPvYTAQBwRpoaawtG        
+                                                                                
+                                                                                
+                     | All                     |
+| SHIPDAY_RESTAURANT_ID                | favillas-ny-pizza                      
+                                                                                
+                                                                                
+                     | All                     |
+| SHIPDAY_WEBHOOK_TOKEN                | 789222aed29c9dc01f8417799f106fca       
+                                                                                
+                                                                                
+                     | All                     |
+| SHIPDAY_WEBHOOK_URL                  | https://favillasnypizza.netlify.app/.ne
+tlify/functions/shipday-webhook                                                 
+                                                                                
+                     | All                     |
+| SITE_URL                             | https://favillaspizzeria.com           
+                                                                                
+                                                                                
+                     | All                     |
+| STRIPE_SECRET_KEY                    | sk_test_51RuovZ2Y4FzbossZPUQLKhqO6XyGgk
+xGB5OKLer4VOXPdWyRHQaOwff6L2hOT6gM31FSGgxQNXIMUhBPbraA4Zto00dUYL7VUE            
+                                                                                
+                     | All                     |
+| STRIPE_WEBHOOK_SECRET                | whsec_1234567890abcdef                 
+                                                                                
+                                                                                
+                     | All                     |
+| SUPABASE_SERVICE_ROLE_KEY            | 
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhbXN4bGV
+ib3VhdXdpaXZveXhhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDc5MjQ4NCwiZXhwIjo
+yMDcwMzY4NDg0fQ.2V4zcLepwIFQw9JW_DkE_7mZD32j0172tTfrvJJkZxU | All               
+      |
+| SUPABASE_URL                         | https://tamsxlebouauwiivoyxa.supabase.c
+o                                                                               
+                                                                                
+                     | All                     |
+| TWILIO_ACCOUNT_SID                   | placeholder_account_sid                
+                                                                                
+                                                                                
+                     | All                     |
+| TWILIO_AUTH_TOKEN                    | placeholder_auth_token                 
+                                                                                
+                                                                                
+                     | All                     |
+| TWILIO_PHONE_NUMBER                  | placeholder_phone_number               
+                                                                                
+                                                                                
+                     | All                     |
+| VITE_GOOGLE_MAPS_API_KEY             | AIzaSyCmtq6v1450OD-doRjG8a8Z2h7h_RwJp1k
+                                                                                
+                                                                                
+                     | All                     |
+| VITE_STRIPE_PUBLIC_KEY               | pk_test_51RuovZ2Y4FzbossZ8yFdDQjqtp0Loi
+igmf2gXxuCpz903xLMcgTlk0uJgEpgrn3StuDCnjbJGRW0hOstFz7keXaQ00PntjV9zf            
+                                                                                
+                     | All                     |
+| VITE_SUPABASE_ANON_KEY               | 
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhbXN4bGV
+ib3VhdXdpaXZveXhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3OTI0ODQsImV4cCI6MjA3MDM2ODQ
+4NH0.epiNLRLmr0uXWB6dX49s8eG94UBAlnu96jDqkgYfseQ            | All               
+      |
+| VITE_SUPABASE_URL                    | https://tamsxlebouauwiivoyxa.supabase.c
+o                                                                               
+                                                                                
+                     | All                     |
+| SECRETS_SCAN_ENABLED                 | false                                  
+                                                                                
+                                                                                
+                     | Builds, Post processing |
+| NETLIFY_SKIP_EDGE_FUNCTIONS_BUNDLING | true                                   
+                                                                                
+                                                                                
+                     | Builds, Post processing |
+| NPM_CONFIG_PREFER_OFFLINE            | true                                   
+                                                                                
+                                                                                
+                     | Builds, Post processing |
+| NPM_CONFIG_NO_PROGRESS               | true                                   
+                                                                                
+                                                                                
+                     | Builds, Post processing |
+'-------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-----------------------------------------------'
+? Show values? Yes
