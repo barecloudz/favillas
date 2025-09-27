@@ -2,17 +2,26 @@ import { Handler } from '@netlify/functions';
 import jwt from 'jsonwebtoken';
 
 function authenticateToken(event: any): { userId: number | null; supabaseUserId: string | null; username: string; role: string; isSupabase: boolean } | null {
-  // Check for JWT token in Authorization header first
-  const authHeader = event.headers.authorization;
+  // Check for JWT token in Authorization header first (Netlify normalizes headers to lowercase)
+  const authHeader = event.headers.authorization || event.headers.Authorization;
   let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  console.log('🔍 TEST-ORDERS-AUTH: Auth header check:', {
+    hasAuthHeader: !!authHeader,
+    hasToken: !!token,
+    authHeaderType: typeof authHeader,
+    tokenLength: token?.length,
+    headers: Object.keys(event.headers)
+  });
 
   // If no Authorization header, check for auth-token cookie
   if (!token) {
-    const cookies = event.headers.cookie;
+    const cookies = event.headers.cookie || event.headers.Cookie;
     if (cookies) {
       const authCookie = cookies.split(';').find((c: string) => c.trim().startsWith('auth-token='));
       if (authCookie) {
         token = authCookie.split('=')[1];
+        console.log('🍪 TEST-ORDERS-AUTH: Found auth token in cookie');
       }
     }
   }

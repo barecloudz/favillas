@@ -24,22 +24,32 @@ function getDB() {
 }
 
 function authenticateToken(event: any): { userId: number | null; supabaseUserId: string | null; username: string; role: string; isSupabase: boolean } | null {
-  // Check for JWT token in Authorization header first
-  const authHeader = event.headers.authorization;
+  // Check for JWT token in Authorization header first (Netlify normalizes headers to lowercase)
+  const authHeader = event.headers.authorization || event.headers.Authorization;
   let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  console.log('🔍 Orders API: Auth header check:', {
+    hasAuthHeader: !!authHeader,
+    hasToken: !!token,
+    authHeaderType: typeof authHeader,
+    tokenLength: token?.length,
+    headers: Object.keys(event.headers)
+  });
 
   // If no Authorization header, check for auth-token cookie
   if (!token) {
-    const cookies = event.headers.cookie;
+    const cookies = event.headers.cookie || event.headers.Cookie;
     if (cookies) {
       const authCookie = cookies.split(';').find((c: string) => c.trim().startsWith('auth-token='));
       if (authCookie) {
         token = authCookie.split('=')[1];
+        console.log('🍪 Orders API: Found auth token in cookie');
       }
     }
   }
 
   if (!token) {
+    console.log('❌ Orders API: No token found in headers or cookies');
     return null;
   }
 
