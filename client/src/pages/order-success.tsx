@@ -87,12 +87,23 @@ const OrderSuccessPage = () => {
           // Create the order now that payment has succeeded (only once)
           const createOrderAsync = async () => {
             try {
+              // Wait a moment for authentication to be ready after redirect
+              await new Promise(resolve => setTimeout(resolve, 1000));
+
+              console.log('🔑 Order creation: Checking auth state before creating order');
+
               // Update order data to reflect successful payment (keep status as pending for kitchen display)
               const confirmedOrderData = {
                 ...pendingOrderData,
                 status: "pending",
                 paymentStatus: "succeeded"
               };
+
+              console.log('🛒 Creating order with confirmed data:', {
+                hasUser: !!user,
+                userEmail: user?.email,
+                orderData: confirmedOrderData
+              });
 
               const response = await apiRequest('POST', '/api/orders', confirmedOrderData);
               const createdOrder = await response.json();

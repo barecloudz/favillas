@@ -8,13 +8,29 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {};
 
   try {
-    // Use Supabase authentication only
-    const { data: { session } } = await supabase.auth.getSession();
+    // Use Supabase authentication with retry for timing issues
+    let session = null;
+    let retries = 0;
+    const maxRetries = 3;
+
+    while (!session && retries < maxRetries) {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      session = currentSession;
+
+      if (!session && retries < maxRetries - 1) {
+        console.log(`🔄 No session found, retrying... (${retries + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, 200)); // Wait 200ms
+        retries++;
+      } else {
+        break;
+      }
+    }
+
     if (session?.access_token) {
       console.log('🔑 Using Supabase access token for authentication');
       headers.Authorization = `Bearer ${session.access_token}`;
     } else {
-      console.log('ℹ️ No Supabase session found - requests will be unauthenticated');
+      console.log('ℹ️ No Supabase session found after retries - requests will be unauthenticated');
     }
 
     return headers;
