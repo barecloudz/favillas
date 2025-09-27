@@ -203,55 +203,61 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
-  // Use the proper authentication function that handles Supabase tokens correctly
-  const authResult = await authenticateTokenFromUtils(
-    event.headers.authorization || event.headers.Authorization,
-    event.headers.cookie || event.headers.Cookie
-  );
-
+  // ENHANCED AUTHENTICATION: Use multiple attempts with better error handling
   let authPayload = null;
-  if (authResult.success && authResult.user) {
-    authPayload = {
-      userId: authResult.user.id && !isNaN(Number(authResult.user.id)) ? Number(authResult.user.id) : null,
-      supabaseUserId: authResult.user.id && isNaN(Number(authResult.user.id)) ? authResult.user.id : null,
-      username: authResult.user.email || authResult.user.username || 'user',
-      role: authResult.user.role || 'customer',
-      isSupabase: authResult.user.id && isNaN(Number(authResult.user.id)) // UUID = Supabase, number = legacy
-    };
-  }
+  let authAttempts = 0;
+  const maxAuthAttempts = 3;
 
-  console.log('🔍 Orders API: FIXED AUTH RESULT:', {
-    authSuccess: authResult.success,
-    authError: authResult.error,
-    hasUser: !!authResult.user,
-    userId: authResult.user?.id,
-    email: authResult.user?.email,
-    isSupabase: authPayload?.isSupabase,
-    finalAuthPayload: authPayload
-  });
+  console.log('🔍 Orders API: Starting enhanced authentication process');
 
-  // CRITICAL FIX: Add fallback authentication attempt with delay for race conditions
-  if (!authPayload && event.httpMethod === 'POST') {
-    console.log('⚠️ Orders API: Initial auth failed, attempting fallback authentication for POST request');
-    // Wait a small amount and retry authentication to handle race conditions
-    await new Promise(resolve => setTimeout(resolve, 100));
+  while (!authPayload && authAttempts < maxAuthAttempts) {
+    authAttempts++;
+    console.log(`🔄 Orders API: Authentication attempt ${authAttempts}/${maxAuthAttempts}`);
 
-    const fallbackAuthResult = await authenticateTokenFromUtils(
+    const authResult = await authenticateTokenFromUtils(
       event.headers.authorization || event.headers.Authorization,
       event.headers.cookie || event.headers.Cookie
     );
 
-    if (fallbackAuthResult.success && fallbackAuthResult.user) {
-      authPayload = {
-        userId: fallbackAuthResult.user.id && !isNaN(Number(fallbackAuthResult.user.id)) ? Number(fallbackAuthResult.user.id) : null,
-        supabaseUserId: fallbackAuthResult.user.id && isNaN(Number(fallbackAuthResult.user.id)) ? fallbackAuthResult.user.id : null,
-        username: fallbackAuthResult.user.email || fallbackAuthResult.user.username || 'user',
-        role: fallbackAuthResult.user.role || 'customer',
-        isSupabase: fallbackAuthResult.user.id && isNaN(Number(fallbackAuthResult.user.id))
-      };
-    }
+    console.log(`🔍 Orders API: Auth attempt ${authAttempts} result:`, {
+      success: authResult.success,
+      error: authResult.error,
+      hasUser: !!authResult.user,
+      userId: authResult.user?.id,
+      email: authResult.user?.email
+    });
 
-    console.log('🔄 Orders API: Fallback authentication result:', !!authPayload, fallbackAuthResult.success ? 'SUCCESS' : fallbackAuthResult.error);
+    if (authResult.success && authResult.user) {
+      authPayload = {
+        userId: authResult.user.id && !isNaN(Number(authResult.user.id)) ? Number(authResult.user.id) : null,
+        supabaseUserId: authResult.user.id && isNaN(Number(authResult.user.id)) ? authResult.user.id : null,
+        username: authResult.user.email || authResult.user.username || 'user',
+        role: authResult.user.role || 'customer',
+        isSupabase: authResult.user.id && isNaN(Number(authResult.user.id))
+      };
+
+      console.log('✅ Orders API: Authentication successful on attempt', authAttempts);
+      break;
+    } else {
+      console.log(`❌ Orders API: Auth attempt ${authAttempts} failed:`, authResult.error);
+
+      // Wait before retry if not the last attempt
+      if (authAttempts < maxAuthAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    }
+  }
+
+  if (authPayload) {
+    console.log('🎯 Orders API: FINAL AUTH SUCCESS:', {
+      isSupabase: authPayload.isSupabase,
+      userId: authPayload.userId,
+      supabaseUserId: authPayload.supabaseUserId,
+      username: authPayload.username,
+      role: authPayload.role
+    });
+  } else {
+    console.log('❌ Orders API: Authentication failed after all attempts');
   }
 
   try {
@@ -550,77 +556,52 @@ export const handler: Handler = async (event, context) => {
           };
         }
       
-        // Set the userId and supabaseUserId appropriately
-        let userId = null;
-        let supabaseUserId = null;
+        // CRITICAL FIX: Pre-process user identification BEFORE any order operations
+        let finalUserId = null;
+        let finalSupabaseUserId = null;
 
+        console.log('🔍 Orders API: Starting user identification process');
         console.log('🔍 Orders API: AUTH PAYLOAD DEBUG:', {
           hasAuthPayload: !!authPayload,
           isSupabase: authPayload?.isSupabase,
           supabaseUserId: authPayload?.supabaseUserId,
           userId: authPayload?.userId,
           username: authPayload?.username,
-          role: authPayload?.role,
-          isAdminRole: authPayload?.role === 'admin',
-          // Enhanced debugging for authentication issues
-          authHeaderPresent: !!(event.headers.authorization || event.headers.Authorization),
-          cookiePresent: !!(event.headers.cookie || event.headers.Cookie),
-          tokenFound: !!(event.headers.authorization || event.headers.Authorization ||
-                         (event.headers.cookie && event.headers.cookie.includes('auth-token=')) ||
-                         (event.headers.Cookie && event.headers.Cookie.includes('auth-token=')))
+          role: authPayload?.role
         });
 
         if (authPayload) {
           if (authPayload.isSupabase) {
-            // CRITICAL FIX: Enhanced Supabase user to legacy user conversion with comprehensive error handling
-            console.log('🔄 Orders API: Converting Supabase user to legacy ID pattern - ENHANCED VERSION');
-            console.log('🔍 Orders API: Auth payload details:', {
-              supabaseUserId: authPayload.supabaseUserId,
-              username: authPayload.username,
-              role: authPayload.role
-            });
+            // STEP 1: Convert Supabase user to legacy user ID - this is CRITICAL for points
+            console.log('🔄 Orders API: MANDATORY Supabase to Legacy conversion for points system');
 
             try {
-              // STEP 1: Look for existing legacy user record by email (more robust query)
-              console.log('📧 Orders API: Looking for existing legacy user with email:', authPayload.username);
+              // Look for existing legacy user by email
+              console.log('📧 Orders API: Searching for legacy user with email:', authPayload.username);
               const existingLegacyUser = await sql`
                 SELECT id, email, supabase_user_id FROM users
                 WHERE LOWER(TRIM(email)) = LOWER(TRIM(${authPayload.username}))
                 LIMIT 1
               `;
 
-              console.log('🔍 Orders API: Legacy user search result:', existingLegacyUser);
-
               if (existingLegacyUser.length > 0) {
-                // Use existing legacy user ID and ensure Supabase link
-                userId = existingLegacyUser[0].id;
-                supabaseUserId = null; // Force legacy pattern
-                console.log('✅ Orders API: Found existing legacy user ID:', userId);
+                // Found existing legacy user - use their ID
+                finalUserId = existingLegacyUser[0].id;
+                finalSupabaseUserId = null; // CRITICAL: Use legacy pattern
+                console.log('✅ Orders API: Using existing legacy user ID:', finalUserId);
 
-                // Update the legacy user record to link with Supabase if not already linked
+                // Ensure Supabase link is established
                 if (!existingLegacyUser[0].supabase_user_id) {
-                  try {
-                    await sql`
-                      UPDATE users
-                      SET supabase_user_id = ${authPayload.supabaseUserId}, updated_at = NOW()
-                      WHERE id = ${userId}
-                    `;
-                    console.log('🔗 Orders API: Linked legacy user to Supabase ID');
-                  } catch (linkError) {
-                    console.error('⚠️ Orders API: Failed to link legacy user to Supabase:', linkError);
-                  }
+                  await sql`
+                    UPDATE users
+                    SET supabase_user_id = ${authPayload.supabaseUserId}, updated_at = NOW()
+                    WHERE id = ${finalUserId}
+                  `;
+                  console.log('🔗 Orders API: Linked legacy user to Supabase');
                 }
               } else {
-                // STEP 2: Create new legacy user record with robust error handling
+                // Create new legacy user record for this Supabase user
                 console.log('➕ Orders API: Creating new legacy user for Supabase user');
-
-                const userData = {
-                  email: authPayload.username,
-                  username: authPayload.username,
-                  supabaseUserId: authPayload.supabaseUserId
-                };
-
-                console.log('👤 Orders API: Creating user with data:', userData);
 
                 const newLegacyUser = await sql`
                   INSERT INTO users (
@@ -628,11 +609,11 @@ export const handler: Handler = async (event, context) => {
                     first_name, last_name, password,
                     created_at, updated_at
                   ) VALUES (
-                    ${userData.username},
-                    ${userData.email},
+                    ${authPayload.username},
+                    ${authPayload.username},
                     'customer',
-                    ${userData.supabaseUserId},
-                    ${userData.email.split('@')[0]},
+                    ${authPayload.supabaseUserId},
+                    ${authPayload.username.split('@')[0]},
                     'Customer',
                     'SUPABASE_USER',
                     NOW(), NOW()
@@ -644,115 +625,67 @@ export const handler: Handler = async (event, context) => {
                 `;
 
                 if (newLegacyUser.length > 0) {
-                  userId = newLegacyUser[0].id;
-                  supabaseUserId = null; // Force legacy pattern
-                  console.log('✅ Orders API: Created new legacy user ID:', userId);
+                  finalUserId = newLegacyUser[0].id;
+                  finalSupabaseUserId = null; // CRITICAL: Use legacy pattern
+                  console.log('✅ Orders API: Created new legacy user ID:', finalUserId);
 
-                  // Initialize user points for new legacy user with error handling
-                  try {
-                    await sql`
-                      INSERT INTO user_points (user_id, points, total_earned, total_redeemed, created_at, updated_at)
-                      VALUES (${userId}, 0, 0, 0, NOW(), NOW())
-                      ON CONFLICT (user_id) DO NOTHING
-                    `;
-                    console.log('✅ Orders API: Initialized points for new legacy user');
-                  } catch (pointsInitError) {
-                    console.error('⚠️ Orders API: Failed to initialize points for legacy user:', pointsInitError);
-                  }
+                  // Initialize points for new user
+                  await sql`
+                    INSERT INTO user_points (user_id, points, total_earned, total_redeemed, created_at, updated_at)
+                    VALUES (${finalUserId}, 0, 0, 0, NOW(), NOW())
+                    ON CONFLICT (user_id) DO NOTHING
+                  `;
+                  console.log('✅ Orders API: Initialized points for new legacy user');
                 } else {
-                  throw new Error('Failed to create or retrieve legacy user record');
+                  throw new Error('Failed to create legacy user record');
                 }
               }
 
-              console.log('🎯 Orders API: Conversion successful - Using legacy user ID:', userId);
-
-            } catch (legacyConversionError) {
-              console.error('❌ Orders API: CRITICAL - Legacy conversion failed completely:', legacyConversionError);
-              console.error('❌ Orders API: Conversion error details:', {
-                message: legacyConversionError.message,
-                constraint: legacyConversionError.constraint,
-                table: legacyConversionError.table
-              });
-
-              // FALLBACK: Use Supabase user ID but log this as an error
-              supabaseUserId = authPayload.supabaseUserId;
-              userId = null;
-              console.log('🆘 Orders API: FALLBACK to Supabase user ID (POINTS MAY FAIL):', supabaseUserId);
+            } catch (conversionError) {
+              console.error('❌ Orders API: CRITICAL - Supabase to legacy conversion failed:', conversionError);
+              // EMERGENCY FALLBACK - still try to award points with Supabase ID
+              finalSupabaseUserId = authPayload.supabaseUserId;
+              finalUserId = null;
+              console.log('🆘 Orders API: Emergency fallback to Supabase ID:', finalSupabaseUserId);
             }
+
           } else {
-            // Legacy JWT user - use integer user_id
-            userId = authPayload.userId;
-            console.log('🔑 Orders API: Using legacy user ID:', userId);
+            // Legacy JWT user - use their ID directly
+            finalUserId = authPayload.userId;
+            finalSupabaseUserId = null;
+            console.log('🔑 Orders API: Using legacy JWT user ID:', finalUserId);
 
-            // Ensure user record exists for legacy users
-            try {
-              const existingUser = await sql`SELECT id FROM users WHERE id = ${userId}`;
-
-              if (existingUser.length === 0) {
-                console.log('⚠️ Orders API: Creating user record for legacy authenticated user');
-
-                // Extract address components for new user creation
-                const addressComponents = {
-                  phone: orderData.phone || '',
-                  address: orderData.address || '',
-                  city: orderData.addressData?.city || '',
-                  state: orderData.addressData?.state || '',
-                  zip_code: orderData.addressData?.zipCode || orderData.addressData?.zip || ''
-                };
-
-                // Create user record with contact information
-                await sql`
-                  INSERT INTO users (
-                    id, username, email, role, phone, address, city, state, zip_code,
-                    password, first_name, last_name, created_at, updated_at
-                  ) VALUES (
-                    ${userId},
-                    ${authPayload.username || 'user'},
-                    ${authPayload.username || 'user@example.com'},
-                    'customer',
-                    ${addressComponents.phone},
-                    ${addressComponents.address},
-                    ${addressComponents.city},
-                    ${addressComponents.state},
-                    ${addressComponents.zip_code},
-                    'AUTH_USER',
-                    ${authPayload.username?.split('@')[0] || 'User'},
-                    'Customer',
-                    NOW(),
-                    NOW()
-                  )
-                  ON CONFLICT (id) DO NOTHING
-                `;
-
-                // Initialize user points record
-                await sql`
-                  INSERT INTO user_points (user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
-                  VALUES (${userId}, 0, 0, 0, NOW(), NOW(), NOW())
-                  ON CONFLICT (user_id) DO NOTHING
-                `;
-
-                console.log('✅ Orders API: Created user records for legacy user:', userId);
-              }
-            } catch (createUserError) {
-              console.error('❌ Orders API: Error with legacy user record:', createUserError);
-              // Continue with the user ID anyway
+            // Ensure user record exists
+            const existingUser = await sql`SELECT id FROM users WHERE id = ${finalUserId}`;
+            if (existingUser.length === 0) {
+              console.log('⚠️ Orders API: Creating user record for legacy user');
+              await sql`
+                INSERT INTO users (
+                  id, username, email, role, password, created_at, updated_at
+                ) VALUES (
+                  ${finalUserId},
+                  ${authPayload.username || 'user'},
+                  ${authPayload.username || 'user@example.com'},
+                  'customer',
+                  'AUTH_USER',
+                  NOW(), NOW()
+                )
+                ON CONFLICT (id) DO NOTHING
+              `;
             }
           }
         } else {
-          // Guest order or authentication failed
-          console.log('⚠️ Orders API: No authentication - treating as guest order');
-          console.log('🔍 Orders API: Guest order data check:', {
-            orderDataUserId: orderData.userId,
-            orderDataSupabaseUserId: orderData.supabaseUserId,
-            hasAuthPayload: !!authPayload
-          });
-
-          // For guest orders, explicitly set both to null to prevent any user association
-          userId = null;
-          supabaseUserId = null;
-
-          console.log('👤 Orders API: Guest order - both user IDs set to null for safety');
+          // Guest order
+          console.log('👤 Orders API: Guest order - no user association');
+          finalUserId = null;
+          finalSupabaseUserId = null;
         }
+
+        console.log('🎯 Orders API: FINAL USER IDENTIFICATION:', {
+          finalUserId,
+          finalSupabaseUserId,
+          willAwardPoints: !!(finalUserId || finalSupabaseUserId)
+        });
 
         // Handle scheduled time formatting
         let formattedScheduledTime = null;
@@ -900,20 +833,16 @@ export const handler: Handler = async (event, context) => {
 
         // Save contact information to user profile for authenticated users
         console.log('🔍 Orders API: Contact info saving check:', {
-          hasUserId: !!userId,
-          hasSupabaseUserId: !!supabaseUserId,
+          hasFinalUserId: !!finalUserId,
+          hasFinalSupabaseUserId: !!finalSupabaseUserId,
           hasPhone: !!orderData.phone,
           hasAddress: !!orderData.address,
-          hasAddressData: !!orderData.addressData,
-          orderDataKeys: Object.keys(orderData),
-          phoneValue: orderData.phone,
-          addressValue: orderData.address,
-          addressDataValue: orderData.addressData
+          hasAddressData: !!orderData.addressData
         });
 
-        if ((userId || supabaseUserId) && (orderData.phone || orderData.address || orderData.addressData)) {
+        if ((finalUserId || finalSupabaseUserId) && (orderData.phone || orderData.address || orderData.addressData)) {
           try {
-            console.log('💾 Orders API: Saving contact info to user profile for user:', userId || supabaseUserId);
+            console.log('💾 Orders API: Saving contact info to user profile for user:', finalUserId || finalSupabaseUserId);
 
             // Extract address components from orderData
             const addressComponents = {
@@ -925,69 +854,9 @@ export const handler: Handler = async (event, context) => {
             };
 
             console.log('📍 Address components to save:', addressComponents);
-            console.log('📍 User identification:', { userId, supabaseUserId, authPayload: authPayload?.username });
 
-            if (supabaseUserId) {
-              // Supabase user - create or update profile
-              const existingSupabaseUser = await sql`
-                SELECT id FROM users WHERE supabase_user_id = ${supabaseUserId}
-              `;
-
-              if (existingSupabaseUser.length === 0) {
-                // Create new Supabase user record
-                await sql`
-                  INSERT INTO users (
-                    supabase_user_id, username, email, role, phone, address, city, state, zip_code,
-                    first_name, last_name, password, created_at, updated_at
-                  ) VALUES (
-                    ${supabaseUserId},
-                    ${authPayload?.username || 'google_user'},
-                    ${authPayload?.username || 'user@example.com'},
-                    'customer',
-                    ${addressComponents.phone},
-                    ${addressComponents.address},
-                    ${addressComponents.city},
-                    ${addressComponents.state},
-                    ${addressComponents.zip_code},
-                    ${authPayload?.username?.split('@')[0] || 'User'},
-                    'Customer',
-                    'GOOGLE_USER',
-                    NOW(),
-                    NOW()
-                  )
-                  ON CONFLICT (supabase_user_id) DO UPDATE SET
-                    phone = COALESCE(NULLIF(${addressComponents.phone}, ''), users.phone),
-                    address = COALESCE(NULLIF(${addressComponents.address}, ''), users.address),
-                    city = COALESCE(NULLIF(${addressComponents.city}, ''), users.city),
-                    state = COALESCE(NULLIF(${addressComponents.state}, ''), users.state),
-                    zip_code = COALESCE(NULLIF(${addressComponents.zip_code}, ''), users.zip_code),
-                    updated_at = NOW()
-                `;
-                console.log('✅ Created/updated Supabase user profile with contact info');
-              } else {
-                // Update existing Supabase user
-                await sql`
-                  UPDATE users SET
-                    phone = COALESCE(NULLIF(${addressComponents.phone}, ''), phone),
-                    address = COALESCE(NULLIF(${addressComponents.address}, ''), address),
-                    city = COALESCE(NULLIF(${addressComponents.city}, ''), city),
-                    state = COALESCE(NULLIF(${addressComponents.state}, ''), state),
-                    zip_code = COALESCE(NULLIF(${addressComponents.zip_code}, ''), zip_code),
-                    updated_at = NOW()
-                  WHERE supabase_user_id = ${supabaseUserId}
-                `;
-                console.log('✅ Updated existing Supabase user profile with contact info');
-              }
-
-              // Initialize user points record for Supabase user if needed
-              await sql`
-                INSERT INTO user_points (supabase_user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
-                VALUES (${supabaseUserId}, 0, 0, 0, NOW(), NOW(), NOW())
-                ON CONFLICT DO NOTHING
-              `;
-
-            } else if (userId) {
-              // Legacy user - update profile
+            if (finalUserId) {
+              // Update user profile with contact info
               await sql`
                 UPDATE users SET
                   phone = COALESCE(NULLIF(${addressComponents.phone}, ''), phone),
@@ -996,9 +865,22 @@ export const handler: Handler = async (event, context) => {
                   state = COALESCE(NULLIF(${addressComponents.state}, ''), state),
                   zip_code = COALESCE(NULLIF(${addressComponents.zip_code}, ''), zip_code),
                   updated_at = NOW()
-                WHERE id = ${userId}
+                WHERE id = ${finalUserId}
               `;
-              console.log('✅ Updated legacy user profile with contact info');
+              console.log('✅ Updated user profile with contact info for user ID:', finalUserId);
+            } else if (finalSupabaseUserId) {
+              // Update Supabase user profile
+              await sql`
+                UPDATE users SET
+                  phone = COALESCE(NULLIF(${addressComponents.phone}, ''), phone),
+                  address = COALESCE(NULLIF(${addressComponents.address}, ''), address),
+                  city = COALESCE(NULLIF(${addressComponents.city}, ''), city),
+                  state = COALESCE(NULLIF(${addressComponents.state}, ''), state),
+                  zip_code = COALESCE(NULLIF(${addressComponents.zip_code}, ''), zip_code),
+                  updated_at = NOW()
+                WHERE supabase_user_id = ${finalSupabaseUserId}
+              `;
+              console.log('✅ Updated user profile with contact info for Supabase ID:', finalSupabaseUserId);
             }
 
           } catch (contactInfoError) {
@@ -1007,13 +889,10 @@ export const handler: Handler = async (event, context) => {
           }
         } else {
           console.log('⚠️ Orders API: Contact info NOT saved because:', {
-            noUserId: !userId && !supabaseUserId,
+            noUserId: !finalUserId && !finalSupabaseUserId,
             noContactData: !orderData.phone && !orderData.address && !orderData.addressData,
-            userId,
-            supabaseUserId,
-            phone: orderData.phone,
-            address: orderData.address,
-            addressData: orderData.addressData
+            finalUserId,
+            finalSupabaseUserId
           });
         }
 
@@ -1027,28 +906,10 @@ export const handler: Handler = async (event, context) => {
             orderBreakdown: orderData.orderMetadata
           };
 
-          // CRITICAL FIX: If we have a supabase_user_id but no userId, try to convert it
-          if (supabaseUserId && !userId) {
-            console.log('🚨 EMERGENCY CONVERSION: Found supabase_user_id without userId, attempting conversion...');
-            try {
-              // Emergency lookup by Supabase user ID to find legacy user ID
-              const emergencyUserLookup = await sql`
-                SELECT id FROM users WHERE supabase_user_id = ${supabaseUserId}
-              `;
-
-              if (emergencyUserLookup.length > 0) {
-                userId = emergencyUserLookup[0].id;
-                supabaseUserId = null; // Use legacy pattern
-                console.log('✅ EMERGENCY CONVERSION SUCCESS: Found legacy user ID:', userId);
-              } else {
-                console.log('⚠️ EMERGENCY CONVERSION: No legacy user found for Supabase ID');
-              }
-            } catch (emergencyError) {
-              console.error('❌ EMERGENCY CONVERSION FAILED:', emergencyError);
-            }
-          }
-
-          console.log('🔍 FINAL ORDER CREATION IDS:', { userId, supabaseUserId });
+          console.log('🔍 Orders API: Creating order with FINAL user IDs:', {
+            finalUserId,
+            finalSupabaseUserId
+          });
 
           const newOrders = await sql`
             INSERT INTO orders (
@@ -1056,8 +917,8 @@ export const handler: Handler = async (event, context) => {
               special_instructions, address, address_data, fulfillment_time, scheduled_time,
               phone, created_at
             ) VALUES (
-              ${userId},
-              ${supabaseUserId},
+              ${finalUserId},
+              ${finalSupabaseUserId},
               ${orderData.status || 'pending'},
               ${serverCalculatedOrder.total},
               ${serverCalculatedOrder.tax},
@@ -1140,40 +1001,37 @@ export const handler: Handler = async (event, context) => {
 
         // Fetch user contact information to include in order confirmation
         let userContactInfo = null;
-        console.log('📞 Orders API: Attempting to fetch user contact info for order confirmation:', { userId, supabaseUserId });
+        console.log('📞 Orders API: Attempting to fetch user contact info for order confirmation:', {
+          finalUserId,
+          finalSupabaseUserId
+        });
 
-        if (userId || supabaseUserId) {
+        if (finalUserId || finalSupabaseUserId) {
           try {
             let userQuery;
-            if (supabaseUserId) {
-              console.log('📞 Orders API: Querying contact info for Supabase user:', supabaseUserId);
+            if (finalUserId) {
+              console.log('📞 Orders API: Querying contact info for user ID:', finalUserId);
               userQuery = await sql`
                 SELECT phone, address, city, state, zip_code
                 FROM users
-                WHERE supabase_user_id = ${supabaseUserId}
+                WHERE id = ${finalUserId}
               `;
             } else {
-              console.log('📞 Orders API: Querying contact info for legacy user:', userId);
+              console.log('📞 Orders API: Querying contact info for Supabase user:', finalSupabaseUserId);
               userQuery = await sql`
                 SELECT phone, address, city, state, zip_code
                 FROM users
-                WHERE id = ${userId}
+                WHERE supabase_user_id = ${finalSupabaseUserId}
               `;
             }
 
-            console.log('📞 Orders API: User query result:', userQuery);
-
             if (userQuery.length > 0) {
               userContactInfo = userQuery[0];
-              console.log('📞 Orders API: Retrieved user contact info for order confirmation:', userContactInfo);
-            } else {
-              console.log('⚠️ Orders API: No user record found for contact info retrieval');
+              console.log('📞 Orders API: Retrieved user contact info for order confirmation');
             }
           } catch (contactInfoError) {
             console.error('❌ Orders API: Error retrieving user contact info:', contactInfoError);
           }
-        } else {
-          console.log('⚠️ Orders API: No user ID available for contact info retrieval');
         }
 
         // Enhance order object with user contact information and transform field names
@@ -1188,22 +1046,18 @@ export const handler: Handler = async (event, context) => {
         };
 
         // Process voucher if provided
-        if (orderData.voucherCode && (userId || supabaseUserId)) {
+        if (orderData.voucherCode && (finalUserId || finalSupabaseUserId)) {
           try {
             console.log('🎫 Orders API: Processing voucher:', orderData.voucherCode);
 
-            // Get voucher details from user_vouchers table (correct table for vouchers)
             let voucherQuery;
-
-            if (supabaseUserId) {
+            if (finalUserId) {
               voucherQuery = await sql`
                 SELECT uv.*, r.name as reward_name
                 FROM user_vouchers uv
                 LEFT JOIN rewards r ON uv.reward_id = r.id
                 WHERE uv.voucher_code = ${orderData.voucherCode}
-                AND uv.user_id IN (
-                  SELECT id FROM users WHERE supabase_user_id = ${supabaseUserId}
-                )
+                AND uv.user_id = ${finalUserId}
                 AND uv.status = 'active'
                 AND (uv.expires_at IS NULL OR uv.expires_at > NOW())
               `;
@@ -1213,7 +1067,9 @@ export const handler: Handler = async (event, context) => {
                 FROM user_vouchers uv
                 LEFT JOIN rewards r ON uv.reward_id = r.id
                 WHERE uv.voucher_code = ${orderData.voucherCode}
-                AND uv.user_id = ${userId}
+                AND uv.user_id IN (
+                  SELECT id FROM users WHERE supabase_user_id = ${finalSupabaseUserId}
+                )
                 AND uv.status = 'active'
                 AND (uv.expires_at IS NULL OR uv.expires_at > NOW())
               `;
@@ -1248,64 +1104,62 @@ export const handler: Handler = async (event, context) => {
           }
         }
 
-        // Award points for authenticated users (1 point per $1 spent) with enhanced error handling
+        // CRITICAL POINTS AWARDING: Fixed to use proper user IDs
         console.log('🎁 Orders API: POINTS ELIGIBILITY CHECK:', {
-          hasUserId: !!userId,
-          hasSupabaseUserId: !!supabaseUserId,
-          userRole: authPayload?.role,
-          shouldAwardPoints: !!(userId || supabaseUserId),
-          isAdmin: authPayload?.role === 'admin',
-          // Additional debugging for points issues
-          authPayloadExists: !!authPayload,
+          hasFinalUserId: !!finalUserId,
+          hasFinalSupabaseUserId: !!finalSupabaseUserId,
+          shouldAwardPoints: !!(finalUserId || finalSupabaseUserId),
           orderTotal: newOrder.total,
-          orderId: newOrder.id
+          orderId: newOrder.id,
+          orderUserId: newOrder.user_id,
+          orderSupabaseUserId: newOrder.supabase_user_id
         });
 
-        // ENHANCED POINTS AWARDING: Comprehensive error handling and logging for business-critical points system
-        if (userId || supabaseUserId) {
+        // ENHANCED POINTS AWARDING: Now using the correct final user IDs
+        if (finalUserId || finalSupabaseUserId) {
           try {
             const pointsToAward = Math.floor(parseFloat(newOrder.total));
-            const userIdentifier = userId || supabaseUserId;
-            const userType = userId ? 'legacy' : 'supabase';
+            const userType = finalUserId ? 'legacy' : 'supabase';
 
             console.log('🎁 Orders API: ENHANCED POINTS AWARD PROCESS STARTING');
             console.log('🎁 Orders API: Points award details:', {
               userType,
-              userId,
-              supabaseUserId,
-              userIdentifier,
+              finalUserId,
+              finalSupabaseUserId,
               pointsToAward,
               orderTotal: newOrder.total,
-              orderId: newOrder.id,
-              orderUserId: newOrder.user_id,
-              orderSupabaseUserId: newOrder.supabase_user_id
+              orderId: newOrder.id
             });
 
-            // CRITICAL: Verify order was created with correct user identification
-            if (userId && newOrder.user_id !== userId) {
-              console.error('❌ Orders API: CRITICAL MISMATCH - Order user_id does not match converted userId');
-              console.error('❌ Orders API: Expected userId:', userId, 'Order user_id:', newOrder.user_id);
+            // VERIFICATION: Ensure order was created with correct user IDs
+            if (finalUserId && newOrder.user_id !== finalUserId) {
+              console.error('❌ Orders API: CRITICAL MISMATCH - Order user_id does not match finalUserId');
+              console.error('❌ Orders API: Expected:', finalUserId, 'Actual:', newOrder.user_id);
             }
 
-            // Use atomic transaction for points operations to prevent race conditions
+            if (finalSupabaseUserId && newOrder.supabase_user_id !== finalSupabaseUserId) {
+              console.error('❌ Orders API: CRITICAL MISMATCH - Order supabase_user_id does not match finalSupabaseUserId');
+              console.error('❌ Orders API: Expected:', finalSupabaseUserId, 'Actual:', newOrder.supabase_user_id);
+            }
+
+            // Use atomic transaction for points operations
             const pointsResult = await sql.begin(async (sql) => {
               console.log('🔒 Orders API: Starting atomic transaction for points award');
-              console.log('🔒 Orders API: Transaction using:', { userType, userId, supabaseUserId });
 
-              if (userId) {
-                // Enhanced legacy user points logic with verification
-                console.log('🎯 Orders API: Awarding points to LEGACY user:', userId);
-                return await awardPointsToLegacyUser(sql, userId, newOrder, pointsToAward);
-              } else if (supabaseUserId) {
-                // Enhanced Supabase user points logic with verification
-                console.log('🎯 Orders API: Awarding points to SUPABASE user:', supabaseUserId);
-                return await awardPointsToSupabaseUser(sql, supabaseUserId, newOrder, pointsToAward, authPayload);
+              if (finalUserId) {
+                // Award points to legacy user using final user ID
+                console.log('🎯 Orders API: Awarding points to LEGACY user:', finalUserId);
+                return await awardPointsToLegacyUser(sql, finalUserId, newOrder, pointsToAward);
+              } else if (finalSupabaseUserId) {
+                // Award points to Supabase user using final Supabase ID
+                console.log('🎯 Orders API: Awarding points to SUPABASE user:', finalSupabaseUserId);
+                return await awardPointsToSupabaseUser(sql, finalSupabaseUserId, newOrder, pointsToAward, authPayload);
               } else {
                 throw new Error('No valid user identifier for points award');
               }
             });
 
-            console.log('🎁 Orders API: Points transaction completed successfully:', pointsResult);
+            console.log('🎁 Orders API: Points transaction completed:', pointsResult);
 
             if (pointsResult && pointsResult.success) {
               console.log('✅ Orders API: POINTS AWARDED SUCCESSFULLY:', pointsResult.pointsAwarded, 'points to', pointsResult.userType, 'user');
@@ -1314,19 +1168,16 @@ export const handler: Handler = async (event, context) => {
             }
 
           } catch (pointsError) {
-            console.error('❌ Orders API: Error awarding points:', pointsError);
-            console.error('❌ Orders API: Points error stack:', pointsError.stack);
+            console.error('❌ Orders API: CRITICAL - Points awarding failed:', pointsError);
             console.error('❌ Orders API: Points error details:', {
               name: pointsError.name,
               message: pointsError.message,
-              constraint: pointsError.constraint,
-              table: pointsError.table,
-              column: pointsError.column
+              stack: pointsError.stack
             });
-            // Don't fail the order if points fail
+            // Don't fail the order if points fail, but log extensively
           }
         } else {
-          console.log('⚠️ Orders API: No user ID available for points awarding');
+          console.log('⚠️ Orders API: No final user ID available for points awarding');
         }
 
         // ShipDay integration for delivery orders (only after payment confirmation)
