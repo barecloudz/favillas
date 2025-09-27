@@ -90,33 +90,44 @@ const OrderSuccessPage = () => {
               // Aggressively wait for authentication to be ready
               console.log('🔑 Order creation: Waiting for authentication to be fully ready...');
 
-              // Wait for Supabase session to be available with timeout
+              // Wait for BOTH Supabase session AND user context to be available
               let sessionReady = false;
+              let userReady = false;
               let attempts = 0;
               const maxAttempts = 10; // 5 seconds total
 
-              while (!sessionReady && attempts < maxAttempts) {
+              while ((!sessionReady || !userReady) && attempts < maxAttempts) {
                 try {
-                  const { supabase } = await import('@/lib/supabase');
-                  const { data: { session } } = await supabase.auth.getSession();
+                  // Check Supabase session
+                  if (!sessionReady) {
+                    const { supabase } = await import('@/lib/supabase');
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session?.access_token) {
+                      console.log('✅ Supabase session found');
+                      sessionReady = true;
+                    }
+                  }
 
-                  if (session?.access_token) {
-                    console.log('✅ Supabase session found, proceeding with order creation');
-                    sessionReady = true;
-                  } else {
-                    console.log(`🔄 Waiting for session... attempt ${attempts + 1}/${maxAttempts}`);
+                  // Check user context
+                  if (!userReady && user && user.email) {
+                    console.log('✅ User context found:', user.email);
+                    userReady = true;
+                  }
+
+                  if (!sessionReady || !userReady) {
+                    console.log(`🔄 Waiting for auth... attempt ${attempts + 1}/${maxAttempts} (session: ${sessionReady}, user: ${userReady})`);
                     await new Promise(resolve => setTimeout(resolve, 500));
                     attempts++;
                   }
                 } catch (error) {
-                  console.error('Error checking session:', error);
+                  console.error('Error checking authentication:', error);
                   await new Promise(resolve => setTimeout(resolve, 500));
                   attempts++;
                 }
               }
 
-              if (!sessionReady) {
-                console.warn('⚠️ Proceeding without confirmed session after timeout');
+              if (!sessionReady || !userReady) {
+                console.warn('⚠️ Proceeding without full authentication after timeout:', { sessionReady, userReady });
               }
 
               console.log('🔑 Order creation: Final auth check before creating order');
