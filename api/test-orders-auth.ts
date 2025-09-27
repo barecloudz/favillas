@@ -6,12 +6,16 @@ function authenticateToken(event: any): { userId: number | null; supabaseUserId:
   const authHeader = event.headers.authorization || event.headers.Authorization;
   let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
-  console.log('🔍 TEST-ORDERS-AUTH: Auth header check:', {
+  console.log('🔍 TEST-ORDERS-AUTH: DETAILED Auth header check:', {
     hasAuthHeader: !!authHeader,
     hasToken: !!token,
     authHeaderType: typeof authHeader,
     tokenLength: token?.length,
-    headers: Object.keys(event.headers)
+    authHeaderValue: authHeader ? `${authHeader.substring(0, 20)}...` : 'none',
+    headers: Object.keys(event.headers),
+    allHeaders: event.headers,
+    rawAuthHeader: event.headers.authorization,
+    rawAuthHeaderAlt: event.headers.Authorization
   });
 
   // If no Authorization header, check for auth-token cookie
