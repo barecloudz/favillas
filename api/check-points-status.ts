@@ -43,11 +43,11 @@ export const handler: Handler = async (event, context) => {
     if (event.httpMethod === 'POST') {
       console.log('🔧 FIXING: Transferring points to correct user ID');
 
-      // Simply update the user ID on the record with 2180 points
+      // Update the specific record with 2180 points (ID 68)
       await sql`
         UPDATE user_points
         SET supabase_user_id = ${supabaseUserId}
-        WHERE supabase_user_id = ${oldUserId} AND points > 1000
+        WHERE id = 68
       `;
 
       // Update transactions too
