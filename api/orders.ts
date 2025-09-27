@@ -1,6 +1,7 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
 import jwt from 'jsonwebtoken';
+import { authenticateToken as authenticateTokenFromUtils } from './utils/auth';
 
 let dbConnection: any = null;
 
@@ -23,80 +24,7 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: number | null; supabaseUserId: string | null; username: string; role: string; isSupabase: boolean } | null {
-  // Check for JWT token in Authorization header first (Netlify normalizes headers to lowercase)
-  const authHeader = event.headers.authorization || event.headers.Authorization;
-  let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
-  console.log('🔍 Orders API: Auth header check:', {
-    hasAuthHeader: !!authHeader,
-    hasToken: !!token,
-    authHeaderType: typeof authHeader,
-    tokenLength: token?.length,
-    headers: Object.keys(event.headers)
-  });
-
-  // If no Authorization header, check for auth-token cookie
-  if (!token) {
-    const cookies = event.headers.cookie || event.headers.Cookie;
-    if (cookies) {
-      const authCookie = cookies.split(';').find((c: string) => c.trim().startsWith('auth-token='));
-      if (authCookie) {
-        token = authCookie.split('=')[1];
-        console.log('🍪 Orders API: Found auth token in cookie');
-      }
-    }
-  }
-
-  if (!token) {
-    console.log('❌ Orders API: No token found in headers or cookies');
-    return null;
-  }
-
-  try {
-    // First try to decode as Supabase JWT token
-    try {
-      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-      console.log('🔍 Orders API: Supabase token payload:', payload);
-
-      if (payload.iss && payload.iss.includes('supabase')) {
-        // This is a Supabase token, extract user ID
-        const supabaseUserId = payload.sub;
-        console.log('✅ Orders API: Supabase user ID from token:', supabaseUserId);
-        console.log('📧 Orders API: Email from token:', payload.email);
-
-        // For Supabase users, return the UUID directly
-        return {
-          userId: null, // No integer user ID for Supabase users
-          supabaseUserId: supabaseUserId,
-          username: payload.email || 'supabase_user',
-          role: 'customer',
-          isSupabase: true
-        };
-      }
-    } catch (supabaseError) {
-      console.log('Orders API: Not a Supabase token, trying JWT verification');
-    }
-
-    // Fallback to our JWT verification
-    const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
-    if (!jwtSecret) {
-      throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
-    }
-
-    const decoded = jwt.verify(token, jwtSecret) as any;
-    return {
-      userId: decoded.userId,
-      supabaseUserId: null,
-      username: decoded.username,
-      role: decoded.role || 'customer',
-      isSupabase: false
-    };
-  } catch (error) {
-    console.error('Orders API: Token authentication failed:', error);
-    return null;
-  }
-}
+// Removed old authenticateToken function - now using utils/auth.ts for proper Supabase token validation
 
 function isStaff(authPayload: any): boolean {
   if (!authPayload) return false;
@@ -275,15 +203,55 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
-  let authPayload = authenticateToken(event);
+  // Use the proper authentication function that handles Supabase tokens correctly
+  const authResult = await authenticateTokenFromUtils(
+    event.headers.authorization || event.headers.Authorization,
+    event.headers.cookie || event.headers.Cookie
+  );
+
+  let authPayload = null;
+  if (authResult.success && authResult.user) {
+    authPayload = {
+      userId: authResult.user.id && !isNaN(Number(authResult.user.id)) ? Number(authResult.user.id) : null,
+      supabaseUserId: authResult.user.id && isNaN(Number(authResult.user.id)) ? authResult.user.id : null,
+      username: authResult.user.email || authResult.user.username || 'user',
+      role: authResult.user.role || 'customer',
+      isSupabase: authResult.user.id && isNaN(Number(authResult.user.id)) // UUID = Supabase, number = legacy
+    };
+  }
+
+  console.log('🔍 Orders API: FIXED AUTH RESULT:', {
+    authSuccess: authResult.success,
+    authError: authResult.error,
+    hasUser: !!authResult.user,
+    userId: authResult.user?.id,
+    email: authResult.user?.email,
+    isSupabase: authPayload?.isSupabase,
+    finalAuthPayload: authPayload
+  });
 
   // CRITICAL FIX: Add fallback authentication attempt with delay for race conditions
   if (!authPayload && event.httpMethod === 'POST') {
     console.log('⚠️ Orders API: Initial auth failed, attempting fallback authentication for POST request');
     // Wait a small amount and retry authentication to handle race conditions
     await new Promise(resolve => setTimeout(resolve, 100));
-    authPayload = authenticateToken(event);
-    console.log('🔄 Orders API: Fallback authentication result:', !!authPayload);
+
+    const fallbackAuthResult = await authenticateTokenFromUtils(
+      event.headers.authorization || event.headers.Authorization,
+      event.headers.cookie || event.headers.Cookie
+    );
+
+    if (fallbackAuthResult.success && fallbackAuthResult.user) {
+      authPayload = {
+        userId: fallbackAuthResult.user.id && !isNaN(Number(fallbackAuthResult.user.id)) ? Number(fallbackAuthResult.user.id) : null,
+        supabaseUserId: fallbackAuthResult.user.id && isNaN(Number(fallbackAuthResult.user.id)) ? fallbackAuthResult.user.id : null,
+        username: fallbackAuthResult.user.email || fallbackAuthResult.user.username || 'user',
+        role: fallbackAuthResult.user.role || 'customer',
+        isSupabase: fallbackAuthResult.user.id && isNaN(Number(fallbackAuthResult.user.id))
+      };
+    }
+
+    console.log('🔄 Orders API: Fallback authentication result:', !!authPayload, fallbackAuthResult.success ? 'SUCCESS' : fallbackAuthResult.error);
   }
 
   try {
@@ -771,8 +739,19 @@ export const handler: Handler = async (event, context) => {
             }
           }
         } else {
-          // Guest order
-          userId = orderData.userId || null;
+          // Guest order or authentication failed
+          console.log('⚠️ Orders API: No authentication - treating as guest order');
+          console.log('🔍 Orders API: Guest order data check:', {
+            orderDataUserId: orderData.userId,
+            orderDataSupabaseUserId: orderData.supabaseUserId,
+            hasAuthPayload: !!authPayload
+          });
+
+          // For guest orders, explicitly set both to null to prevent any user association
+          userId = null;
+          supabaseUserId = null;
+
+          console.log('👤 Orders API: Guest order - both user IDs set to null for safety');
         }
 
         // Handle scheduled time formatting
