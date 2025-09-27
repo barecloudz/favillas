@@ -108,10 +108,24 @@ const OrderSuccessPage = () => {
                     }
                   }
 
-                  // Check user context
-                  if (!userReady && user && user.email) {
-                    console.log('✅ User context found:', user.email);
-                    userReady = true;
+                  // Check user context or fetch directly from API
+                  if (!userReady) {
+                    if (user && user.email) {
+                      console.log('✅ User context found:', user.email);
+                      userReady = true;
+                    } else {
+                      // Fallback: Fetch user profile directly from API
+                      try {
+                        const userResponse = await apiRequest('GET', '/api/user-profile');
+                        const userData = await userResponse.json();
+                        if (userData && userData.email) {
+                          console.log('✅ User data fetched from API:', userData.email);
+                          userReady = true;
+                        }
+                      } catch (userError) {
+                        console.log('⚠️ Failed to fetch user from API:', userError);
+                      }
+                    }
                   }
 
                   if (!sessionReady || !userReady) {
