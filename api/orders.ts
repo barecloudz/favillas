@@ -604,10 +604,46 @@ export const handler: Handler = async (event, context) => {
 
         if (authPayload) {
           if (authPayload.isSupabase) {
-            // Supabase user - use supabase_user_id only
-            supabaseUserId = authPayload.supabaseUserId;
-            userId = null; // Don't use integer user_id for Supabase users
-            console.log('🔑 Orders API: Using Supabase user ID:', supabaseUserId);
+            // CRITICAL FIX: Convert Supabase user to legacy user ID (like Google OAuth)
+            console.log('🔄 Orders API: Converting Supabase user to legacy ID pattern');
+
+            try {
+              // Look for existing legacy user record by email
+              const existingLegacyUser = await sql`
+                SELECT id FROM users WHERE email = ${authPayload.username}
+              `;
+
+              if (existingLegacyUser.length > 0) {
+                // Use existing legacy user ID
+                userId = existingLegacyUser[0].id;
+                supabaseUserId = null; // Use legacy pattern like Google OAuth
+                console.log('🔑 Orders API: Found existing legacy user ID:', userId);
+              } else {
+                // Create new legacy user record (like Google OAuth does)
+                const newLegacyUser = await sql`
+                  INSERT INTO users (username, email, role, created_at, updated_at)
+                  VALUES (${authPayload.username}, ${authPayload.username}, 'customer', NOW(), NOW())
+                  RETURNING id
+                `;
+
+                userId = newLegacyUser[0].id;
+                supabaseUserId = null; // Use legacy pattern like Google OAuth
+                console.log('🔑 Orders API: Created new legacy user ID:', userId);
+
+                // Initialize user points for new legacy user
+                await sql`
+                  INSERT INTO user_points (user_id, points, total_earned, total_redeemed, created_at, updated_at)
+                  VALUES (${userId}, 0, 0, 0, NOW(), NOW())
+                  ON CONFLICT (user_id) DO NOTHING
+                `;
+              }
+            } catch (legacyConversionError) {
+              console.error('❌ Orders API: Failed to convert Supabase user to legacy:', legacyConversionError);
+              // Fallback to original Supabase logic
+              supabaseUserId = authPayload.supabaseUserId;
+              userId = null;
+              console.log('🔑 Orders API: Fallback to Supabase user ID:', supabaseUserId);
+            }
           } else {
             // Legacy JWT user - use integer user_id
             userId = authPayload.userId;
