@@ -1027,6 +1027,29 @@ export const handler: Handler = async (event, context) => {
             orderBreakdown: orderData.orderMetadata
           };
 
+          // CRITICAL FIX: If we have a supabase_user_id but no userId, try to convert it
+          if (supabaseUserId && !userId) {
+            console.log('🚨 EMERGENCY CONVERSION: Found supabase_user_id without userId, attempting conversion...');
+            try {
+              // Emergency lookup by Supabase user ID to find legacy user ID
+              const emergencyUserLookup = await sql`
+                SELECT id FROM users WHERE supabase_user_id = ${supabaseUserId}
+              `;
+
+              if (emergencyUserLookup.length > 0) {
+                userId = emergencyUserLookup[0].id;
+                supabaseUserId = null; // Use legacy pattern
+                console.log('✅ EMERGENCY CONVERSION SUCCESS: Found legacy user ID:', userId);
+              } else {
+                console.log('⚠️ EMERGENCY CONVERSION: No legacy user found for Supabase ID');
+              }
+            } catch (emergencyError) {
+              console.error('❌ EMERGENCY CONVERSION FAILED:', emergencyError);
+            }
+          }
+
+          console.log('🔍 FINAL ORDER CREATION IDS:', { userId, supabaseUserId });
+
           const newOrders = await sql`
             INSERT INTO orders (
               user_id, supabase_user_id, status, total, tax, delivery_fee, tip, order_type, payment_status,
