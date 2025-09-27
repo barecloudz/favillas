@@ -87,10 +87,39 @@ const OrderSuccessPage = () => {
           // Create the order now that payment has succeeded (only once)
           const createOrderAsync = async () => {
             try {
-              // Wait a moment for authentication to be ready after redirect
-              await new Promise(resolve => setTimeout(resolve, 1000));
+              // Aggressively wait for authentication to be ready
+              console.log('🔑 Order creation: Waiting for authentication to be fully ready...');
 
-              console.log('🔑 Order creation: Checking auth state before creating order');
+              // Wait for Supabase session to be available with timeout
+              let sessionReady = false;
+              let attempts = 0;
+              const maxAttempts = 10; // 5 seconds total
+
+              while (!sessionReady && attempts < maxAttempts) {
+                try {
+                  const { supabase } = await import('@/lib/supabase');
+                  const { data: { session } } = await supabase.auth.getSession();
+
+                  if (session?.access_token) {
+                    console.log('✅ Supabase session found, proceeding with order creation');
+                    sessionReady = true;
+                  } else {
+                    console.log(`🔄 Waiting for session... attempt ${attempts + 1}/${maxAttempts}`);
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    attempts++;
+                  }
+                } catch (error) {
+                  console.error('Error checking session:', error);
+                  await new Promise(resolve => setTimeout(resolve, 500));
+                  attempts++;
+                }
+              }
+
+              if (!sessionReady) {
+                console.warn('⚠️ Proceeding without confirmed session after timeout');
+              }
+
+              console.log('🔑 Order creation: Final auth check before creating order');
 
               // Update order data to reflect successful payment (keep status as pending for kitchen display)
               const confirmedOrderData = {
@@ -102,6 +131,8 @@ const OrderSuccessPage = () => {
               console.log('🛒 Creating order with confirmed data:', {
                 hasUser: !!user,
                 userEmail: user?.email,
+                sessionReady,
+                attempts,
                 orderData: confirmedOrderData
               });
 

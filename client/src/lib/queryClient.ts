@@ -8,34 +8,56 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {};
 
   try {
-    // Use Supabase authentication with retry for timing issues
+    // Use Supabase authentication with aggressive retry for timing issues
     let session = null;
     let retries = 0;
-    const maxRetries = 3;
+    const maxRetries = 8; // Increased from 3 to 8
+    const retryDelay = 300; // Increased from 200ms to 300ms
+
+    console.log('🔐 getAuthHeaders: Starting authentication check...');
 
     while (!session && retries < maxRetries) {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      session = currentSession;
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        session = currentSession;
 
-      if (!session && retries < maxRetries - 1) {
-        console.log(`🔄 No session found, retrying... (${retries + 1}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, 200)); // Wait 200ms
-        retries++;
-      } else {
-        break;
+        console.log(`🔍 Auth attempt ${retries + 1}/${maxRetries}:`, {
+          hasSession: !!session,
+          hasAccessToken: !!session?.access_token,
+          userEmail: session?.user?.email
+        });
+
+        if (!session && retries < maxRetries - 1) {
+          console.log(`🔄 No session found, retrying in ${retryDelay}ms... (${retries + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          retries++;
+        } else {
+          break;
+        }
+      } catch (sessionError) {
+        console.error(`❌ Error getting session on attempt ${retries + 1}:`, sessionError);
+        if (retries < maxRetries - 1) {
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          retries++;
+        } else {
+          break;
+        }
       }
     }
 
     if (session?.access_token) {
-      console.log('🔑 Using Supabase access token for authentication');
+      console.log('🔑 SUCCESS: Using Supabase access token for authentication', {
+        tokenLength: session.access_token.length,
+        userEmail: session.user?.email
+      });
       headers.Authorization = `Bearer ${session.access_token}`;
     } else {
-      console.log('ℹ️ No Supabase session found after retries - requests will be unauthenticated');
+      console.log('⚠️ FAILED: No Supabase session found after all retries - requests will be unauthenticated');
     }
 
     return headers;
   } catch (error) {
-    console.error('Error getting auth headers:', error);
+    console.error('❌ Critical error getting auth headers:', error);
     return headers;
   }
 }
