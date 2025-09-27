@@ -70,29 +70,14 @@ export const handler: Handler = async (event, context) => {
     }
 
     // Create a PaymentIntent with the order amount and currency
-    // IMPORTANT: Stripe metadata has a 500 character limit - only store essential info
-    const metadata: Record<string, string> = {};
-
-    if (orderId) {
-      metadata.orderId = orderId.toString();
-    }
-
-    if (orderData) {
-      // Only store essential fields to stay under 500 character limit
-      metadata.userId = (orderData.userId || "guest").toString().substring(0, 50);
-      metadata.orderType = (orderData.orderType || "pickup").substring(0, 20);
-      metadata.total = (orderData.total || "0").toString().substring(0, 10);
-      metadata.phone = (orderData.phone || "").substring(0, 20);
-      metadata.itemCount = (orderData.items?.length || 0).toString();
-
-      console.log('🔍 Payment Intent: Processing orderData with limited metadata');
-      console.log('📊 Metadata size check:', JSON.stringify(metadata).length, 'characters');
-    }
+    // EMERGENCY FIX: Remove all metadata to avoid 500 character limit
+    console.log('🚨 EMERGENCY FIX: Creating payment intent without metadata to avoid Stripe errors');
+    console.log('📊 Order amount:', amount, 'Order ID:', orderId);
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to cents
-      currency: "usd",
-      metadata: metadata
+      currency: "usd"
+      // No metadata for now - will store order data in sessionStorage instead
     });
 
     // Update the order with the payment intent ID (only if orderId exists - for old flow)
