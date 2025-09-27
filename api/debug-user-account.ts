@@ -1,6 +1,6 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
-import jwt from 'jsonwebtoken';
+import { authenticateToken } from './utils/auth';
 
 let dbConnection: any = null;
 
@@ -23,80 +23,6 @@ function getDB() {
   return dbConnection;
 }
 
-function authenticateToken(event: any): { userId: number | null; supabaseUserId: string | null; username: string; role: string; isSupabase: boolean } | null {
-  // Check for JWT token in Authorization header first (Netlify normalizes headers to lowercase)
-  const authHeader = event.headers.authorization || event.headers.Authorization;
-  let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
-  console.log('🔍 DEBUG-USER: Auth header check:', {
-    hasAuthHeader: !!authHeader,
-    hasToken: !!token,
-    authHeaderType: typeof authHeader,
-    tokenLength: token?.length,
-    headers: Object.keys(event.headers)
-  });
-
-  // If no Authorization header, check for auth-token cookie
-  if (!token) {
-    const cookies = event.headers.cookie || event.headers.Cookie;
-    if (cookies) {
-      const authCookie = cookies.split(';').find((c: string) => c.trim().startsWith('auth-token='));
-      if (authCookie) {
-        token = authCookie.split('=')[1];
-        console.log('🍪 DEBUG-USER: Found auth token in cookie');
-      }
-    }
-  }
-
-  if (!token) {
-    return null;
-  }
-
-  try {
-    // First try to decode as Supabase JWT token
-    try {
-      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-      console.log('🔍 DEBUG-USER: Supabase token payload:', payload);
-
-      if (payload.iss && payload.iss.includes('supabase')) {
-        // This is a Supabase token, extract user ID
-        const supabaseUserId = payload.sub;
-        console.log('✅ DEBUG-USER: Supabase user ID from token:', supabaseUserId);
-        console.log('📧 DEBUG-USER: Email from token:', payload.email);
-
-        // For Supabase users, return the UUID directly
-        return {
-          userId: null, // No integer user ID for Supabase users
-          supabaseUserId: supabaseUserId,
-          username: payload.email || 'supabase_user',
-          role: 'customer',
-          isSupabase: true
-        };
-      }
-    } catch (supabaseError) {
-      console.log('DEBUG-USER: Not a Supabase token, trying JWT verification');
-    }
-
-    // Fallback to our JWT verification
-    const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
-    if (!jwtSecret) {
-      throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
-    }
-
-    const decoded = jwt.verify(token, jwtSecret) as any;
-    return {
-      userId: decoded.userId,
-      supabaseUserId: null,
-      username: decoded.username,
-      role: decoded.role || 'customer',
-      isSupabase: false
-    };
-  } catch (error) {
-    console.error('DEBUG-USER: Token authentication failed:', error);
-    return null;
-  }
-}
-
 export const handler: Handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -111,125 +37,158 @@ export const handler: Handler = async (event, context) => {
 
   try {
     const sql = getDB();
-    const authPayload = authenticateToken(event);
+    const targetEmail = 'barecloudz@gmail.com';
 
-    console.log('🧪 DEBUG-USER: Starting comprehensive user account debug');
-    console.log('🧪 DEBUG-USER: Auth result:', authPayload);
+    console.log('🔍 DEBUG: Starting comprehensive account debug for:', targetEmail);
 
-    if (!authPayload) {
-      return {
-        statusCode: 401,
-        headers,
-        body: JSON.stringify({
-          error: 'No authentication found',
-          authPayload: null
-        })
+    // Test authentication first
+    const authResult = await authenticateToken(
+      event.headers.authorization || event.headers.Authorization,
+      event.headers.cookie || event.headers.Cookie
+    );
+
+    console.log('🔑 Auth result:', authResult);
+
+    // 1. Find all user records for this email
+    const allUsers = await sql`
+      SELECT id, email, supabase_user_id, rewards, created_at, updated_at
+      FROM users
+      WHERE LOWER(TRIM(email)) = LOWER(TRIM(${targetEmail}))
+    `;
+
+    // 2. Check user_points table
+    const userPointsRecords = await sql`
+      SELECT up.*, u.email
+      FROM user_points up
+      JOIN users u ON up.user_id = u.id
+      WHERE u.email ILIKE ${targetEmail}
+    `;
+
+    // 3. Get recent orders for this user
+    const recentOrders = await sql`
+      SELECT id, user_id, total, status, created_at, paymentstatus
+      FROM orders
+      WHERE user_id IN (
+        SELECT id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(${targetEmail}))
+      )
+      ORDER BY created_at DESC
+      LIMIT 10
+    `;
+
+    // 4. Get points transactions
+    const pointsTransactions = await sql`
+      SELECT pt.*, u.email
+      FROM points_transactions pt
+      JOIN users u ON pt.user_id = u.id
+      WHERE u.email ILIKE ${targetEmail}
+      ORDER BY pt.created_at DESC
+      LIMIT 20
+    `;
+
+    // 5. Check for orders without points awarded
+    const ordersWithoutPoints = await sql`
+      SELECT o.id, o.total, o.created_at, o.status, o.paymentstatus
+      FROM orders o
+      JOIN users u ON o.user_id = u.id
+      LEFT JOIN points_transactions pt ON pt.order_id = o.id AND pt.user_id = o.user_id
+      WHERE u.email ILIKE ${targetEmail}
+        AND pt.id IS NULL
+        AND o.total > 0
+      ORDER BY o.created_at DESC
+    `;
+
+    // 6. Test what user ID conversion would happen for current auth
+    let conversionTest = null;
+    if (authResult?.isSupabase && authResult?.username) {
+      const existingLegacyUser = await sql`
+        SELECT id, email, supabase_user_id FROM users
+        WHERE LOWER(TRIM(email)) = LOWER(TRIM(${authResult.username}))
+        LIMIT 1
+      `;
+      conversionTest = {
+        authEmail: authResult.username,
+        foundLegacyUser: existingLegacyUser.length > 0,
+        legacyUserId: existingLegacyUser[0]?.id || null
       };
     }
 
-    // Search for all user records related to this user
-    const results: any = {
-      authPayload,
-      searches: {}
+    // 7. Calculate expected points vs actual points
+    const totalOrderValue = recentOrders.reduce((sum, order) => sum + parseFloat(order.total || 0), 0);
+    const expectedPoints = Math.floor(totalOrderValue);
+    const actualPoints = userPointsRecords[0]?.points || 0;
+
+    const debugReport = {
+      timestamp: new Date().toISOString(),
+      targetEmail,
+      authentication: {
+        isAuthenticated: !!authResult,
+        authType: authResult?.isSupabase ? 'Supabase' : 'Legacy JWT',
+        userId: authResult?.userId,
+        supabaseUserId: authResult?.supabaseUserId,
+        username: authResult?.username,
+        conversionTest
+      },
+      userAccounts: {
+        count: allUsers.length,
+        users: allUsers
+      },
+      pointsRecords: {
+        count: userPointsRecords.length,
+        records: userPointsRecords
+      },
+      recentOrders: {
+        count: recentOrders.length,
+        orders: recentOrders,
+        totalValue: totalOrderValue
+      },
+      pointsTransactions: {
+        count: pointsTransactions.length,
+        transactions: pointsTransactions
+      },
+      ordersWithoutPoints: {
+        count: ordersWithoutPoints.length,
+        orders: ordersWithoutPoints
+      },
+      pointsAnalysis: {
+        expectedPointsFromOrders: expectedPoints,
+        actualPointsInDatabase: actualPoints,
+        pointsDeficit: expectedPoints - actualPoints
+      },
+      recommendations: []
     };
 
-    // Search by Supabase user ID
-    if (authPayload.supabaseUserId) {
-      console.log('🔍 DEBUG-USER: Searching by Supabase user ID:', authPayload.supabaseUserId);
-      results.searches.bySupabaseUserId = await sql`
-        SELECT * FROM users WHERE supabase_user_id = ${authPayload.supabaseUserId}
-      `;
-      console.log('📊 DEBUG-USER: Found by Supabase ID:', results.searches.bySupabaseUserId.length);
+    // Add recommendations based on findings
+    if (allUsers.length === 0) {
+      debugReport.recommendations.push("❌ No user found with email " + targetEmail);
+    } else if (allUsers.length > 1) {
+      debugReport.recommendations.push("⚠️ Multiple user accounts found - potential duplicate issue");
     }
 
-    // Search by email
-    if (authPayload.username) {
-      console.log('🔍 DEBUG-USER: Searching by email:', authPayload.username);
-      results.searches.byEmail = await sql`
-        SELECT * FROM users WHERE email = ${authPayload.username}
-      `;
-      console.log('📊 DEBUG-USER: Found by email:', results.searches.byEmail.length);
+    if (userPointsRecords.length === 0) {
+      debugReport.recommendations.push("❌ No user_points record found - user has never earned points");
     }
 
-    // Search by username
-    results.searches.byUsername = await sql`
-      SELECT * FROM users WHERE username = ${authPayload.username}
-    `;
-    console.log('📊 DEBUG-USER: Found by username:', results.searches.byUsername.length);
-
-    // Get recent orders for this user
-    if (authPayload.supabaseUserId) {
-      results.searches.ordersBySupabaseId = await sql`
-        SELECT id, user_id, supabase_user_id, total, created_at, status
-        FROM orders
-        WHERE supabase_user_id = ${authPayload.supabaseUserId}
-        ORDER BY created_at DESC
-        LIMIT 5
-      `;
+    if (ordersWithoutPoints.length > 0) {
+      debugReport.recommendations.push(`🔧 ${ordersWithoutPoints.length} orders found without points awarded`);
     }
 
-    if (authPayload.userId) {
-      results.searches.ordersByUserId = await sql`
-        SELECT id, user_id, supabase_user_id, total, created_at, status
-        FROM orders
-        WHERE user_id = ${authPayload.userId}
-        ORDER BY created_at DESC
-        LIMIT 5
-      `;
+    if (!authResult) {
+      debugReport.recommendations.push("🔑 Authentication failed - cannot test live auth flow");
     }
-
-    // Check points records
-    if (authPayload.supabaseUserId) {
-      results.searches.pointsBySupabaseId = await sql`
-        SELECT * FROM user_points WHERE supabase_user_id = ${authPayload.supabaseUserId}
-      `;
-
-      results.searches.pointsTransactionsBySupabaseId = await sql`
-        SELECT * FROM points_transactions
-        WHERE supabase_user_id = ${authPayload.supabaseUserId}
-        ORDER BY created_at DESC
-        LIMIT 10
-      `;
-    }
-
-    if (authPayload.userId) {
-      results.searches.pointsByUserId = await sql`
-        SELECT * FROM user_points WHERE user_id = ${authPayload.userId}
-      `;
-
-      results.searches.pointsTransactionsByUserId = await sql`
-        SELECT * FROM points_transactions
-        WHERE user_id = ${authPayload.userId}
-        ORDER BY created_at DESC
-        LIMIT 10
-      `;
-    }
-
-    // Check for duplicate users
-    if (authPayload.username) {
-      results.searches.allMatchingUsers = await sql`
-        SELECT id, username, email, supabase_user_id, created_at, updated_at
-        FROM users
-        WHERE email = ${authPayload.username} OR username = ${authPayload.username}
-        ORDER BY created_at ASC
-      `;
-    }
-
-    console.log('✅ DEBUG-USER: Comprehensive user debug completed');
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify(results, null, 2)
+      body: JSON.stringify(debugReport, null, 2)
     };
 
   } catch (error) {
-    console.error('🧪 DEBUG-USER: Error:', error);
+    console.error('🔍 DEBUG: Account debug error:', error);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        error: 'Debug failed',
+        error: 'Account debug failed',
         details: error instanceof Error ? error.message : 'Unknown error'
       })
     };
