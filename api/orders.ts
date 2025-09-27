@@ -275,7 +275,16 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
-  const authPayload = authenticateToken(event);
+  let authPayload = authenticateToken(event);
+
+  // CRITICAL FIX: Add fallback authentication attempt with delay for race conditions
+  if (!authPayload && event.httpMethod === 'POST') {
+    console.log('⚠️ Orders API: Initial auth failed, attempting fallback authentication for POST request');
+    // Wait a small amount and retry authentication to handle race conditions
+    await new Promise(resolve => setTimeout(resolve, 100));
+    authPayload = authenticateToken(event);
+    console.log('🔄 Orders API: Fallback authentication result:', !!authPayload);
+  }
 
   try {
     const sql = getDB();
@@ -584,7 +593,13 @@ export const handler: Handler = async (event, context) => {
           userId: authPayload?.userId,
           username: authPayload?.username,
           role: authPayload?.role,
-          isAdminRole: authPayload?.role === 'admin'
+          isAdminRole: authPayload?.role === 'admin',
+          // Enhanced debugging for authentication issues
+          authHeaderPresent: !!(event.headers.authorization || event.headers.Authorization),
+          cookiePresent: !!(event.headers.cookie || event.headers.Cookie),
+          tokenFound: !!(event.headers.authorization || event.headers.Authorization ||
+                         (event.headers.cookie && event.headers.cookie.includes('auth-token=')) ||
+                         (event.headers.Cookie && event.headers.Cookie.includes('auth-token=')))
         });
 
         if (authPayload) {
@@ -1134,9 +1149,14 @@ export const handler: Handler = async (event, context) => {
           hasSupabaseUserId: !!supabaseUserId,
           userRole: authPayload?.role,
           shouldAwardPoints: !!(userId || supabaseUserId),
-          isAdmin: authPayload?.role === 'admin'
+          isAdmin: authPayload?.role === 'admin',
+          // Additional debugging for points issues
+          authPayloadExists: !!authPayload,
+          orderTotal: newOrder.total,
+          orderId: newOrder.id
         });
 
+        // AGGRESSIVE FIX: Always try to award points if we have any user identification
         if (userId || supabaseUserId) {
           try {
             const pointsToAward = Math.floor(parseFloat(newOrder.total));
