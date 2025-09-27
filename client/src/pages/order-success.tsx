@@ -841,8 +841,8 @@ Thank you for choosing Favilla's NY Pizza!
               )}
             </div>
 
-            {/* Sidebar - only for authenticated users */}
-            {order ? (
+            {/* Sidebar */}
+            {user && order ? (
               <div className="space-y-6">
                 {/* Estimated Time */}
               <Card>
@@ -999,6 +999,16 @@ Thank you for choosing Favilla's NY Pizza!
                   </Button>
                 </CardContent>
               </Card>
+              </div>
+            ) : user && !order ? (
+              // Authenticated user but order loading
+              <div className="space-y-6">
+                <Card>
+                  <CardContent className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading your points and order details...</p>
+                  </CardContent>
+                </Card>
               </div>
             ) : (
               // Guest user sidebar
