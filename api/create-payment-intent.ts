@@ -84,6 +84,9 @@ export const handler: Handler = async (event, context) => {
       metadata.total = (orderData.total || "0").toString().substring(0, 10);
       metadata.phone = (orderData.phone || "").substring(0, 20);
       metadata.itemCount = (orderData.items?.length || 0).toString();
+
+      console.log('🔍 Payment Intent: Processing orderData with limited metadata');
+      console.log('📊 Metadata size check:', JSON.stringify(metadata).length, 'characters');
     }
 
     const paymentIntent = await stripe.paymentIntents.create({
