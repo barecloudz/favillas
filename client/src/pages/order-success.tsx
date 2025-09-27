@@ -708,20 +708,24 @@ Thank you for choosing Favilla's NY Pizza!
                         <span>{formatCurrency(parseFloat(order.total || 0))}</span>
                       </div>
                       
-                      {/* Points Earned */}
-                      <Separator />
-                      <div className="bg-green-50 p-4 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Star className="h-5 w-5 text-green-600" />
-                            <span className="font-semibold text-green-800">Points Earned</span>
+                      {/* Points Earned - Only show for authenticated users */}
+                      {user && (
+                        <>
+                          <Separator />
+                          <div className="bg-green-50 p-4 rounded-lg">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <Star className="h-5 w-5 text-green-600" />
+                                <span className="font-semibold text-green-800">Points Earned</span>
+                              </div>
+                              <span className="text-lg font-bold text-green-600">+{getPointsEarned()} points</span>
+                            </div>
+                            <p className="text-sm text-green-700 mt-1">
+                              You earned 1 point for every dollar spent! Use your points to redeem rewards.
+                            </p>
                           </div>
-                          <span className="text-lg font-bold text-green-600">+{getPointsEarned()} points</span>
-                        </div>
-                        <p className="text-sm text-green-700 mt-1">
-                          You earned 1 point for every dollar spent! Use your points to redeem rewards.
-                        </p>
-                      </div>
+                        </>
+                      )}
                     </div>
                   </div>
                   ) : (
