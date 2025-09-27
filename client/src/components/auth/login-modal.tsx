@@ -251,37 +251,6 @@ const LoginModal: React.FC<LoginModalProps> = ({
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="register-phone">Phone</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="register-phone"
-                    type="tel"
-                    placeholder="Enter your phone number"
-                    value={registerData.phone}
-                    onChange={(e) => setRegisterData(prev => ({ ...prev, phone: e.target.value }))}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="register-address">Address</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="register-address"
-                    type="text"
-                    placeholder="Enter your address"
-                    value={registerData.address}
-                    onChange={(e) => setRegisterData(prev => ({ ...prev, address: e.target.value }))}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="register-password">Password</Label>

@@ -65,10 +65,10 @@ export const handler: Handler = async (event, context) => {
     // Create user with proper points initialization
     const result = await withDB(async (sql) => {
       return await sql.begin(async (sql: any) => {
-      // Create user
+      // Create user (use email as username)
       const userResult = await sql`
-        INSERT INTO users (first_name, last_name, email, phone, address, password, role, is_active, rewards, created_at, updated_at)
-        VALUES (${firstName}, ${lastName}, ${email}, ${phone || ''}, ${address || ''}, ${passwordHash}, 'customer', true, 0, NOW(), NOW())
+        INSERT INTO users (username, first_name, last_name, email, phone, address, password, role, is_active, rewards, created_at, updated_at)
+        VALUES (${email}, ${firstName}, ${lastName}, ${email}, ${phone || ''}, ${address || ''}, ${passwordHash}, 'customer', true, 0, NOW(), NOW())
         RETURNING id, first_name, last_name, email, phone, address, role, is_active, created_at
       `;
       

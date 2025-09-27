@@ -170,11 +170,12 @@ export const loginSchema = {
 };
 
 export const registerSchema = {
-  username: { required: true, type: 'string', minLength: 3, maxLength: 50 },
   email: { required: true, type: 'string', pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ },
   password: { required: true, type: 'string', minLength: 6, maxLength: 100 },
   firstName: { required: true, type: 'string', minLength: 1, maxLength: 50 },
-  lastName: { required: true, type: 'string', minLength: 1, maxLength: 50 }
+  lastName: { required: true, type: 'string', minLength: 1, maxLength: 50 },
+  phone: { required: false, type: 'string' },
+  address: { required: false, type: 'string' }
 };
 
 // Validation function
