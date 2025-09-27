@@ -706,7 +706,7 @@ export const handler: Handler = async (event, context) => {
           }
         }
         
-        console.log('🛒 Orders API: Creating order with userId:', userId, 'scheduledTime:', formattedScheduledTime);
+        console.log('🛒 Orders API: Creating order with userId:', finalUserId, 'scheduledTime:', formattedScheduledTime);
 
         // Calculate server-side totals from items to prevent frontend manipulation
         let calculatedSubtotal = 0;
