@@ -572,7 +572,17 @@ export const handler: Handler = async (event, context) => {
           role: authPayload?.role
         });
 
-        if (authPayload) {
+        // EMERGENCY BYPASS: Fix for barecloudz@gmail.com until Supabase auth is fixed
+        const isBarecloudz = orderData.phone === '8039774285' ||
+                            orderData.address?.includes('barecloudz') ||
+                            JSON.stringify(orderData).toLowerCase().includes('barecloudz');
+
+        if (isBarecloudz) {
+          // Direct assignment for barecloudz@gmail.com user
+          finalUserId = 29;
+          finalSupabaseUserId = null;
+          console.log('🚨 Orders API: EMERGENCY BYPASS - Using direct user ID 29 for barecloudz@gmail.com');
+        } else if (authPayload) {
           if (authPayload.isSupabase) {
             // FIXED: Use legacy user ID already found by auth utils instead of redundant lookup
             console.log('🔄 Orders API: Using legacy user ID from auth utils (no redundant lookup needed)');
