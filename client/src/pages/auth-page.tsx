@@ -24,7 +24,6 @@ const loginSchema = z.object({
 
 // Register schema - simplified to avoid Zod conflicts
 const registerSchema = z.object({
-  username: z.string().min(1, { message: "Username is required" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
   confirmPassword: z.string().min(6, { message: "Password must be at least 6 characters" }),
   email: z.string().email({ message: "Invalid email address" }),
@@ -106,6 +105,7 @@ const AuthPage = () => {
     // Add required fields for our registration mutation
     const completeRegisterData = {
       ...registerData,
+      username: registerData.email, // Use email as username
       role: 'customer',
       isActive: true,
     };
@@ -162,9 +162,9 @@ const AuthPage = () => {
                             name="username"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Username or Email</FormLabel>
+                                <FormLabel>Email</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="Enter username or email" {...field} />
+                                  <Input placeholder="Enter your email" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -272,19 +272,6 @@ const AuthPage = () => {
                                 <FormLabel>Email</FormLabel>
                                 <FormControl>
                                   <Input type="email" placeholder="Enter your email" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={registerForm.control}
-                            name="username"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Username</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Choose a username" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
