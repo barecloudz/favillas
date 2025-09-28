@@ -7,7 +7,7 @@ function getDB() {
   if (dbConnection) return dbConnection;
 
   const databaseUrl = process.env.DATABASE_URL;
-  if (\!databaseUrl) {
+  if (!databaseUrl) {
     throw new Error("DATABASE_URL environment variable is required");
   }
 
