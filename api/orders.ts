@@ -219,23 +219,38 @@ export const handler: Handler = async (event, context) => {
       event.headers.cookie || event.headers.Cookie
     );
 
+    // ENHANCED DEBUG: Log authentication headers and full result
+    console.log('🔍 Orders API: ENHANCED AUTH DEBUG - Headers received:', {
+      authorization: event.headers.authorization || event.headers.Authorization,
+      cookie: event.headers.cookie || event.headers.Cookie,
+      origin: event.headers.origin,
+      userAgent: event.headers['user-agent']
+    });
+
+    console.log('🔍 Orders API: ENHANCED AUTH DEBUG - Full auth result:', JSON.stringify(authResult, null, 2));
+
     console.log(`🔍 Orders API: Auth attempt ${authAttempts} result:`, {
       success: authResult.success,
       error: authResult.error,
       hasUser: !!authResult.user,
       userId: authResult.user?.id,
-      email: authResult.user?.email
+      email: authResult.user?.email,
+      legacyUserId: authResult.user?.legacyUserId
     });
 
     if (authResult.success && authResult.user) {
       authPayload = {
-        userId: authResult.user.legacyUserId || null, // Use the legacy user ID from auth utils
+        // FIXED: Handle both JWT users (id as integer) and Supabase users (id as UUID)
+        userId: authResult.user.legacyUserId || (typeof authResult.user.id === 'number' ? authResult.user.id : null),
         supabaseUserId: authResult.user.id && isNaN(Number(authResult.user.id)) ? authResult.user.id : null,
         username: authResult.user.email || authResult.user.username || 'user',
         role: authResult.user.role || 'customer',
         isSupabase: authResult.user.id && isNaN(Number(authResult.user.id)),
-        hasLegacyUser: !!authResult.user.legacyUserId // Track if we found legacy user
+        hasLegacyUser: !!authResult.user.legacyUserId, // Track if we found legacy user
+        rawUserId: authResult.user.id // Store the raw ID for debugging
       };
+
+      console.log('🔍 Orders API: ENHANCED AUTH DEBUG - Created authPayload:', JSON.stringify(authPayload, null, 2));
 
       console.log('✅ Orders API: Authentication successful on attempt', authAttempts);
       break;
@@ -565,14 +580,45 @@ export const handler: Handler = async (event, context) => {
         if (authPayload) {
           console.log('🔍 Orders API: AUTH PAYLOAD DEBUG:', authPayload);
 
-          // UNIFIED: Always prefer user_id (unified system) over supabase_user_id
+          // FIXED: Handle both legacy users and modern Supabase users correctly
           if (authPayload.userId) {
+            // User has a legacy/database user_id (integer) - use this for points
             finalUserId = authPayload.userId;
-            console.log('✅ Orders API: Using unified user ID:', finalUserId);
+            console.log('✅ Orders API: Using database user ID:', finalUserId);
           } else if (authPayload.supabaseUserId) {
-            // Fallback for old Supabase-only users
-            finalSupabaseUserId = authPayload.supabaseUserId;
-            console.log('✅ Orders API: Using Supabase user ID (legacy):', finalSupabaseUserId);
+            // Pure Supabase user without database user_id - check if they have a database record
+            console.log('🔍 Orders API: Checking if Supabase user exists in database...');
+
+            try {
+              const existingUser = await sql`
+                SELECT id FROM users WHERE supabase_user_id = ${authPayload.supabaseUserId}
+              `;
+
+              if (existingUser.length > 0) {
+                finalUserId = existingUser[0].id;
+                console.log('✅ Orders API: Found database user for Supabase user:', finalUserId);
+              } else {
+                // Create database user for this Supabase user
+                const newUser = await sql`
+                  INSERT INTO users (username, email, role, supabase_user_id, created_at)
+                  VALUES (${authPayload.username}, ${authPayload.username}, 'customer', ${authPayload.supabaseUserId}, NOW())
+                  RETURNING id
+                `;
+                finalUserId = newUser[0].id;
+                console.log('✅ Orders API: Created new database user for Supabase user:', finalUserId);
+
+                // Initialize user points
+                await sql`
+                  INSERT INTO user_points (user_id, points, total_earned, total_redeemed, created_at, updated_at)
+                  VALUES (${finalUserId}, 0, 0, 0, NOW(), NOW())
+                `;
+                console.log('✅ Orders API: Initialized points for new user');
+              }
+            } catch (dbError) {
+              console.error('❌ Orders API: Database user lookup/creation failed:', dbError);
+              finalSupabaseUserId = authPayload.supabaseUserId;
+              console.log('⚠️ Orders API: Falling back to Supabase-only user handling');
+            }
           }
         } else {
           console.log('👤 Orders API: Guest order - no user association');
@@ -1020,6 +1066,14 @@ export const handler: Handler = async (event, context) => {
         });
 
         // ENHANCED POINTS AWARDING: Now using the correct final user IDs
+        console.log('🎯 Orders API: POINTS AWARDING CHECK - Final values before awarding:', {
+          finalUserId,
+          finalSupabaseUserId,
+          authPayload,
+          orderTotal: newOrder.total,
+          willAwardPoints: !!(finalUserId || finalSupabaseUserId)
+        });
+
         if (finalUserId || finalSupabaseUserId) {
           try {
             const pointsToAward = Math.floor(parseFloat(newOrder.total));
