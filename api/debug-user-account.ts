@@ -66,7 +66,7 @@ export const handler: Handler = async (event, context) => {
 
     // 3. Get recent orders for this user
     const recentOrders = await sql`
-      SELECT id, user_id, total, status, created_at
+      SELECT id, user_id, total, status, created_at, payment_status
       FROM orders
       WHERE user_id IN (
         SELECT id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(${targetEmail}))
@@ -87,7 +87,7 @@ export const handler: Handler = async (event, context) => {
 
     // 5. Check for orders without points awarded
     const ordersWithoutPoints = await sql`
-      SELECT o.id, o.total, o.created_at, o.status
+      SELECT o.id, o.total, o.created_at, o.status, o.payment_status
       FROM orders o
       JOIN users u ON o.user_id = u.id
       LEFT JOIN points_transactions pt ON pt.order_id = o.id AND pt.user_id = o.user_id
