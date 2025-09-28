@@ -133,16 +133,30 @@ export const handler: Handler = async (event, context) => {
 
     // UNIFIED: Check if user has unified account first, regardless of auth type
     let hasUnifiedAccount = false;
+    let unifiedUserId = null;
+
     if (authPayload.userId) {
+      // Direct user ID from legacy token
       hasUnifiedAccount = true;
+      unifiedUserId = authPayload.userId;
+    } else if (authPayload.isSupabase && authPayload.supabaseUserId) {
+      // Check if this Supabase user has a corresponding database user_id
+      const dbUser = await sql`
+        SELECT id FROM users WHERE supabase_user_id = ${authPayload.supabaseUserId}
+      `;
+      if (dbUser.length > 0) {
+        hasUnifiedAccount = true;
+        unifiedUserId = dbUser[0].id;
+        console.log('✅ Found unified account for Supabase user:', unifiedUserId);
+      }
     }
 
     if (hasUnifiedAccount) {
       // Handle unified user account (preferred system)
-      console.log('🔑 Processing unified user rewards:', authPayload.userId);
+      console.log('🔑 Processing unified user rewards:', unifiedUserId);
 
       // Get user's current points using user_id (unified system)
-      console.log('🔍 Querying user_points for userId:', authPayload.userId);
+      console.log('🔍 Querying user_points for userId:', unifiedUserId);
       const userPointsRecord = await sql`
         SELECT
           points,
@@ -151,7 +165,7 @@ export const handler: Handler = async (event, context) => {
           last_earned_at,
           updated_at
         FROM user_points
-        WHERE user_id = ${authPayload.userId}
+        WHERE user_id = ${unifiedUserId}
       `;
       console.log('🔍 User points query result:', userPointsRecord.length, 'records found');
 
@@ -165,14 +179,14 @@ export const handler: Handler = async (event, context) => {
         // Create user_points record for unified user
         await sql`
           INSERT INTO user_points (user_id, points, total_earned, total_redeemed, created_at, updated_at)
-          VALUES (${authPayload.userId}, 0, 0, 0, NOW(), NOW())
+          VALUES (${unifiedUserId}, 0, 0, 0, NOW(), NOW())
           ON CONFLICT (user_id) DO NOTHING
         `;
 
         // Create initial transaction
         await sql`
           INSERT INTO points_transactions (user_id, type, points, description, created_at)
-          VALUES (${authPayload.userId}, 'signup', 0, 'Unified user account points initialized', NOW())
+          VALUES (${unifiedUserId}, 'signup', 0, 'Unified user account points initialized', NOW())
         `;
 
         console.log('✅ Initialized unified user points');
@@ -284,7 +298,7 @@ export const handler: Handler = async (event, context) => {
         totalPointsRedeemed: rewardsData.total_redeemed || 0,
         lastEarnedAt: rewardsData.last_earned_at,
         userType: authPayload.isSupabase ? 'google' : 'legacy',
-        userId: authPayload.isSupabase ? authPayload.supabaseUserId : authPayload.userId
+        userId: hasUnifiedAccount ? unifiedUserId : (authPayload.isSupabase ? authPayload.supabaseUserId : authPayload.userId)
       })
     };
 
