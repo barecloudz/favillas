@@ -152,6 +152,24 @@ const OrderSuccessPage = () => {
                 title: "Order Created Successfully!",
                 description: `Order #${createdOrder.id} has been placed.`,
               });
+
+              // Backup points check: Award missing points if automatic system failed
+              if (user) {
+                setTimeout(async () => {
+                  try {
+                    console.log('🔄 Order Success: Running backup points check...');
+                    const pointsResponse = await apiRequest('POST', '/api/award-missing-points');
+                    const pointsResult = await pointsResponse.json();
+                    if (pointsResult.pointsAwarded > 0) {
+                      console.log('✅ Order Success: Backup points awarded:', pointsResult.pointsAwarded);
+                      // Invalidate rewards queries to refresh points display
+                      queryClient.invalidateQueries({ queryKey: ['/api/user-rewards'] });
+                    }
+                  } catch (pointsError) {
+                    console.warn('⚠️ Order Success: Backup points check failed:', pointsError);
+                  }
+                }, 2000); // Wait 2 seconds after order creation
+              }
             } catch (error) {
               console.error('💥 Error creating order:', error);
               toast({
