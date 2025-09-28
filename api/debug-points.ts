@@ -81,14 +81,22 @@ export const handler: Handler = async (event, context) => {
       LIMIT 10
     `;
 
-    // Check the most recent order (196 from logs)
+    // Check the most recent orders (196, 197 from logs)
     const order196 = await sql`
       SELECT * FROM orders WHERE id = 196
     `;
 
-    // Check if order 196 has points transaction
+    const order197 = await sql`
+      SELECT * FROM orders WHERE id = 197
+    `;
+
+    // Check if orders have points transactions
     const order196Points = await sql`
       SELECT * FROM points_transactions WHERE order_id = 196
+    `;
+
+    const order197Points = await sql`
+      SELECT * FROM points_transactions WHERE order_id = 197
     `;
 
     // Check which orders have points transactions
@@ -112,7 +120,9 @@ export const handler: Handler = async (event, context) => {
         points_transactions_supabase: pointsTransactionsSupabase.slice(0, 5),
         recent_orders: ordersLegacy,
         order_196: order196,
+        order_197: order197,
         order_196_points: order196Points,
+        order_197_points: order197Points,
         orders_with_points: ordersWithPoints.map(o => o.order_id),
         missing_points_orders: orderIds.filter(id => !ordersWithPoints.find(o => o.order_id === id)),
         analysis: {
@@ -125,6 +135,7 @@ export const handler: Handler = async (event, context) => {
           combined_points: (userPointsLegacy[0]?.points || 0) + (userPointsSupabase[0]?.points || 0),
           order_196_exists: order196.length > 0,
           order_196_has_points: order196Points.length > 0,
+          order_197_has_points: order197Points.length > 0,
           discrepancy_explanation: "Check if frontend reads from different source or sums multiple records"
         }
       })
