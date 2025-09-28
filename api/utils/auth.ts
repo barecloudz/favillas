@@ -47,8 +47,8 @@ async function validateSupabaseToken(token: string): Promise<AuthResult> {
     console.log('🔍 AUTH-UTILS: Token length:', token?.length);
     console.log('🔍 AUTH-UTILS: Token prefix:', token?.substring(0, 20) + '...');
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
     console.log('🔍 AUTH-UTILS: Environment check:', {
       hasSupabaseUrl: !!supabaseUrl,
