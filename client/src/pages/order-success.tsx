@@ -302,6 +302,36 @@ const OrderSuccessPage = () => {
         clearCart();
         setCartCleared(true);
       }
+
+      // GUARANTEED POINTS: Always ensure points are awarded for any order displayed
+      if (user && orderData?.id) {
+        setTimeout(async () => {
+          try {
+            console.log('🎯 Order Success: Ensuring points are awarded for Order', orderData.id);
+            const pointsResponse = await apiRequest('POST', '/api/award-points-for-order', {
+              orderId: orderData.id
+            });
+            const pointsResult = await pointsResponse.json();
+
+            if (pointsResult.success) {
+              if (pointsResult.alreadyAwarded) {
+                console.log('✅ Order Success: Points already awarded for this order');
+              } else {
+                console.log('✅ Order Success: Points awarded:', pointsResult.pointsAwarded);
+                // Show success message
+                toast({
+                  title: "Points Earned!",
+                  description: `You earned ${pointsResult.pointsAwarded} points for this order!`,
+                });
+              }
+              // Refresh user rewards to show updated points
+              queryClient.invalidateQueries({ queryKey: ['/api/user-rewards'] });
+            }
+          } catch (pointsError) {
+            console.warn('⚠️ Order Success: Points award failed:', pointsError);
+          }
+        }, 3000); // 3 second delay to ensure order is fully processed
+      }
     } else if (orderError) {
       // If there's an error fetching order details, stop loading and show success page anyway
       console.warn('Failed to fetch order details:', orderError);
