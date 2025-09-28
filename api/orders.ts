@@ -1025,6 +1025,13 @@ export const handler: Handler = async (event, context) => {
           orderSupabaseUserId: newOrder.supabase_user_id
         });
 
+        console.log('🎁 Orders API: POINTS AWARDING CHECK:', {
+          hasAuthPayload: !!authPayload,
+          finalUserId,
+          finalSupabaseUserId,
+          authPayloadDebug: authPayload
+        });
+
         // ENHANCED POINTS AWARDING: Now using the correct final user IDs
         if (finalUserId || finalSupabaseUserId) {
           try {
@@ -1088,6 +1095,15 @@ export const handler: Handler = async (event, context) => {
           }
         } else {
           console.log('⚠️ Orders API: No final user ID available for points awarding');
+          console.log('⚠️ Orders API: POINTS DEBUGGING INFO:', {
+            authPayload: authPayload,
+            finalUserId: finalUserId,
+            finalSupabaseUserId: finalSupabaseUserId,
+            orderUserInfo: {
+              user_id: newOrder.user_id,
+              supabase_user_id: newOrder.supabase_user_id
+            }
+          });
         }
 
         // ASYNC: ShipDay integration and email (don't block order response)
