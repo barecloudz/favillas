@@ -5,6 +5,7 @@ import postgres from 'postgres';
 // Types
 export interface AuthenticatedUser {
   id: string;
+  legacyUserId?: number; // Added for legacy user ID lookup
   username?: string;
   email?: string;
   role?: string;
@@ -56,23 +57,48 @@ async function validateSupabaseToken(token: string): Promise<AuthResult> {
       return { success: false, error: 'Invalid Supabase token' };
     }
 
-    // Get additional user data from our database if needed
+    // Get additional user data from our database - prioritize legacy users by email
     const sql = getDB();
-    const dbUsers = await sql`
-      SELECT id, username, role, is_admin
+
+    // First try to find legacy user by email (this gets user_id: 29 for barecloudz@gmail.com)
+    const legacyUsers = await sql`
+      SELECT id, username, email, role, is_admin, supabase_user_id
       FROM users
-      WHERE email = ${user.email} OR supabase_user_id = ${user.id}
+      WHERE email = ${user.email} AND id IS NOT NULL
+      ORDER BY created_at ASC
       LIMIT 1
     `;
 
-    const dbUser = dbUsers[0];
+    // If no legacy user found, try by supabase_user_id
+    const supabaseUsers = legacyUsers.length === 0 ? await sql`
+      SELECT id, username, email, role, is_admin, supabase_user_id
+      FROM users
+      WHERE supabase_user_id = ${user.id}
+      LIMIT 1
+    ` : [];
+
+    const dbUser = legacyUsers[0] || supabaseUsers[0];
+
+    console.log('🔍 AUTH-UTILS: Database user lookup result:', {
+      email: user.email,
+      supabaseUserId: user.id,
+      foundLegacyUser: !!legacyUsers[0],
+      foundSupabaseUser: !!supabaseUsers[0],
+      finalDbUser: dbUser ? {
+        id: dbUser.id,
+        username: dbUser.username,
+        email: dbUser.email,
+        hasSupabaseLink: !!dbUser.supabase_user_id
+      } : null
+    });
 
     return {
       success: true,
       user: {
-        id: user.id,
+        id: user.id, // Always return Supabase UUID as id
+        legacyUserId: dbUser?.id || undefined, // Add legacy user ID if found
         email: user.email || undefined,
-        username: dbUser?.username || undefined,
+        username: dbUser?.username || user.email || undefined,
         role: dbUser?.role || 'customer',
         isAdmin: dbUser?.is_admin || false
       }

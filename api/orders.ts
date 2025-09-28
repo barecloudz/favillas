@@ -229,11 +229,12 @@ export const handler: Handler = async (event, context) => {
 
     if (authResult.success && authResult.user) {
       authPayload = {
-        userId: authResult.user.id && !isNaN(Number(authResult.user.id)) ? Number(authResult.user.id) : null,
+        userId: authResult.user.legacyUserId || null, // Use the legacy user ID from auth utils
         supabaseUserId: authResult.user.id && isNaN(Number(authResult.user.id)) ? authResult.user.id : null,
         username: authResult.user.email || authResult.user.username || 'user',
         role: authResult.user.role || 'customer',
-        isSupabase: authResult.user.id && isNaN(Number(authResult.user.id))
+        isSupabase: authResult.user.id && isNaN(Number(authResult.user.id)),
+        hasLegacyUser: !!authResult.user.legacyUserId // Track if we found legacy user
       };
 
       console.log('✅ Orders API: Authentication successful on attempt', authAttempts);
@@ -251,6 +252,7 @@ export const handler: Handler = async (event, context) => {
   if (authPayload) {
     console.log('🎯 Orders API: FINAL AUTH SUCCESS:', {
       isSupabase: authPayload.isSupabase,
+      hasLegacyUser: authPayload.hasLegacyUser,
       userId: authPayload.userId,
       supabaseUserId: authPayload.supabaseUserId,
       username: authPayload.username,
