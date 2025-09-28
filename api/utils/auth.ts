@@ -43,19 +43,43 @@ function getDB() {
 // Secure token validation using official Supabase SDK
 async function validateSupabaseToken(token: string): Promise<AuthResult> {
   try {
+    console.log('🔍 AUTH-UTILS: Starting Supabase token validation');
+    console.log('🔍 AUTH-UTILS: Token length:', token?.length);
+    console.log('🔍 AUTH-UTILS: Token prefix:', token?.substring(0, 20) + '...');
+
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
+    console.log('🔍 AUTH-UTILS: Environment check:', {
+      hasSupabaseUrl: !!supabaseUrl,
+      hasSupabaseAnonKey: !!supabaseAnonKey,
+      supabaseUrlPrefix: supabaseUrl?.substring(0, 20) + '...'
+    });
+
     if (!supabaseUrl || !supabaseAnonKey) {
+      console.log('❌ AUTH-UTILS: Missing Supabase environment variables');
       return { success: false, error: 'Supabase configuration missing' };
     }
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    console.log('🔍 AUTH-UTILS: Created Supabase client, calling getUser...');
+
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
+    console.log('🔍 AUTH-UTILS: Supabase getUser result:', {
+      hasUser: !!user,
+      hasError: !!error,
+      errorMessage: error?.message,
+      userId: user?.id,
+      userEmail: user?.email
+    });
+
     if (error || !user) {
-      return { success: false, error: 'Invalid Supabase token' };
+      console.log('❌ AUTH-UTILS: Supabase token validation failed:', error?.message);
+      return { success: false, error: `Invalid Supabase token: ${error?.message}` };
     }
+
+    console.log('✅ AUTH-UTILS: Supabase token validation successful for user:', user.email);
 
     // Get additional user data from our database - prioritize legacy users by email
     const sql = getDB();
@@ -146,11 +170,16 @@ async function validateJWTToken(token: string): Promise<AuthResult> {
 // Main authentication function
 export async function authenticateToken(authHeader?: string, cookies?: string): Promise<AuthResult> {
   try {
+    console.log('🔍 AUTH-UTILS: Main authenticateToken called');
+    console.log('🔍 AUTH-UTILS: Auth header exists:', !!authHeader);
+    console.log('🔍 AUTH-UTILS: Cookies exist:', !!cookies);
+
     let token: string | undefined;
 
     // Extract token from Authorization header
     if (authHeader?.startsWith('Bearer ')) {
       token = authHeader.substring(7);
+      console.log('🔍 AUTH-UTILS: Extracted token from Authorization header');
     }
 
     // Fallback to cookie if no Authorization header
@@ -160,26 +189,49 @@ export async function authenticateToken(authHeader?: string, cookies?: string): 
         .find(c => c.trim().startsWith('auth-token='));
       if (authCookie) {
         token = authCookie.split('=')[1];
+        console.log('🔍 AUTH-UTILS: Extracted token from cookies');
       }
     }
 
+    console.log('🔍 AUTH-UTILS: Final token status:', {
+      hasToken: !!token,
+      tokenLength: token?.length,
+      tokenPrefix: token?.substring(0, 20) + '...'
+    });
+
     if (!token) {
+      console.log('❌ AUTH-UTILS: No authentication token found');
       return { success: false, error: 'No authentication token provided' };
     }
 
     // Try Supabase token validation first
+    console.log('🔍 AUTH-UTILS: Trying Supabase token validation...');
     const supabaseResult = await validateSupabaseToken(token);
+    console.log('🔍 AUTH-UTILS: Supabase validation result:', {
+      success: supabaseResult.success,
+      error: supabaseResult.error
+    });
+
     if (supabaseResult.success) {
+      console.log('✅ AUTH-UTILS: Supabase validation successful');
       return supabaseResult;
     }
 
     // Fallback to JWT validation for legacy tokens
+    console.log('🔍 AUTH-UTILS: Trying JWT token validation...');
     const jwtResult = await validateJWTToken(token);
+    console.log('🔍 AUTH-UTILS: JWT validation result:', {
+      success: jwtResult.success,
+      error: jwtResult.error
+    });
+
     if (jwtResult.success) {
+      console.log('✅ AUTH-UTILS: JWT validation successful');
       return jwtResult;
     }
 
-    return { success: false, error: 'Invalid authentication token' };
+    console.log('❌ AUTH-UTILS: Both Supabase and JWT validation failed');
+    return { success: false, error: `Authentication failed: Supabase(${supabaseResult.error}) JWT(${jwtResult.error})` };
 
   } catch (error) {
     return {
