@@ -36,7 +36,7 @@ export const handler: Handler = async (event, context) => {
 
   try {
     const sql = getDB();
-    const targetUserId = 30; // Missing user that needs points record
+    const targetUserId = 29; // barecloudz@gmail.com user ID
 
     console.log('🔧 INIT-USER-POINTS: Initializing user_points for user_id:', targetUserId);
 
