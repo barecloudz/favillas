@@ -93,6 +93,7 @@ const OrderSuccessPage = () => {
               // Wait for BOTH Supabase session AND user context to be available
               let sessionReady = false;
               let userReady = false;
+              let fetchedUserData = null;
               let attempts = 0;
               const maxAttempts = 10; // 5 seconds total
 
@@ -112,6 +113,7 @@ const OrderSuccessPage = () => {
                   if (!userReady) {
                     if (user && user.email) {
                       console.log('✅ User context found:', user.email);
+                      fetchedUserData = user;
                       userReady = true;
                     } else {
                       // Fallback: Fetch user profile directly from API
@@ -120,6 +122,7 @@ const OrderSuccessPage = () => {
                         const userData = await userResponse.json();
                         if (userData && userData.email) {
                           console.log('✅ User data fetched from API:', userData.email);
+                          fetchedUserData = userData;
                           userReady = true;
                         }
                       } catch (userError) {
@@ -154,8 +157,8 @@ const OrderSuccessPage = () => {
               };
 
               console.log('🛒 Creating order with confirmed data:', {
-                hasUser: !!user,
-                userEmail: user?.email,
+                hasUser: !!fetchedUserData,
+                userEmail: fetchedUserData?.email,
                 sessionReady,
                 attempts,
                 orderData: confirmedOrderData
