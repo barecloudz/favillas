@@ -558,121 +558,21 @@ export const handler: Handler = async (event, context) => {
           };
         }
       
-        // CRITICAL FIX: Pre-process user identification BEFORE any order operations
+        // SIMPLIFIED: User identification with better error handling
         let finalUserId = null;
         let finalSupabaseUserId = null;
 
-        console.log('🔍 Orders API: Starting user identification process');
-        console.log('🔍 Orders API: AUTH PAYLOAD DEBUG:', {
-          hasAuthPayload: !!authPayload,
-          isSupabase: authPayload?.isSupabase,
-          supabaseUserId: authPayload?.supabaseUserId,
-          userId: authPayload?.userId,
-          username: authPayload?.username,
-          role: authPayload?.role
-        });
-
-        // EMERGENCY BYPASS: Fix for barecloudz@gmail.com until Supabase auth is fixed
-        const isBarecloudz = orderData.phone === '8039774285' ||
-                            orderData.address?.includes('barecloudz') ||
-                            JSON.stringify(orderData).toLowerCase().includes('barecloudz');
-
-        if (isBarecloudz) {
-          // Direct assignment for barecloudz@gmail.com user
-          finalUserId = 29;
-          finalSupabaseUserId = null;
-          console.log('🚨 Orders API: EMERGENCY BYPASS - Using direct user ID 29 for barecloudz@gmail.com');
-        } else if (authPayload) {
-          if (authPayload.isSupabase) {
-            // FIXED: Use legacy user ID already found by auth utils instead of redundant lookup
-            console.log('🔄 Orders API: Using legacy user ID from auth utils (no redundant lookup needed)');
-
-            if (authPayload.hasLegacyUser && authPayload.userId) {
-              // Auth utils already found the legacy user - use it directly!
-              finalUserId = authPayload.userId;
-              finalSupabaseUserId = null;
-              console.log('✅ Orders API: Using existing legacy user ID from auth utils:', finalUserId);
-            } else {
-              // No legacy user found by auth utils - create new one
-              console.log('➕ Orders API: Creating new legacy user (auth utils found none)');
-
-              try {
-                const newLegacyUser = await sql`
-                  INSERT INTO users (
-                    username, email, role, supabase_user_id,
-                    first_name, last_name, password,
-                    created_at, updated_at
-                  ) VALUES (
-                    ${authPayload.username},
-                    ${authPayload.username},
-                    'customer',
-                    ${authPayload.supabaseUserId},
-                    ${authPayload.username.split('@')[0]},
-                    'Customer',
-                    'SUPABASE_USER',
-                    NOW(), NOW()
-                  )
-                  ON CONFLICT (email) DO UPDATE SET
-                    supabase_user_id = EXCLUDED.supabase_user_id,
-                    updated_at = NOW()
-                  RETURNING id
-                `;
-
-                if (newLegacyUser.length > 0) {
-                  finalUserId = newLegacyUser[0].id;
-                  finalSupabaseUserId = null;
-                  console.log('✅ Orders API: Created new legacy user ID:', finalUserId);
-
-                  // Initialize points for new user
-                  await sql`
-                    INSERT INTO user_points (user_id, points, total_earned, total_redeemed, created_at, updated_at)
-                    VALUES (${finalUserId}, 0, 0, 0, NOW(), NOW())
-                    ON CONFLICT (user_id) DO NOTHING
-                  `;
-                  console.log('✅ Orders API: Initialized points for new legacy user');
-                } else {
-                  // Fallback to Supabase user pattern
-                  finalSupabaseUserId = authPayload.supabaseUserId;
-                  finalUserId = null;
-                  console.log('🆘 Orders API: Fallback to Supabase pattern');
-                }
-              } catch (error) {
-                console.error('❌ Orders API: Failed to create new user, using Supabase fallback:', error);
-                finalSupabaseUserId = authPayload.supabaseUserId;
-                finalUserId = null;
-              }
-            }
-
-          } else {
-            // Legacy JWT user - use their ID directly
+        if (authPayload) {
+          // SIMPLIFIED: Always prefer legacy user ID if available
+          if (authPayload.userId) {
             finalUserId = authPayload.userId;
-            finalSupabaseUserId = null;
-            console.log('🔑 Orders API: Using legacy JWT user ID:', finalUserId);
-
-            // Ensure user record exists
-            const existingUser = await sql`SELECT id FROM users WHERE id = ${finalUserId}`;
-            if (existingUser.length === 0) {
-              console.log('⚠️ Orders API: Creating user record for legacy user');
-              await sql`
-                INSERT INTO users (
-                  id, username, email, role, password, created_at, updated_at
-                ) VALUES (
-                  ${finalUserId},
-                  ${authPayload.username || 'user'},
-                  ${authPayload.username || 'user@example.com'},
-                  'customer',
-                  'AUTH_USER',
-                  NOW(), NOW()
-                )
-                ON CONFLICT (id) DO NOTHING
-              `;
-            }
+            console.log('✅ Orders API: Using legacy user ID:', finalUserId);
+          } else if (authPayload.supabaseUserId) {
+            finalSupabaseUserId = authPayload.supabaseUserId;
+            console.log('✅ Orders API: Using Supabase user ID:', finalSupabaseUserId);
           }
         } else {
-          // Guest order
           console.log('👤 Orders API: Guest order - no user association');
-          finalUserId = null;
-          finalSupabaseUserId = null;
         }
 
         console.log('🎯 Orders API: FINAL USER IDENTIFICATION:', {
@@ -1174,154 +1074,123 @@ export const handler: Handler = async (event, context) => {
           console.log('⚠️ Orders API: No final user ID available for points awarding');
         }
 
-        // ShipDay integration for delivery orders (only after payment confirmation)
-        if (orderData.orderType === "delivery" && orderData.addressData && process.env.SHIPDAY_API_KEY && (orderData.paymentStatus === 'completed' || orderData.paymentStatus === 'succeeded')) {
+        // ASYNC: ShipDay integration and email (don't block order response)
+        setTimeout(async () => {
           try {
-            console.log('📦 Orders API: Starting ShipDay integration for delivery order');
+            // ShipDay integration for delivery orders
+            if (orderData.orderType === "delivery" && orderData.addressData && process.env.SHIPDAY_API_KEY && (orderData.paymentStatus === 'completed' || orderData.paymentStatus === 'succeeded')) {
+              console.log('📦 Orders API: Starting async ShipDay integration for order', newOrder.id);
 
-            const customerName = userContactInfo?.first_name && userContactInfo?.last_name
-              ? `${userContactInfo.first_name} ${userContactInfo.last_name}`.trim()
-              : (userContactInfo?.username || "Customer");
+              const customerName = userContactInfo?.first_name && userContactInfo?.last_name
+                ? `${userContactInfo.first_name} ${userContactInfo.last_name}`.trim()
+                : (userContactInfo?.username || "Customer");
 
-            const customerEmail = userContactInfo?.email || "";
-            const customerPhone = orderData.phone || userContactInfo?.phone || "";
+              const customerEmail = userContactInfo?.email || "";
+              const customerPhone = orderData.phone || userContactInfo?.phone || "";
 
-            // Create ShipDay order payload with correct format
-            const shipdayPayload = {
-              orderItems: transformedItems.map(item => ({
-                name: item.name || item.menu_item_name || "Menu Item",
-                unitPrice: parseFloat(item.price || item.menu_item_price || "0"),
-                quantity: parseInt(item.quantity || "1")
-              })),
-              pickup: {
-                address: {
-                  street: "123 Main St", // Update with actual restaurant address
-                  city: "Asheville",
-                  state: "NC",
-                  zip: "28801",
-                  country: "United States"
+              const shipdayPayload = {
+                orderItems: transformedItems.map(item => ({
+                  name: item.name || item.menu_item_name || "Menu Item",
+                  unitPrice: parseFloat(item.price || item.menu_item_price || "0"),
+                  quantity: parseInt(item.quantity || "1")
+                })),
+                pickup: {
+                  address: {
+                    street: "123 Main St",
+                    city: "Asheville",
+                    state: "NC",
+                    zip: "28801",
+                    country: "United States"
+                  },
+                  contactPerson: {
+                    name: "Favillas NY Pizza",
+                    phone: "5551234567"
+                  }
                 },
-                contactPerson: {
-                  name: "Favillas NY Pizza",
-                  phone: "5551234567" // Update with actual restaurant phone
-                }
-              },
-              dropoff: {
-                address: {
-                  street: orderData.addressData.street || orderData.addressData.fullAddress,
-                  city: orderData.addressData.city,
-                  state: orderData.addressData.state,
-                  zip: orderData.addressData.zipCode,
-                  country: "United States"
+                dropoff: {
+                  address: {
+                    street: orderData.addressData.street || orderData.addressData.fullAddress,
+                    city: orderData.addressData.city,
+                    state: orderData.addressData.state,
+                    zip: orderData.addressData.zipCode,
+                    country: "United States"
+                  },
+                  contactPerson: {
+                    name: customerName && customerName.trim() !== "" ? customerName.trim() : "Customer",
+                    phone: customerPhone.replace(/[^\d]/g, ''),
+                    ...(customerEmail && { email: customerEmail })
+                  }
                 },
-                contactPerson: {
-                  name: customerName && customerName.trim() !== "" ? customerName.trim() : "Customer",
-                  phone: customerPhone.replace(/[^\d]/g, ''),
-                  ...(customerEmail && { email: customerEmail })
+                orderNumber: `FAV-${newOrder.id}`,
+                totalOrderCost: parseFloat(newOrder.total),
+                paymentMethod: 'credit_card',
+                customerName: customerName && customerName.trim() !== "" ? customerName.trim() : "Customer",
+                customerPhoneNumber: customerPhone.replace(/[^\d]/g, ''),
+                customerAddress: `${orderData.addressData.street || orderData.addressData.fullAddress}, ${orderData.addressData.city}, ${orderData.addressData.state} ${orderData.addressData.zipCode}`,
+                ...(customerEmail && { customerEmail: customerEmail })
+              };
+
+              const shipdayResponse = await fetch('https://api.shipday.com/orders', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Basic ${process.env.SHIPDAY_API_KEY}`,
+                  'Accept': 'application/json',
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(shipdayPayload)
+              });
+
+              const shipdayResult = await shipdayResponse.text();
+              if (shipdayResponse.ok) {
+                const parsedResult = JSON.parse(shipdayResult);
+                if (parsedResult.success) {
+                  await sql`
+                    UPDATE orders
+                    SET shipday_order_id = ${parsedResult.orderId}, shipday_status = 'pending'
+                    WHERE id = ${newOrder.id}
+                  `;
+                  console.log(`✅ Orders API: ShipDay order created async for order #${newOrder.id}`);
                 }
-              },
-              orderNumber: `FAV-${newOrder.id}`,
-              totalOrderCost: parseFloat(newOrder.total),
-              paymentMethod: 'credit_card',
-              // Required customer fields at root level
-              customerName: customerName && customerName.trim() !== "" ? customerName.trim() : "Customer",
-              customerPhoneNumber: customerPhone.replace(/[^\d]/g, ''),
-              customerAddress: `${orderData.addressData.street || orderData.addressData.fullAddress}, ${orderData.addressData.city}, ${orderData.addressData.state} ${orderData.addressData.zipCode}`,
-              ...(customerEmail && { customerEmail: customerEmail })
-            };
-
-            console.log('📦 Orders API: Sending ShipDay payload:', JSON.stringify(shipdayPayload, null, 2));
-
-            // Call ShipDay API
-            const shipdayResponse = await fetch('https://api.shipday.com/orders', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Basic ${process.env.SHIPDAY_API_KEY}`,
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(shipdayPayload)
-            });
-
-            const shipdayResult = await shipdayResponse.text();
-            console.log(`📦 Orders API: ShipDay response status: ${shipdayResponse.status}`);
-            console.log(`📦 Orders API: ShipDay response body: ${shipdayResult}`);
-
-            if (shipdayResponse.ok) {
-              const parsedResult = JSON.parse(shipdayResult);
-              if (parsedResult.success) {
-                console.log(`✅ Orders API: ShipDay order created successfully for order #${newOrder.id}: ${parsedResult.orderId}`);
-
-                // Update order with ShipDay info
-                await sql`
-                  UPDATE orders
-                  SET shipday_order_id = ${parsedResult.orderId}, shipday_status = 'pending'
-                  WHERE id = ${newOrder.id}
-                `;
-
-                enhancedOrder.shipdayOrderId = parsedResult.orderId;
-                enhancedOrder.shipdayStatus = 'pending';
-              } else {
-                console.error(`❌ Orders API: ShipDay order creation failed for order #${newOrder.id}: ${parsedResult.response || 'Unknown error'}`);
               }
-            } else {
-              console.error(`❌ Orders API: ShipDay API error for order #${newOrder.id}: ${shipdayResponse.status} - ${shipdayResult}`);
             }
-          } catch (shipdayError: any) {
-            console.error(`❌ Orders API: ShipDay integration error for order #${newOrder.id}:`, shipdayError.message);
-            // Don't fail the order if ShipDay fails
+
+            // Send order confirmation email
+            const customerEmail = orderData.email || authPayload?.email;
+            const customerName = authPayload?.firstName || authPayload?.username || 'Valued Customer';
+
+            if (customerEmail) {
+              const emailOrderData = {
+                orderNumber: newOrder.id.toString(),
+                items: transformedItems.map(item => ({
+                  name: item.name,
+                  quantity: item.quantity,
+                  price: item.price,
+                  customizations: item.options ? Object.values(item.options).filter(Boolean) : undefined
+                })),
+                subtotal: serverCalculatedOrder.subtotal,
+                tax: serverCalculatedOrder.tax,
+                total: serverCalculatedOrder.total,
+                deliveryAddress: orderData.address || undefined,
+                estimatedTime: orderData.fulfillmentTime === 'asap' ? '30-40 minutes' :
+                             orderData.scheduledTime ? new Date(orderData.scheduledTime).toLocaleString() : '30-40 minutes',
+                paymentMethod: orderData.paymentMethod || 'Credit Card'
+              };
+
+              await fetch(`${process.env.SITE_URL || 'https://pizzaspinrewards.com'}/api/email/send-order-confirmation`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  customerEmail,
+                  customerName,
+                  orderData: emailOrderData
+                })
+              });
+              console.log('✅ Orders API: Order confirmation email sent async');
+            }
+          } catch (asyncError) {
+            console.error('❌ Orders API: Async operation failed:', asyncError);
           }
-        }
-
-        // Send order confirmation email (non-blocking)
-        try {
-          const customerEmail = orderData.email || authPayload?.email;
-          const customerName = authPayload?.firstName || authPayload?.username || 'Valued Customer';
-
-          if (customerEmail) {
-            console.log('📧 Orders API: Sending order confirmation email to:', customerEmail);
-
-            // Prepare order data for email template
-            const emailOrderData = {
-              orderNumber: newOrder.id.toString(),
-              items: transformedItems.map(item => ({
-                name: item.name,
-                quantity: item.quantity,
-                price: item.price,
-                customizations: item.options ? Object.values(item.options).filter(Boolean) : undefined
-              })),
-              subtotal: serverCalculatedOrder.subtotal,
-              tax: serverCalculatedOrder.tax,
-              total: serverCalculatedOrder.total,
-              deliveryAddress: orderData.address || undefined,
-              estimatedTime: orderData.fulfillmentTime === 'asap' ? '30-40 minutes' :
-                           orderData.scheduledTime ? new Date(orderData.scheduledTime).toLocaleString() : '30-40 minutes',
-              paymentMethod: orderData.paymentMethod || 'Credit Card'
-            };
-
-            // Send email asynchronously (don't block order completion)
-            fetch(`${process.env.SITE_URL || 'https://pizzaspinrewards.com'}/api/email/send-order-confirmation`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                customerEmail,
-                customerName,
-                orderData: emailOrderData
-              })
-            }).then(response => {
-              if (response.ok) {
-                console.log('✅ Orders API: Order confirmation email sent successfully');
-              } else {
-                console.error('❌ Orders API: Failed to send order confirmation email');
-              }
-            }).catch(error => {
-              console.error('❌ Orders API: Error sending order confirmation email:', error);
-            });
-          }
-        } catch (emailError) {
-          console.error('❌ Orders API: Non-critical email error:', emailError);
-          // Don't fail the order if email fails
-        }
+        }, 100); // 100ms delay to ensure order response is sent first
 
         console.log('✅ Orders API: Order creation completed successfully');
 

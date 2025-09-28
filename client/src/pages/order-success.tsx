@@ -90,61 +90,21 @@ const OrderSuccessPage = () => {
               // Aggressively wait for authentication to be ready
               console.log('🔑 Order creation: Waiting for authentication to be fully ready...');
 
-              // Wait for BOTH Supabase session AND user context to be available
-              let sessionReady = false;
-              let userReady = false;
-              let fetchedUserData = null;
-              let attempts = 0;
-              const maxAttempts = 10; // 5 seconds total
+              // SIMPLIFIED: Quick auth check without blocking
+              let fetchedUserData = user || null;
 
-              while ((!sessionReady || !userReady) && attempts < maxAttempts) {
+              // Only do one quick attempt to get auth info if not already available
+              if (!fetchedUserData) {
                 try {
-                  // Check Supabase session
-                  if (!sessionReady) {
-                    const { supabase } = await import('@/lib/supabase');
-                    const { data: { session } } = await supabase.auth.getSession();
-                    if (session?.access_token) {
-                      console.log('✅ Supabase session found');
-                      sessionReady = true;
-                    }
+                  const userResponse = await apiRequest('GET', '/api/user-profile');
+                  const userData = await userResponse.json();
+                  if (userData && userData.email) {
+                    fetchedUserData = userData;
+                    console.log('✅ User data fetched quickly:', userData.email);
                   }
-
-                  // Check user context or fetch directly from API
-                  if (!userReady) {
-                    if (user && user.email) {
-                      console.log('✅ User context found:', user.email);
-                      fetchedUserData = user;
-                      userReady = true;
-                    } else {
-                      // Fallback: Fetch user profile directly from API
-                      try {
-                        const userResponse = await apiRequest('GET', '/api/user-profile');
-                        const userData = await userResponse.json();
-                        if (userData && userData.email) {
-                          console.log('✅ User data fetched from API:', userData.email);
-                          fetchedUserData = userData;
-                          userReady = true;
-                        }
-                      } catch (userError) {
-                        console.log('⚠️ Failed to fetch user from API:', userError);
-                      }
-                    }
-                  }
-
-                  if (!sessionReady || !userReady) {
-                    console.log(`🔄 Waiting for auth... attempt ${attempts + 1}/${maxAttempts} (session: ${sessionReady}, user: ${userReady})`);
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    attempts++;
-                  }
-                } catch (error) {
-                  console.error('Error checking authentication:', error);
-                  await new Promise(resolve => setTimeout(resolve, 500));
-                  attempts++;
+                } catch (userError) {
+                  console.log('⚠️ Quick auth check failed, proceeding anyway:', userError);
                 }
-              }
-
-              if (!sessionReady || !userReady) {
-                console.warn('⚠️ Proceeding without full authentication after timeout:', { sessionReady, userReady });
               }
 
               console.log('🔑 Order creation: Final auth check before creating order');
@@ -159,8 +119,6 @@ const OrderSuccessPage = () => {
               console.log('🛒 Creating order with confirmed data:', {
                 hasUser: !!fetchedUserData,
                 userEmail: fetchedUserData?.email,
-                sessionReady,
-                attempts,
                 orderData: confirmedOrderData
               });
 
@@ -253,7 +211,7 @@ const OrderSuccessPage = () => {
           });
         }
       }
-    }, user ? 10000 : 2000); // Shorter timeout for guest users (2 seconds)
+    }, user ? 5000 : 2000); // Reduced timeout: 5 seconds for auth users, 2 for guests
 
     return () => clearTimeout(timeout);
   }, [isLoading, user, orderId, cartCleared, clearCart, toast]);
