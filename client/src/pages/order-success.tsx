@@ -153,22 +153,34 @@ const OrderSuccessPage = () => {
                 description: `Order #${createdOrder.id} has been placed.`,
               });
 
-              // Backup points check: Award missing points if automatic system failed
-              if (user) {
+              // GUARANTEED POINTS: Always award points after order creation
+              if (user && createdOrder?.id) {
                 setTimeout(async () => {
                   try {
-                    console.log('🔄 Order Success: Running backup points check...');
-                    const pointsResponse = await apiRequest('POST', '/api/award-missing-points');
+                    console.log('🎯 Order Success: Ensuring points are awarded for Order', createdOrder.id);
+                    const pointsResponse = await apiRequest('POST', '/api/award-points-for-order', {
+                      orderId: createdOrder.id
+                    });
                     const pointsResult = await pointsResponse.json();
-                    if (pointsResult.pointsAwarded > 0) {
-                      console.log('✅ Order Success: Backup points awarded:', pointsResult.pointsAwarded);
-                      // Invalidate rewards queries to refresh points display
+
+                    if (pointsResult.success) {
+                      if (pointsResult.alreadyAwarded) {
+                        console.log('✅ Order Success: Points already awarded for this order');
+                      } else {
+                        console.log('✅ Order Success: Points awarded:', pointsResult.pointsAwarded);
+                        // Show success message
+                        toast({
+                          title: "Points Earned!",
+                          description: `You earned ${pointsResult.pointsAwarded} points for this order!`,
+                        });
+                      }
+                      // Always refresh points display
                       queryClient.invalidateQueries({ queryKey: ['/api/user-rewards'] });
                     }
                   } catch (pointsError) {
-                    console.warn('⚠️ Order Success: Backup points check failed:', pointsError);
+                    console.warn('⚠️ Order Success: Points award failed:', pointsError);
                   }
-                }, 2000); // Wait 2 seconds after order creation
+                }, 3000); // Wait 3 seconds after order creation to ensure it's fully processed
               }
             } catch (error) {
               console.error('💥 Error creating order:', error);
