@@ -38,18 +38,37 @@ export const handler: Handler = async (event, context) => {
   try {
     const sql = getDB();
     const legacyUserId = 29; // From the logs: user_id: 29
+    const supabaseUserId = 'fc644776-1ca0-46ad-ae6c-8f753478374b'; // From previous debug
 
-    console.log('🔍 Debug: Checking points data for legacy user:', legacyUserId);
+    console.log('🔍 Debug: Checking points data for both user types');
 
     // Get user points record for legacy user
     const userPointsLegacy = await sql`
       SELECT * FROM user_points WHERE user_id = ${legacyUserId}
     `;
 
-    // Get all points transactions for this user
+    // Get user points record for Supabase user
+    const userPointsSupabase = await sql`
+      SELECT * FROM user_points WHERE supabase_user_id = ${supabaseUserId}
+    `;
+
+    // Get ALL user_points records that might be related
+    const allUserPoints = await sql`
+      SELECT * FROM user_points
+      WHERE user_id = ${legacyUserId} OR supabase_user_id = ${supabaseUserId}
+    `;
+
+    // Get all points transactions for legacy user
     const pointsTransactionsLegacy = await sql`
       SELECT * FROM points_transactions
       WHERE user_id = ${legacyUserId}
+      ORDER BY created_at DESC
+    `;
+
+    // Get all points transactions for Supabase user
+    const pointsTransactionsSupabase = await sql`
+      SELECT * FROM points_transactions
+      WHERE supabase_user_id = ${supabaseUserId}
       ORDER BY created_at DESC
     `;
 
@@ -85,8 +104,12 @@ export const handler: Handler = async (event, context) => {
       headers,
       body: JSON.stringify({
         legacy_user_id: legacyUserId,
-        user_points: userPointsLegacy,
-        points_transactions: pointsTransactionsLegacy,
+        supabase_user_id: supabaseUserId,
+        user_points_legacy: userPointsLegacy,
+        user_points_supabase: userPointsSupabase,
+        all_user_points: allUserPoints,
+        points_transactions_legacy: pointsTransactionsLegacy.slice(0, 5), // First 5 for brevity
+        points_transactions_supabase: pointsTransactionsSupabase.slice(0, 5),
         recent_orders: ordersLegacy,
         order_196: order196,
         order_196_points: order196Points,
@@ -94,11 +117,15 @@ export const handler: Handler = async (event, context) => {
         missing_points_orders: orderIds.filter(id => !ordersWithPoints.find(o => o.order_id === id)),
         analysis: {
           total_orders: ordersLegacy.length,
-          total_transactions: pointsTransactionsLegacy.length,
-          current_points: userPointsLegacy[0]?.points || 0,
-          total_earned: userPointsLegacy[0]?.total_earned || 0,
+          legacy_transactions: pointsTransactionsLegacy.length,
+          supabase_transactions: pointsTransactionsSupabase.length,
+          legacy_points: userPointsLegacy[0]?.points || 0,
+          supabase_points: userPointsSupabase[0]?.points || 0,
+          total_points_records: allUserPoints.length,
+          combined_points: (userPointsLegacy[0]?.points || 0) + (userPointsSupabase[0]?.points || 0),
           order_196_exists: order196.length > 0,
-          order_196_has_points: order196Points.length > 0
+          order_196_has_points: order196Points.length > 0,
+          discrepancy_explanation: "Check if frontend reads from different source or sums multiple records"
         }
       })
     };
