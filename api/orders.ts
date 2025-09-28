@@ -574,37 +574,19 @@ export const handler: Handler = async (event, context) => {
 
         if (authPayload) {
           if (authPayload.isSupabase) {
-            // STEP 1: Convert Supabase user to legacy user ID - this is CRITICAL for points
-            console.log('🔄 Orders API: MANDATORY Supabase to Legacy conversion for points system');
+            // FIXED: Use legacy user ID already found by auth utils instead of redundant lookup
+            console.log('🔄 Orders API: Using legacy user ID from auth utils (no redundant lookup needed)');
 
-            try {
-              // Look for existing legacy user by email
-              console.log('📧 Orders API: Searching for legacy user with email:', authPayload.username);
-              const existingLegacyUser = await sql`
-                SELECT id, email, supabase_user_id FROM users
-                WHERE LOWER(TRIM(email)) = LOWER(TRIM(${authPayload.username}))
-                LIMIT 1
-              `;
+            if (authPayload.hasLegacyUser && authPayload.userId) {
+              // Auth utils already found the legacy user - use it directly!
+              finalUserId = authPayload.userId;
+              finalSupabaseUserId = null;
+              console.log('✅ Orders API: Using existing legacy user ID from auth utils:', finalUserId);
+            } else {
+              // No legacy user found by auth utils - create new one
+              console.log('➕ Orders API: Creating new legacy user (auth utils found none)');
 
-              if (existingLegacyUser.length > 0) {
-                // Found existing legacy user - use their ID
-                finalUserId = existingLegacyUser[0].id;
-                finalSupabaseUserId = null; // CRITICAL: Use legacy pattern
-                console.log('✅ Orders API: Using existing legacy user ID:', finalUserId);
-
-                // Ensure Supabase link is established
-                if (!existingLegacyUser[0].supabase_user_id) {
-                  await sql`
-                    UPDATE users
-                    SET supabase_user_id = ${authPayload.supabaseUserId}, updated_at = NOW()
-                    WHERE id = ${finalUserId}
-                  `;
-                  console.log('🔗 Orders API: Linked legacy user to Supabase');
-                }
-              } else {
-                // Create new legacy user record for this Supabase user
-                console.log('➕ Orders API: Creating new legacy user for Supabase user');
-
+              try {
                 const newLegacyUser = await sql`
                   INSERT INTO users (
                     username, email, role, supabase_user_id,
@@ -628,7 +610,7 @@ export const handler: Handler = async (event, context) => {
 
                 if (newLegacyUser.length > 0) {
                   finalUserId = newLegacyUser[0].id;
-                  finalSupabaseUserId = null; // CRITICAL: Use legacy pattern
+                  finalSupabaseUserId = null;
                   console.log('✅ Orders API: Created new legacy user ID:', finalUserId);
 
                   // Initialize points for new user
@@ -639,16 +621,16 @@ export const handler: Handler = async (event, context) => {
                   `;
                   console.log('✅ Orders API: Initialized points for new legacy user');
                 } else {
-                  throw new Error('Failed to create legacy user record');
+                  // Fallback to Supabase user pattern
+                  finalSupabaseUserId = authPayload.supabaseUserId;
+                  finalUserId = null;
+                  console.log('🆘 Orders API: Fallback to Supabase pattern');
                 }
+              } catch (error) {
+                console.error('❌ Orders API: Failed to create new user, using Supabase fallback:', error);
+                finalSupabaseUserId = authPayload.supabaseUserId;
+                finalUserId = null;
               }
-
-            } catch (conversionError) {
-              console.error('❌ Orders API: CRITICAL - Supabase to legacy conversion failed:', conversionError);
-              // EMERGENCY FALLBACK - still try to award points with Supabase ID
-              finalSupabaseUserId = authPayload.supabaseUserId;
-              finalUserId = null;
-              console.log('🆘 Orders API: Emergency fallback to Supabase ID:', finalSupabaseUserId);
             }
 
           } else {
