@@ -1,5 +1,5 @@
-import { Handler } from '@netlify/functions';
-import postgres from 'postgres';
+import { Handler } from "@netlify/functions";
+import postgres from "postgres";
 
 let dbConnection: any = null;
 
@@ -7,8 +7,8 @@ function getDB() {
   if (dbConnection) return dbConnection;
 
   const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL environment variable is required');
+  if (\!databaseUrl) {
+    throw new Error("DATABASE_URL environment variable is required");
   }
 
   dbConnection = postgres(databaseUrl, {
@@ -24,113 +24,146 @@ function getDB() {
 
 export const handler: Handler = async (event, context) => {
   const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Content-Type': 'application/json',
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Content-Type": "application/json",
   };
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
-  }
-
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: 'Method not allowed' })
-    };
+  if (event.httpMethod === "OPTIONS") {
+    return { statusCode: 200, headers, body: "" };
   }
 
   try {
     const sql = getDB();
-    const correctUserId = 'fc644776-1ca0-46ad-ae6c-8f753478374b';
+    const targetSupabaseId = "fc644776-1ca0-46ad-ae6c-8f753478374b";
+    const targetUserId = 29;
 
-    console.log('🔧 Consolidating points records for user:', correctUserId);
+    console.log("🔧 CONSOLIDATE: Starting consolidation for user_id 29 and supabase_user_id:", targetSupabaseId);
 
-    // Perform consolidation in a transaction
-    const result = await sql.begin(async (sql) => {
-      // Get all points records for this user
-      const allPointsRecords = await sql`
-        SELECT * FROM user_points WHERE supabase_user_id = ${correctUserId}
-        ORDER BY created_at ASC
-      `;
+    // Get all existing user_points records for this user
+    const allRecords = await sql`
+      SELECT id, user_id, supabase_user_id, points, total_earned, total_redeemed, created_at, updated_at
+      FROM user_points
+      WHERE supabase_user_id = ${targetSupabaseId} OR user_id = ${targetUserId}
+      ORDER BY created_at ASC
+    `;
 
-      if (allPointsRecords.length <= 1) {
-        return {
-          message: 'No consolidation needed',
-          recordsFound: allPointsRecords.length,
-          finalRecord: allPointsRecords[0] || null
-        };
-      }
+    console.log("📊 Found records to consolidate:", allRecords.length);
 
-      // Calculate totals
-      const totalPoints = allPointsRecords.reduce((sum, record) => sum + (record.points || 0), 0);
-      const totalEarned = allPointsRecords.reduce((sum, record) => sum + (record.total_earned || 0), 0);
-      const totalRedeemed = allPointsRecords.reduce((sum, record) => sum + (record.total_redeemed || 0), 0);
-      const lastEarnedAt = allPointsRecords.reduce((latest, record) => {
-        return record.last_earned_at > latest ? record.last_earned_at : latest;
-      }, allPointsRecords[0].last_earned_at);
-
-      // Keep the first record and update it with consolidated totals
-      const keepRecord = allPointsRecords[0];
-      await sql`
-        UPDATE user_points
-        SET points = ${totalPoints},
-            total_earned = ${totalEarned},
-            total_redeemed = ${totalRedeemed},
-            last_earned_at = ${lastEarnedAt},
-            updated_at = NOW()
-        WHERE id = ${keepRecord.id}
-      `;
-
-      // Delete the duplicate records
-      const recordsToDelete = allPointsRecords.slice(1);
-      for (const record of recordsToDelete) {
-        await sql`
-          DELETE FROM user_points WHERE id = ${record.id}
-        `;
-      }
-
-      // Get the final consolidated record
-      const finalRecord = await sql`
-        SELECT * FROM user_points WHERE supabase_user_id = ${correctUserId}
-      `;
-
+    if (allRecords.length === 0) {
       return {
-        message: 'Consolidation successful',
-        originalRecords: allPointsRecords.length,
-        recordsDeleted: recordsToDelete.length,
-        consolidatedTotals: {
-          points: totalPoints,
-          totalEarned: totalEarned,
-          totalRedeemed: totalRedeemed
-        },
-        finalRecord: finalRecord[0]
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: true,
+          message: "No records found to consolidate",
+          action: "none"
+        })
       };
+    }
+
+    // Calculate totals from all records
+    const totalPoints = allRecords.reduce((sum, record) => sum + parseInt(record.points || 0), 0);
+    const totalEarned = allRecords.reduce((sum, record) => sum + parseInt(record.total_earned || 0), 0);
+    const totalRedeemed = allRecords.reduce((sum, record) => sum + parseInt(record.total_redeemed || 0), 0);
+    const earliestCreated = allRecords[0].created_at;
+    const latestUpdated = allRecords[allRecords.length - 1].updated_at;
+
+    console.log("📊 Consolidation totals:", {
+      totalPoints,
+      totalEarned,
+      totalRedeemed,
+      recordCount: allRecords.length
     });
 
-    console.log('✅ Points consolidation completed');
+    // Begin transaction
+    await sql.begin(async (tx) => {
+      // Delete ALL existing records
+      const deletedRecords = await tx`
+        DELETE FROM user_points
+        WHERE supabase_user_id = ${targetSupabaseId} OR user_id = ${targetUserId}
+        RETURNING id
+      `;
+
+      console.log("🗑️ Deleted old records:", deletedRecords.length);
+
+      // Create ONE consolidated record linked to BOTH user_id AND supabase_user_id
+      const consolidatedRecord = await tx`
+        INSERT INTO user_points (
+          user_id,
+          supabase_user_id,
+          points,
+          total_earned,
+          total_redeemed,
+          created_at,
+          updated_at,
+          last_earned_at
+        ) VALUES (
+          ${targetUserId},
+          ${targetSupabaseId},
+          ${totalPoints},
+          ${totalEarned},
+          ${totalRedeemed},
+          ${earliestCreated},
+          NOW(),
+          ${latestUpdated}
+        )
+        RETURNING *
+      `;
+
+      console.log("✅ Created consolidated record:", consolidatedRecord[0]);
+
+      // Update the users table rewards column to match
+      await tx`
+        UPDATE users
+        SET rewards = ${totalPoints}, updated_at = NOW()
+        WHERE id = ${targetUserId}
+      `;
+
+      console.log("✅ Updated users.rewards column");
+
+      return consolidatedRecord[0];
+    });
+
+    // Verify the consolidation worked
+    const finalCheck = await sql`
+      SELECT * FROM user_points
+      WHERE supabase_user_id = ${targetSupabaseId} OR user_id = ${targetUserId}
+    `;
+
+    const userRewardsCheck = await sql`
+      SELECT rewards FROM users WHERE id = ${targetUserId}
+    `;
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         success: true,
-        userId: correctUserId,
-        result,
-        timestamp: new Date().toISOString()
+        message: "User points consolidated successfully",
+        consolidation: {
+          originalRecords: allRecords.length,
+          totalPointsConsolidated: totalPoints,
+          totalEarnedConsolidated: totalEarned,
+          totalRedeemedConsolidated: totalRedeemed,
+          finalRecordCount: finalCheck.length,
+          finalPoints: finalCheck[0]?.points || 0,
+          userRewardsColumn: userRewardsCheck[0]?.rewards || 0
+        },
+        deletedRecordIds: allRecords.map(r => r.id),
+        finalRecord: finalCheck[0] || null
       })
     };
 
   } catch (error) {
-    console.error('❌ Points consolidation failed:', error);
+    console.error("🔧 CONSOLIDATE: Error:", error);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        error: 'Points consolidation failed',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: "Failed to consolidate user points",
+        details: error instanceof Error ? error.message : "Unknown error"
       })
     };
   }
