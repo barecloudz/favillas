@@ -250,13 +250,14 @@ export const handler: Handler = async (event, context) => {
       });
 
       authPayload = {
-        // FIXED: Handle both JWT users (id as integer) and Supabase users (id as UUID)
-        // JWT tokens return userId as string, so parse it for legacy users
-        userId: authResult.user.legacyUserId || authResult.user.id,
-        supabaseUserId: authResult.user.id && isNaN(Number(authResult.user.id)) ? authResult.user.id : null,
+        // CRITICAL FIX: Determine user type based on auth source, not ID format
+        // Auth utils return legacyUserId when they find a legacy user record
+        userId: authResult.user.legacyUserId, // Always use legacy ID if available
+        supabaseUserId: authResult.user.id, // Always store Supabase UUID
         username: authResult.user.email || authResult.user.username || 'user',
         role: authResult.user.role || 'customer',
-        isSupabase: authResult.user.id && isNaN(Number(authResult.user.id)),
+        // FIXED: Use presence of legacyUserId to determine user type, not ID format
+        isSupabase: !authResult.user.legacyUserId, // If no legacy user found, treat as Supabase-only
         hasLegacyUser: !!authResult.user.legacyUserId, // Track if we found legacy user
         rawUserId: authResult.user.id // Store the raw ID for debugging
       };
@@ -316,13 +317,23 @@ export const handler: Handler = async (event, context) => {
           // Staff can see any order
           orderQuery = await sql`SELECT * FROM orders WHERE id = ${orderId}`;
         } else {
-          // Customers can only see their own orders
-          if (authPayload.isSupabase) {
-            // Use supabase_user_id for Supabase users
+          // CRITICAL FIX: Customers can only see their own orders
+          console.log('🔍 Orders API: Single order lookup for user:', {
+            orderId,
+            hasLegacyUserId: !!authPayload.userId,
+            legacyUserId: authPayload.userId,
+            supabaseUserId: authPayload.supabaseUserId
+          });
+
+          if (authPayload.hasLegacyUser && authPayload.userId) {
+            // User has legacy account - search by user_id
+            orderQuery = await sql`SELECT * FROM orders WHERE id = ${orderId} AND user_id = ${authPayload.userId}`;
+          } else if (authPayload.supabaseUserId) {
+            // Supabase-only user - search by supabase_user_id
             orderQuery = await sql`SELECT * FROM orders WHERE id = ${orderId} AND supabase_user_id = ${authPayload.supabaseUserId}`;
           } else {
-            // Use user_id for legacy users
-            orderQuery = await sql`SELECT * FROM orders WHERE id = ${orderId} AND user_id = ${authPayload.userId}`;
+            console.log('❌ Orders API: No valid user identifier for single order lookup');
+            orderQuery = [];
           }
         }
 
@@ -424,13 +435,26 @@ export const handler: Handler = async (event, context) => {
         console.log('📋 Orders API: Getting all orders (staff access)');
         allOrders = await sql`SELECT * FROM orders ORDER BY created_at DESC`;
       } else {
-        // Customers can only see their own orders
-        if (authPayload.isSupabase) {
-          console.log('📋 Orders API: Getting orders for Supabase user:', authPayload.supabaseUserId);
+        // CRITICAL FIX: Customers can only see their own orders
+        // Use comprehensive query to find orders by any available identifier
+        console.log('📋 Orders API: Getting orders for user:', {
+          hasLegacyUserId: !!authPayload.userId,
+          legacyUserId: authPayload.userId,
+          supabaseUserId: authPayload.supabaseUserId,
+          isSupabaseUser: authPayload.isSupabase
+        });
+
+        if (authPayload.hasLegacyUser && authPayload.userId) {
+          // User has legacy account - search by user_id
+          console.log('📋 Orders API: Searching by legacy user_id:', authPayload.userId);
+          allOrders = await sql`SELECT * FROM orders WHERE user_id = ${authPayload.userId} ORDER BY created_at DESC`;
+        } else if (authPayload.supabaseUserId) {
+          // Supabase-only user - search by supabase_user_id
+          console.log('📋 Orders API: Searching by supabase_user_id:', authPayload.supabaseUserId);
           allOrders = await sql`SELECT * FROM orders WHERE supabase_user_id = ${authPayload.supabaseUserId} ORDER BY created_at DESC`;
         } else {
-          console.log('📋 Orders API: Getting orders for legacy user:', authPayload.userId);
-          allOrders = await sql`SELECT * FROM orders WHERE user_id = ${authPayload.userId} ORDER BY created_at DESC`;
+          console.log('❌ Orders API: No valid user identifier found');
+          allOrders = [];
         }
       }
       

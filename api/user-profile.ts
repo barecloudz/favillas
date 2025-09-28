@@ -1,7 +1,7 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
 import jwt from 'jsonwebtoken';
-import { authenticateToken } from './_shared/auth';
+import { authenticateToken as authenticateTokenFromUtils } from './utils/auth';
 
 let dbConnection: any = null;
 
@@ -44,8 +44,14 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
-  const authPayload = await authenticateToken(event);
-  if (!authPayload) {
+  // CRITICAL FIX: Use new auth utils for consistent user identification
+  const authResult = await authenticateTokenFromUtils(
+    event.headers.authorization || event.headers.Authorization,
+    event.headers.cookie || event.headers.Cookie
+  );
+
+  if (!authResult.success) {
+    console.log('❌ User Profile API: Authentication failed:', authResult.error);
     return {
       statusCode: 401,
       headers,
@@ -53,17 +59,43 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
+  // Create consistent authPayload similar to orders API
+  const authPayload = {
+    userId: authResult.user.legacyUserId, // Always use legacy ID if available
+    supabaseUserId: authResult.user.id, // Always store Supabase UUID
+    username: authResult.user.email || authResult.user.username || 'user',
+    role: authResult.user.role || 'customer',
+    isSupabase: !authResult.user.legacyUserId, // If no legacy user found, treat as Supabase-only
+    hasLegacyUser: !!authResult.user.legacyUserId, // Track if we found legacy user
+  };
+
+  console.log('🔍 User Profile API: Created authPayload:', JSON.stringify(authPayload, null, 2));
+
   try {
     const sql = getDB();
 
     if (event.httpMethod === 'GET') {
-      // Get user profile - support both authentication types
+      // CRITICAL FIX: Get user profile with consistent logic matching orders API
       let user;
 
-      if (authPayload.isSupabase && authPayload.supabaseUserId) {
-        console.log('📝 Getting Supabase user profile:', authPayload.supabaseUserId);
+      console.log('📝 User Profile API: Getting profile for user:', {
+        hasLegacyUserId: !!authPayload.userId,
+        legacyUserId: authPayload.userId,
+        supabaseUserId: authPayload.supabaseUserId,
+        isSupabaseUser: authPayload.isSupabase
+      });
 
-        // Get the most recent user record in case of duplicates
+      if (authPayload.hasLegacyUser && authPayload.userId) {
+        // User has legacy account - search by user_id
+        console.log('📝 User Profile API: Getting legacy user profile:', authPayload.userId);
+        user = await sql`
+          SELECT id, username, email, phone, address, city, state, zip_code, role, created_at, supabase_user_id, first_name, last_name
+          FROM users
+          WHERE id = ${authPayload.userId}
+        `;
+      } else if (authPayload.supabaseUserId) {
+        // Supabase-only user - search by supabase_user_id
+        console.log('📝 User Profile API: Getting Supabase user profile:', authPayload.supabaseUserId);
         user = await sql`
           SELECT id, username, email, phone, address, city, state, zip_code, role, created_at, supabase_user_id, first_name, last_name
           FROM users
@@ -71,20 +103,8 @@ export const handler: Handler = async (event, context) => {
           ORDER BY created_at DESC, id DESC
           LIMIT 1
         `;
-
-        console.log('📝 Found user records count for supabase_user_id:', user.length);
-        if (user.length > 0) {
-          console.log('📝 Using user record:', { id: user[0].id, username: user[0].username, email: user[0].email });
-        }
-      } else if (authPayload.userId) {
-        console.log('📝 Getting legacy user profile:', authPayload.userId);
-        user = await sql`
-          SELECT id, username, email, phone, address, city, state, zip_code, role, created_at
-          FROM users
-          WHERE id = ${authPayload.userId}
-        `;
       } else {
-        console.log('❌ No valid user ID found in auth payload:', authPayload);
+        console.log('❌ User Profile API: No valid user identifier found in auth payload:', authPayload);
         return {
           statusCode: 400,
           headers,
@@ -169,10 +189,26 @@ export const handler: Handler = async (event, context) => {
         };
       }
 
+      // CRITICAL FIX: Add correct authentication type information for frontend
+      const userProfile = {
+        ...user[0],
+        // Fix authentication type detection - should be based on how they logged in, not just having a supabase_user_id
+        isGoogleUser: authPayload.isSupabase && !authPayload.hasLegacyUser,
+        authenticationSource: authPayload.hasLegacyUser ? 'legacy' : 'supabase',
+        canChangePassword: authPayload.hasLegacyUser // Only legacy users can change password
+      };
+
+      console.log('✅ User Profile API: Returning profile with auth info:', {
+        userId: userProfile.id,
+        isGoogleUser: userProfile.isGoogleUser,
+        authenticationSource: userProfile.authenticationSource,
+        canChangePassword: userProfile.canChangePassword
+      });
+
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify(user[0])
+        body: JSON.stringify(userProfile)
       };
 
     } else if (event.httpMethod === 'PATCH') {
@@ -188,7 +224,31 @@ export const handler: Handler = async (event, context) => {
         rawBody: event.body
       });
 
-      if (authPayload.isSupabase && authPayload.supabaseUserId) {
+      // CRITICAL FIX: Update user profile with consistent logic matching orders API
+      let updatedUser;
+
+      if (authPayload.hasLegacyUser && authPayload.userId) {
+        // User has legacy account - update by user_id
+        console.log('🔄 User Profile API: Updating legacy user profile:', authPayload.userId);
+        updatedUser = await sql`
+          UPDATE users
+          SET
+            first_name = ${first_name},
+            last_name = ${last_name},
+            email = ${email},
+            phone = ${phone},
+            address = ${address},
+            city = ${city},
+            state = ${state},
+            zip_code = ${zip_code},
+            updated_at = NOW()
+          WHERE id = ${authPayload.userId}
+          RETURNING *
+        `;
+      } else if (authPayload.supabaseUserId) {
+        // Supabase-only user - update by supabase_user_id
+        console.log('🔄 User Profile API: Updating Supabase user profile:', authPayload.supabaseUserId);
+
         // Handle Supabase user profile update - get most recent record
         const existingSupabaseUser = await sql`
           SELECT id, username, email, first_name, last_name FROM users
