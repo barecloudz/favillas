@@ -565,13 +565,14 @@ export const handler: Handler = async (event, context) => {
         if (authPayload) {
           console.log('🔍 Orders API: AUTH PAYLOAD DEBUG:', authPayload);
 
-          // FIXED: Always prefer Supabase user ID for Google OAuth users
-          if (authPayload.supabaseUserId) {
-            finalSupabaseUserId = authPayload.supabaseUserId;
-            console.log('✅ Orders API: Using Supabase user ID:', finalSupabaseUserId);
-          } else if (authPayload.userId) {
+          // UNIFIED: Always prefer user_id (unified system) over supabase_user_id
+          if (authPayload.userId) {
             finalUserId = authPayload.userId;
-            console.log('✅ Orders API: Using legacy user ID:', finalUserId);
+            console.log('✅ Orders API: Using unified user ID:', finalUserId);
+          } else if (authPayload.supabaseUserId) {
+            // Fallback for old Supabase-only users
+            finalSupabaseUserId = authPayload.supabaseUserId;
+            console.log('✅ Orders API: Using Supabase user ID (legacy):', finalSupabaseUserId);
           }
         } else {
           console.log('👤 Orders API: Guest order - no user association');

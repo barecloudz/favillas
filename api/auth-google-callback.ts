@@ -64,17 +64,25 @@ export const handler: Handler = async (event, context) => {
         userId = newUsers[0].id;
         // New user created
 
-        // Initialize user points
+        // Initialize user points using same system as traditional registration
         try {
           await withDB(async (sql) => {
+            // Create user_points record with proper schema
             await sql`
-              INSERT INTO user_points (user_id, points_earned, points_redeemed, transaction_type, description, created_at)
-              VALUES (${userId}, 0, 0, 'earned', 'Account created', NOW())
+              INSERT INTO user_points (user_id, points, total_earned, total_redeemed, created_at, updated_at)
+              VALUES (${userId}, 0, 0, 0, NOW(), NOW())
+            `;
+
+            // Create initial transaction record for audit trail
+            await sql`
+              INSERT INTO points_transactions (user_id, type, points, description, created_at)
+              VALUES (${userId}, 'signup', 0, 'Google OAuth account created with 0 points', NOW())
             `;
           });
-          // User points initialized
+          console.log('✅ OAuth: User points initialized for user', userId);
         } catch (pointsError) {
-          // Points initialization failed - continue with login
+          console.error('❌ OAuth: Points initialization failed:', pointsError);
+          // Continue with login even if points fail
         }
       }
 

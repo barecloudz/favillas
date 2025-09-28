@@ -131,22 +131,27 @@ export const handler: Handler = async (event, context) => {
 
     let rewardsData;
 
-    if (authPayload.isSupabase) {
-      // Handle Supabase user (Google OAuth)
-      console.log('🔑 Processing Supabase user rewards:', authPayload.supabaseUserId);
+    // UNIFIED: Check if user has unified account first, regardless of auth type
+    let hasUnifiedAccount = false;
+    if (authPayload.userId) {
+      hasUnifiedAccount = true;
+    }
 
-      // Get user's current points using supabase_user_id (aggregate if multiple records)
-      console.log('🔍 Querying user_points for supabaseUserId:', authPayload.supabaseUserId);
+    if (hasUnifiedAccount) {
+      // Handle unified user account (preferred system)
+      console.log('🔑 Processing unified user rewards:', authPayload.userId);
+
+      // Get user's current points using user_id (unified system)
+      console.log('🔍 Querying user_points for userId:', authPayload.userId);
       const userPointsRecord = await sql`
         SELECT
-          SUM(points) as points,
-          SUM(total_earned) as total_earned,
-          SUM(total_redeemed) as total_redeemed,
-          MAX(last_earned_at) as last_earned_at,
-          MAX(updated_at) as updated_at
+          points,
+          total_earned,
+          total_redeemed,
+          last_earned_at,
+          updated_at
         FROM user_points
-        WHERE supabase_user_id = ${authPayload.supabaseUserId}
-        GROUP BY supabase_user_id
+        WHERE user_id = ${authPayload.userId}
       `;
       console.log('🔍 User points query result:', userPointsRecord.length, 'records found');
 
@@ -155,49 +160,22 @@ export const handler: Handler = async (event, context) => {
       }
 
       if (userPointsRecord.length === 0) {
-        console.log('📋 No user_points record found for Supabase user, creating one');
+        console.log('📋 No user_points record found for unified user, creating one');
 
-        // First ensure user exists in users table
-        const userExists = await sql`
-          SELECT id FROM users WHERE supabase_user_id = ${authPayload.supabaseUserId}
+        // Create user_points record for unified user
+        await sql`
+          INSERT INTO user_points (user_id, points, total_earned, total_redeemed, created_at, updated_at)
+          VALUES (${authPayload.userId}, 0, 0, 0, NOW(), NOW())
+          ON CONFLICT (user_id) DO NOTHING
         `;
 
-        if (userExists.length === 0) {
-          // Create user record
-          await sql`
-            INSERT INTO users (
-              supabase_user_id, username, email, first_name, last_name, password, role,
-              is_admin, is_active, marketing_opt_in, rewards, created_at, updated_at
-            ) VALUES (
-              ${authPayload.supabaseUserId}, ${authPayload.username}, ${authPayload.username},
-              'User', 'Name', 'GOOGLE_USER', 'customer', false, true, false, 0, NOW(), NOW()
-            )
-            ON CONFLICT (supabase_user_id) DO NOTHING
-          `;
-          console.log('✅ Created Supabase user record');
-        }
-
-        // Create user_points record only if none exists
-        const existingPointsRecord = await sql`
-          SELECT * FROM user_points WHERE supabase_user_id = ${authPayload.supabaseUserId}
+        // Create initial transaction
+        await sql`
+          INSERT INTO points_transactions (user_id, type, points, description, created_at)
+          VALUES (${authPayload.userId}, 'signup', 0, 'Unified user account points initialized', NOW())
         `;
 
-        if (existingPointsRecord.length === 0) {
-          await sql`
-            INSERT INTO user_points (supabase_user_id, points, total_earned, total_redeemed, created_at, updated_at)
-            VALUES (${authPayload.supabaseUserId}, 0, 0, 0, NOW(), NOW())
-          `;
-        }
-
-        // Create initial transaction only if no points record existed
-        if (existingPointsRecord.length === 0) {
-          await sql`
-            INSERT INTO points_transactions (supabase_user_id, type, points, description, created_at)
-            VALUES (${authPayload.supabaseUserId}, 'signup', 0, 'Supabase user account created with 0 points', NOW())
-          `;
-        }
-
-        console.log('✅ Initialized Supabase user points');
+        console.log('✅ Initialized unified user points');
 
         rewardsData = {
           points: 0,
@@ -208,8 +186,12 @@ export const handler: Handler = async (event, context) => {
         };
       } else {
         rewardsData = userPointsRecord[0];
-        console.log('✅ Retrieved Supabase user rewards data:', rewardsData);
+        console.log('✅ Retrieved unified user rewards data:', rewardsData);
       }
+
+    } else if (authPayload.isSupabase) {
+      // Handle legacy Supabase-only users (fallback)
+      console.log('🔑 Processing legacy Supabase user rewards:', authPayload.supabaseUserId);
 
     } else {
       // Handle legacy user (traditional authentication)
