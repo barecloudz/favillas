@@ -241,7 +241,10 @@ export const handler: Handler = async (event, context) => {
     if (authResult.success && authResult.user) {
       authPayload = {
         // FIXED: Handle both JWT users (id as integer) and Supabase users (id as UUID)
-        userId: authResult.user.legacyUserId || (typeof authResult.user.id === 'number' ? authResult.user.id : null),
+        // JWT tokens return userId as string, so parse it for legacy users
+        userId: authResult.user.legacyUserId ||
+                (typeof authResult.user.id === 'number' ? authResult.user.id :
+                 (!isNaN(Number(authResult.user.id)) ? parseInt(authResult.user.id) : null)),
         supabaseUserId: authResult.user.id && isNaN(Number(authResult.user.id)) ? authResult.user.id : null,
         username: authResult.user.email || authResult.user.username || 'user',
         role: authResult.user.role || 'customer',
