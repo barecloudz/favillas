@@ -563,13 +563,29 @@ export const handler: Handler = async (event, context) => {
         let finalSupabaseUserId = null;
 
         if (authPayload) {
-          // SIMPLIFIED: Always prefer legacy user ID if available
+          console.log('🔍 Orders API: AUTH PAYLOAD DEBUG:', authPayload);
+
+          // FIXED: Use the same logic as order creation for user identification
           if (authPayload.userId) {
             finalUserId = authPayload.userId;
             console.log('✅ Orders API: Using legacy user ID:', finalUserId);
           } else if (authPayload.supabaseUserId) {
-            finalSupabaseUserId = authPayload.supabaseUserId;
-            console.log('✅ Orders API: Using Supabase user ID:', finalSupabaseUserId);
+            // For Supabase users, check if they have a linked legacy account
+            try {
+              const linkedUser = await sql`
+                SELECT id FROM users WHERE supabase_user_id = ${authPayload.supabaseUserId}
+              `;
+              if (linkedUser.length > 0) {
+                finalUserId = linkedUser[0].id;
+                console.log('✅ Orders API: Found linked legacy user ID:', finalUserId);
+              } else {
+                finalSupabaseUserId = authPayload.supabaseUserId;
+                console.log('✅ Orders API: Using Supabase user ID:', finalSupabaseUserId);
+              }
+            } catch (error) {
+              console.error('❌ Orders API: Error finding linked user:', error);
+              finalSupabaseUserId = authPayload.supabaseUserId;
+            }
           }
         } else {
           console.log('👤 Orders API: Guest order - no user association');
