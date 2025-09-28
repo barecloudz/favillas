@@ -239,12 +239,20 @@ export const handler: Handler = async (event, context) => {
     });
 
     if (authResult.success && authResult.user) {
+      // Debug the user ID type and value
+      console.log('🔍 Orders API: USER ID DEBUG:', {
+        rawId: authResult.user.id,
+        typeOfId: typeof authResult.user.id,
+        legacyUserId: authResult.user.legacyUserId,
+        isNumber: typeof authResult.user.id === 'number',
+        isNaN: isNaN(Number(authResult.user.id)),
+        parsedValue: parseInt(authResult.user.id)
+      });
+
       authPayload = {
         // FIXED: Handle both JWT users (id as integer) and Supabase users (id as UUID)
         // JWT tokens return userId as string, so parse it for legacy users
-        userId: authResult.user.legacyUserId ||
-                (typeof authResult.user.id === 'number' ? authResult.user.id :
-                 (!isNaN(Number(authResult.user.id)) ? parseInt(authResult.user.id) : null)),
+        userId: authResult.user.legacyUserId || authResult.user.id,
         supabaseUserId: authResult.user.id && isNaN(Number(authResult.user.id)) ? authResult.user.id : null,
         username: authResult.user.email || authResult.user.username || 'user',
         role: authResult.user.role || 'customer',
