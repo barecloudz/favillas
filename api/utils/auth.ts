@@ -61,7 +61,7 @@ async function validateSupabaseToken(token: string): Promise<AuthResult> {
     const dbUsers = await sql`
       SELECT id, username, role, is_admin
       FROM users
-      WHERE email = ${user.email} OR id = ${user.id}
+      WHERE email = ${user.email} OR supabase_user_id = ${user.id}
       LIMIT 1
     `;
 
