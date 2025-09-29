@@ -126,11 +126,46 @@ export const handler: Handler = async (event, context) => {
       isSupabase: authPayload.isSupabase
     });
 
+    // UNIFIED: Check if user has unified account first, regardless of auth type
+    let hasUnifiedAccount = false;
+    let unifiedUserId = null;
+
+    if (authPayload.userId) {
+      // Direct user ID from legacy token
+      hasUnifiedAccount = true;
+      unifiedUserId = authPayload.userId;
+    } else if (authPayload.isSupabase && authPayload.supabaseUserId) {
+      // Check if this Supabase user has a corresponding database user_id
+      const dbUser = await sql`
+        SELECT id FROM users WHERE supabase_user_id = ${authPayload.supabaseUserId}
+      `;
+      if (dbUser.length > 0) {
+        hasUnifiedAccount = true;
+        unifiedUserId = dbUser[0].id;
+        console.log('✅ Found unified account for Supabase user:', unifiedUserId);
+      }
+    }
+
     // Get user's redemption history from user_points_redemptions table
     let redemptions;
 
-    if (authPayload.isSupabase) {
-      // Supabase user - query using supabase_user_id
+    if (hasUnifiedAccount && unifiedUserId) {
+      // UNIFIED: Use user_id for redemption lookup (works for both legacy users and unified Supabase users)
+      console.log('🔍 Using unified account lookup for redemptions with user_id:', unifiedUserId);
+      redemptions = await sql`
+        SELECT
+          upr.*,
+          r.name as reward_name,
+          r.description as reward_description,
+          r.points_required
+        FROM user_points_redemptions upr
+        LEFT JOIN rewards r ON upr.reward_id = r.id
+        WHERE upr.user_id = ${unifiedUserId}
+        ORDER BY upr.created_at DESC
+      `;
+    } else if (authPayload.isSupabase) {
+      // Fallback: Supabase user without unified account
+      console.log('🔍 Using Supabase-only lookup for redemptions');
       redemptions = await sql`
         SELECT
           upr.*,
@@ -144,6 +179,7 @@ export const handler: Handler = async (event, context) => {
       `;
     } else {
       // Legacy user - query using user_id
+      console.log('🔍 Using legacy user lookup for redemptions');
       redemptions = await sql`
         SELECT
           upr.*,
