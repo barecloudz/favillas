@@ -72,6 +72,7 @@ import {
   Palette,
   Image,
   Layers,
+  Utensils,
   Grid,
   List,
   PieChart,
@@ -894,6 +895,11 @@ const AdminDashboard = () => {
     refetchInterval: false,
   });
 
+  const { data: cateringData, isLoading: cateringLoading } = useQuery({
+    queryKey: ["/api/admin/catering-inquiries"],
+    enabled: activeTab === 'dashboard' || activeTab === 'orders', // Only load when needed
+  });
+
   // Scroll to top when activeTab changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1328,7 +1334,7 @@ const AdminDashboard = () => {
           {/* Main Content Area */}
           <main className="flex-1 p-4 md:p-6 bg-gray-100 overflow-y-auto">
             {activeTab === "dashboard" && (
-              <DashboardOverview 
+              <DashboardOverview
                 totalOrders={(orders as any[])?.length || 0}
                 pendingOrders={(orders as any[])?.filter((o: any) => o.status === "pending").length || 0}
                 processingOrders={(orders as any[])?.filter((o: any) => o.status === "processing").length || 0}
@@ -1340,11 +1346,12 @@ const AdminDashboard = () => {
                 totalEmployees={(users as any[])?.filter((u: any) => u.role === "employee").length || 0}
                 analytics={analytics}
                 orders={orders}
+                cateringData={cateringData}
               />
             )}
             
             {activeTab === "orders" && (
-              <OrdersManagement orders={orders} onUpdateStatus={updateOrderStatus} />
+              <OrdersManagement orders={orders} cateringData={cateringData} onUpdateStatus={updateOrderStatus} />
             )}
             
             {activeTab === "users" && (
@@ -1514,18 +1521,19 @@ const AdminDashboard = () => {
 };
 
 // Dashboard Overview Component
-const DashboardOverview = ({ 
-  totalOrders, 
-  pendingOrders, 
-  processingOrders, 
-  completedOrders, 
-  totalMenuItems, 
-  totalRevenue, 
-  averageOrderValue, 
-  totalCustomers, 
+const DashboardOverview = ({
+  totalOrders,
+  pendingOrders,
+  processingOrders,
+  completedOrders,
+  totalMenuItems,
+  totalRevenue,
+  averageOrderValue,
+  totalCustomers,
   totalEmployees,
   analytics,
-  orders 
+  orders,
+  cateringData
 }: any) => {
   // Use real analytics data or calculate from orders
   const analyticsData = React.useMemo(() => {
@@ -1681,14 +1689,23 @@ const DashboardOverview = ({
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">PERFORMANCE</CardTitle>
-            <Activity className="h-4 w-4 text-blue-500" />
+            <CardTitle className="text-sm font-medium">CATERING</CardTitle>
+            <div className="relative">
+              <Utensils className="h-4 w-4 text-purple-500" />
+              {cateringData?.pendingCount > 0 && (
+                <div className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full flex items-center justify-center">
+                  <span className="text-[10px] text-white font-bold">
+                    {cateringData.pendingCount > 9 ? '9+' : cateringData.pendingCount}
+                  </span>
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">49.65%</div>
-            <p className="text-xs text-green-600 flex items-center">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              +12% Since last month
+            <div className="text-2xl font-bold">{cateringData?.total || 0}</div>
+            <p className="text-xs text-orange-600 flex items-center">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              {cateringData?.pendingCount || 0} pending
             </p>
           </CardContent>
         </Card>
@@ -1821,7 +1838,7 @@ const DashboardOverview = ({
 };
 
 // Functional Orders Management Component
-const OrdersManagement = ({ orders, onUpdateStatus }: any) => {
+const OrdersManagement = ({ orders, cateringData, onUpdateStatus }: any) => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
@@ -1837,6 +1854,44 @@ const OrdersManagement = ({ orders, onUpdateStatus }: any) => {
   const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
   const [bulkActionMode, setBulkActionMode] = useState(false);
   const { toast } = useToast();
+
+  const updateCateringStatus = async (inquiryId: number, newStatus: string) => {
+    try {
+      const response = await fetch('/api/admin/catering-inquiries', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          id: inquiryId,
+          status: newStatus
+        })
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Status updated",
+          description: `Catering request status changed to ${newStatus}`,
+        });
+        // Refresh the page to update the data
+        window.location.reload();
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Update failed",
+          description: error.message || "Failed to update catering status",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Update failed",
+        description: "An error occurred while updating catering status",
+        variant: "destructive",
+      });
+    }
+  };
 
   const filteredOrders = (orders as any[])?.filter((order: any) => {
     const matchesStatus = statusFilter === "all" || order.status === statusFilter;
@@ -1978,7 +2033,7 @@ const OrdersManagement = ({ orders, onUpdateStatus }: any) => {
   return (
     <div className="space-y-6">
       {/* Header with Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -2033,6 +2088,29 @@ const OrdersManagement = ({ orders, onUpdateStatus }: any) => {
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Catering</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl font-bold text-purple-600">{cateringData?.total || 0}</p>
+                  {cateringData?.pendingCount > 0 && (
+                    <div className="h-4 w-4 bg-red-500 rounded-full flex items-center justify-center">
+                      <span className="text-[10px] text-white font-bold">
+                        {cateringData.pendingCount > 9 ? '9+' : cateringData.pendingCount}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="relative">
+                <Utensils className="h-8 w-8 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters and Search */}
@@ -2068,6 +2146,93 @@ const OrdersManagement = ({ orders, onUpdateStatus }: any) => {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Catering Requests Table */}
+          {cateringData?.inquiries && cateringData.inquiries.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold mb-4">Catering Requests</h3>
+              <div className="overflow-x-auto mobile-scroll-container touch-pan-x">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-4 font-medium">ID</th>
+                      <th className="text-left py-3 px-4 font-medium">Customer</th>
+                      <th className="text-left py-3 px-4 font-medium">Event Type</th>
+                      <th className="text-left py-3 px-4 font-medium">Date & Time</th>
+                      <th className="text-left py-3 px-4 font-medium">Guests</th>
+                      <th className="text-left py-3 px-4 font-medium">Status</th>
+                      <th className="text-left py-3 px-4 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cateringData.inquiries.slice(0, 5).map((inquiry: any) => (
+                      <tr key={inquiry.id} className="border-b hover:bg-gray-50">
+                        <td className="py-3 px-4 font-medium">#{inquiry.id}</td>
+                        <td className="py-3 px-4">
+                          <div>
+                            <p className="font-medium">{inquiry.full_name}</p>
+                            <p className="text-sm text-gray-500">{inquiry.email}</p>
+                            <p className="text-sm text-gray-500">{inquiry.phone_number}</p>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div>
+                            <p className="font-medium">{inquiry.event_type}</p>
+                            <p className="text-sm text-gray-500">{inquiry.service_type}</p>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div>
+                            {inquiry.event_date && (
+                              <p className="font-medium">{new Date(inquiry.event_date).toLocaleDateString()}</p>
+                            )}
+                            {inquiry.event_time && (
+                              <p className="text-sm text-gray-500">{inquiry.event_time}</p>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <p className="font-medium">
+                            {inquiry.guest_count === '200+' ? `${inquiry.custom_guest_count || '200+'} people` : inquiry.guest_count}
+                          </p>
+                        </td>
+                        <td className="py-3 px-4">
+                          <Badge className={
+                            inquiry.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            inquiry.status === 'contacted' ? 'bg-blue-100 text-blue-800' :
+                            inquiry.status === 'quoted' ? 'bg-purple-100 text-purple-800' :
+                            inquiry.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            'bg-red-100 text-red-800'
+                          }>
+                            {inquiry.status}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex gap-2">
+                            <Select
+                              value={inquiry.status}
+                              onValueChange={(newStatus) => updateCateringStatus(inquiry.id, newStatus)}
+                            >
+                              <SelectTrigger className="w-32">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pending">Pending</SelectItem>
+                                <SelectItem value="contacted">Contacted</SelectItem>
+                                <SelectItem value="quoted">Quoted</SelectItem>
+                                <SelectItem value="confirmed">Confirmed</SelectItem>
+                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Orders Table */}
           <div className="overflow-x-auto mobile-scroll-container touch-pan-x">

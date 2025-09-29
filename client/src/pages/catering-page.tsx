@@ -126,6 +126,19 @@ const CateringPage = () => {
 
   const updateFormData = (field: keyof CateringFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+
+    // Auto-advance for single-card selection pages
+    if (field === 'eventType' && currentStep === 1 && value !== 'other') {
+      // Auto-advance after short delay for better UX
+      setTimeout(() => {
+        setCurrentStep(2);
+      }, 500);
+    } else if (field === 'guestCount' && currentStep === 3 && value !== '200+') {
+      // Auto-advance after short delay for better UX
+      setTimeout(() => {
+        setCurrentStep(4);
+      }, 500);
+    }
   };
 
   if (isSubmitted) {
