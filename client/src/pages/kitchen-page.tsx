@@ -442,24 +442,25 @@ const KitchenPage = () => {
                           <span>${formatPrice(Number(order.total) + Number(order.tax))}</span>
                         </div>
                         
-                        <div className="flex space-x-2 mt-4">
+                        <div className="flex flex-col gap-3 mt-4 sm:flex-row">
                           <Button
-                            className="flex-1"
+                            className="w-full sm:flex-1 h-12 text-base font-medium"
                             variant="outline"
                             onClick={() => printOrder(order)}
                           >
                             <Printer className="h-4 w-4 mr-2" />
                             Print
                           </Button>
-                          
+
                           {order.status === 'pending' && (
                             <Button
-                              className={`flex-1 ${
+                              className={`w-full sm:flex-1 h-12 text-base font-medium text-white ${
                                 isOrderReadyToStart(order)
-                                  ? "bg-yellow-500 hover:bg-yellow-600"
+                                  ? "bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700"
                                   : "bg-gray-400 cursor-not-allowed"
                               }`}
                               onClick={() => {
+                                console.log('🍳 Start Cooking clicked for order:', order.id);
                                 if (isOrderReadyToStart(order)) {
                                   updateOrderStatus(order.id, 'cooking');
                                 } else {
@@ -472,35 +473,43 @@ const KitchenPage = () => {
                               }}
                               disabled={!isOrderReadyToStart(order)}
                             >
-                              {isOrderReadyToStart(order) ? "Start Cooking" : "Scheduled"}
+                              {isOrderReadyToStart(order) ? "🍳 Start Cooking" : "📅 Scheduled"}
                             </Button>
                           )}
-                          
+
                           {order.status === 'cooking' && (
                             <Button
-                              className="flex-1 bg-green-500 hover:bg-green-600"
-                              onClick={() => updateOrderStatus(order.id, 'completed')}
+                              className="w-full sm:flex-1 h-12 text-base font-medium text-white bg-green-500 hover:bg-green-600 active:bg-green-700"
+                              onClick={() => {
+                                console.log('✅ Complete clicked for order:', order.id);
+                                updateOrderStatus(order.id, 'completed');
+                              }}
                             >
-                              Complete
+                              ✅ Complete
                             </Button>
                           )}
-                          
+
                           {order.status === 'completed' && (
-                            <>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:flex-1">
                               <Button
-                                className="flex-1 bg-blue-500 hover:bg-blue-600"
-                                onClick={() => updateOrderStatus(order.id, 'picked_up')}
+                                className="w-full h-12 text-base font-medium text-white bg-blue-500 hover:bg-blue-600 active:bg-blue-700"
+                                onClick={() => {
+                                  console.log('📦 Picked Up clicked for order:', order.id);
+                                  updateOrderStatus(order.id, 'picked_up');
+                                }}
                               >
-                                Picked Up
+                                📦 Picked Up
                               </Button>
                               <Button
-                                className="flex-1 bg-gray-500 hover:bg-gray-600"
-                                variant="outline"
-                                onClick={() => updateOrderStatus(order.id, 'cooking')}
+                                className="w-full h-12 text-base font-medium bg-gray-500 hover:bg-gray-600 active:bg-gray-700 text-white"
+                                onClick={() => {
+                                  console.log('🔄 Reopen clicked for order:', order.id);
+                                  updateOrderStatus(order.id, 'cooking');
+                                }}
                               >
-                                Reopen
+                                🔄 Reopen
                               </Button>
-                            </>
+                            </div>
                           )}
                         </div>
                       </CardContent>
