@@ -25,7 +25,7 @@ const KitchenPage = () => {
     }
     return numPrice.toFixed(2);
   };
-  
+
   // Query for active orders
   const { data: orders, isLoading, error } = useQuery({
     queryKey: ["/api/kitchen/orders"],
@@ -36,7 +36,7 @@ const KitchenPage = () => {
   // Setup WebSocket for real-time order updates
   useEffect(() => {
     const socket = setupWebSocket();
-    
+
     // Register as kitchen client
     socket.addEventListener('open', () => {
       socket.send(JSON.stringify({
@@ -44,24 +44,24 @@ const KitchenPage = () => {
         client: 'kitchen'
       }));
     });
-    
+
     // Handle incoming messages
     socket.addEventListener('message', (event) => {
       try {
         const data = JSON.parse(event.data);
-        
+
         if (data.type === 'newOrder') {
           // Play notification sound
           if (audioRef.current) {
             audioRef.current.play();
           }
-          
+
           // Show toast notification
           toast({
             title: "New Order Received",
             description: `Order #${data.order.id} has been placed.`,
           });
-          
+
           // Refresh orders list
           queryClient.invalidateQueries({ queryKey: ["/api/kitchen/orders"] });
         } else if (data.type === 'orderStatusUpdate' || data.type === 'paymentCompleted') {
@@ -72,7 +72,7 @@ const KitchenPage = () => {
         console.error('Error parsing WebSocket message:', error);
       }
     });
-    
+
     return () => {
       socket.close();
     };
@@ -160,7 +160,7 @@ const KitchenPage = () => {
       title: "Printing Order",
       description: `Sending order #${order.id} to printer...`,
     });
-    
+
     // For demo purposes, open a print dialog with order details
     const printWindow = window.open('', '_blank');
     if (printWindow) {
@@ -261,265 +261,256 @@ const KitchenPage = () => {
         <title>Kitchen Display | Favilla's NY Pizza</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
-      
+
       {/* Notification sound */}
       <audio ref={audioRef} src="https://assets.mixkit.co/sfx/preview/mixkit-bell-notification-933.mp3" />
-      
-      <div className="min-h-screen bg-gray-100 overflow-y-auto">
-        <header className="bg-[#d73a31] text-white p-4 shadow-md">
-          <div className="container mx-auto flex justify-between items-center">
-            <h1 className="text-2xl font-bold">Favilla's Kitchen</h1>
-            <div className="flex items-center gap-4">
-              <Button variant="outline" className="text-white border-white hover:bg-white hover:text-[#d73a31]">
-                <Volume2 className="mr-2 h-4 w-4" />
-                Test Sound
-              </Button>
-              <span>Welcome, {user?.firstName}</span>
+
+      <div className="min-h-screen bg-gray-50 p-4">
+        {/* Compact Header Bar */}
+        <div className="flex justify-between items-center mb-4 bg-white rounded-lg shadow-sm p-3">
+          <h1 className="text-xl font-bold text-gray-800">🍕 Kitchen Display</h1>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/kitchen/orders"] })}
+            >
+              🔄 Refresh
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (audioRef.current) {
+                  audioRef.current.play();
+                }
+              }}
+            >
+              🔊 Test
+            </Button>
+            <span className="text-sm text-gray-600">Welcome, {user?.firstName}</span>
+          </div>
+        </div>
+
+        {/* TV-Optimized Layout: 2 Main Columns */}
+        <div className="grid grid-cols-2 gap-6 h-[calc(100vh-120px)]">
+
+          {/* LEFT COLUMN: Ready to Start & Cooking */}
+          <div className="space-y-4">
+            {/* Ready to Start Section */}
+            <div className="bg-white rounded-lg shadow-sm p-4 flex-1 max-h-[48%] overflow-y-auto">
+              <h2 className="text-lg font-bold text-yellow-600 mb-3 flex items-center">
+                📋 Ready to Start
+                {pendingOrders.length > 0 && (
+                  <Badge className="ml-2 bg-yellow-500">{pendingOrders.length}</Badge>
+                )}
+              </h2>
+              <div className="grid grid-cols-2 gap-3">
+                {pendingOrders.map((order: any) => (
+                  <Card key={order.id} className="border-l-4 border-yellow-400">
+                    <CardContent className="p-3">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-bold text-lg">#{order.id}</h3>
+                        <Badge variant={order.order_type === 'delivery' ? 'default' : 'secondary'}>
+                          {order.order_type === 'delivery' ? '🚗' : '📦'} {order.order_type}
+                        </Badge>
+                      </div>
+
+                      <p className="font-medium text-gray-800 mb-1">
+                        👤 {order.customer_name || 'Customer'}
+                      </p>
+                      <p className="text-sm text-gray-600 mb-2">📞 {order.phone}</p>
+
+                      <div className="text-sm space-y-1 mb-3">
+                        {order.items.map((item: any, idx: number) => (
+                          <div key={idx} className="flex justify-between">
+                            <span>{item.quantity}x {item.name}</span>
+                            <span className="font-medium">${formatPrice(item.price)}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex justify-between font-bold text-sm mb-3">
+                        <span>Total:</span>
+                        <span>${formatPrice(Number(order.total) + Number(order.tax))}</span>
+                      </div>
+
+                      <Button
+                        className={`w-full h-10 text-sm font-medium text-white ${
+                          isOrderReadyToStart(order)
+                            ? "bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700"
+                            : "bg-gray-400 cursor-not-allowed"
+                        }`}
+                        onClick={() => {
+                          console.log('🍳 Start Cooking clicked for order:', order.id);
+                          if (isOrderReadyToStart(order)) {
+                            updateOrderStatus(order.id, 'cooking');
+                          }
+                        }}
+                        disabled={!isOrderReadyToStart(order)}
+                      >
+                        {isOrderReadyToStart(order) ? "🍳 Start Cooking" : "📅 Scheduled"}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              {pendingOrders.length === 0 && (
+                <p className="text-center text-gray-500 py-8">No orders ready to start</p>
+              )}
+            </div>
+
+            {/* Cooking Section */}
+            <div className="bg-white rounded-lg shadow-sm p-4 flex-1 max-h-[48%] overflow-y-auto">
+              <h2 className="text-lg font-bold text-orange-600 mb-3 flex items-center">
+                🍳 Cooking
+                {orders?.filter((o: any) => o.status === "cooking").length > 0 && (
+                  <Badge className="ml-2 bg-orange-500">{orders.filter((o: any) => o.status === "cooking").length}</Badge>
+                )}
+              </h2>
+              <div className="grid grid-cols-2 gap-3">
+                {orders?.filter((o: any) => o.status === "cooking").map((order: any) => (
+                  <Card key={order.id} className="border-l-4 border-orange-400">
+                    <CardContent className="p-3">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-bold text-lg">#{order.id}</h3>
+                        <Badge variant={order.order_type === 'delivery' ? 'default' : 'secondary'}>
+                          {order.order_type === 'delivery' ? '🚗' : '📦'} {order.order_type}
+                        </Badge>
+                      </div>
+
+                      <p className="font-medium text-gray-800 mb-1">
+                        👤 {order.customer_name || 'Customer'}
+                      </p>
+                      <p className="text-sm text-gray-600 mb-2">📞 {order.phone}</p>
+
+                      <div className="text-sm space-y-1 mb-3">
+                        {order.items.map((item: any, idx: number) => (
+                          <div key={idx} className="flex justify-between">
+                            <span>{item.quantity}x {item.name}</span>
+                            <span className="font-medium">${formatPrice(item.price)}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <Button
+                        className="w-full h-10 text-sm font-medium text-white bg-green-500 hover:bg-green-600 active:bg-green-700"
+                        onClick={() => {
+                          console.log('✅ Complete clicked for order:', order.id);
+                          updateOrderStatus(order.id, 'completed');
+                        }}
+                      >
+                        ✅ Complete
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              {orders?.filter((o: any) => o.status === "cooking").length === 0 && (
+                <p className="text-center text-gray-500 py-8">No orders currently cooking</p>
+              )}
             </div>
           </div>
-        </header>
-        
-        <main className="container mx-auto p-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <div className="flex justify-between items-center mb-6">
-              <TabsList>
-                <TabsTrigger value="pending" className="relative">
-                  Ready to Start
-                  {orders?.filter((o: any) => o.status === "pending" && (o.fulfillmentTime === 'asap' || isOrderReadyToStart(o))).length > 0 && (
-                    <Badge className="ml-2 bg-red-500">{orders.filter((o: any) => o.status === "pending" && (o.fulfillmentTime === 'asap' || isOrderReadyToStart(o))).length}</Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="cooking">
-                  Cooking
-                  {orders?.filter((o: any) => o.status === "cooking").length > 0 && (
-                    <Badge className="ml-2 bg-yellow-500">{orders.filter((o: any) => o.status === "cooking").length}</Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="completed">Ready for Pickup</TabsTrigger>
-                <TabsTrigger value="picked_up">
-                  Picked Up
-                  {orders?.filter((o: any) => o.status === 'picked_up').length > 0 && (
-                    <Badge className="ml-2 bg-gray-500">{orders.filter((o: any) => o.status === 'picked_up').length}</Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="scheduled">
-                  Scheduled Later
-                  {orders?.filter((o: any) => o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o)).length > 0 && (
-                    <Badge className="ml-2 bg-blue-500">{orders.filter((o: any) => o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o)).length}</Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="all">All Orders</TabsTrigger>
-              </TabsList>
-              
-              <Button 
-                variant="outline" 
-                onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/kitchen/orders"] })}
-              >
-                Refresh
-              </Button>
-            </div>
-            
-            <TabsContent value={activeTab} className="mt-0">
-              {filteredOrders.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-lg shadow">
-                  <p className="text-xl text-gray-500">No {activeTab === 'cooking' ? 'cooking' : activeTab} orders found</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredOrders.map((order: any) => (
-                    <Card key={order.id} className="overflow-hidden">
-                      <CardHeader className={`
-                        ${order.status === 'pending' ? 'bg-red-100' : ''}
-                        ${order.status === 'cooking' ? 'bg-yellow-100' : ''}
-                        ${order.status === 'completed' ? 'bg-green-100' : ''}
-                        ${order.status === 'picked_up' ? 'bg-gray-100' : ''}
-                      `}>
-                        <div className="flex justify-between items-center">
-                          <CardTitle>Order #{order.id}</CardTitle>
-                          <Badge className={`
-                            ${order.status === 'pending' ? 'bg-red-500' : ''}
-                            ${order.status === 'cooking' ? 'bg-yellow-500' : ''}
-                            ${order.status === 'completed' ? 'bg-green-500' : ''}
-                            ${order.status === 'picked_up' ? 'bg-gray-500' : ''}
-                          `}>
-                            {order.status.toUpperCase()}
-                          </Badge>
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          <div className="flex justify-between">
-                            <span>{new Date(order.created_at).toLocaleTimeString()}</span>
-                            <Badge variant={order.payment_status === 'paid' ? 'default' : 'outline'}>
-                              {order.payment_status?.toUpperCase() || 'UNKNOWN'}
-                            </Badge>
+
+          {/* RIGHT COLUMN: Ready for Pickup & Completed */}
+          <div className="space-y-4">
+            {/* Ready for Pickup Section */}
+            <div className="bg-white rounded-lg shadow-sm p-4 flex-1 max-h-[48%] overflow-y-auto">
+              <h2 className="text-lg font-bold text-green-600 mb-3 flex items-center">
+                📦 Ready for Pickup
+                {orders?.filter((o: any) => o.status === "completed").length > 0 && (
+                  <Badge className="ml-2 bg-green-500">{orders.filter((o: any) => o.status === "completed").length}</Badge>
+                )}
+              </h2>
+              <div className="grid grid-cols-2 gap-3">
+                {orders?.filter((o: any) => o.status === "completed").map((order: any) => (
+                  <Card key={order.id} className="border-l-4 border-green-400">
+                    <CardContent className="p-3">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-bold text-lg">#{order.id}</h3>
+                        <Badge variant={order.order_type === 'delivery' ? 'default' : 'secondary'}>
+                          {order.order_type === 'delivery' ? '🚗' : '📦'} {order.order_type}
+                        </Badge>
+                      </div>
+
+                      <p className="font-medium text-gray-800 mb-1">
+                        👤 {order.customer_name || 'Customer'}
+                      </p>
+                      <p className="text-sm text-gray-600 mb-2">📞 {order.phone}</p>
+
+                      <div className="text-sm space-y-1 mb-3">
+                        {order.items.map((item: any, idx: number) => (
+                          <div key={idx} className="flex justify-between">
+                            <span>{item.quantity}x {item.name}</span>
+                            <span className="font-medium">${formatPrice(item.price)}</span>
                           </div>
-                          <div className="mt-1">
-                            <Badge variant="outline" className="mr-2">
-                              {order.order_type?.toUpperCase() || 'UNKNOWN'}
-                            </Badge>
-                            <span>{order.phone}</span>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="p-4">
-                        <div className="space-y-3">
-                          {order.items.map((item: any) => (
-                            <div key={item.id} className="border-b pb-2">
-                              <div className="flex justify-between font-medium">
-                                <span>{item.quantity}x {item.menuItem?.name || 'Unknown Item'}</span>
-                                <span>${formatPrice(item.price)}</span>
-                              </div>
-                              {/* Display detailed choices and addons */}
-                              {item.options && Array.isArray(item.options) && item.options.length > 0 && (
-                                <div className="text-sm text-gray-600 space-y-1">
-                                  {item.options.map((option: any, idx: number) => (
-                                    <div key={idx} className="flex justify-between items-center">
-                                      <span>{option.groupName}: {option.itemName}</span>
-                                      {option.price && option.price > 0 && (
-                                        <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
+                        ))}
+                      </div>
 
-                              {/* Legacy options support */}
-                              {item.options && typeof item.options === 'object' && !Array.isArray(item.options) && (
-                                <div className="text-sm text-gray-600">
-                                  {item.options.size && <p>Size: {item.options.size}</p>}
-                                  {item.options.toppings && item.options.toppings.length > 0 && (
-                                    <p>Toppings: {item.options.toppings.join(', ')}</p>
-                                  )}
-                                  {item.options.addOns && item.options.addOns.length > 0 && (
-                                    <p>Add-ons: {item.options.addOns.join(', ')}</p>
-                                  )}
-                                  {item.options.extras && item.options.extras.length > 0 && (
-                                    <p>Extras: {item.options.extras.join(', ')}</p>
-                                  )}
-                                </div>
-                              )}
-
-                              {item.specialInstructions && (
-                                <p className="text-sm text-gray-600 italic font-medium bg-yellow-100 px-2 py-1 rounded">
-                                  Special: "{item.specialInstructions}"
-                                </p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                        
-                        {order.specialInstructions && (
-                          <div className="mt-4 p-3 bg-yellow-50 rounded-md">
-                            <p className="font-medium text-sm">Special Instructions:</p>
-                            <p className="text-sm">{order.specialInstructions}</p>
-                          </div>
-                        )}
-                        
-                        {order.address && (
-                          <div className="mt-4 p-3 bg-blue-50 rounded-md">
-                            <p className="font-medium text-sm">Delivery Address:</p>
-                            <p className="text-sm">{order.address}</p>
-                          </div>
-                        )}
-
-                        {order.fulfillmentTime === 'scheduled' && order.scheduledTime && (
-                          <div className="mt-4 p-3 bg-purple-50 rounded-md">
-                            <p className="font-medium text-sm">Scheduled Time:</p>
-                            <p className="text-sm font-mono">
-                              {new Date(order.scheduledTime).toLocaleString()}
-                            </p>
-                            {!isOrderReadyToStart(order) && (
-                              <p className="text-xs text-purple-600 mt-1">
-                                Can start in {Math.ceil((new Date(order.scheduledTime).getTime() - Date.now()) / (1000 * 60) - 30)} minutes
-                              </p>
-                            )}
-                          </div>
-                        )}
-                        
-                        <Separator className="my-4" />
-                        
-                        <div className="flex justify-between font-medium">
-                          <span>Total:</span>
-                          <span>${formatPrice(Number(order.total) + Number(order.tax))}</span>
-                        </div>
-                        
-                        <div className="flex flex-col gap-3 mt-4 sm:flex-row">
-                          <Button
-                            className="w-full sm:flex-1 h-12 text-base font-medium"
-                            variant="outline"
-                            onClick={() => printOrder(order)}
-                          >
-                            <Printer className="h-4 w-4 mr-2" />
-                            Print
-                          </Button>
-
-                          {order.status === 'pending' && (
-                            <Button
-                              className={`w-full sm:flex-1 h-12 text-base font-medium text-white ${
-                                isOrderReadyToStart(order)
-                                  ? "bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700"
-                                  : "bg-gray-400 cursor-not-allowed"
-                              }`}
-                              onClick={() => {
-                                console.log('🍳 Start Cooking clicked for order:', order.id);
-                                if (isOrderReadyToStart(order)) {
-                                  updateOrderStatus(order.id, 'cooking');
-                                } else {
-                                  toast({
-                                    title: "Order Not Ready",
-                                    description: `This scheduled order can be started 30 minutes before: ${new Date(order.scheduledTime).toLocaleTimeString()}`,
-                                    variant: "destructive",
-                                  });
-                                }
-                              }}
-                              disabled={!isOrderReadyToStart(order)}
-                            >
-                              {isOrderReadyToStart(order) ? "🍳 Start Cooking" : "📅 Scheduled"}
-                            </Button>
-                          )}
-
-                          {order.status === 'cooking' && (
-                            <Button
-                              className="w-full sm:flex-1 h-12 text-base font-medium text-white bg-green-500 hover:bg-green-600 active:bg-green-700"
-                              onClick={() => {
-                                console.log('✅ Complete clicked for order:', order.id);
-                                updateOrderStatus(order.id, 'completed');
-                              }}
-                            >
-                              ✅ Complete
-                            </Button>
-                          )}
-
-                          {order.status === 'completed' && (
-                            <div className="flex flex-col gap-2 sm:flex-row sm:flex-1">
-                              <Button
-                                className="w-full h-12 text-base font-medium text-white bg-blue-500 hover:bg-blue-600 active:bg-blue-700"
-                                onClick={() => {
-                                  console.log('📦 Picked Up clicked for order:', order.id);
-                                  updateOrderStatus(order.id, 'picked_up');
-                                }}
-                              >
-                                📦 Picked Up
-                              </Button>
-                              <Button
-                                className="w-full h-12 text-base font-medium bg-gray-500 hover:bg-gray-600 active:bg-gray-700 text-white"
-                                onClick={() => {
-                                  console.log('🔄 Reopen clicked for order:', order.id);
-                                  updateOrderStatus(order.id, 'cooking');
-                                }}
-                              >
-                                🔄 Reopen
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                      <div className="flex gap-2">
+                        <Button
+                          className="flex-1 h-9 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
+                          onClick={() => {
+                            console.log('📦 Picked Up clicked for order:', order.id);
+                            updateOrderStatus(order.id, 'picked_up');
+                          }}
+                        >
+                          ✅ Picked Up
+                        </Button>
+                        <Button
+                          className="flex-1 h-9 text-sm font-medium"
+                          variant="outline"
+                          onClick={() => printOrder(order)}
+                        >
+                          🖨️
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              {orders?.filter((o: any) => o.status === "completed").length === 0 && (
+                <p className="text-center text-gray-500 py-8">No orders ready for pickup</p>
               )}
-            </TabsContent>
-          </Tabs>
-        </main>
+            </div>
+
+            {/* Recently Picked Up Section */}
+            <div className="bg-white rounded-lg shadow-sm p-4 flex-1 max-h-[48%] overflow-y-auto">
+              <h2 className="text-lg font-bold text-gray-600 mb-3 flex items-center">
+                ✅ Recently Picked Up
+                {orders?.filter((o: any) => o.status === 'picked_up').length > 0 && (
+                  <Badge className="ml-2 bg-gray-500">{orders.filter((o: any) => o.status === 'picked_up').length}</Badge>
+                )}
+              </h2>
+              <div className="grid grid-cols-2 gap-3">
+                {orders?.filter((o: any) => o.status === 'picked_up').slice(0, 8).map((order: any) => (
+                  <Card key={order.id} className="border-l-4 border-gray-400 opacity-75">
+                    <CardContent className="p-3">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-bold text-lg">#{order.id}</h3>
+                        <Badge variant="secondary">
+                          {order.order_type === 'delivery' ? '🚗' : '📦'} {order.order_type}
+                        </Badge>
+                      </div>
+
+                      <p className="font-medium text-gray-600 mb-1">
+                        👤 {order.customer_name || 'Customer'}
+                      </p>
+                      <p className="text-sm text-gray-500">📞 {order.phone}</p>
+
+                      <p className="text-xs text-gray-500 mt-2">
+                        Completed: {new Date(order.updated_at).toLocaleTimeString()}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              {orders?.filter((o: any) => o.status === 'picked_up').length === 0 && (
+                <p className="text-center text-gray-500 py-8">No recently picked up orders</p>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </>
   );
