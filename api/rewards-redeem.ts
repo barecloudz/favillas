@@ -148,12 +148,44 @@ export const handler: Handler = async (event, context) => {
 
       const rewardData = reward[0];
 
+      // UNIFIED: Check if user has unified account first, regardless of auth type
+      let hasUnifiedAccount = false;
+      let unifiedUserId = null;
+
+      if (authPayload.userId) {
+        // Direct user ID from legacy token
+        hasUnifiedAccount = true;
+        unifiedUserId = authPayload.userId;
+      } else if (authPayload.isSupabase && authPayload.supabaseUserId) {
+        // Check if this Supabase user has a corresponding database user_id
+        const dbUser = await sql`
+          SELECT id FROM users WHERE supabase_user_id = ${authPayload.supabaseUserId}
+        `;
+        if (dbUser.length > 0) {
+          hasUnifiedAccount = true;
+          unifiedUserId = dbUser[0].id;
+          console.log('✅ Found unified account for Supabase user:', unifiedUserId);
+        }
+      }
+
       // Get user's current points with row-level locking to prevent race conditions
       let currentPoints = 0;
       let userPointsRecord;
 
-      if (authPayload.isSupabase) {
-        // Supabase user - query using supabase_user_id with FOR UPDATE lock
+      if (hasUnifiedAccount && unifiedUserId) {
+        // UNIFIED: Use user_id for points lookup (works for both legacy users and unified Supabase users)
+        console.log('🔍 Using unified account lookup with user_id:', unifiedUserId);
+        const userPointsResult = await sql`
+          SELECT id, points, total_redeemed, updated_at FROM user_points
+          WHERE user_id = ${unifiedUserId}
+          FOR UPDATE
+        `;
+        userPointsRecord = userPointsResult[0];
+        currentPoints = userPointsRecord?.points || 0;
+        console.log('🎁 Unified user current points (locked):', currentPoints);
+      } else if (authPayload.isSupabase) {
+        // Fallback: Supabase user without unified account - query using supabase_user_id
+        console.log('🔍 Using Supabase-only lookup');
         const userPointsResult = await sql`
           SELECT id, points, total_redeemed, updated_at FROM user_points
           WHERE supabase_user_id = ${authPayload.supabaseUserId}
@@ -164,6 +196,7 @@ export const handler: Handler = async (event, context) => {
         console.log('🎁 Supabase user current points (locked):', currentPoints);
       } else {
         // Legacy user - query using user_id with FOR UPDATE lock
+        console.log('🔍 Using legacy user lookup');
         const userPointsResult = await sql`
           SELECT id, points, total_redeemed, updated_at FROM user_points
           WHERE user_id = ${authPayload.userId}
@@ -191,21 +224,35 @@ export const handler: Handler = async (event, context) => {
       }
 
       // Check for duplicate redemption attempts using optimistic concurrency
-      const existingRedemption = authPayload.isSupabase
-        ? await sql`
-            SELECT id FROM user_points_redemptions
-            WHERE supabase_user_id = ${authPayload.supabaseUserId}
-            AND reward_id = ${rewardId}
-            AND is_used = false
-            AND created_at > NOW() - INTERVAL '1 minute'
-          `
-        : await sql`
-            SELECT id FROM user_points_redemptions
-            WHERE user_id = ${authPayload.userId}
-            AND reward_id = ${rewardId}
-            AND is_used = false
-            AND created_at > NOW() - INTERVAL '1 minute'
-          `;
+      let existingRedemption;
+      if (hasUnifiedAccount && unifiedUserId) {
+        // UNIFIED: Check using user_id (works for both legacy users and unified Supabase users)
+        existingRedemption = await sql`
+          SELECT id FROM user_points_redemptions
+          WHERE user_id = ${unifiedUserId}
+          AND reward_id = ${rewardId}
+          AND is_used = false
+          AND created_at > NOW() - INTERVAL '1 minute'
+        `;
+      } else if (authPayload.isSupabase) {
+        // Fallback: Supabase user without unified account
+        existingRedemption = await sql`
+          SELECT id FROM user_points_redemptions
+          WHERE supabase_user_id = ${authPayload.supabaseUserId}
+          AND reward_id = ${rewardId}
+          AND is_used = false
+          AND created_at > NOW() - INTERVAL '1 minute'
+        `;
+      } else {
+        // Legacy user
+        existingRedemption = await sql`
+          SELECT id FROM user_points_redemptions
+          WHERE user_id = ${authPayload.userId}
+          AND reward_id = ${rewardId}
+          AND is_used = false
+          AND created_at > NOW() - INTERVAL '1 minute'
+        `;
+      }
 
       if (existingRedemption.length > 0) {
         throw new Error('Duplicate redemption attempt detected. Please wait before trying again.');
@@ -214,8 +261,24 @@ export const handler: Handler = async (event, context) => {
       // Create redemption record - handle both authentication types
       let redemption;
 
-      if (authPayload.isSupabase) {
-        // Supabase user redemption
+      if (hasUnifiedAccount && unifiedUserId) {
+        // UNIFIED: Use user_id for redemption record (works for both legacy users and unified Supabase users)
+        redemption = await sql`
+          INSERT INTO user_points_redemptions (user_id, reward_id, points_spent, is_used, used_at, expires_at, created_at)
+          VALUES (
+            ${unifiedUserId},
+            ${rewardId},
+            ${rewardData.points_required},
+            false,
+            NULL,
+            ${rewardData.expires_at || null},
+            NOW()
+          )
+          RETURNING *
+        `;
+        console.log('✅ Created unified user redemption record');
+      } else if (authPayload.isSupabase) {
+        // Fallback: Supabase user without unified account
         redemption = await sql`
           INSERT INTO user_points_redemptions (supabase_user_id, reward_id, points_spent, is_used, used_at, expires_at, created_at)
           VALUES (
@@ -249,8 +312,38 @@ export const handler: Handler = async (event, context) => {
       }
 
       // Record points transaction and update user_points balance with optimistic concurrency control
-      if (authPayload.isSupabase) {
-        // Supabase user transaction
+      if (hasUnifiedAccount && unifiedUserId) {
+        // UNIFIED: Use user_id for transaction (works for both legacy users and unified Supabase users)
+        await sql`
+          INSERT INTO points_transactions (user_id, type, points, description, created_at)
+          VALUES (
+            ${unifiedUserId},
+            'redeemed',
+            ${-rewardData.points_required},
+            'Redeemed reward: ' || ${rewardData.name},
+            NOW()
+          )
+        `;
+
+        // Update user_points balance with safeguards against negative points
+        const updateResult = await sql`
+          UPDATE user_points
+          SET
+            points = GREATEST(points - ${rewardData.points_required}, 0),
+            total_redeemed = total_redeemed + ${rewardData.points_required},
+            updated_at = NOW()
+          WHERE user_id = ${unifiedUserId}
+          AND points >= ${rewardData.points_required}
+          RETURNING points, total_redeemed
+        `;
+
+        if (updateResult.length === 0) {
+          throw new Error('Insufficient points for this redemption.');
+        }
+
+        console.log('✅ Updated unified user points balance with optimistic locking:', updateResult[0]);
+      } else if (authPayload.isSupabase) {
+        // Fallback: Supabase user without unified account
         await sql`
           INSERT INTO points_transactions (supabase_user_id, type, points, description, created_at)
           VALUES (
