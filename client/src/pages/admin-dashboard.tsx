@@ -897,7 +897,7 @@ const AdminDashboard = () => {
 
   const { data: cateringData, isLoading: cateringLoading } = useQuery({
     queryKey: ["/api/admin/catering-inquiries"],
-    enabled: activeTab === 'dashboard' || activeTab === 'orders', // Only load when needed
+    enabled: activeTab === 'dashboard' || activeTab === 'orders' || activeTab === 'catering', // Only load when needed
   });
 
   // Scroll to top when activeTab changes
@@ -908,7 +908,7 @@ const AdminDashboard = () => {
   // Validate activeTab - moved to after queries to prevent hook violations
   useEffect(() => {
     // Define tabs inline to avoid dependency issues
-    const primaryTabsHrefs = ["dashboard", "orders"];
+    const primaryTabsHrefs = ["dashboard", "orders", "catering"];
     const categoryTabsHrefs = [
       "analytics", "reports", 
       "menu-editor", "pricing", "out-of-stock", "multi-location", "experimental",
@@ -1055,6 +1055,7 @@ const AdminDashboard = () => {
   const primaryTabs = [
     { name: "Overview", icon: Home, href: "dashboard" },
     { name: "Orders", icon: ShoppingCart, href: "orders" },
+    { name: "Catering", icon: Utensils, href: "catering" },
   ];
 
   // Categorized dropdown sections
@@ -1353,7 +1354,11 @@ const AdminDashboard = () => {
             {activeTab === "orders" && (
               <OrdersManagement orders={orders} cateringData={cateringData} onUpdateStatus={updateOrderStatus} />
             )}
-            
+
+            {activeTab === "catering" && (
+              <CateringManagement cateringData={cateringData} />
+            )}
+
             {activeTab === "users" && (
               <UserManagementTab />
             )}
@@ -1517,6 +1522,454 @@ const AdminDashboard = () => {
         </div>
       </div>
     </>
+  );
+};
+
+// Catering Management Component
+const CateringManagement = ({ cateringData }: any) => {
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedInquiry, setSelectedInquiry] = useState<any>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const { toast } = useToast();
+
+  const updateCateringStatus = async (inquiryId: number, newStatus: string) => {
+    try {
+      const response = await fetch('/api/admin/catering-inquiries', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          id: inquiryId,
+          status: newStatus
+        })
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Status updated",
+          description: `Catering request status changed to ${newStatus}`,
+        });
+        // Refresh the page to update the data
+        window.location.reload();
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Update failed",
+          description: error.message || "Failed to update catering status",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Update failed",
+        description: "An error occurred while updating catering status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const filteredInquiries = cateringData?.inquiries?.filter((inquiry: any) => {
+    const matchesStatus = statusFilter === "all" || inquiry.status === statusFilter;
+    const matchesSearch = inquiry.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         inquiry.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         inquiry.event_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         inquiry.id?.toString().includes(searchTerm);
+    return matchesStatus && matchesSearch;
+  }) || [];
+
+  const formatGuestCount = (inquiry: any) => {
+    if (inquiry.guest_count === '200+') {
+      return `${inquiry.custom_guest_count || '200+'} people`;
+    }
+    return inquiry.guest_count;
+  };
+
+  const formatEventDate = (dateStr: string) => {
+    if (!dateStr) return 'Not specified';
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Inquiries</p>
+                <p className="text-2xl font-bold text-gray-900">{cateringData?.total || 0}</p>
+              </div>
+              <Utensils className="h-8 w-8 text-purple-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Pending</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl font-bold text-yellow-600">{cateringData?.counts?.pending || 0}</p>
+                  {(cateringData?.counts?.pending || 0) > 0 && (
+                    <div className="h-4 w-4 bg-red-500 rounded-full flex items-center justify-center">
+                      <span className="text-[10px] text-white font-bold">!</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <Clock className="h-8 w-8 text-yellow-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Contacted</p>
+                <p className="text-2xl font-bold text-blue-600">{cateringData?.counts?.contacted || 0}</p>
+              </div>
+              <Phone className="h-8 w-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Confirmed</p>
+                <p className="text-2xl font-bold text-green-600">{cateringData?.counts?.confirmed || 0}</p>
+              </div>
+              <CheckCircle className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters and Search */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Catering Inquiries Management</CardTitle>
+          <CardDescription>
+            Manage all catering requests, update statuses, and track event details
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search by customer name, email, event type, or ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full md:w-48">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Inquiries</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="contacted">Contacted</SelectItem>
+                <SelectItem value="quoted">Quoted</SelectItem>
+                <SelectItem value="confirmed">Confirmed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Catering Inquiries Table */}
+          <div className="overflow-x-auto mobile-scroll-container touch-pan-x">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-3 px-4 font-medium">ID</th>
+                  <th className="text-left py-3 px-4 font-medium">Customer</th>
+                  <th className="text-left py-3 px-4 font-medium">Event Details</th>
+                  <th className="text-left py-3 px-4 font-medium">Date & Time</th>
+                  <th className="text-left py-3 px-4 font-medium">Guests</th>
+                  <th className="text-left py-3 px-4 font-medium">Status</th>
+                  <th className="text-left py-3 px-4 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredInquiries.map((inquiry: any) => (
+                  <tr key={inquiry.id} className="border-b hover:bg-gray-50">
+                    <td className="py-3 px-4 font-medium">#{inquiry.id}</td>
+                    <td className="py-3 px-4">
+                      <div>
+                        <p className="font-medium">{inquiry.full_name}</p>
+                        <p className="text-sm text-gray-500">{inquiry.email}</p>
+                        <p className="text-sm text-gray-500">{inquiry.phone_number}</p>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div>
+                        <p className="font-medium capitalize">{inquiry.event_type.replace('_', ' ')}</p>
+                        <p className="text-sm text-gray-500 capitalize">{inquiry.service_type}</p>
+                        <p className="text-sm text-gray-500 capitalize">{inquiry.menu_style}</p>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div>
+                        {inquiry.event_date && (
+                          <p className="font-medium">{new Date(inquiry.event_date).toLocaleDateString()}</p>
+                        )}
+                        {inquiry.event_time && (
+                          <p className="text-sm text-gray-500">{inquiry.event_time}</p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <p className="font-medium">{formatGuestCount(inquiry)}</p>
+                    </td>
+                    <td className="py-3 px-4">
+                      <Badge className={
+                        inquiry.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        inquiry.status === 'contacted' ? 'bg-blue-100 text-blue-800' :
+                        inquiry.status === 'quoted' ? 'bg-purple-100 text-purple-800' :
+                        inquiry.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                        'bg-red-100 text-red-800'
+                      }>
+                        {inquiry.status}
+                      </Badge>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedInquiry(inquiry);
+                            setIsDetailOpen(true);
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                        <Select
+                          value={inquiry.status}
+                          onValueChange={(newStatus) => updateCateringStatus(inquiry.id, newStatus)}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="contacted">Contacted</SelectItem>
+                            <SelectItem value="quoted">Quoted</SelectItem>
+                            <SelectItem value="confirmed">Confirmed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {filteredInquiries.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                No catering inquiries found matching your criteria.
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Detail Dialog */}
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Catering Inquiry #{selectedInquiry?.id} Details</DialogTitle>
+          </DialogHeader>
+
+          {selectedInquiry && (
+            <div className="space-y-6">
+              {/* Customer Information */}
+              <div>
+                <h4 className="font-semibold text-lg mb-3">Customer Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600">Name</p>
+                    <p className="font-medium">{selectedInquiry.full_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Email</p>
+                    <p className="font-medium">{selectedInquiry.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Phone</p>
+                    <p className="font-medium">{selectedInquiry.phone_number}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Preferred Contact</p>
+                    <p className="font-medium capitalize">{selectedInquiry.preferred_contact}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Best Time to Call</p>
+                    <p className="font-medium capitalize">{selectedInquiry.best_time_to_call}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Event Information */}
+              <div>
+                <h4 className="font-semibold text-lg mb-3">Event Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600">Event Type</p>
+                    <p className="font-medium capitalize">{selectedInquiry.event_type.replace('_', ' ')}</p>
+                    {selectedInquiry.custom_event_type && (
+                      <p className="text-sm text-gray-500">{selectedInquiry.custom_event_type}</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Service Type</p>
+                    <p className="font-medium capitalize">{selectedInquiry.service_type}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Guest Count</p>
+                    <p className="font-medium">{formatGuestCount(selectedInquiry)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Menu Style</p>
+                    <p className="font-medium capitalize">{selectedInquiry.menu_style.replace('_', ' ')}</p>
+                  </div>
+                  {selectedInquiry.event_date && (
+                    <div>
+                      <p className="text-sm text-gray-600">Event Date</p>
+                      <p className="font-medium">{formatEventDate(selectedInquiry.event_date)}</p>
+                    </div>
+                  )}
+                  {selectedInquiry.event_time && (
+                    <div>
+                      <p className="text-sm text-gray-600">Event Time</p>
+                      <p className="font-medium">{selectedInquiry.event_time}</p>
+                    </div>
+                  )}
+                  {selectedInquiry.budget_range && (
+                    <div>
+                      <p className="text-sm text-gray-600">Budget Range</p>
+                      <p className="font-medium">{selectedInquiry.budget_range}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Delivery Information */}
+              {selectedInquiry.service_type === 'delivery' && selectedInquiry.event_address && (
+                <div>
+                  <h4 className="font-semibold text-lg mb-3">Delivery Information</h4>
+                  <div>
+                    <p className="text-sm text-gray-600">Event Address</p>
+                    <p className="font-medium">{selectedInquiry.event_address}</p>
+                    {selectedInquiry.special_delivery_instructions && (
+                      <div className="mt-2">
+                        <p className="text-sm text-gray-600">Special Instructions</p>
+                        <p className="font-medium">{selectedInquiry.special_delivery_instructions}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Additional Information */}
+              <div>
+                <h4 className="font-semibold text-lg mb-3">Additional Information</h4>
+                <div className="space-y-3">
+                  {selectedInquiry.dietary_restrictions && JSON.parse(selectedInquiry.dietary_restrictions).length > 0 && (
+                    <div>
+                      <p className="text-sm text-gray-600">Dietary Restrictions</p>
+                      <p className="font-medium">{JSON.parse(selectedInquiry.dietary_restrictions).join(', ')}</p>
+                    </div>
+                  )}
+                  {selectedInquiry.additional_services && JSON.parse(selectedInquiry.additional_services).length > 0 && (
+                    <div>
+                      <p className="text-sm text-gray-600">Additional Services</p>
+                      <p className="font-medium">{JSON.parse(selectedInquiry.additional_services).join(', ')}</p>
+                    </div>
+                  )}
+                  {selectedInquiry.special_requests && (
+                    <div>
+                      <p className="text-sm text-gray-600">Special Requests</p>
+                      <p className="font-medium">{selectedInquiry.special_requests}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Status & Timestamps */}
+              <div>
+                <h4 className="font-semibold text-lg mb-3">Status & Timeline</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600">Current Status</p>
+                    <Badge className={
+                      selectedInquiry.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      selectedInquiry.status === 'contacted' ? 'bg-blue-100 text-blue-800' :
+                      selectedInquiry.status === 'quoted' ? 'bg-purple-100 text-purple-800' :
+                      selectedInquiry.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                      'bg-red-100 text-red-800'
+                    }>
+                      {selectedInquiry.status}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Submitted</p>
+                    <p className="font-medium">{new Date(selectedInquiry.created_at).toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-between items-center pt-4 border-t">
+                <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
+                  Close
+                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      window.open(`mailto:${selectedInquiry.email}?subject=Catering Inquiry #${selectedInquiry.id}`);
+                    }}
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    Email Customer
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      window.open(`tel:${selectedInquiry.phone_number}`);
+                    }}
+                  >
+                    <Phone className="h-4 w-4 mr-2" />
+                    Call Customer
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 
