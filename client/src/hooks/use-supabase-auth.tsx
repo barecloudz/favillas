@@ -22,6 +22,7 @@ interface AuthContextType {
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<SelectUser, Error, any>;
   refreshUserProfile: () => Promise<void>;
+  confirmEmail: (token: string) => Promise<{ error?: any; data?: any }>;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -520,6 +521,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  // Email confirmation function
+  const confirmEmail = async (token: string): Promise<{ error?: any; data?: any }> => {
+    try {
+      console.log('🔐 Attempting email confirmation with token:', token?.substring(0, 10) + '...');
+
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: token,
+        type: 'signup'
+      });
+
+      if (error) {
+        console.error('❌ Email confirmation error:', error);
+        return { error };
+      }
+
+      console.log('✅ Email confirmation successful:', data);
+
+      // Refresh user profile after successful confirmation
+      await refreshUserProfile();
+
+      toast({
+        title: "Email confirmed!",
+        description: "Your account is now active. Welcome to Favilla's!",
+      });
+
+      return { data };
+    } catch (error) {
+      console.error('❌ Email confirmation exception:', error);
+      return { error };
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -531,7 +564,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginMutation,
       logoutMutation,
       registerMutation,
-      refreshUserProfile
+      refreshUserProfile,
+      confirmEmail
     }}>
       {children}
       <EmailConfirmationModal

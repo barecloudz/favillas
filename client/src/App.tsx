@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
 import AuthCallback from "@/pages/auth-callback";
+import EmailConfirmedPage from "@/pages/email-confirmed";
 import MenuPage from "@/pages/menu-page";
 import CateringPage from "@/pages/catering-page";
 import CustomerDisplay from "@/pages/customer-display";
@@ -49,6 +50,7 @@ function Router() {
         <Route path="/" component={HomePage} />
         <Route path="/auth" component={AuthPage} />
         <Route path="/auth/callback" component={AuthCallback} />
+        <Route path="/auth/confirm" component={EmailConfirmedPage} />
         <Route path="/menu" component={MenuPage} />
         <Route path="/catering" component={CateringPage} />
         <Route path="/display" component={CustomerDisplay} />
