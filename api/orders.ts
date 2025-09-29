@@ -798,16 +798,61 @@ export const handler: Handler = async (event, context) => {
           voucherCode: orderData.voucherCode
         });
 
-        // Use server-calculated values instead of frontend values
-        const serverCalculatedOrder = {
-          ...orderData,
-          total: finalTotal.toFixed(2),
-          tax: tax.toFixed(2),
-          subtotal: discountedSubtotal.toFixed(2),
-          discountAmount: discountAmount.toFixed(2),
-          deliveryFee: adjustedDeliveryFee.toFixed(2),
-          items: validItems // Use only valid items
-        };
+        // FIXED: Use frontend calculation when it includes valid orderBreakdown data
+        let finalOrderData;
+
+        // Check if frontend sent valid orderBreakdown data
+        if (orderData.orderMetadata && orderData.orderMetadata.subtotal && orderData.orderMetadata.finalSubtotal) {
+          const frontendBreakdown = orderData.orderMetadata;
+          const frontendSubtotal = parseFloat(frontendBreakdown.finalSubtotal);
+          const frontendTotal = parseFloat(orderData.total);
+
+          // Validate frontend calculation is reasonable (subtotal should be > 0 and total should be reasonable)
+          if (frontendSubtotal > 0 && frontendTotal > frontendSubtotal && frontendTotal < frontendSubtotal * 2) {
+            console.log('✅ Orders API: Using FRONTEND calculation with valid breakdown:', {
+              frontendSubtotal: frontendSubtotal.toFixed(2),
+              frontendTotal: frontendTotal.toFixed(2),
+              backendSubtotal: discountedSubtotal.toFixed(2),
+              backendTotal: finalTotal.toFixed(2)
+            });
+
+            // Use frontend values with their breakdown data
+            finalOrderData = {
+              ...orderData,
+              total: frontendTotal.toFixed(2),
+              tax: (frontendTotal - frontendSubtotal - deliveryFee - tip).toFixed(2),
+              subtotal: frontendSubtotal.toFixed(2),
+              discountAmount: (frontendBreakdown.discount || 0).toFixed(2),
+              deliveryFee: deliveryFee.toFixed(2),
+              items: validItems
+            };
+          } else {
+            console.log('⚠️ Orders API: Frontend breakdown invalid, using server calculation');
+            finalOrderData = {
+              ...orderData,
+              total: finalTotal.toFixed(2),
+              tax: tax.toFixed(2),
+              subtotal: discountedSubtotal.toFixed(2),
+              discountAmount: discountAmount.toFixed(2),
+              deliveryFee: adjustedDeliveryFee.toFixed(2),
+              items: validItems
+            };
+          }
+        } else {
+          console.log('🔍 Orders API: No frontend breakdown data, using server calculation');
+          finalOrderData = {
+            ...orderData,
+            total: finalTotal.toFixed(2),
+            tax: tax.toFixed(2),
+            subtotal: discountedSubtotal.toFixed(2),
+            discountAmount: discountAmount.toFixed(2),
+            deliveryFee: adjustedDeliveryFee.toFixed(2),
+            items: validItems
+          };
+        }
+
+        // Keep the serverCalculatedOrder name for compatibility
+        const serverCalculatedOrder = finalOrderData;
 
         // Save contact information to user profile for authenticated users
         console.log('🔍 Orders API: Contact info saving check:', {
