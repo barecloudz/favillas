@@ -1068,58 +1068,85 @@ export const handler: Handler = async (event, context) => {
           userContactInfo: userContactInfo
         };
 
-        // Process voucher if provided
+        // Process voucher if provided - Fixed to use user_points_redemptions table
         if (orderData.voucherCode && (finalUserId || finalSupabaseUserId)) {
           try {
-            console.log('🎫 Orders API: Processing voucher:', orderData.voucherCode);
+            console.log('🎫 Orders API: Processing voucher from redemptions:', orderData.voucherCode);
 
+            // The voucher code format is like "DISC0001" where the last 4 digits are the redemption ID
+            const voucherCodeMatch = orderData.voucherCode.match(/([A-Z]+)(\d+)$/);
+            if (!voucherCodeMatch) {
+              console.warn('⚠️ Orders API: Invalid voucher code format:', orderData.voucherCode);
+              return enhancedOrder;
+            }
+
+            const redemptionId = parseInt(voucherCodeMatch[2]);
+            console.log('🔍 Orders API: Extracted redemption ID:', redemptionId);
+
+            // UNIFIED: Check vouchers in user_points_redemptions table with unified authentication
             let voucherQuery;
+
             if (finalUserId) {
+              // Use user_id for unified lookup (works for both legacy and unified Supabase users)
               voucherQuery = await sql`
-                SELECT uv.*, r.name as reward_name
-                FROM user_vouchers uv
-                LEFT JOIN rewards r ON uv.reward_id = r.id
-                WHERE uv.voucher_code = ${orderData.voucherCode}
-                AND uv.user_id = ${finalUserId}
-                AND uv.status = 'active'
-                AND (uv.expires_at IS NULL OR uv.expires_at > NOW())
+                SELECT upr.*, r.name as reward_name, r.description as reward_description,
+                       r.reward_type, r.discount, r.free_item, r.min_order_amount
+                FROM user_points_redemptions upr
+                LEFT JOIN rewards r ON upr.reward_id = r.id
+                WHERE upr.id = ${redemptionId}
+                AND upr.user_id = ${finalUserId}
+                AND upr.is_used = false
+                AND (upr.expires_at IS NULL OR upr.expires_at > NOW())
               `;
-            } else {
+            } else if (finalSupabaseUserId) {
+              // Fallback for pure Supabase users
               voucherQuery = await sql`
-                SELECT uv.*, r.name as reward_name
-                FROM user_vouchers uv
-                LEFT JOIN rewards r ON uv.reward_id = r.id
-                WHERE uv.voucher_code = ${orderData.voucherCode}
-                AND uv.user_id IN (
-                  SELECT id FROM users WHERE supabase_user_id = ${finalSupabaseUserId}
-                )
-                AND uv.status = 'active'
-                AND (uv.expires_at IS NULL OR uv.expires_at > NOW())
+                SELECT upr.*, r.name as reward_name, r.description as reward_description,
+                       r.reward_type, r.discount, r.free_item, r.min_order_amount
+                FROM user_points_redemptions upr
+                LEFT JOIN rewards r ON upr.reward_id = r.id
+                WHERE upr.id = ${redemptionId}
+                AND upr.supabase_user_id = ${finalSupabaseUserId}
+                AND upr.is_used = false
+                AND (upr.expires_at IS NULL OR upr.expires_at > NOW())
               `;
             }
 
-            if (voucherQuery.length > 0) {
+            if (voucherQuery && voucherQuery.length > 0) {
               const voucher = voucherQuery[0];
+              console.log('✅ Orders API: Found valid voucher redemption:', voucher);
 
-              // Mark voucher as used in user_vouchers table
+              // Mark voucher as used in user_points_redemptions table
               await sql`
-                UPDATE user_vouchers
-                SET status = 'used', used_at = NOW()
+                UPDATE user_points_redemptions
+                SET is_used = true, used_at = NOW()
                 WHERE id = ${voucher.id}
               `;
 
               // Store voucher details in order for confirmation display
               enhancedOrder.voucherUsed = {
-                code: voucher.voucher_code,
+                code: orderData.voucherCode,
                 discountAmount: discountAmount, // Use actual calculated discount
-                originalDiscountAmount: voucher.discount_amount, // Original voucher value
-                discountType: voucher.discount_type,
-                rewardName: voucher.reward_name || voucher.title
+                originalDiscountAmount: voucher.discount || 0, // Original reward discount
+                discountType: voucher.reward_type || 'discount',
+                rewardName: voucher.reward_name || 'Reward',
+                redemptionId: voucher.id,
+                pointsSpent: voucher.points_spent
               };
 
-              console.log('✅ Orders API: Voucher marked as used:', orderData.voucherCode, 'Discount:', voucher.discount_amount, voucher.discount_type);
+              console.log('✅ Orders API: Voucher marked as used in redemptions table:', {
+                redemptionId: voucher.id,
+                voucherCode: orderData.voucherCode,
+                discountAmount,
+                rewardName: voucher.reward_name
+              });
             } else {
-              console.warn('⚠️ Orders API: Voucher not found or invalid:', orderData.voucherCode);
+              console.warn('⚠️ Orders API: Voucher redemption not found or invalid:', {
+                voucherCode: orderData.voucherCode,
+                redemptionId,
+                finalUserId,
+                finalSupabaseUserId
+              });
             }
           } catch (voucherError) {
             console.error('❌ Orders API: Voucher processing failed:', voucherError);
