@@ -13385,30 +13385,369 @@ const MultiLocationTab = () => {
 
 // Email Campaigns Tab
 const EmailCampaignsTab = ({ users }: { users: any[] }) => {
-  const [campaigns, setCampaigns] = useState([
-    {
-      id: 1,
-      name: "Weekly Specials",
-      subject: "Don't Miss This Week's Pizza Specials!",
-      status: "sent",
-      recipients: 1250,
-      openRate: 32.5,
-      clickRate: 8.2,
-      sentAt: "2024-01-15T10:00:00Z"
-    },
-    {
-      id: 2,
-      name: "New Menu Items",
-      subject: "Try Our New Gourmet Pizza Collection",
-      status: "draft",
-      recipients: 0,
-      openRate: 0,
-      clickRate: 0,
-      sentAt: null
-    }
-  ]);
+  const { toast } = useToast();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [selectedSegment, setSelectedSegment] = useState('all');
+  const [campaignName, setCampaignName] = useState('');
+  const [campaignSubject, setCampaignSubject] = useState('');
+  const [campaignContent, setCampaignContent] = useState('');
+  const [testEmails, setTestEmails] = useState('');
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [scheduledTime, setScheduledTime] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
-  const [isCreatingCampaign, setIsCreatingCampaign] = useState(false);
+  // Fetch email marketing data
+  const { data: emailData, isLoading, refetch } = useQuery({
+    queryKey: ['email-marketing'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/admin/email-marketing');
+      return response.json();
+    }
+  });
+
+  const campaigns = emailData?.campaigns || [];
+  const segmentCounts = emailData?.segmentCounts || {};
+  const templates = emailData?.templates || [];
+
+  // Send campaign mutation
+  const sendCampaignMutation = useMutation({
+    mutationFn: async (campaignData: any) => {
+      const response = await apiRequest('POST', '/api/admin/email-marketing', campaignData);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      refetch();
+      if (data.results) {
+        // Test emails sent
+        toast({
+          title: "Test Emails Sent",
+          description: `Sent to ${data.results.length} test recipients`,
+        });
+      } else {
+        // Campaign sent
+        toast({
+          title: "Campaign Sent Successfully",
+          description: `Sent to ${data.totalSent} customers with ${data.successRate}% success rate`,
+        });
+      }
+      setIsCreateDialogOpen(false);
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Campaign Failed",
+        description: error.message || "Failed to send campaign",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const resetForm = () => {
+    setCampaignName('');
+    setCampaignSubject('');
+    setCampaignContent('');
+    setTestEmails('');
+    setIsScheduled(false);
+    setScheduledTime('');
+    setSelectedSegment('all');
+  };
+
+  const handleSendCampaign = () => {
+    if (!campaignName || !campaignSubject || !campaignContent) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSending(true);
+
+    const campaignData = {
+      name: campaignName,
+      subject: campaignSubject,
+      htmlContent: campaignContent,
+      customerSegment: selectedSegment,
+      scheduledTime: isScheduled ? scheduledTime : undefined,
+      testEmails: testEmails ? testEmails.split(',').map(email => email.trim()).filter(email => email) : undefined
+    };
+
+    sendCampaignMutation.mutate(campaignData);
+    setIsSending(false);
+  };
+
+  const segmentOptions = [
+    { value: 'all', label: 'All Customers', count: segmentCounts.all || 0 },
+    { value: 'loyalty_members', label: 'Loyalty Members', count: segmentCounts.loyalty_members || 0 },
+    { value: 'new_customers', label: 'New Customers (30 days)', count: segmentCounts.new_customers || 0 },
+    { value: 'recent_orders', label: 'Recent Orders (30 days)', count: segmentCounts.recent_orders || 0 },
+    { value: 'birthday_this_month', label: 'Birthday This Month', count: segmentCounts.birthday_this_month || 0 },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Email Marketing</h2>
+          <p className="text-gray-600">Create and manage email campaigns for your customers</p>
+        </div>
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <Mail className="h-4 w-4 mr-2" />
+          Create Campaign
+        </Button>
+      </div>
+
+      {/* Customer Segments Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        {segmentOptions.map((segment) => (
+          <Card key={segment.value}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">{segment.label}</p>
+                  <p className="text-2xl font-bold text-gray-900">{segment.count}</p>
+                </div>
+                <Mail className="h-8 w-8 text-blue-600" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Campaign History */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Campaign History</CardTitle>
+          <CardDescription>View past email campaigns and their performance</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {campaigns.length === 0 ? (
+            <div className="text-center py-8">
+              <Mail className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No campaigns yet</h3>
+              <p className="text-gray-600 mb-4">Create your first email campaign to get started</p>
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                Create First Campaign
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {campaigns.map((campaign: any) => (
+                <div key={campaign.id} className="border rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h4 className="font-medium text-gray-900">{campaign.name}</h4>
+                      <p className="text-sm text-gray-600">{campaign.subject}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        campaign.status === 'sent' ? 'bg-green-100 text-green-800' :
+                        campaign.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                        campaign.status === 'sending' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {campaign.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Segment:</span>
+                      <p className="font-medium">{campaign.customer_segment}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Sent:</span>
+                      <p className="font-medium">{campaign.total_sent || 0}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Delivered:</span>
+                      <p className="font-medium">{campaign.total_delivered || 0}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Opened:</span>
+                      <p className="font-medium">{campaign.total_opened || 0}</p>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-gray-500">
+                    Created: {new Date(campaign.created_at).toLocaleDateString()}
+                    {campaign.sent_time && ` • Sent: ${new Date(campaign.sent_time).toLocaleDateString()}`}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Create Campaign Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create Email Campaign</DialogTitle>
+            <DialogDescription>
+              Design and send promotional emails to your customers
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Campaign Name */}
+            <div>
+              <label className="text-sm font-medium">Campaign Name</label>
+              <Input
+                placeholder="e.g., Weekly Special Promotion"
+                value={campaignName}
+                onChange={(e) => setCampaignName(e.target.value)}
+              />
+            </div>
+
+            {/* Subject Line */}
+            <div>
+              <label className="text-sm font-medium">Subject Line</label>
+              <Input
+                placeholder="e.g., 🍕 Special Offer Just for You!"
+                value={campaignSubject}
+                onChange={(e) => setCampaignSubject(e.target.value)}
+              />
+            </div>
+
+            {/* Customer Segment */}
+            <div>
+              <label className="text-sm font-medium">Customer Segment</label>
+              <Select value={selectedSegment} onValueChange={setSelectedSegment}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {segmentOptions.map((segment) => (
+                    <SelectItem key={segment.value} value={segment.value}>
+                      {segment.label} ({segment.count} customers)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Email Templates */}
+            {templates.length > 0 && (
+              <div>
+                <label className="text-sm font-medium">Choose Template (Optional)</label>
+                <Select onValueChange={(templateId) => {
+                  const template = templates.find((t: any) => t.id === templateId);
+                  if (template) {
+                    setCampaignSubject(template.subject);
+                    setCampaignContent(template.htmlContent);
+                  }
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a template or write your own" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {templates.map((template: any) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name} - {template.description}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Email Content */}
+            <div>
+              <label className="text-sm font-medium">Email Content (HTML)</label>
+              <Textarea
+                placeholder="Enter your email content here. You can use HTML for formatting..."
+                value={campaignContent}
+                onChange={(e) => setCampaignContent(e.target.value)}
+                rows={8}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Tip: Use HTML for formatting. The content will be wrapped in our branded template.
+              </p>
+            </div>
+
+            {/* Test Emails */}
+            <div>
+              <label className="text-sm font-medium">Test Emails (Optional)</label>
+              <Input
+                placeholder="test@example.com, another@example.com"
+                value={testEmails}
+                onChange={(e) => setTestEmails(e.target.value)}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Comma-separated emails to send test versions before the main campaign
+              </p>
+            </div>
+
+            {/* Scheduling */}
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="schedule"
+                checked={isScheduled}
+                onChange={(e) => setIsScheduled(e.target.checked)}
+              />
+              <label htmlFor="schedule" className="text-sm font-medium">
+                Schedule for later
+              </label>
+            </div>
+
+            {isScheduled && (
+              <div>
+                <label className="text-sm font-medium">Scheduled Time</label>
+                <Input
+                  type="datetime-local"
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              Cancel
+            </Button>
+            {testEmails && (
+              <Button
+                variant="secondary"
+                onClick={handleSendCampaign}
+                disabled={isSending || sendCampaignMutation.isPending}
+              >
+                {sendCampaignMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                Send Test
+              </Button>
+            )}
+            <Button
+              onClick={handleSendCampaign}
+              disabled={isSending || sendCampaignMutation.isPending}
+            >
+              {sendCampaignMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              {isScheduled ? 'Schedule Campaign' : 'Send Campaign'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+// SMS Marketing Tab
+const SMSMarketingTab = ({ users }: { users: any[] }) => {
   const [isSending, setIsSending] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
@@ -14100,573 +14439,6 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
                     className="bg-[#d73a31] hover:bg-[#c73128]"
                   >
                     <Mail className="mr-2 h-4 w-4" />
-                    Send Now
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-};
-
-// SMS Marketing Tab
-const SMSMarketingTab = ({ users }: { users: any[] }) => {
-  const [campaigns, setCampaigns] = useState([
-    {
-      id: 1,
-      name: "Flash Sale Alert",
-      message: "🍕 FLASH SALE: 20% off all pizzas today only! Order now: favillaspizzeria.com/order",
-      status: "sent",
-      recipients: 850,
-      deliveryRate: 98.2,
-      responseRate: 12.5,
-      sentAt: "2024-01-15T15:30:00Z"
-    }
-  ]);
-
-  const [isCreatingSMS, setIsCreatingSMS] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [viewingSMSCampaign, setViewingSMSCampaign] = useState(null);
-  const [isViewingSMSCampaign, setIsViewingSMSCampaign] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    message: "",
-    audienceType: "all"
-  });
-
-  const usersWithPhone = users?.filter(user => user.phone && user.marketingOptIn && user.role === "customer") || [];
-
-  const sendSMSCampaign = async () => {
-    if (!formData.name || !formData.message) {
-      toast({
-        title: "Error",
-        description: "Please fill in campaign name and message",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (formData.message.length > 160) {
-      toast({
-        title: "Message Too Long",
-        description: "SMS messages must be 160 characters or less",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsSending(true);
-    try {
-      const response = await apiRequest('/api/sms/send-campaign', {
-        method: 'POST',
-        body: JSON.stringify({
-          campaignName: formData.name,
-          message: formData.message,
-          recipientType: formData.audienceType
-        })
-      });
-
-      if (response.success) {
-        toast({
-          title: "SMS Campaign Sent!",
-          description: `Successfully sent to ${response.sentSuccessfully} phone numbers`
-        });
-
-        // Add the new campaign to the list
-        const newCampaign = {
-          id: Date.now(),
-          name: formData.name,
-          message: formData.message,
-          status: "sent",
-          recipients: response.sentSuccessfully,
-          deliveryRate: 98.0,
-          responseRate: 0,
-          sentAt: new Date().toISOString()
-        };
-
-        setCampaigns(prev => [newCampaign, ...prev]);
-
-        // Reset form
-        setFormData({
-          name: "",
-          message: "",
-          audienceType: "all"
-        });
-        setIsCreatingSMS(false);
-      } else {
-        throw new Error(response.error || 'Failed to send SMS campaign');
-      }
-    } catch (error) {
-      console.error('SMS campaign send error:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to send SMS campaign",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const viewSMSCampaign = (campaign) => {
-    setViewingSMSCampaign(campaign);
-    setIsViewingSMSCampaign(true);
-  };
-
-  const sendDraftSMSCampaign = async (campaign) => {
-    setIsSending(true);
-    try {
-      const response = await apiRequest('/api/sms/send-campaign', {
-        method: 'POST',
-        body: JSON.stringify({
-          campaignName: campaign.name,
-          message: campaign.message,
-          recipientType: 'all'
-        })
-      });
-
-      if (response.success) {
-        toast({
-          title: "Draft SMS Campaign Sent!",
-          description: `Successfully sent to ${response.sentSuccessfully} phone numbers`
-        });
-
-        // Update the campaign status
-        setCampaigns(prev => prev.map(c =>
-          c.id === campaign.id
-            ? { ...c, status: 'sent', recipients: response.sentSuccessfully, sentAt: new Date().toISOString() }
-            : c
-        ));
-      } else {
-        throw new Error(response.error || 'Failed to send SMS campaign');
-      }
-    } catch (error) {
-      console.error('SMS campaign send error:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to send SMS campaign",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const deleteSMSCampaign = (campaignId) => {
-    setCampaigns(prev => prev.filter(c => c.id !== campaignId));
-    toast({
-      title: "SMS Campaign Deleted",
-      description: "The SMS campaign has been successfully deleted"
-    });
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">SMS Marketing</h3>
-        <Button onClick={() => setIsCreatingSMS(true)} className="bg-[#d73a31] hover:bg-[#c73128]">
-          <MessageSquare className="h-4 w-4 mr-2" />
-          Create SMS Campaign
-        </Button>
-      </div>
-
-      {/* SMS Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-3xl font-bold text-indigo-700">{campaigns.length}</div>
-                <div className="text-sm font-medium text-indigo-600">SMS Campaigns</div>
-              </div>
-              <div className="p-3 bg-indigo-200 rounded-full">
-                <MessageSquare className="h-6 w-6 text-indigo-700" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-3xl font-bold text-emerald-700">{usersWithPhone.length}</div>
-                <div className="text-sm font-medium text-emerald-600">Phone Subscribers</div>
-              </div>
-              <div className="p-3 bg-emerald-200 rounded-full">
-                <Phone className="h-6 w-6 text-emerald-700" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100 border-cyan-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-3xl font-bold text-cyan-700">98.2%</div>
-                <div className="text-sm font-medium text-cyan-600">Delivery Rate</div>
-              </div>
-              <div className="p-3 bg-cyan-200 rounded-full">
-                <CheckCircle className="h-6 w-6 text-cyan-700" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-rose-50 to-rose-100 border-rose-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-3xl font-bold text-rose-700">12.5%</div>
-                <div className="text-sm font-medium text-rose-600">Response Rate</div>
-              </div>
-              <div className="p-3 bg-rose-200 rounded-full">
-                <TrendingUp className="h-6 w-6 text-rose-700" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick SMS Templates */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick SMS Templates</CardTitle>
-          <CardDescription>Pre-built templates for common campaigns</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="border rounded-lg p-4 space-y-2">
-              <h4 className="font-medium">Flash Sale</h4>
-              <p className="text-sm text-gray-600">🍕 FLASH SALE: [X]% off all pizzas today only! Order: [link]</p>
-              <Button variant="outline" size="sm">Use Template</Button>
-            </div>
-            <div className="border rounded-lg p-4 space-y-2">
-              <h4 className="font-medium">New Menu Item</h4>
-              <p className="text-sm text-gray-600">🆕 Try our new [item name]! Limited time offer: [link]</p>
-              <Button variant="outline" size="sm">Use Template</Button>
-            </div>
-            <div className="border rounded-lg p-4 space-y-2">
-              <h4 className="font-medium">Order Ready</h4>
-              <p className="text-sm text-gray-600">✅ Your order #[order] is ready for pickup!</p>
-              <Button variant="outline" size="sm">Use Template</Button>
-            </div>
-            <div className="border rounded-lg p-4 space-y-2">
-              <h4 className="font-medium">Loyalty Reward</h4>
-              <p className="text-sm text-gray-600">🎉 You've earned a reward! Get [reward] on your next order: [link]</p>
-              <Button variant="outline" size="sm">Use Template</Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* SMS Campaigns List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>SMS Campaigns</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto mobile-scroll-container touch-pan-x">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2">Campaign</th>
-                  <th className="text-left py-2">Status</th>
-                  <th className="text-left py-2">Recipients</th>
-                  <th className="text-left py-2">Delivery Rate</th>
-                  <th className="text-left py-2">Response Rate</th>
-                  <th className="text-left py-2">Sent Date</th>
-                  <th className="text-left py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {campaigns.map((campaign) => (
-                  <tr key={campaign.id} className="border-b">
-                    <td className="py-2">
-                      <div>
-                        <div className="font-medium">{campaign.name}</div>
-                        <div className="text-sm text-gray-500 max-w-md truncate">{campaign.message}</div>
-                      </div>
-                    </td>
-                    <td className="py-2">
-                      <Badge variant="default">{campaign.status}</Badge>
-                    </td>
-                    <td className="py-2">{campaign.recipients.toLocaleString()}</td>
-                    <td className="py-2">{campaign.deliveryRate}%</td>
-                    <td className="py-2">{campaign.responseRate}%</td>
-                    <td className="py-2">
-                      {new Date(campaign.sentAt).toLocaleDateString()}
-                    </td>
-                    <td className="py-2">
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => viewSMSCampaign(campaign)}
-                        >
-                          <Eye className="mr-1 h-3 w-3" />
-                          {campaign.status === "draft" ? "Edit" : "View"}
-                        </Button>
-                        {campaign.status === "draft" && (
-                          <Button
-                            size="sm"
-                            onClick={() => sendDraftSMSCampaign(campaign)}
-                            disabled={isSending}
-                            className="bg-[#d73a31] hover:bg-[#c73128]"
-                          >
-                            {isSending ? (
-                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                            ) : (
-                              <MessageSquare className="mr-1 h-3 w-3" />
-                            )}
-                            Send
-                          </Button>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => deleteSMSCampaign(campaign.id)}
-                          className="text-red-600 hover:text-red-700 hover:border-red-300"
-                        >
-                          <Trash2 className="mr-1 h-3 w-3" />
-                          Delete
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* SMS Compliance Notice */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <AlertTriangle className="h-5 w-5 mr-2 text-yellow-500" />
-            SMS Compliance
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2 text-sm text-gray-600">
-            <p>• Always include your business name in SMS messages</p>
-            <p>• Provide clear opt-out instructions (Reply STOP to unsubscribe)</p>
-            <p>• Only send to customers who have explicitly opted in</p>
-            <p>• Respect quiet hours (typically 8 AM - 9 PM local time)</p>
-            <p>• Keep messages under 160 characters when possible</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Create SMS Campaign Dialog */}
-      <Dialog open={isCreatingSMS} onOpenChange={setIsCreatingSMS}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader className="border-b pb-4">
-            <DialogTitle className="text-xl flex items-center">
-              <MessageSquare className="mr-3 h-5 w-5 text-[#d73a31]" />
-              Create SMS Campaign
-            </DialogTitle>
-            <DialogDescription>
-              Send SMS messages to customers who have opted in to marketing communications
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-6 pt-4">
-            <div>
-              <Label htmlFor="sms-campaign-name">Campaign Name</Label>
-              <Input
-                id="sms-campaign-name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Flash Sale Alert"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="sms-audience">Target Audience</Label>
-              <Select value={formData.audienceType} onValueChange={(value) => setFormData({ ...formData, audienceType: value })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">📱 All Phone Subscribers ({usersWithPhone.length})</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label htmlFor="sms-message">SMS Message</Label>
-                <div className="text-sm text-gray-500">
-                  {formData.message.length}/160 characters
-                </div>
-              </div>
-              <Textarea
-                id="sms-message"
-                rows={4}
-                value={formData.message}
-                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                placeholder="🍕 FLASH SALE: 20% off all pizzas today only! Order at favillaspizzeria.com - Reply STOP to opt out"
-                className={`font-mono text-sm ${formData.message.length > 160 ? 'border-red-300 bg-red-50' : ''}`}
-              />
-              {formData.message.length > 160 && (
-                <p className="text-sm text-red-600 mt-1">
-                  ⚠️ Message is too long. SMS messages should be 160 characters or less.
-                </p>
-              )}
-            </div>
-
-            {/* SMS Preview */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="font-medium mb-3 flex items-center">
-                <Phone className="mr-2 h-4 w-4" />
-                SMS Preview
-              </h4>
-              <div className="bg-white border rounded-lg p-3 max-w-xs">
-                <div className="text-xs text-gray-500 mb-2">From: Favilla's Pizzeria</div>
-                <div className="text-sm">
-                  {formData.message || "Your SMS message will appear here..."}
-                </div>
-              </div>
-            </div>
-
-            {/* Compliance Reminder */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <div className="flex items-start">
-                <AlertTriangle className="h-5 w-5 text-yellow-600 mr-2 mt-0.5" />
-                <div>
-                  <h4 className="font-medium text-yellow-800 mb-1">SMS Compliance Reminder</h4>
-                  <ul className="text-sm text-yellow-700 space-y-1">
-                    <li>• Include business name and opt-out instructions</li>
-                    <li>• Only send between 8 AM - 9 PM local time</li>
-                    <li>• Keep messages concise and valuable</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center pt-6 border-t">
-            <div className="text-sm text-gray-600">
-              Recipients: {usersWithPhone.length} phone subscribers
-            </div>
-            <div className="flex space-x-3">
-              <Button variant="outline" onClick={() => setIsCreatingSMS(false)} disabled={isSending}>
-                Cancel
-              </Button>
-              <Button
-                onClick={sendSMSCampaign}
-                disabled={isSending || !formData.name || !formData.message || formData.message.length > 160}
-                className="bg-[#d73a31] hover:bg-[#c73128]"
-              >
-                {isSending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending to {usersWithPhone.length} phones...
-                  </>
-                ) : (
-                  <>
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    Send SMS Campaign
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* View SMS Campaign Dialog */}
-      <Dialog open={isViewingSMSCampaign} onOpenChange={setIsViewingSMSCampaign}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center">
-              <MessageSquare className="mr-3 h-5 w-5 text-[#d73a31]" />
-              SMS Campaign Details
-            </DialogTitle>
-          </DialogHeader>
-
-          {viewingSMSCampaign && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium text-gray-600">Campaign Name</Label>
-                  <p className="mt-1 text-lg font-semibold">{viewingSMSCampaign.name}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600">Status</Label>
-                  <div className="mt-1">
-                    <Badge variant="default">{viewingSMSCampaign.status}</Badge>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label className="text-sm font-medium text-gray-600">Recipients</Label>
-                  <p className="mt-1 text-2xl font-bold text-green-600">
-                    {viewingSMSCampaign.recipients.toLocaleString()}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600">Delivery Rate</Label>
-                  <p className="mt-1 text-2xl font-bold text-blue-600">{viewingSMSCampaign.deliveryRate}%</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600">Response Rate</Label>
-                  <p className="mt-1 text-2xl font-bold text-purple-600">{viewingSMSCampaign.responseRate}%</p>
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-600">Sent Date</Label>
-                <p className="mt-1 text-base">
-                  {new Date(viewingSMSCampaign.sentAt).toLocaleString()}
-                </p>
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-600">SMS Message</Label>
-                <div className="mt-2 border rounded-lg p-4 bg-gray-50">
-                  <div className="bg-white border rounded-lg p-3 max-w-xs">
-                    <div className="text-xs text-gray-500 mb-2">From: Favilla's Pizzeria</div>
-                    <div className="text-sm">
-                      {viewingSMSCampaign.message}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-medium text-blue-800 mb-2">Message Details</h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-blue-600">Character Count:</span>
-                    <span className="font-medium ml-2">{viewingSMSCampaign.message.length}/160</span>
-                  </div>
-                  <div>
-                    <span className="text-blue-600">Message Type:</span>
-                    <span className="font-medium ml-2">SMS Marketing</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-3">
-                <Button variant="outline" onClick={() => setIsViewingSMSCampaign(false)}>
-                  Close
-                </Button>
-                {viewingSMSCampaign.status === "draft" && (
-                  <Button
-                    onClick={() => {
-                      setIsViewingSMSCampaign(false);
-                      sendDraftSMSCampaign(viewingSMSCampaign);
-                    }}
-                    className="bg-[#d73a31] hover:bg-[#c73128]"
-                  >
-                    <MessageSquare className="mr-2 h-4 w-4" />
                     Send Now
                   </Button>
                 )}
@@ -17576,5 +17348,6 @@ const ExperimentalFeaturesSection = () => {
     </div>
   );
 };
+
 
 export default AdminDashboard;
