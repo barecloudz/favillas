@@ -13496,28 +13496,28 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Email Marketing</h2>
-          <p className="text-gray-600">Create and manage email campaigns for your customers</p>
+          <p className="text-gray-600 text-sm sm:text-base">Create and manage email campaigns for your customers</p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
+        <Button onClick={() => setIsCreateDialogOpen(true)} className="w-full sm:w-auto">
           <Mail className="h-4 w-4 mr-2" />
           Create Campaign
         </Button>
       </div>
 
       {/* Customer Segments Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {segmentOptions.map((segment) => (
           <Card key={segment.value}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">{segment.label}</p>
-                  <p className="text-2xl font-bold text-gray-900">{segment.count}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">{segment.label}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900">{segment.count}</p>
                 </div>
-                <Mail className="h-8 w-8 text-blue-600" />
+                <Mail className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0 ml-2" />
               </div>
             </CardContent>
           </Card>
@@ -13544,13 +13544,13 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
             <div className="space-y-4">
               {campaigns.map((campaign: any) => (
                 <div key={campaign.id} className="border rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h4 className="font-medium text-gray-900">{campaign.name}</h4>
-                      <p className="text-sm text-gray-600">{campaign.subject}</p>
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-3">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-gray-900 truncate">{campaign.name}</h4>
+                      <p className="text-sm text-gray-600 line-clamp-2">{campaign.subject}</p>
                     </div>
-                    <div className="text-right">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
+                    <div className="flex-shrink-0">
+                      <span className={`inline-block px-2 py-1 text-xs rounded-full whitespace-nowrap ${
                         campaign.status === 'sent' ? 'bg-green-100 text-green-800' :
                         campaign.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
                         campaign.status === 'sending' ? 'bg-yellow-100 text-yellow-800' :
@@ -13560,27 +13560,32 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
                       </span>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                     <div>
-                      <span className="text-gray-600">Segment:</span>
-                      <p className="font-medium">{campaign.customer_segment}</p>
+                      <span className="text-gray-600 text-xs">Segment:</span>
+                      <p className="font-medium truncate">{campaign.customer_segment}</p>
                     </div>
                     <div>
-                      <span className="text-gray-600">Sent:</span>
+                      <span className="text-gray-600 text-xs">Sent:</span>
                       <p className="font-medium">{campaign.total_sent || 0}</p>
                     </div>
                     <div>
-                      <span className="text-gray-600">Delivered:</span>
+                      <span className="text-gray-600 text-xs">Delivered:</span>
                       <p className="font-medium">{campaign.total_delivered || 0}</p>
                     </div>
                     <div>
-                      <span className="text-gray-600">Opened:</span>
+                      <span className="text-gray-600 text-xs">Opened:</span>
                       <p className="font-medium">{campaign.total_opened || 0}</p>
                     </div>
                   </div>
-                  <div className="mt-2 text-xs text-gray-500">
+                  <div className="mt-3 text-xs text-gray-500">
                     Created: {new Date(campaign.created_at).toLocaleDateString()}
-                    {campaign.sent_time && ` • Sent: ${new Date(campaign.sent_time).toLocaleDateString()}`}
+                    {campaign.sent_time && (
+                      <span className="block sm:inline">
+                        <span className="hidden sm:inline"> • </span>
+                        Sent: {new Date(campaign.sent_time).toLocaleDateString()}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -13591,7 +13596,7 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
 
       {/* Create Campaign Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Email Campaign</DialogTitle>
             <DialogDescription>
@@ -13599,7 +13604,7 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 px-1">
             {/* Campaign Name */}
             <div>
               <label className="text-sm font-medium">Campaign Name</label>
@@ -13714,8 +13719,12 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
             )}
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsCreateDialogOpen(false)}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
             {testEmails && (
@@ -13723,6 +13732,7 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
                 variant="secondary"
                 onClick={handleSendCampaign}
                 disabled={isSending || sendCampaignMutation.isPending}
+                className="w-full sm:w-auto"
               >
                 {sendCampaignMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -13733,6 +13743,7 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
             <Button
               onClick={handleSendCampaign}
               disabled={isSending || sendCampaignMutation.isPending}
+              className="w-full sm:w-auto"
             >
               {sendCampaignMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
