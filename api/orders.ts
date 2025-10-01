@@ -1346,36 +1346,70 @@ export const handler: Handler = async (event, context) => {
 
             // Send order confirmation email
             const customerEmail = orderData.email || authPayload?.email;
-            const customerName = authPayload?.firstName || authPayload?.username || 'Valued Customer';
+            const customerName = authPayload?.firstName ?
+                               `${authPayload.firstName} ${authPayload.lastName || ''}`.trim() :
+                               authPayload?.username || 'Valued Customer';
 
             if (customerEmail) {
-              const emailOrderData = {
-                orderNumber: newOrder.id.toString(),
-                items: transformedItems.map(item => ({
-                  name: item.name,
-                  quantity: item.quantity,
-                  price: item.price,
-                  customizations: item.options ? Object.values(item.options).filter(Boolean) : undefined
-                })),
-                subtotal: serverCalculatedOrder.subtotal,
-                tax: serverCalculatedOrder.tax,
-                total: serverCalculatedOrder.total,
-                deliveryAddress: orderData.address || undefined,
-                estimatedTime: orderData.fulfillmentTime === 'asap' ? '30-40 minutes' :
-                             orderData.scheduledTime ? new Date(orderData.scheduledTime).toLocaleString() : '30-40 minutes',
-                paymentMethod: orderData.paymentMethod || 'Credit Card'
-              };
+              try {
+                const emailOrderData = {
+                  orderId: newOrder.id.toString(),
+                  customerEmail: customerEmail,
+                  customerName: customerName,
+                  customerPhone: orderData.phone || '',
+                  orderTotal: finalOrderData.total,
+                  orderDate: new Date().toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  }),
+                  orderType: orderData.type || 'pickup',
+                  orderStatus: 'Confirmed',
+                  estimatedTime: orderData.fulfillmentTime === 'asap' ? '30-40 minutes' :
+                               orderData.scheduledTime ? new Date(orderData.scheduledTime).toLocaleTimeString('en-US', {
+                                 hour: 'numeric',
+                                 minute: '2-digit',
+                                 hour12: true
+                               }) : '30-40 minutes',
+                  deliveryAddress: orderData.type === 'delivery' ? orderData.address : undefined,
+                  deliveryInstructions: orderData.deliveryInstructions || undefined,
+                  paymentMethod: orderData.paymentMethod === 'stripe' ? 'Credit Card' :
+                               orderData.paymentMethod === 'cash' ? 'Cash' : 'Credit Card',
+                  items: transformedItems.map(item => ({
+                    name: item.name,
+                    quantity: item.quantity,
+                    price: parseFloat(item.basePrice || item.price || '0').toFixed(2),
+                    modifications: item.notes || (item.options ?
+                      Object.entries(item.options)
+                        .filter(([key, value]) => value && value !== 'none')
+                        .map(([key, value]) => `${key}: ${value}`)
+                        .join(', ') : undefined)
+                  })),
+                  pointsEarned: pointsAwarded || undefined,
+                  totalPoints: userPoints ? (userPoints.points + (pointsAwarded || 0)) : undefined,
+                  voucherUsed: enhancedOrder.voucherUsed ? true : false,
+                  voucherDiscount: enhancedOrder.voucherUsed ?
+                    enhancedOrder.voucherUsed.discountAmount?.toString() : undefined,
+                  voucherCode: enhancedOrder.voucherUsed ?
+                    enhancedOrder.voucherUsed.code : undefined
+                };
 
-              await fetch(`${process.env.SITE_URL || 'https://pizzaspinrewards.com'}/api/email/send-order-confirmation`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  customerEmail,
-                  customerName,
-                  orderData: emailOrderData
-                })
-              });
-              console.log('✅ Orders API: Order confirmation email sent async');
+                const emailResponse = await fetch('/api/send-order-confirmation', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(emailOrderData)
+                });
+
+                if (emailResponse.ok) {
+                  console.log('✅ Orders API: Order confirmation email sent successfully');
+                } else {
+                  console.error('❌ Orders API: Failed to send order confirmation email:', await emailResponse.text());
+                }
+              } catch (emailError) {
+                console.error('❌ Orders API: Order confirmation email error:', emailError);
+                // Don't fail the order if email fails
+              }
             }
           } catch (asyncError) {
             console.error('❌ Orders API: Async operation failed:', asyncError);

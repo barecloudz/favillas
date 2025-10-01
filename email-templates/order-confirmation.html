@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Confirmation #{{ORDER_ID}} | Favilla's NY Pizza</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #d73a31 0%, #c73128 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .order-number {
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 25px;
+            margin-top: 15px;
+            display: inline-block;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .content {
+            padding: 30px;
+        }
+        .order-status {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status-badge {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 16px;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+        .order-details {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+            font-weight: bold;
+            font-size: 18px;
+            margin-top: 10px;
+            padding-top: 15px;
+            border-top: 2px solid #d73a31;
+        }
+        .detail-label {
+            color: #6c757d;
+            font-weight: 500;
+        }
+        .detail-value {
+            color: #333;
+            font-weight: 600;
+        }
+        .items-section {
+            margin: 30px 0;
+        }
+        .items-section h3 {
+            color: #d73a31;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .order-item:last-child {
+            border-bottom: none;
+        }
+        .item-details {
+            flex: 1;
+        }
+        .item-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .item-modifications {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 3px;
+        }
+        .item-quantity {
+            font-size: 14px;
+            color: #888;
+        }
+        .item-price {
+            font-weight: bold;
+            color: #d73a31;
+            font-size: 16px;
+        }
+        .delivery-info {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+        .delivery-info h4 {
+            color: #856404;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        .delivery-info p {
+            margin: 5px 0;
+            color: #856404;
+        }
+        .points-section {
+            background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 25px;
+            text-align: center;
+            margin: 25px 0;
+        }
+        .points-earned {
+            font-size: 36px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .track-button {
+            background: linear-gradient(135deg, #d73a31 0%, #c73128 100%);
+            color: white;
+            text-decoration: none;
+            padding: 15px 35px;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 16px;
+            display: inline-block;
+            margin: 20px 0;
+            transition: transform 0.2s ease;
+            box-shadow: 0 4px 15px rgba(215, 58, 49, 0.3);
+        }
+        .track-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(215, 58, 49, 0.4);
+        }
+        .contact-section {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: center;
+        }
+        .contact-section h4 {
+            color: #333;
+            margin-top: 0;
+        }
+        .contact-links {
+            margin: 15px 0;
+        }
+        .contact-links a {
+            color: #d73a31;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: 500;
+        }
+        .footer {
+            background-color: #343a40;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .footer p {
+            margin: 5px 0;
+            opacity: 0.8;
+        }
+        .social-links {
+            margin: 20px 0;
+        }
+        .social-links a {
+            color: #fff;
+            text-decoration: none;
+            margin: 0 10px;
+            opacity: 0.8;
+        }
+        .voucher-section {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+        .voucher-section h4 {
+            color: #0c5460;
+            margin-top: 0;
+        }
+        .voucher-code {
+            background-color: #fff;
+            border: 2px dashed #0c5460;
+            padding: 15px;
+            text-align: center;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .voucher-code strong {
+            font-size: 18px;
+            color: #0c5460;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍕 Order Confirmed!</h1>
+            <div class="order-number">Order #{{ORDER_ID}}</div>
+        </div>
+
+        <div class="content">
+            <div class="order-status">
+                <div class="status-badge">✅ {{ORDER_STATUS}}</div>
+                <p style="color: #666; margin: 0;">
+                    {{#if IS_DELIVERY}}
+                        Estimated delivery: {{ESTIMATED_TIME}}
+                    {{else}}
+                        Estimated pickup: {{ESTIMATED_TIME}}
+                    {{/if}}
+                </p>
+            </div>
+
+            <div class="order-details">
+                <div class="detail-row">
+                    <span class="detail-label">Order Date:</span>
+                    <span class="detail-value">{{ORDER_DATE}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Order Type:</span>
+                    <span class="detail-value">{{ORDER_TYPE}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Payment Method:</span>
+                    <span class="detail-value">{{PAYMENT_METHOD}}</span>
+                </div>
+                {{#if VOUCHER_USED}}
+                <div class="detail-row">
+                    <span class="detail-label">Voucher Applied:</span>
+                    <span class="detail-value" style="color: #28a745;">-${{VOUCHER_DISCOUNT}}</span>
+                </div>
+                {{/if}}
+                <div class="detail-row">
+                    <span class="detail-label">Total:</span>
+                    <span class="detail-value" style="color: #d73a31;">${{ORDER_TOTAL}}</span>
+                </div>
+            </div>
+
+            {{#if IS_DELIVERY}}
+            <div class="delivery-info">
+                <h4>🚚 Delivery Information</h4>
+                <p><strong>Address:</strong> {{DELIVERY_ADDRESS}}</p>
+                <p><strong>Phone:</strong> {{CUSTOMER_PHONE}}</p>
+                {{#if DELIVERY_INSTRUCTIONS}}
+                <p><strong>Instructions:</strong> {{DELIVERY_INSTRUCTIONS}}</p>
+                {{/if}}
+            </div>
+            {{/if}}
+
+            <div class="items-section">
+                <h3>📋 Order Items</h3>
+                {{#each ORDER_ITEMS}}
+                <div class="order-item">
+                    <div class="item-details">
+                        <div class="item-name">{{name}}</div>
+                        {{#if modifications}}
+                        <div class="item-modifications">{{modifications}}</div>
+                        {{/if}}
+                        <div class="item-quantity">Quantity: {{quantity}}</div>
+                    </div>
+                    <div class="item-price">${{price}}</div>
+                </div>
+                {{/each}}
+            </div>
+
+            {{#if POINTS_EARNED}}
+            <div class="points-section">
+                <h3>🎁 Reward Points Earned!</h3>
+                <div class="points-earned">+{{POINTS_EARNED}} Points</div>
+                <p>You now have {{TOTAL_POINTS}} total points</p>
+                <p style="font-size: 14px; opacity: 0.9;">
+                    Use your points for free items and exclusive rewards!
+                </p>
+            </div>
+            {{/if}}
+
+            <div style="text-align: center;">
+                <a href="{{SITE_URL}}/orders" class="track-button">
+                    📱 Track Your Order
+                </a>
+            </div>
+
+            <div class="contact-section">
+                <h4>📞 Need Help?</h4>
+                <p>Contact us if you have any questions about your order</p>
+                <div class="contact-links">
+                    <a href="tel:{{RESTAURANT_PHONE}}">📞 Call Us</a>
+                    <a href="mailto:{{RESTAURANT_EMAIL}}">📧 Email Us</a>
+                    <a href="{{SITE_URL}}">🌐 Visit Website</a>
+                </div>
+            </div>
+
+            {{#if SPECIAL_OFFER}}
+            <div class="voucher-section">
+                <h4>🎉 Special Offer for Your Next Order!</h4>
+                <p>Thank you for choosing Favilla's! Here's a special discount for your next visit:</p>
+                <div class="voucher-code">
+                    <strong>{{SPECIAL_OFFER_CODE}}</strong><br>
+                    <small>{{SPECIAL_OFFER_DESCRIPTION}}</small>
+                </div>
+                <p style="font-size: 14px; color: #0c5460;">
+                    Valid until {{SPECIAL_OFFER_EXPIRY}}. Cannot be combined with other offers.
+                </p>
+            </div>
+            {{/if}}
+        </div>
+
+        <div class="footer">
+            <h3 style="margin-top: 0;">Favilla's NY Pizza</h3>
+            <p>Authentic New York Style Pizza</p>
+            <p>📍 {{RESTAURANT_ADDRESS}}</p>
+            <p>📞 {{RESTAURANT_PHONE}} | 🌐 {{SITE_URL}}</p>
+
+            <div class="social-links">
+                <a href="{{FACEBOOK_URL}}">Facebook</a> |
+                <a href="{{INSTAGRAM_URL}}">Instagram</a> |
+                <a href="{{TWITTER_URL}}">Twitter</a>
+            </div>
+
+            <p style="margin-top: 30px; font-size: 12px;">
+                This email was sent to {{CUSTOMER_EMAIL}} regarding Order #{{ORDER_ID}}<br>
+                <a href="{{SITE_URL}}/unsubscribe" style="color: #adb5bd;">Unsubscribe from promotional emails</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
