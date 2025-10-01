@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation } from 'wouter';
 import { Helmet } from 'react-helmet';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Check, Mail, AlertCircle, Loader2 } from 'lucide-react';
 
 const EmailConfirmedPage = () => {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const { user, confirmEmail } = useAuth();
   const [isConfirming, setIsConfirming] = useState(true);
   const [confirmationStatus, setConfirmationStatus] = useState<'loading' | 'success' | 'error' | 'already_confirmed'>('loading');
@@ -18,8 +17,9 @@ const EmailConfirmedPage = () => {
     const handleEmailConfirmation = async () => {
       try {
         // Get the token and type from URL parameters
-        const token = searchParams.get('token');
-        const type = searchParams.get('type');
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const type = urlParams.get('type');
 
         console.log('📧 Email confirmation attempt:', { token: token?.substring(0, 10) + '...', type });
 
@@ -51,7 +51,7 @@ const EmailConfirmedPage = () => {
 
           // Auto-redirect to dashboard after success
           setTimeout(() => {
-            navigate('/rewards', { replace: true });
+            setLocation('/rewards');
           }, 3000);
         }
       } catch (error) {
@@ -64,7 +64,7 @@ const EmailConfirmedPage = () => {
     };
 
     handleEmailConfirmation();
-  }, [searchParams, confirmEmail, user, navigate]);
+  }, [confirmEmail, user, setLocation]);
 
   const getStatusContent = () => {
     switch (confirmationStatus) {
@@ -85,7 +85,7 @@ const EmailConfirmedPage = () => {
           title: 'Email Confirmed Successfully! 🎉',
           description: 'Welcome to Favilla\'s NY Pizza! Your account is now active and you can start earning reward points. You\'ll be redirected to your rewards dashboard in a moment.',
           buttonText: 'Go to Rewards Dashboard',
-          buttonAction: () => navigate('/rewards'),
+          buttonAction: () => setLocation('/rewards'),
           bgColor: 'bg-green-50',
           titleColor: 'text-green-900'
         };
@@ -96,7 +96,7 @@ const EmailConfirmedPage = () => {
           title: 'Email Already Confirmed',
           description: 'Your email address has already been verified. You can continue using your account normally.',
           buttonText: 'Go to Dashboard',
-          buttonAction: () => navigate('/rewards'),
+          buttonAction: () => setLocation('/rewards'),
           bgColor: 'bg-green-50',
           titleColor: 'text-green-900'
         };
@@ -107,7 +107,7 @@ const EmailConfirmedPage = () => {
           title: 'Email Confirmation Failed',
           description: errorMessage || 'We couldn\'t confirm your email address. The link may have expired or already been used.',
           buttonText: 'Resend Confirmation Email',
-          buttonAction: () => navigate('/auth?mode=resend'),
+          buttonAction: () => setLocation('/auth?mode=resend'),
           bgColor: 'bg-red-50',
           titleColor: 'text-red-900'
         };
@@ -175,7 +175,7 @@ const EmailConfirmedPage = () => {
 
                 <Button
                   variant="outline"
-                  onClick={() => navigate('/')}
+                  onClick={() => setLocation('/')}
                   className="w-full"
                   disabled={isConfirming}
                 >
