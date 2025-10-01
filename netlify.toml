@@ -265,6 +265,24 @@
   to = "/.netlify/functions/admin-qr-codes"
   status = 200
 
+# Admin email marketing endpoint
+[[redirects]]
+  from = "/api/admin/email-marketing"
+  to = "/.netlify/functions/admin/email-marketing"
+  status = 200
+
+# Admin catering inquiries endpoint
+[[redirects]]
+  from = "/api/admin/catering-inquiries"
+  to = "/.netlify/functions/admin/catering-inquiries"
+  status = 200
+
+# Send order confirmation email endpoint
+[[redirects]]
+  from = "/api/send-order-confirmation"
+  to = "/.netlify/functions/send-order-confirmation"
+  status = 200
+
 # Vacation mode endpoint
 [[redirects]]
   from = "/api/vacation-mode"
