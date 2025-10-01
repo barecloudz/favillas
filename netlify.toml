@@ -268,13 +268,13 @@
 # Admin email marketing endpoint
 [[redirects]]
   from = "/api/admin/email-marketing"
-  to = "/.netlify/functions/admin/email-marketing"
+  to = "/.netlify/functions/admin-email-marketing"
   status = 200
 
 # Admin catering inquiries endpoint
 [[redirects]]
   from = "/api/admin/catering-inquiries"
-  to = "/.netlify/functions/admin/catering-inquiries"
+  to = "/.netlify/functions/admin-catering-inquiries"
   status = 200
 
 # Send order confirmation email endpoint
