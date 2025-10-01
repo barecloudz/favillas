@@ -13395,6 +13395,7 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
   const [isScheduled, setIsScheduled] = useState(false);
   const [scheduledTime, setScheduledTime] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
 
   // Fetch email marketing data
   const { data: emailData, isLoading, refetch } = useQuery({
@@ -13450,6 +13451,7 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
     setIsScheduled(false);
     setScheduledTime('');
     setSelectedSegment('all');
+    setSelectedTemplate('');
   };
 
   const handleSendCampaign = () => {
@@ -13645,8 +13647,25 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
             {/* Email Templates */}
             {templates.length > 0 && (
               <div>
-                <label className="text-sm font-medium">Choose Template (Optional)</label>
-                <Select onValueChange={(templateId) => {
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium">Choose Template (Optional)</label>
+                  {selectedTemplate && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedTemplate('');
+                        setCampaignContent('');
+                        setCampaignSubject('');
+                      }}
+                      className="text-xs"
+                    >
+                      Clear Template
+                    </Button>
+                  )}
+                </div>
+                <Select value={selectedTemplate} onValueChange={(templateId) => {
+                  setSelectedTemplate(templateId);
                   const template = templates.find((t: any) => t.id === templateId);
                   if (template) {
                     setCampaignSubject(template.subject);
@@ -13664,6 +13683,11 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
                     ))}
                   </SelectContent>
                 </Select>
+                {selectedTemplate && (
+                  <p className="text-xs text-green-600 mt-1">
+                    ✓ Template loaded - you can edit it below
+                  </p>
+                )}
               </div>
             )}
 
