@@ -1,7 +1,7 @@
 import { Handler } from '@netlify/functions';
 import { Resend } from 'resend';
 import postgres from 'postgres';
-import jwt from 'jsonwebtoken';
+import { authenticateToken, isStaff } from './_shared/auth';
 
 let dbConnection: any = null;
 
@@ -22,46 +22,6 @@ function getDB() {
   });
 
   return dbConnection;
-}
-
-function authenticateAdmin(event: any): { userId: number; username: string; role: string } | null {
-  const authHeader = event.headers.authorization;
-  let token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    const cookies = event.headers.cookie;
-    if (cookies) {
-      const authCookie = cookies.split(';').find((c: string) => c.trim().startsWith('auth-token='));
-      if (authCookie) {
-        token = authCookie.split('=')[1];
-      }
-    }
-  }
-
-  if (!token) return null;
-
-  try {
-    const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
-    if (!jwtSecret) {
-      throw new Error('JWT_SECRET or SESSION_SECRET environment variable is required');
-    }
-
-    const decoded = jwt.verify(token, jwtSecret) as any;
-
-    // Check if user has admin privileges
-    if (!['admin', 'manager'].includes(decoded.role)) {
-      return null;
-    }
-
-    return {
-      userId: decoded.userId,
-      username: decoded.username,
-      role: decoded.role
-    };
-  } catch (error) {
-    console.error('Admin token authentication failed:', error);
-    return null;
-  }
 }
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -484,8 +444,9 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
-  const authPayload = authenticateAdmin(event);
-  if (!authPayload) {
+  // Authenticate admin user
+  const authPayload = await authenticateToken(event);
+  if (!authPayload || !isStaff(authPayload)) {
     return {
       statusCode: 401,
       headers,
@@ -660,7 +621,7 @@ export const handler: Handler = async (event, context) => {
           ${campaignData.customerSegment},
           ${campaignData.scheduledTime || null},
           ${campaignData.scheduledTime ? 'scheduled' : 'sending'},
-          ${authPayload.userId},
+          ${authPayload.userId || 0},
           NOW()
         )
         RETURNING id
