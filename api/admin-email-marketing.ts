@@ -476,44 +476,59 @@ export const handler: Handler = async (event, context) => {
       // Get email marketing dashboard data
       console.log('📧 Admin: Fetching email marketing data');
 
-      // Get campaign history
-      const campaigns = await sql`
-        SELECT
-          id,
-          name,
-          subject,
-          customer_segment,
-          scheduled_time,
-          sent_time,
-          total_sent,
-          total_delivered,
-          total_opened,
-          total_clicked,
-          status,
-          created_at
-        FROM email_campaigns
-        ORDER BY created_at DESC
-        LIMIT 50
-      `;
+      let campaigns = [];
+      let segmentCounts = { all: 0, loyalty_members: 0, new_customers: 0, recent_orders: 0, birthday_this_month: 0 };
+      let totalCustomers = 0;
 
-      // Get customer segment counts
-      const allCustomers = await getCustomersBySegment(sql, 'all');
-      const loyaltyMembers = await getCustomersBySegment(sql, 'loyalty_members');
-      const newCustomers = await getCustomersBySegment(sql, 'new_customers');
-      const recentOrders = await getCustomersBySegment(sql, 'recent_orders');
-      const birthdayCustomers = await getCustomersBySegment(sql, 'birthday_this_month');
+      try {
+        // Get campaign history
+        campaigns = await sql`
+          SELECT
+            id,
+            name,
+            subject,
+            customer_segment,
+            scheduled_time,
+            sent_time,
+            total_sent,
+            total_delivered,
+            total_opened,
+            total_clicked,
+            status,
+            created_at
+          FROM email_campaigns
+          ORDER BY created_at DESC
+          LIMIT 50
+        `;
+      } catch (error) {
+        console.log('⚠️ Email campaigns table not found - returning empty campaigns list');
+        campaigns = [];
+      }
 
-      const segmentCounts = {
-        all: allCustomers.length,
-        loyalty_members: loyaltyMembers.length,
-        new_customers: newCustomers.length,
-        recent_orders: recentOrders.length,
-        birthday_this_month: birthdayCustomers.length
-      };
+      try {
+        // Get customer segment counts
+        const allCustomers = await getCustomersBySegment(sql, 'all');
+        const loyaltyMembers = await getCustomersBySegment(sql, 'loyalty_members');
+        const newCustomers = await getCustomersBySegment(sql, 'new_customers');
+        const recentOrders = await getCustomersBySegment(sql, 'recent_orders');
+        const birthdayCustomers = await getCustomersBySegment(sql, 'birthday_this_month');
+
+        segmentCounts = {
+          all: allCustomers.length,
+          loyalty_members: loyaltyMembers.length,
+          new_customers: newCustomers.length,
+          recent_orders: recentOrders.length,
+          birthday_this_month: birthdayCustomers.length
+        };
+        totalCustomers = allCustomers.length;
+      } catch (error) {
+        console.log('⚠️ Error fetching customer segments:', error);
+      }
 
       console.log('✅ Admin: Email marketing data retrieved:', {
         campaigns: campaigns.length,
-        segmentCounts
+        segmentCounts,
+        templatesCount: EMAIL_TEMPLATES.length
       });
 
       return {
@@ -522,7 +537,7 @@ export const handler: Handler = async (event, context) => {
         body: JSON.stringify({
           campaigns,
           segmentCounts,
-          totalCustomers: allCustomers.length,
+          totalCustomers,
           templates: EMAIL_TEMPLATES
         })
       };
@@ -557,12 +572,15 @@ export const handler: Handler = async (event, context) => {
       // Handle test emails
       if (campaignData.testEmails && campaignData.testEmails.length > 0) {
         console.log('📧 Sending test emails to:', campaignData.testEmails);
+        console.log('📧 From email:', process.env.RESEND_FROM_EMAIL);
+        console.log('📧 Resend API configured:', !!process.env.RESEND_API_KEY);
 
         const testResults = [];
         for (const testEmail of campaignData.testEmails) {
           try {
             const htmlContent = generatePromotionalEmailHTML('Test User', campaignData.htmlContent);
 
+            console.log(`📧 Attempting to send test email to: ${testEmail}`);
             const emailResult = await resend.emails.send({
               from: process.env.RESEND_FROM_EMAIL || 'noreply@favillaspizza.com',
               to: [testEmail],
@@ -574,10 +592,11 @@ export const handler: Handler = async (event, context) => {
               ]
             });
 
-            testResults.push({ email: testEmail, success: true, id: emailResult.data?.id });
+            console.log(`✅ Test email sent successfully to ${testEmail}:`, emailResult);
+            testResults.push({ email: testEmail, success: true, id: emailResult.data?.id, resendData: emailResult });
           } catch (error) {
             console.error(`❌ Test email failed for ${testEmail}:`, error);
-            testResults.push({ email: testEmail, success: false, error: error });
+            testResults.push({ email: testEmail, success: false, error: error instanceof Error ? error.message : String(error) });
           }
         }
 
