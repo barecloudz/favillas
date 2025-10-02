@@ -289,6 +289,12 @@
   to = "/.netlify/functions/vacation-mode"
   status = 200
 
+# Test Resend email endpoint
+[[redirects]]
+  from = "/api/test-resend-email"
+  to = "/.netlify/functions/test-resend-email"
+  status = 200
+
 # Test deployment endpoint
 [[redirects]]
   from = "/api/test-deployment"
