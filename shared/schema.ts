@@ -28,6 +28,7 @@ export const users = pgTable("users", {
   rewards: integer("rewards").default(0).notNull(),
   stripeCustomerId: text("stripe_customer_id"),
   marketingOptIn: boolean("marketing_opt_in").default(true).notNull(),
+  customNotificationSoundUrl: text("custom_notification_sound_url"),
 });
 
 // User vouchers schema

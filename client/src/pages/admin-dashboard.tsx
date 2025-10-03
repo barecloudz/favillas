@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useAdminWebSocket } from "@/hooks/use-admin-websocket";
+import { supabase } from "@/lib/supabase";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Helmet } from "react-helmet";
@@ -7284,8 +7285,46 @@ const SettingsPanel = () => {
     }
   }, [soundNotificationsEnabled, soundType, soundVolume, customSoundUrl, customSoundName]);
 
+  // Fetch user's saved custom notification sound on mount
+  useEffect(() => {
+    const fetchCustomSound = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+
+        if (!token) return;
+
+        const response = await fetch('/api/notification-sound', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.customNotificationSoundUrl) {
+            setCustomSoundUrl(data.customNotificationSoundUrl);
+            // Extract filename from URL
+            const urlParts = data.customNotificationSoundUrl.split('/');
+            const filename = urlParts[urlParts.length - 1];
+            setCustomSoundName(filename);
+
+            // Update localStorage for backward compatibility
+            localStorage.setItem('adminCustomSoundUrl', data.customNotificationSoundUrl);
+            localStorage.setItem('adminCustomSoundName', filename);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch custom notification sound:', error);
+      }
+    };
+
+    fetchCustomSound();
+  }, []); // Run once on mount
+
   // Handle custom sound file upload
-  const handleCustomSoundUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCustomSoundUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -7301,28 +7340,72 @@ const SettingsPanel = () => {
       return;
     }
 
-    // Convert file to base64 for persistent storage
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64String = e.target?.result as string;
-      setCustomSoundUrl(base64String);
-      setCustomSoundName(file.name);
-      setSoundType('custom');
+    try {
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64String = e.target?.result as string;
 
-      // Test the uploaded sound
-      const audio = new Audio(base64String);
-      audio.volume = soundVolume;
-      audio.play().catch(error => {
-        console.warn('Failed to play uploaded sound:', error);
-      });
-    };
+        // Upload to Supabase Storage via API
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
 
-    reader.onerror = () => {
-      alert('Failed to read the audio file. Please try again.');
-    };
+        if (!token) {
+          alert('You must be logged in to upload a custom sound');
+          return;
+        }
 
-    // Read file as data URL (base64)
-    reader.readAsDataURL(file);
+        const response = await fetch('/api/notification-sound', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            audioFile: base64String,
+            fileName: file.name,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to upload sound');
+        }
+
+        const data = await response.json();
+
+        // Update local state with the public URL from Supabase
+        setCustomSoundUrl(data.url);
+        setCustomSoundName(file.name);
+        setSoundType('custom');
+
+        // Also update localStorage for backward compatibility
+        localStorage.setItem('adminCustomSoundUrl', data.url);
+        localStorage.setItem('adminCustomSoundName', file.name);
+
+        // Test the uploaded sound
+        const audio = new Audio(data.url);
+        audio.volume = soundVolume;
+        audio.play().catch(error => {
+          console.warn('Failed to play uploaded sound:', error);
+        });
+
+        toast({
+          title: "✅ Custom sound uploaded",
+          description: "Your notification sound has been saved",
+          duration: 3000,
+        });
+      };
+
+      reader.onerror = () => {
+        alert('Failed to read the audio file. Please try again.');
+      };
+
+      // Read file as data URL (base64)
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Failed to upload custom sound. Please try again.');
+    }
   }, [soundVolume]);
 
   // Create a test sound function for this component
@@ -7834,10 +7917,34 @@ const SettingsPanel = () => {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => {
-                                      setCustomSoundUrl('');
-                                      setCustomSoundName('');
-                                      setSoundType('chime');
+                                    onClick={async () => {
+                                      try {
+                                        const { data: { session } } = await supabase.auth.getSession();
+                                        const token = session?.access_token;
+
+                                        if (token) {
+                                          await fetch('/api/notification-sound', {
+                                            method: 'DELETE',
+                                            headers: {
+                                              'Authorization': `Bearer ${token}`,
+                                            },
+                                          });
+                                        }
+
+                                        setCustomSoundUrl('');
+                                        setCustomSoundName('');
+                                        setSoundType('chime');
+                                        localStorage.removeItem('adminCustomSoundUrl');
+                                        localStorage.removeItem('adminCustomSoundName');
+
+                                        toast({
+                                          title: "🗑️ Custom sound removed",
+                                          description: "Your notification sound has been reset",
+                                          duration: 3000,
+                                        });
+                                      } catch (error) {
+                                        console.error('Failed to remove custom sound:', error);
+                                      }
                                     }}
                                   >
                                     🗑️ Remove
