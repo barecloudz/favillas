@@ -11039,8 +11039,7 @@ const UserManagementTab = () => {
     const matchesSearch = 
       user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.username?.toLowerCase().includes(searchTerm.toLowerCase());
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesRole = roleFilter === "all" || user.role === roleFilter;
     
@@ -11184,7 +11183,7 @@ const UserManagementTab = () => {
                     <td className="p-2">
                       <div>
                         <div className="font-medium">{user.firstName} {user.lastName}</div>
-                        <div className="text-sm text-gray-500">@{user.username}</div>
+                        <div className="text-sm text-gray-500">{user.email}</div>
                       </div>
                     </td>
                     <td className="p-2">{user.email}</td>
@@ -11470,7 +11469,6 @@ const SupabaseAdminCreator = () => {
 // Create User Form Component
 const CreateUserForm = ({ onSubmit }: { onSubmit: (data: any) => void }) => {
   const [formData, setFormData] = useState({
-    username: "",
     email: "",
     firstName: "",
     lastName: "",
@@ -11507,17 +11505,7 @@ const CreateUserForm = ({ onSubmit }: { onSubmit: (data: any) => void }) => {
           />
         </div>
       </div>
-      
-      <div>
-        <Label htmlFor="username">Username</Label>
-        <Input
-          id="username"
-          value={formData.username}
-          onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-          required
-        />
-      </div>
-      
+
       <div>
         <Label htmlFor="email">Email</Label>
         <Input
