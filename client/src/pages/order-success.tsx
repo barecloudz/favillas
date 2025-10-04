@@ -28,6 +28,7 @@ import {
   AlertCircle,
   UserPlus
 } from "lucide-react";
+import { WarningBanner } from "@/components/warning-banner";
 
 const OrderSuccessPage = () => {
   const { user } = useAuth();
@@ -523,6 +524,9 @@ Thank you for choosing Favilla's NY Pizza!
         <Helmet>
           <title>Order Confirmation | Favilla's NY Pizza</title>
         </Helmet>
+
+        <WarningBanner />
+
         <main className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
@@ -543,6 +547,9 @@ Thank you for choosing Favilla's NY Pizza!
         <Helmet>
           <title>Order Not Found | Favilla's NY Pizza</title>
         </Helmet>
+
+        <WarningBanner />
+
         <main className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Order Not Found</h1>
@@ -560,7 +567,9 @@ Thank you for choosing Favilla's NY Pizza!
       <Helmet>
         <title>Order Confirmation | Favilla's NY Pizza</title>
       </Helmet>
-      
+
+      <WarningBanner />
+
       <main className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-4xl mx-auto px-4">
           {/* Success Header */}

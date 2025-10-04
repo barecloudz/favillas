@@ -21,6 +21,7 @@ import {
 import { useCart } from "@/hooks/use-cart";
 import MenuItemSimple from "@/components/menu/menu-item-simple";
 import MenuItemWithChoices from "@/components/menu/menu-item-with-choices";
+import { WarningBanner } from "@/components/warning-banner";
 
 const MenuPage = () => {
   const [location, navigate] = useLocation();
@@ -379,6 +380,8 @@ const MenuPage = () => {
         <title>Menu | Favilla's NY Pizza</title>
         <meta name="description" content="Browse our delicious menu of authentic New York style pizzas, sides, drinks, and desserts." />
       </Helmet>
+
+      <WarningBanner />
 
       <div className="min-h-screen bg-gray-50">
         {/* Header */}

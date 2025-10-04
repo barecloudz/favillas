@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, X, Gift } from "lucide-react";
 import AddressForm from "@/components/ui/address-autocomplete";
+import { WarningBanner } from "@/components/warning-banner";
 
 // Load Stripe outside of component to avoid recreating it on render
 if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
@@ -750,6 +751,9 @@ const CheckoutPage = () => {
         <title>Checkout | Favilla's NY Pizza</title>
         <meta name="description" content="Complete your order at Favilla's NY Pizza. Easy and secure checkout with multiple payment options." />
       </Helmet>
+
+      <WarningBanner />
+
       <main className="bg-gray-50 py-12">
         <div className="container mx-auto px-4">
           {/* Back Button */}
