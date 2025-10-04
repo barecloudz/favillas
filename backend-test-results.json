@@ -1,0 +1,271 @@
+{
+  "timestamp": "2025-10-04T18:26:38.718Z",
+  "summary": {
+    "total": 21,
+    "successful": 20,
+    "failed": 1,
+    "warnings": 0,
+    "categories": {
+      "Health": {
+        "passed": 1,
+        "failed": 0
+      },
+      "Database": {
+        "passed": 1,
+        "failed": 0
+      },
+      "Menu": {
+        "passed": 4,
+        "failed": 0
+      },
+      "Auth": {
+        "passed": 3,
+        "failed": 0
+      },
+      "Rewards": {
+        "passed": 2,
+        "failed": 0
+      },
+      "Orders": {
+        "passed": 3,
+        "failed": 0
+      },
+      "Admin": {
+        "passed": 1,
+        "failed": 0
+      },
+      "Delivery": {
+        "passed": 1,
+        "failed": 0
+      },
+      "Tax": {
+        "passed": 1,
+        "failed": 0
+      },
+      "Restaurant": {
+        "passed": 1,
+        "failed": 0
+      },
+      "Error": {
+        "passed": 2,
+        "failed": 0
+      },
+      "Store": {
+        "passed": 0,
+        "failed": 1
+      }
+    }
+  },
+  "results": {
+    "successful": [
+      {
+        "category": "Health",
+        "endpoint": "/api/health",
+        "method": "GET",
+        "status": 200,
+        "success": true,
+        "message": "Service is healthy",
+        "timestamp": "2025-10-04T18:26:25.290Z",
+        "databaseConfigured": true,
+        "environment": "production"
+      },
+      {
+        "category": "Database",
+        "endpoint": "/api/health?debug_login=true",
+        "method": "GET",
+        "status": 200,
+        "success": true,
+        "message": "Database connection: success",
+        "timestamp": "2025-10-04T18:26:25.680Z",
+        "userFound": true
+      },
+      {
+        "category": "Menu",
+        "endpoint": "/api/menu-items",
+        "method": "GET",
+        "status": 200,
+        "success": true,
+        "message": "Retrieved 102 menu items",
+        "timestamp": "2025-10-04T18:26:26.577Z",
+        "itemCount": 102,
+        "hasCaching": true
+      },
+      {
+        "category": "Menu",
+        "endpoint": "/api/categories",
+        "method": "GET",
+        "status": 200,
+        "success": true,
+        "message": "Retrieved 0 categories",
+        "timestamp": "2025-10-04T18:26:26.959Z",
+        "categoryCount": 0,
+        "hasCaching": false
+      },
+      {
+        "category": "Menu",
+        "endpoint": "/api/choice-groups",
+        "method": "GET",
+        "status": 200,
+        "success": true,
+        "message": "Retrieved choice groups",
+        "timestamp": "2025-10-04T18:26:27.278Z",
+        "requiresAuth": false
+      },
+      {
+        "category": "Menu",
+        "endpoint": "/api/featured",
+        "method": "GET",
+        "status": 200,
+        "success": true,
+        "message": "Featured items endpoint responded",
+        "timestamp": "2025-10-04T18:26:27.604Z"
+      },
+      {
+        "category": "Auth",
+        "endpoint": "/api/auth/google",
+        "method": "GET",
+        "status": 302,
+        "success": true,
+        "message": "Google OAuth endpoint responded",
+        "timestamp": "2025-10-04T18:26:28.244Z",
+        "redirects": true
+      },
+      {
+        "category": "Auth",
+        "endpoint": "/api/user/profile (no auth)",
+        "method": "GET",
+        "status": 401,
+        "success": true,
+        "message": "Correctly rejects unauthenticated requests",
+        "timestamp": "2025-10-04T18:26:29.040Z",
+        "warning": null
+      },
+      {
+        "category": "Auth",
+        "endpoint": "/api/admin-login (invalid creds)",
+        "method": "POST",
+        "status": 401,
+        "success": true,
+        "message": "Correctly rejects invalid credentials",
+        "timestamp": "2025-10-04T18:26:29.678Z"
+      },
+      {
+        "category": "Rewards",
+        "endpoint": "/api/rewards",
+        "method": "GET",
+        "status": 200,
+        "success": true,
+        "message": "Retrieved 8 rewards",
+        "timestamp": "2025-10-04T18:26:30.481Z",
+        "rewardCount": 8,
+        "hasCaching": true
+      },
+      {
+        "category": "Rewards",
+        "endpoint": "/api/user/rewards (no auth)",
+        "method": "GET",
+        "status": 401,
+        "success": true,
+        "message": "Correctly requires authentication",
+        "timestamp": "2025-10-04T18:26:31.126Z",
+        "warning": null
+      },
+      {
+        "category": "Orders",
+        "endpoint": "/api/orders (no auth)",
+        "method": "GET",
+        "status": 401,
+        "success": true,
+        "message": "Correctly requires authentication",
+        "timestamp": "2025-10-04T18:26:32.397Z",
+        "warning": null
+      },
+      {
+        "category": "Orders",
+        "endpoint": "/api/kitchen/orders (no auth)",
+        "method": "GET",
+        "status": 401,
+        "success": true,
+        "message": "Correctly requires authentication",
+        "timestamp": "2025-10-04T18:26:33.121Z",
+        "warning": null
+      },
+      {
+        "category": "Orders",
+        "endpoint": "/api/orders (POST no auth)",
+        "method": "POST",
+        "status": 400,
+        "success": true,
+        "message": "Response: 400",
+        "timestamp": "2025-10-04T18:26:33.840Z"
+      },
+      {
+        "category": "Admin",
+        "endpoint": "/api/admin/system-settings (no auth)",
+        "method": "GET",
+        "status": 401,
+        "success": true,
+        "message": "Correctly requires authentication",
+        "timestamp": "2025-10-04T18:26:34.558Z",
+        "warning": null
+      },
+      {
+        "category": "Delivery",
+        "endpoint": "/api/admin/delivery-zones",
+        "method": "GET",
+        "status": 401,
+        "success": true,
+        "message": "Delivery zones endpoint: 401",
+        "timestamp": "2025-10-04T18:26:35.169Z"
+      },
+      {
+        "category": "Tax",
+        "endpoint": "/api/tax-settings",
+        "method": "GET",
+        "status": 200,
+        "success": true,
+        "message": "Tax settings endpoint: 200",
+        "timestamp": "2025-10-04T18:26:36.957Z"
+      },
+      {
+        "category": "Restaurant",
+        "endpoint": "/api/restaurant-settings",
+        "method": "GET",
+        "status": 200,
+        "success": true,
+        "message": "Restaurant settings endpoint: 200",
+        "timestamp": "2025-10-04T18:26:37.926Z"
+      },
+      {
+        "category": "Error",
+        "endpoint": "/api/nonexistent-endpoint",
+        "method": "GET",
+        "status": 404,
+        "success": true,
+        "message": "Correctly returns 404 for invalid endpoints",
+        "timestamp": "2025-10-04T18:26:38.087Z"
+      },
+      {
+        "category": "Error",
+        "endpoint": "/api/orders (malformed)",
+        "method": "POST",
+        "status": 400,
+        "success": true,
+        "message": "Handles malformed requests: 400",
+        "timestamp": "2025-10-04T18:26:38.717Z"
+      }
+    ],
+    "failed": [
+      {
+        "category": "Store",
+        "endpoint": "/api/store-hours",
+        "method": "GET",
+        "status": 500,
+        "success": false,
+        "message": "Store hours endpoint: 500",
+        "timestamp": "2025-10-04T18:26:36.161Z"
+      }
+    ],
+    "warnings": []
+  }
+}
