@@ -270,7 +270,23 @@ const KitchenPage = () => {
           <div className="container mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
             <h1 className="text-xl md:text-2xl font-bold">Favilla's Kitchen</h1>
             <div className="flex items-center gap-2 md:gap-4 text-sm md:text-base">
-              <Button variant="outline" size="sm" className="text-white border-white hover:bg-white hover:text-[#d73a31]">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-white border-white hover:bg-white hover:text-[#d73a31]"
+                onClick={() => {
+                  if (audioRef.current) {
+                    audioRef.current.play().catch(error => {
+                      console.warn('Failed to play sound:', error);
+                      toast({
+                        title: "Cannot play sound",
+                        description: "Click anywhere on the page first to enable audio",
+                        variant: "destructive",
+                      });
+                    });
+                  }
+                }}
+              >
                 <Volume2 className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />
                 <span className="hidden sm:inline">Test Sound</span>
                 <span className="sm:hidden">Test</span>
