@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 
 export function WarningBanner() {
   return (
-    <div className="bg-red-600 text-white py-3 px-4">
+    <div className="fixed top-[64px] left-0 right-0 z-40 bg-red-600 text-white py-3 px-4">
       <div className="container mx-auto flex flex-col sm:flex-row items-center justify-center gap-3 text-center sm:text-left">
         <div className="flex items-center gap-2">
           <AlertCircle className="h-5 w-5 flex-shrink-0" />
