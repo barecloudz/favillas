@@ -6,7 +6,7 @@ export const handler: Handler = async (event, context) => {
   const origin = event.headers.origin || 'http://localhost:3000';
   const headers = {
     'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json',
@@ -202,6 +202,129 @@ export const handler: Handler = async (event, context) => {
             isActive: true,
             createdAt: newUser[0].created_at,
             userType: 'pending_supabase' // They need to log in with Google to link Supabase
+          }
+        })
+      };
+    }
+
+    // PUT - Update user
+    if (event.httpMethod === 'PUT') {
+      console.log('✏️ Updating user...');
+      console.log('📋 Event path:', event.path);
+
+      // Extract user ID from URL path
+      let userId = null;
+      const pathParts = event.path.split('/');
+      const usersIndex = pathParts.findIndex(part => part === 'users');
+      if (usersIndex !== -1 && pathParts[usersIndex + 1]) {
+        userId = parseInt(pathParts[usersIndex + 1]);
+      }
+
+      console.log('📋 Update request for user ID:', userId);
+
+      if (!userId || isNaN(userId)) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            error: 'Valid user ID is required'
+          })
+        };
+      }
+
+      const requestData = JSON.parse(event.body || '{}');
+      const { email, firstName, lastName, phone, role, isAdmin, hourlyRate, department, isActive } = requestData;
+
+      console.log('📋 Update data:', { email, firstName, lastName, phone, role, isAdmin, hourlyRate, department, isActive });
+
+      // Check if user exists
+      const existingUser = await sql`
+        SELECT id, role FROM users WHERE id = ${userId}
+      `;
+
+      if (existingUser.length === 0) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({
+            error: 'User not found'
+          })
+        };
+      }
+
+      // If email is being changed, check if new email is already in use
+      if (email) {
+        const emailExists = await sql`
+          SELECT id FROM users WHERE email = ${email} AND id != ${userId}
+        `;
+
+        if (emailExists.length > 0) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({
+              error: 'Email address already in use by another user'
+            })
+          };
+        }
+      }
+
+      // Build update object with only provided fields
+      const updateData: any = { updated_at: new Date() };
+
+      if (email !== undefined) {
+        updateData.email = email;
+        updateData.username = email; // Keep username in sync with email
+      }
+      if (firstName !== undefined) updateData.first_name = firstName;
+      if (lastName !== undefined) updateData.last_name = lastName;
+      if (phone !== undefined) updateData.phone = phone || null;
+      if (role !== undefined) updateData.role = role;
+      if (isAdmin !== undefined) updateData.is_admin = isAdmin;
+      if (hourlyRate !== undefined) updateData.hourly_rate = hourlyRate || null;
+      if (department !== undefined) updateData.department = department || null;
+      if (isActive !== undefined) updateData.is_active = isActive;
+
+      // Check if there's anything to update besides updated_at
+      if (Object.keys(updateData).length === 1) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            error: 'No fields to update'
+          })
+        };
+      }
+
+      // Execute update using parameterized query
+      const updatedUser = await sql`
+        UPDATE users
+        SET ${sql(updateData)}
+        WHERE id = ${userId}
+        RETURNING id, username, email, first_name, last_name, phone, role, is_admin, is_active, hourly_rate, department, created_at, updated_at
+      `;
+
+      console.log('✅ User updated successfully:', updatedUser[0]);
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          message: 'User updated successfully',
+          user: {
+            id: updatedUser[0].id,
+            username: updatedUser[0].username,
+            email: updatedUser[0].email,
+            firstName: updatedUser[0].first_name,
+            lastName: updatedUser[0].last_name,
+            phone: updatedUser[0].phone,
+            role: updatedUser[0].role,
+            isAdmin: updatedUser[0].is_admin,
+            isActive: updatedUser[0].is_active,
+            hourlyRate: parseFloat(updatedUser[0].hourly_rate) || null,
+            department: updatedUser[0].department,
+            createdAt: updatedUser[0].created_at,
+            updatedAt: updatedUser[0].updated_at
           }
         })
       };
