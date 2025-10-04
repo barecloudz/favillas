@@ -82,16 +82,116 @@ export const handler: Handler = async (event, context) => {
 
     if (error) {
       // Check if user already exists
-      if (error.message.includes('already registered')) {
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({
-            success: true,
-            message: 'Super admin already exists in Supabase',
-            note: 'You can now login with: superadmin@favillaspizzeria.com / superadmin123'
-          })
-        };
+      if (error.message.includes('already registered') || error.code === 'email_exists') {
+        console.log('ℹ️ Supabase user already exists, ensuring database record exists...');
+
+        // Get the existing Supabase user
+        const { data: existingUsers } = await supabase.auth.admin.listUsers();
+        const existingUser = existingUsers?.users?.find(u => u.email === email);
+
+        if (!existingUser) {
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ error: 'User exists but could not be found' })
+          };
+        }
+
+        // Create database record if it doesn't exist
+        const databaseUrl = process.env.DATABASE_URL;
+        if (!databaseUrl) {
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ error: 'DATABASE_URL not configured' })
+          };
+        }
+
+        const sql = postgres(databaseUrl, {
+          max: 1,
+          idle_timeout: 20,
+          connect_timeout: 10,
+          prepare: false,
+          keep_alive: false,
+        });
+
+        try {
+          // Check if database record exists
+          const existingDbUser = await sql`
+            SELECT id, role, is_admin FROM users WHERE supabase_user_id = ${existingUser.id}
+          `;
+
+          if (existingDbUser.length === 0) {
+            // Create database record
+            await sql`
+              INSERT INTO users (
+                supabase_user_id,
+                email,
+                username,
+                first_name,
+                last_name,
+                role,
+                is_admin,
+                is_active,
+                created_at,
+                updated_at
+              ) VALUES (
+                ${existingUser.id},
+                ${email},
+                ${email},
+                'Super',
+                'Admin',
+                'super_admin',
+                true,
+                true,
+                NOW(),
+                NOW()
+              )
+            `;
+            console.log('✅ Created missing database record for existing Supabase user');
+            await sql.end();
+
+            return {
+              statusCode: 200,
+              headers,
+              body: JSON.stringify({
+                success: true,
+                message: 'Database record created for existing Supabase admin',
+                note: 'You can now login with admin privileges'
+              })
+            };
+          } else {
+            // Update existing record to ensure admin privileges
+            await sql`
+              UPDATE users
+              SET role = 'super_admin', is_admin = true, updated_at = NOW()
+              WHERE supabase_user_id = ${existingUser.id}
+            `;
+            console.log('✅ Updated existing database record with admin privileges');
+            await sql.end();
+
+            return {
+              statusCode: 200,
+              headers,
+              body: JSON.stringify({
+                success: true,
+                message: 'Super admin privileges updated in database',
+                note: 'You can now login with: superadmin@favillaspizzeria.com / superadmin123'
+              })
+            };
+          }
+        } catch (dbError) {
+          console.error('❌ Database error:', dbError);
+          await sql.end();
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({
+              error: 'Failed to create database record',
+              details: dbError instanceof Error ? dbError.message : 'Unknown error'
+            })
+          };
+        }
       }
 
       console.error('Supabase admin creation error:', error);
