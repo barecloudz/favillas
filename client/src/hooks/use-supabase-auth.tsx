@@ -55,9 +55,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           state: userData.state || '',
           zipCode: userData.zip_code || '',
           role: userData.role || 'customer',
-          isAdmin: userData.role === 'admin' || userData.role === 'superadmin' || userData.username === 'superadmin',
+          isAdmin: userData.role === 'admin' || userData.role === 'super_admin' || userData.is_admin === true,
           isGoogleUser: !!userData.supabase_user_id
         };
+        console.log('🔍 Mapped user object:', {
+          role: mappedUser.role,
+          isAdmin: mappedUser.isAdmin,
+          rawRole: userData.role,
+          rawIsAdmin: userData.is_admin
+        });
         return mappedUser;
       }
     } catch (error) {
@@ -221,21 +227,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw error;
         }
       }
-      
-      // Also call the API logout to clear any server-side sessions
-      try {
-        await apiRequest("POST", "/api/logout");
-      } catch (apiError) {
-        // Don't fail if API logout fails, Supabase logout is the important one
-        console.warn('API logout failed:', apiError);
-      }
-      
+
       // Clear any cached data
       queryClient.clear();
-      
+
       // Navigate to home page
       navigate('/');
-      
+
       setLoading(false);
     } catch (error) {
       setLoading(false);
@@ -292,7 +290,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           firstName: userMetadata.first_name || userMetadata.full_name?.split(' ')[0] || 'User',
           lastName: userMetadata.last_name || userMetadata.full_name?.split(' ').slice(1).join(' ') || '',
           role: userMetadata.role || 'customer',
-          isAdmin: userMetadata.role === 'admin' || userMetadata.role === 'superadmin',
+          isAdmin: userMetadata.role === 'admin' || userMetadata.role === 'super_admin' || userMetadata.is_admin === true,
           isActive: true,
           rewards: 0
         };
@@ -314,7 +312,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: user.phone || '',
         address: user.address || '',
         role: user.role || 'customer',
-        isAdmin: user.role === 'admin' || user.role === 'superadmin' || user.username === 'superadmin',
+        isAdmin: user.role === 'admin' || user.role === 'super_admin' || user.isAdmin === true,
         isGoogleUser: false
       };
 
@@ -468,7 +466,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: user.phone || '',
         address: user.address || '',
         role: user.role || 'customer',
-        isAdmin: user.role === 'admin' || user.role === 'superadmin' || user.username === 'superadmin',
+        isAdmin: user.role === 'admin' || user.role === 'super_admin' || user.isAdmin === true,
         isGoogleUser: false
       };
 
@@ -493,15 +491,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  // Logout mutation (using existing API)
+  // Logout mutation (kept for backward compatibility, but uses signOut)
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/logout");
+      await signOut();
     },
     onSuccess: () => {
-      queryClient.setQueryData(["/api/user"], null);
-      queryClient.clear();
-      navigate('/');
       toast({
         title: "Logout successful",
         description: "You have been logged out",

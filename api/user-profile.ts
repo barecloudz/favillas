@@ -89,7 +89,7 @@ export const handler: Handler = async (event, context) => {
         // User has legacy account - search by user_id
         console.log('📝 User Profile API: Getting legacy user profile:', authPayload.userId);
         user = await sql`
-          SELECT id, username, email, phone, address, city, state, zip_code, role, created_at, supabase_user_id, first_name, last_name
+          SELECT id, username, email, phone, address, city, state, zip_code, role, is_admin, created_at, supabase_user_id, first_name, last_name
           FROM users
           WHERE id = ${authPayload.userId}
         `;
@@ -97,7 +97,7 @@ export const handler: Handler = async (event, context) => {
         // Supabase-only user - search by supabase_user_id
         console.log('📝 User Profile API: Getting Supabase user profile:', authPayload.supabaseUserId);
         user = await sql`
-          SELECT id, username, email, phone, address, city, state, zip_code, role, created_at, supabase_user_id, first_name, last_name
+          SELECT id, username, email, phone, address, city, state, zip_code, role, is_admin, created_at, supabase_user_id, first_name, last_name
           FROM users
           WHERE supabase_user_id = ${authPayload.supabaseUserId}
           ORDER BY created_at DESC, id DESC
