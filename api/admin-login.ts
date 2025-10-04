@@ -25,113 +25,110 @@ export const handler: Handler = async (event, context) => {
   }
 
   try {
-    const { username, password } = JSON.parse(event.body || '{}');
-    console.log('🔐 Admin login attempt:', { username: username || 'MISSING', hasPassword: !!password });
+    const { email, password } = JSON.parse(event.body || '{}');
 
-    // Check superadmin credentials first
-    if (username === 'superadmin' && password === 'superadmin123') {
-      const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
-      if (!jwtSecret) {
-        return {
-          statusCode: 500,
-          headers,
-          body: JSON.stringify({ message: 'Server configuration error' })
-        };
-      }
-
-      const userPayload = {
-        userId: 1,
-        username: 'superadmin',
-        role: 'super_admin'
-      };
-
-      const token = jwt.sign(userPayload, jwtSecret, { expiresIn: '7d' });
-
-      // Set cookie for authentication
-      const origin = event.headers.origin || '';
-      const isProduction = origin.includes('netlify.app') || origin.includes('favillasnypizza');
-      const cookieOptions = `auth-token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax${isProduction ? '; Secure' : ''}`;
-
-      console.log('🍪 Setting cookie for superadmin via admin-login:', {
-        origin,
-        isProduction,
-        cookieSet: true
-      });
-
+    if (!email || !password) {
       return {
-        statusCode: 200,
-        headers: {
-          ...headers,
-          'Set-Cookie': cookieOptions
-        },
-        body: JSON.stringify({
-          id: 1,
-          username: 'superadmin',
-          email: 'superadmin@favillas.com',
-          firstName: 'Super',
-          lastName: 'Admin',
-          role: 'super_admin',
-          isAdmin: true,
-          isActive: true,
-          rewards: 0
-        })
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ message: 'Email and password required' })
       };
     }
 
-    // Fallback admin credentials
-    if (username === 'admin' && password === 'admin123456') {
-      const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
-      if (!jwtSecret) {
-        return {
-          statusCode: 500,
-          headers,
-          body: JSON.stringify({ message: 'Server configuration error' })
-        };
-      }
+    // SECURITY FIX: Remove hardcoded credentials
+    // Admin users must now authenticate via Google OAuth through Supabase
+    // Or be created in the database via /api/users endpoint with admin role
 
-      const userPayload = {
-        userId: 2,
-        username: 'admin',
-        role: 'admin'
-      };
+    // Check database for admin user
+    const postgres = (await import('postgres')).default;
+    const sql = postgres(process.env.DATABASE_URL!, {
+      max: 1,
+      idle_timeout: 20,
+      connect_timeout: 10,
+      prepare: false,
+      keep_alive: false,
+    });
 
-      const token = jwt.sign(userPayload, jwtSecret, { expiresIn: '7d' });
+    const { scrypt, randomBytes } = await import('crypto');
+    const { promisify } = await import('util');
+    const scryptAsync = promisify(scrypt);
 
-      // Set cookie for authentication
-      const origin = event.headers.origin || '';
-      const isProduction = origin.includes('netlify.app') || origin.includes('favillasnypizza');
-      const cookieOptions = `auth-token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax${isProduction ? '; Secure' : ''}`;
+    // Look up user by email
+    const users = await sql`
+      SELECT id, username, email, first_name, last_name, password, role, is_admin, is_active
+      FROM users
+      WHERE email = ${email}
+      AND (role = 'admin' OR role = 'super_admin' OR is_admin = true)
+      AND is_active = true
+    `;
 
-      console.log('🍪 Setting cookie for admin via admin-login:', {
-        origin,
-        isProduction,
-        cookieSet: true
-      });
-
+    if (users.length === 0) {
+      await sql.end();
       return {
-        statusCode: 200,
-        headers: {
-          ...headers,
-          'Set-Cookie': cookieOptions
-        },
-        body: JSON.stringify({
-          id: 2,
-          username: 'admin',
-          email: 'admin@favillas.com',
-          firstName: 'Admin',
-          lastName: 'User',
-          role: 'admin',
-          isAdmin: true,
-          isActive: true,
-          rewards: 0
-        })
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ message: 'Invalid credentials' })
       };
     }
+
+    const user = users[0];
+
+    // Verify password using scrypt
+    const [hashedPassword, salt] = user.password.split('.');
+    const hashedPasswordBuf = Buffer.from(hashedPassword, 'hex');
+    const suppliedPasswordBuf = (await scryptAsync(password, salt, 64)) as Buffer;
+
+    if (!hashedPasswordBuf.equals(suppliedPasswordBuf)) {
+      await sql.end();
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ message: 'Invalid credentials' })
+      };
+    }
+
+    await sql.end();
+
+    // Generate JWT token
+    const jwtSecret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+    if (!jwtSecret) {
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ message: 'Server configuration error' })
+      };
+    }
+
+    const userPayload = {
+      userId: user.id,
+      username: user.username,
+      role: user.role
+    };
+
+    const token = jwt.sign(userPayload, jwtSecret, { expiresIn: '7d' });
+
+    // Set cookie
+    const origin = event.headers.origin || '';
+    const isProduction = origin.includes('netlify.app') || origin.includes('favillasnypizza');
+    const cookieOptions = `auth-token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax${isProduction ? '; Secure' : ''}`;
 
     return {
-      statusCode: 401,
-      headers,
-      body: JSON.stringify({ message: 'Invalid admin credentials' })
+      statusCode: 200,
+      headers: {
+        ...headers,
+        'Set-Cookie': cookieOptions
+      },
+      body: JSON.stringify({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        role: user.role,
+        isAdmin: user.is_admin,
+        isActive: user.is_active,
+        rewards: 0
+      })
     };
 
   } catch (error) {

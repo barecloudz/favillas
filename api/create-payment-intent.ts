@@ -69,13 +69,144 @@ export const handler: Handler = async (event, context) => {
       };
     }
 
-    // Create a PaymentIntent with the order amount and currency
-    // EMERGENCY FIX: Remove all metadata to avoid 500 character limit
-    console.log('🚨 EMERGENCY FIX: Creating payment intent without metadata to avoid Stripe errors');
-    console.log('📊 Order amount:', amount, 'Order ID:', orderId);
+    // SECURITY: Validate payment amount server-side
+    let validatedAmount = amount;
+
+    if (orderData && orderData.items && Array.isArray(orderData.items)) {
+      console.log('🔒 Validating payment amount against order items...');
+
+      const sql = getDB();
+
+      // Calculate server-side total from menu prices
+      let calculatedSubtotal = 0;
+
+      for (const item of orderData.items) {
+        // Get current price from database
+        const menuItems = await sql`
+          SELECT base_price FROM menu_items WHERE id = ${item.menuItemId}
+        `;
+
+        if (menuItems.length === 0) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({
+              message: `Invalid menu item ID: ${item.menuItemId}`
+            })
+          };
+        }
+
+        const basePrice = parseFloat(menuItems[0].base_price);
+        const itemQuantity = parseInt(item.quantity) || 1;
+
+        // Calculate item total (base price + customizations)
+        let itemTotal = basePrice * itemQuantity;
+
+        // Add customization prices if present
+        if (item.customizations && Array.isArray(item.customizations)) {
+          for (const customization of item.customizations) {
+            const customPrice = parseFloat(customization.price) || 0;
+            itemTotal += customPrice * itemQuantity;
+          }
+        }
+
+        calculatedSubtotal += itemTotal;
+      }
+
+      // Calculate tax (using orderData tax or 8% default)
+      const calculatedTax = orderData.tax ? parseFloat(orderData.tax) : calculatedSubtotal * 0.08;
+
+      // Add delivery fee if applicable
+      const deliveryFee = orderData.deliveryFee ? parseFloat(orderData.deliveryFee) : 0;
+
+      // Add tip if provided
+      const tip = orderData.tip ? parseFloat(orderData.tip) : 0;
+
+      // Apply discount if provided
+      const discount = orderData.discount ? parseFloat(orderData.discount) : 0;
+      const voucherDiscount = orderData.voucherDiscount ? parseFloat(orderData.voucherDiscount) : 0;
+      const totalDiscount = discount + voucherDiscount;
+
+      // Calculate final total
+      const calculatedTotal = calculatedSubtotal + calculatedTax + deliveryFee + tip - totalDiscount;
+
+      console.log('💰 Server-side calculation:', {
+        subtotal: calculatedSubtotal,
+        tax: calculatedTax,
+        deliveryFee,
+        tip,
+        discount: totalDiscount,
+        calculatedTotal,
+        clientAmount: amount
+      });
+
+      // Validate amount (allow 1 cent tolerance for rounding)
+      if (Math.abs(calculatedTotal - amount) > 0.01) {
+        console.error('❌ Payment amount mismatch!', {
+          expected: calculatedTotal,
+          received: amount,
+          difference: Math.abs(calculatedTotal - amount)
+        });
+
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            message: 'Payment amount does not match order total',
+            expectedAmount: calculatedTotal,
+            receivedAmount: amount
+          })
+        };
+      }
+
+      validatedAmount = calculatedTotal;
+      console.log('✅ Payment amount validated successfully');
+    } else if (orderId) {
+      // Validate against existing order in database
+      console.log('🔒 Validating payment amount against existing order...');
+
+      const sql = getDB();
+      const orders = await sql`
+        SELECT total FROM orders WHERE id = ${orderId}
+      `;
+
+      if (orders.length === 0) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            message: 'Order not found'
+          })
+        };
+      }
+
+      const orderTotal = parseFloat(orders[0].total);
+
+      if (Math.abs(orderTotal - amount) > 0.01) {
+        console.error('❌ Payment amount does not match order total');
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            message: 'Payment amount does not match order total',
+            expectedAmount: orderTotal,
+            receivedAmount: amount
+          })
+        };
+      }
+
+      validatedAmount = orderTotal;
+      console.log('✅ Payment amount validated against order');
+    } else {
+      // No order data or order ID - cannot validate
+      console.warn('⚠️  No order data or order ID provided - cannot validate payment amount');
+    }
+
+    // Create a PaymentIntent with the VALIDATED amount
+    console.log('💳 Creating payment intent with validated amount:', validatedAmount);
 
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Convert to cents
+      amount: Math.round(validatedAmount * 100), // Convert to cents
       currency: "usd"
       // No metadata for now - will store order data in sessionStorage instead
     });

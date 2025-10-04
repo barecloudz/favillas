@@ -9526,6 +9526,9 @@ const EditMenuItemForm = ({ item, onSubmit, onCancel, categories }: { item: any;
     category: item.category || "",
     image: item.imageUrl || "", // Map imageUrl to image for form
     isAvailable: item.isAvailable !== false,
+    isPopular: item.isPopular || false,
+    isBestSeller: item.isBestSeller || false,
+    isNew: item.isNew || false,
     options: item.options || {
       sizes: [] as { name: string; price: string }[],
       toppings: [] as { name: string; price: string }[],
@@ -9544,6 +9547,9 @@ const EditMenuItemForm = ({ item, onSubmit, onCancel, categories }: { item: any;
       category: item.category || "",
       image: item.imageUrl || "", // This will now update with fresh data
       isAvailable: item.isAvailable !== false,
+      isPopular: item.isPopular || false,
+      isBestSeller: item.isBestSeller || false,
+      isNew: item.isNew || false,
       options: item.options || {
         sizes: [] as { name: string; price: string }[],
         toppings: [] as { name: string; price: string }[],
@@ -9563,6 +9569,9 @@ const EditMenuItemForm = ({ item, onSubmit, onCancel, categories }: { item: any;
       category: formData.category,
       imageUrl: formData.image || null, // Map image to imageUrl
       isAvailable: formData.isAvailable,
+      isPopular: formData.isPopular,
+      isBestSeller: formData.isBestSeller,
+      isNew: formData.isNew,
       options: formData.options
     });
   };
@@ -9621,14 +9630,48 @@ const EditMenuItemForm = ({ item, onSubmit, onCancel, categories }: { item: any;
         onChange={(imageUrl) => setFormData({ ...formData, image: imageUrl })}
       />
       
-      <div className="flex items-center space-x-2">
-        <input
-          type="checkbox"
-          id="edit-isAvailable"
-          checked={formData.isAvailable}
-          onChange={(e) => setFormData({ ...formData, isAvailable: e.target.checked })}
-        />
-        <Label htmlFor="edit-isAvailable">Available for ordering</Label>
+      <div className="space-y-3 border-t pt-4">
+        <h3 className="text-base font-semibold">Item Settings</h3>
+
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="edit-isAvailable"
+            checked={formData.isAvailable}
+            onChange={(e) => setFormData({ ...formData, isAvailable: e.target.checked })}
+          />
+          <Label htmlFor="edit-isAvailable">Available for ordering</Label>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="edit-isPopular"
+            checked={formData.isPopular}
+            onChange={(e) => setFormData({ ...formData, isPopular: e.target.checked })}
+          />
+          <Label htmlFor="edit-isPopular">Mark as Popular (shows on home page)</Label>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="edit-isBestSeller"
+            checked={formData.isBestSeller}
+            onChange={(e) => setFormData({ ...formData, isBestSeller: e.target.checked })}
+          />
+          <Label htmlFor="edit-isBestSeller">Mark as Best Seller (shows on home page)</Label>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="edit-isNew"
+            checked={formData.isNew}
+            onChange={(e) => setFormData({ ...formData, isNew: e.target.checked })}
+          />
+          <Label htmlFor="edit-isNew">Mark as New</Label>
+        </div>
       </div>
 
       {/* Options Management */}
