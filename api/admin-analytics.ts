@@ -68,51 +68,98 @@ export const handler: Handler = async (event, context) => {
     const startDate = urlParams.get('start');
     const endDate = urlParams.get('end');
 
-    // Build date filter based on period
-    let dateFilter = '';
+    // Calculate date ranges securely
     const now = new Date();
+    let filterStartDate: string | null = null;
+    let filterEndDate: string | null = null;
+    let useExactDate: string | null = null;
 
     switch (period) {
       case 'today':
-        const today = now.toISOString().split('T')[0];
-        dateFilter = `AND DATE(created_at) = '${today}'`;
+        useExactDate = now.toISOString().split('T')[0];
         break;
       case 'week':
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        dateFilter = `AND DATE(created_at) >= '${weekAgo}'`;
+        filterStartDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         break;
       case 'month':
-        const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()).toISOString().split('T')[0];
-        dateFilter = `AND DATE(created_at) >= '${monthAgo}'`;
+        filterStartDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()).toISOString().split('T')[0];
         break;
       case 'year':
-        const yearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).toISOString().split('T')[0];
-        dateFilter = `AND DATE(created_at) >= '${yearAgo}'`;
+        filterStartDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).toISOString().split('T')[0];
         break;
       case 'custom':
+        // Validate date format before using
         if (startDate && endDate) {
-          dateFilter = `AND DATE(created_at) BETWEEN '${startDate}' AND '${endDate}'`;
+          const startDateObj = new Date(startDate);
+          const endDateObj = new Date(endDate);
+          if (!isNaN(startDateObj.getTime()) && !isNaN(endDateObj.getTime())) {
+            filterStartDate = startDate;
+            filterEndDate = endDate;
+          }
         }
         break;
       default:
-        dateFilter = ''; // All time
+        // All time - no filter
+        break;
     }
 
-    console.log('📊 Admin Analytics: Generating report for period:', period, 'Filter:', dateFilter);
+    console.log('📊 Admin Analytics: Generating report for period:', period, {
+      useExactDate,
+      filterStartDate,
+      filterEndDate
+    });
 
-    // Revenue Summary
-    const revenueQuery = await sql`
-      SELECT
-        COUNT(*) as total_orders,
-        COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as total_revenue,
-        COALESCE(SUM(CAST(tax AS DECIMAL(10,2))), 0) as total_tax,
-        COALESCE(SUM(CAST(delivery_fee AS DECIMAL(10,2))), 0) as total_delivery_fees,
-        COALESCE(SUM(CAST(tip AS DECIMAL(10,2))), 0) as total_tips,
-        COALESCE(AVG(CAST(total AS DECIMAL(10,2))), 0) as average_order_value
-      FROM orders
-      WHERE status != 'cancelled'
-      ${sql.unsafe(dateFilter)}
-    `;
+    // Revenue Summary with parameterized date filtering
+    const revenueQuery = useExactDate
+      ? await sql`
+          SELECT
+            COUNT(*) as total_orders,
+            COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as total_revenue,
+            COALESCE(SUM(CAST(tax AS DECIMAL(10,2))), 0) as total_tax,
+            COALESCE(SUM(CAST(delivery_fee AS DECIMAL(10,2))), 0) as total_delivery_fees,
+            COALESCE(SUM(CAST(tip AS DECIMAL(10,2))), 0) as total_tips,
+            COALESCE(AVG(CAST(total AS DECIMAL(10,2))), 0) as average_order_value
+          FROM orders
+          WHERE status != 'cancelled'
+          AND DATE(created_at) = ${useExactDate}
+        `
+      : filterStartDate && filterEndDate
+      ? await sql`
+          SELECT
+            COUNT(*) as total_orders,
+            COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as total_revenue,
+            COALESCE(SUM(CAST(tax AS DECIMAL(10,2))), 0) as total_tax,
+            COALESCE(SUM(CAST(delivery_fee AS DECIMAL(10,2))), 0) as total_delivery_fees,
+            COALESCE(SUM(CAST(tip AS DECIMAL(10,2))), 0) as total_tips,
+            COALESCE(AVG(CAST(total AS DECIMAL(10,2))), 0) as average_order_value
+          FROM orders
+          WHERE status != 'cancelled'
+          AND DATE(created_at) BETWEEN ${filterStartDate} AND ${filterEndDate}
+        `
+      : filterStartDate
+      ? await sql`
+          SELECT
+            COUNT(*) as total_orders,
+            COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as total_revenue,
+            COALESCE(SUM(CAST(tax AS DECIMAL(10,2))), 0) as total_tax,
+            COALESCE(SUM(CAST(delivery_fee AS DECIMAL(10,2))), 0) as total_delivery_fees,
+            COALESCE(SUM(CAST(tip AS DECIMAL(10,2))), 0) as total_tips,
+            COALESCE(AVG(CAST(total AS DECIMAL(10,2))), 0) as average_order_value
+          FROM orders
+          WHERE status != 'cancelled'
+          AND DATE(created_at) >= ${filterStartDate}
+        `
+      : await sql`
+          SELECT
+            COUNT(*) as total_orders,
+            COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as total_revenue,
+            COALESCE(SUM(CAST(tax AS DECIMAL(10,2))), 0) as total_tax,
+            COALESCE(SUM(CAST(delivery_fee AS DECIMAL(10,2))), 0) as total_delivery_fees,
+            COALESCE(SUM(CAST(tip AS DECIMAL(10,2))), 0) as total_tips,
+            COALESCE(AVG(CAST(total AS DECIMAL(10,2))), 0) as average_order_value
+          FROM orders
+          WHERE status != 'cancelled'
+        `;
 
     // Daily Revenue Trend (last 30 days)
     const dailyRevenueQuery = await sql`
@@ -128,73 +175,197 @@ export const handler: Handler = async (event, context) => {
       LIMIT 30
     `;
 
-    // Order Status Breakdown
-    const orderStatusQuery = await sql`
-      SELECT
-        status,
-        COUNT(*) as count,
-        COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue
-      FROM orders
-      WHERE 1=1 ${sql.unsafe(dateFilter)}
-      GROUP BY status
-      ORDER BY count DESC
-    `;
+    // Order Status Breakdown with parameterized filtering
+    const orderStatusQuery = useExactDate
+      ? await sql`
+          SELECT status, COUNT(*) as count, COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue
+          FROM orders
+          WHERE DATE(created_at) = ${useExactDate}
+          GROUP BY status
+          ORDER BY count DESC
+        `
+      : filterStartDate && filterEndDate
+      ? await sql`
+          SELECT status, COUNT(*) as count, COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue
+          FROM orders
+          WHERE DATE(created_at) BETWEEN ${filterStartDate} AND ${filterEndDate}
+          GROUP BY status
+          ORDER BY count DESC
+        `
+      : filterStartDate
+      ? await sql`
+          SELECT status, COUNT(*) as count, COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue
+          FROM orders
+          WHERE DATE(created_at) >= ${filterStartDate}
+          GROUP BY status
+          ORDER BY count DESC
+        `
+      : await sql`
+          SELECT status, COUNT(*) as count, COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue
+          FROM orders
+          GROUP BY status
+          ORDER BY count DESC
+        `;
 
-    // Popular Items
-    const popularItemsQuery = await sql`
-      SELECT
-        mi.name,
-        mi.category,
-        COUNT(oi.id) as times_ordered,
-        SUM(oi.quantity) as total_quantity,
-        COALESCE(SUM(CAST(oi.price AS DECIMAL(10,2)) * oi.quantity), 0) as total_revenue
-      FROM order_items oi
-      JOIN orders o ON oi.order_id = o.id
-      LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
-      WHERE o.status != 'cancelled'
-      ${sql.unsafe(dateFilter.replace('created_at', 'o.created_at'))}
-      GROUP BY mi.id, mi.name, mi.category
-      ORDER BY total_quantity DESC
-      LIMIT 10
-    `;
+    // Popular Items with parameterized filtering
+    const popularItemsQuery = useExactDate
+      ? await sql`
+          SELECT mi.name, mi.category, COUNT(oi.id) as times_ordered,
+                 SUM(oi.quantity) as total_quantity,
+                 COALESCE(SUM(CAST(oi.price AS DECIMAL(10,2)) * oi.quantity), 0) as total_revenue
+          FROM order_items oi
+          JOIN orders o ON oi.order_id = o.id
+          LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+          WHERE o.status != 'cancelled' AND DATE(o.created_at) = ${useExactDate}
+          GROUP BY mi.id, mi.name, mi.category
+          ORDER BY total_quantity DESC
+          LIMIT 10
+        `
+      : filterStartDate && filterEndDate
+      ? await sql`
+          SELECT mi.name, mi.category, COUNT(oi.id) as times_ordered,
+                 SUM(oi.quantity) as total_quantity,
+                 COALESCE(SUM(CAST(oi.price AS DECIMAL(10,2)) * oi.quantity), 0) as total_revenue
+          FROM order_items oi
+          JOIN orders o ON oi.order_id = o.id
+          LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+          WHERE o.status != 'cancelled' AND DATE(o.created_at) BETWEEN ${filterStartDate} AND ${filterEndDate}
+          GROUP BY mi.id, mi.name, mi.category
+          ORDER BY total_quantity DESC
+          LIMIT 10
+        `
+      : filterStartDate
+      ? await sql`
+          SELECT mi.name, mi.category, COUNT(oi.id) as times_ordered,
+                 SUM(oi.quantity) as total_quantity,
+                 COALESCE(SUM(CAST(oi.price AS DECIMAL(10,2)) * oi.quantity), 0) as total_revenue
+          FROM order_items oi
+          JOIN orders o ON oi.order_id = o.id
+          LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+          WHERE o.status != 'cancelled' AND DATE(o.created_at) >= ${filterStartDate}
+          GROUP BY mi.id, mi.name, mi.category
+          ORDER BY total_quantity DESC
+          LIMIT 10
+        `
+      : await sql`
+          SELECT mi.name, mi.category, COUNT(oi.id) as times_ordered,
+                 SUM(oi.quantity) as total_quantity,
+                 COALESCE(SUM(CAST(oi.price AS DECIMAL(10,2)) * oi.quantity), 0) as total_revenue
+          FROM order_items oi
+          JOIN orders o ON oi.order_id = o.id
+          LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+          WHERE o.status != 'cancelled'
+          GROUP BY mi.id, mi.name, mi.category
+          ORDER BY total_quantity DESC
+          LIMIT 10
+        `;
 
-    // Customer Analytics
-    const customerAnalyticsQuery = await sql`
-      SELECT
-        COUNT(DISTINCT COALESCE(user_id, supabase_user_id)) as unique_customers,
-        COUNT(CASE WHEN user_id IS NOT NULL THEN 1 END) as legacy_customers,
-        COUNT(CASE WHEN supabase_user_id IS NOT NULL THEN 1 END) as google_customers
-      FROM orders
-      WHERE status != 'cancelled'
-      ${sql.unsafe(dateFilter)}
-    `;
+    // Customer Analytics with parameterized filtering
+    const customerAnalyticsQuery = useExactDate
+      ? await sql`
+          SELECT COUNT(DISTINCT COALESCE(user_id, supabase_user_id)) as unique_customers,
+                 COUNT(CASE WHEN user_id IS NOT NULL THEN 1 END) as legacy_customers,
+                 COUNT(CASE WHEN supabase_user_id IS NOT NULL THEN 1 END) as google_customers
+          FROM orders
+          WHERE status != 'cancelled' AND DATE(created_at) = ${useExactDate}
+        `
+      : filterStartDate && filterEndDate
+      ? await sql`
+          SELECT COUNT(DISTINCT COALESCE(user_id, supabase_user_id)) as unique_customers,
+                 COUNT(CASE WHEN user_id IS NOT NULL THEN 1 END) as legacy_customers,
+                 COUNT(CASE WHEN supabase_user_id IS NOT NULL THEN 1 END) as google_customers
+          FROM orders
+          WHERE status != 'cancelled' AND DATE(created_at) BETWEEN ${filterStartDate} AND ${filterEndDate}
+        `
+      : filterStartDate
+      ? await sql`
+          SELECT COUNT(DISTINCT COALESCE(user_id, supabase_user_id)) as unique_customers,
+                 COUNT(CASE WHEN user_id IS NOT NULL THEN 1 END) as legacy_customers,
+                 COUNT(CASE WHEN supabase_user_id IS NOT NULL THEN 1 END) as google_customers
+          FROM orders
+          WHERE status != 'cancelled' AND DATE(created_at) >= ${filterStartDate}
+        `
+      : await sql`
+          SELECT COUNT(DISTINCT COALESCE(user_id, supabase_user_id)) as unique_customers,
+                 COUNT(CASE WHEN user_id IS NOT NULL THEN 1 END) as legacy_customers,
+                 COUNT(CASE WHEN supabase_user_id IS NOT NULL THEN 1 END) as google_customers
+          FROM orders
+          WHERE status != 'cancelled'
+        `;
 
-    // Payment Method Breakdown (if available)
-    const paymentMethodQuery = await sql`
-      SELECT
-        payment_status,
-        COUNT(*) as count,
-        COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue
-      FROM orders
-      WHERE status != 'cancelled'
-      ${sql.unsafe(dateFilter)}
-      GROUP BY payment_status
-      ORDER BY count DESC
-    `;
+    // Payment Method Breakdown with parameterized filtering
+    const paymentMethodQuery = useExactDate
+      ? await sql`
+          SELECT payment_status, COUNT(*) as count, COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue
+          FROM orders
+          WHERE status != 'cancelled' AND DATE(created_at) = ${useExactDate}
+          GROUP BY payment_status
+          ORDER BY count DESC
+        `
+      : filterStartDate && filterEndDate
+      ? await sql`
+          SELECT payment_status, COUNT(*) as count, COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue
+          FROM orders
+          WHERE status != 'cancelled' AND DATE(created_at) BETWEEN ${filterStartDate} AND ${filterEndDate}
+          GROUP BY payment_status
+          ORDER BY count DESC
+        `
+      : filterStartDate
+      ? await sql`
+          SELECT payment_status, COUNT(*) as count, COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue
+          FROM orders
+          WHERE status != 'cancelled' AND DATE(created_at) >= ${filterStartDate}
+          GROUP BY payment_status
+          ORDER BY count DESC
+        `
+      : await sql`
+          SELECT payment_status, COUNT(*) as count, COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue
+          FROM orders
+          WHERE status != 'cancelled'
+          GROUP BY payment_status
+          ORDER BY count DESC
+        `;
 
-    // Order Type Breakdown
-    const orderTypeQuery = await sql`
-      SELECT
-        order_type,
-        COUNT(*) as count,
-        COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue,
-        COALESCE(AVG(CAST(total AS DECIMAL(10,2))), 0) as avg_order_value
-      FROM orders
-      WHERE status != 'cancelled'
-      ${sql.unsafe(dateFilter)}
-      GROUP BY order_type
-      ORDER BY count DESC
-    `;
+    // Order Type Breakdown with parameterized filtering
+    const orderTypeQuery = useExactDate
+      ? await sql`
+          SELECT order_type, COUNT(*) as count,
+                 COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue,
+                 COALESCE(AVG(CAST(total AS DECIMAL(10,2))), 0) as avg_order_value
+          FROM orders
+          WHERE status != 'cancelled' AND DATE(created_at) = ${useExactDate}
+          GROUP BY order_type
+          ORDER BY count DESC
+        `
+      : filterStartDate && filterEndDate
+      ? await sql`
+          SELECT order_type, COUNT(*) as count,
+                 COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue,
+                 COALESCE(AVG(CAST(total AS DECIMAL(10,2))), 0) as avg_order_value
+          FROM orders
+          WHERE status != 'cancelled' AND DATE(created_at) BETWEEN ${filterStartDate} AND ${filterEndDate}
+          GROUP BY order_type
+          ORDER BY count DESC
+        `
+      : filterStartDate
+      ? await sql`
+          SELECT order_type, COUNT(*) as count,
+                 COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue,
+                 COALESCE(AVG(CAST(total AS DECIMAL(10,2))), 0) as avg_order_value
+          FROM orders
+          WHERE status != 'cancelled' AND DATE(created_at) >= ${filterStartDate}
+          GROUP BY order_type
+          ORDER BY count DESC
+        `
+      : await sql`
+          SELECT order_type, COUNT(*) as count,
+                 COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue,
+                 COALESCE(AVG(CAST(total AS DECIMAL(10,2))), 0) as avg_order_value
+          FROM orders
+          WHERE status != 'cancelled'
+          GROUP BY order_type
+          ORDER BY count DESC
+        `;
 
     // Monthly comparison for growth
     const monthlyComparisonQuery = await sql`
@@ -213,9 +384,9 @@ export const handler: Handler = async (event, context) => {
     const analytics = {
       period: period,
       dateRange: {
-        start: startDate,
-        end: endDate,
-        filter: dateFilter
+        start: filterStartDate || startDate,
+        end: filterEndDate || endDate,
+        exactDate: useExactDate
       },
       summary: {
         totalOrders: parseInt(revenueQuery[0].total_orders),
