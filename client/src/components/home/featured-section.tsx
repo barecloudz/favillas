@@ -36,10 +36,11 @@ const FeaturedSection: React.FC<FeaturedSectionProps> = ({ menuItems }) => {
               <div key={item.id} className="bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300">
                 <div className="h-60 overflow-hidden">
                   {item.imageUrl ? (
-                    <img 
-                      src={item.imageUrl} 
-                      alt={item?.name || 'Menu Item'} 
+                    <img
+                      src={item.imageUrl}
+                      alt={item?.name || 'Menu Item'}
                       className="w-full h-full object-cover"
+                      loading="lazy"
                     />
                   ) : (
                     <div className="w-full h-full bg-gray-200 flex items-center justify-center">
@@ -64,10 +65,11 @@ const FeaturedSection: React.FC<FeaturedSectionProps> = ({ menuItems }) => {
             <>
               <div className="bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300">
                 <div className="h-60 overflow-hidden">
-                  <img 
-                    src="/images/f1.png" 
-                    alt="New York Style Pizza" 
+                  <img
+                    src="/images/f1.png"
+                    alt="New York Style Pizza"
                     className="w-full h-full object-cover"
+                    loading="lazy"
                   />
                 </div>
                 <div className="p-6">
@@ -83,10 +85,11 @@ const FeaturedSection: React.FC<FeaturedSectionProps> = ({ menuItems }) => {
               
               <div className="bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300">
                 <div className="h-60 overflow-hidden">
-                  <img 
-                    src="/images/f2.jpg" 
-                    alt="Sicilian Pizza" 
+                  <img
+                    src="/images/f2.jpg"
+                    alt="Sicilian Pizza"
                     className="w-full h-full object-cover"
+                    loading="lazy"
                   />
                 </div>
                 <div className="p-6">
@@ -102,10 +105,11 @@ const FeaturedSection: React.FC<FeaturedSectionProps> = ({ menuItems }) => {
               
               <div className="bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300">
                 <div className="h-60 overflow-hidden">
-                  <img 
-                    src="/images/f3.jpg" 
-                    alt="Italian Pasta" 
+                  <img
+                    src="/images/f3.jpg"
+                    alt="Italian Pasta"
                     className="w-full h-full object-cover"
+                    loading="lazy"
                   />
                 </div>
                 <div className="p-6">

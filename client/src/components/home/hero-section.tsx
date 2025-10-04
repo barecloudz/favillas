@@ -23,7 +23,7 @@ const HeroSection: React.FC = () => {
     <section className="relative h-screen md:h-[600px] bg-cover bg-center mt-0 pt-16 md:pt-24" style={{ backgroundImage: "url('/images/hero-bg.jpg')", paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       <div className="absolute inset-0 bg-black bg-opacity-50"></div>
       <div className="container mx-auto px-4 h-full flex flex-col justify-center items-center relative z-10 text-center">
-        <img src="/images/logopng.png" alt="Favilla's Pizza Logo" className="w-[160px] md:w-[190px] mb-6" />
+        <img src="/images/logopng.png" alt="Favilla's Pizza Logo" className="w-[160px] md:w-[190px] mb-6" loading="eager" fetchpriority="high" />
         <h1 className="text-4xl md:text-6xl font-display text-white font-bold mb-4">AUTHENTIC ITALIAN PIZZA</h1>
         <p className="text-lg md:text-xl text-white mb-8 max-w-2xl">
           At Favilla's, every pizza is a masterpiece of authentic Italian taste, made with love by a real Italian family in Asheville.

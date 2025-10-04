@@ -35,10 +35,11 @@ const Footer = () => {
                 </div>
               </div>
               <div>
-                <img 
-                  src="/images/lineup.jpg" 
-                  alt="Favilla's Pizza Team" 
+                <img
+                  src="/images/lineup.jpg"
+                  alt="Favilla's Pizza Team"
                   className="rounded-xl shadow-xl w-full h-64 object-cover"
+                  loading="lazy"
                 />
               </div>
             </div>

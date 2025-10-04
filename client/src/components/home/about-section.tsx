@@ -39,10 +39,11 @@ const AboutSection: React.FC = () => {
           
           <div className="order-2 md:order-2">
             <div className="h-full">
-              <img 
-                src="/images/lineup.jpg" 
-                alt="Favilla's Pizza Team" 
+              <img
+                src="/images/lineup.jpg"
+                alt="Favilla's Pizza Team"
                 className="rounded-xl shadow-xl w-full h-full object-cover"
+                loading="lazy"
               />
             </div>
           </div>

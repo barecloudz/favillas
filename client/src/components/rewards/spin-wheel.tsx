@@ -151,10 +151,11 @@ const SpinWheel: React.FC = () => {
           }}
         >
           {/* Use the actual spinwheel image as background */}
-          <img 
-            src="/images/spinwheel.png" 
-            alt="Spin Wheel" 
+          <img
+            src="/images/spinwheel.png"
+            alt="Spin Wheel"
             className="w-full h-full object-cover"
+            loading="lazy"
           />
           
           {/* Overlay labels on the wheel */}

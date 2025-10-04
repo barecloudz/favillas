@@ -61,9 +61,20 @@ export default defineConfig(({ mode }) => {
             vendor: ['react', 'react-dom'],
             ui: ['@tanstack/react-query', 'lucide-react'],
             utils: ['clsx', 'tailwind-merge']
+          },
+          // Optimize asset naming for better caching
+          assetFileNames: (assetInfo) => {
+            const info = assetInfo.name?.split('.') || [];
+            const ext = info[info.length - 1];
+            if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext || '')) {
+              return `images/[name]-[hash][extname]`;
+            }
+            return `assets/[name]-[hash][extname]`;
           }
         }
-      }
+      },
+      // Enable image optimization
+      assetsInlineLimit: 4096, // Inline assets smaller than 4kb as base64
     },
     cacheDir: '.vite-cache',
     optimizeDeps: {
