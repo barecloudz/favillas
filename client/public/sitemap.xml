@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+
+  <!-- Homepage - Highest Priority -->
+  <url>
+    <loc>https://favillaspizzeria.com/</loc>
+    <lastmod>2025-10-04</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://favillaspizzeria.com/images/hero-bg.jpg</image:loc>
+      <image:caption>Favilla's NY Pizza - Best Pizza in Asheville</image:caption>
+      <image:title>Authentic Italian Pizza</image:title>
+    </image:image>
+  </url>
+
+  <!-- Menu Page - Very High Priority -->
+  <url>
+    <loc>https://favillaspizzeria.com/menu</loc>
+    <lastmod>2025-10-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://favillaspizzeria.com/images/f1.png</image:loc>
+      <image:caption>NY Style Pizza</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://favillaspizzeria.com/images/f2.jpg</image:loc>
+      <image:caption>Sicilian Pizza Asheville</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://favillaspizzeria.com/images/f3.jpg</image:loc>
+      <image:caption>Italian Pasta Asheville</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Catering Page -->
+  <url>
+    <loc>https://favillaspizzeria.com/catering</loc>
+    <lastmod>2025-10-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Rewards Page -->
+  <url>
+    <loc>https://favillaspizzeria.com/rewards</loc>
+    <lastmod>2025-10-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Auth Page -->
+  <url>
+    <loc>https://favillaspizzeria.com/auth</loc>
+    <lastmod>2025-10-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- Profile Page -->
+  <url>
+    <loc>https://favillaspizzeria.com/profile</loc>
+    <lastmod>2025-10-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+
+  <!-- Orders Page -->
+  <url>
+    <loc>https://favillaspizzeria.com/orders</loc>
+    <lastmod>2025-10-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+</urlset>

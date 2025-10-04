@@ -1,0 +1,35 @@
+# Robots.txt for Favilla's NY Pizza
+# Allow all search engines to crawl everything
+
+User-agent: *
+Allow: /
+Allow: /menu
+Allow: /catering
+Allow: /rewards
+Allow: /orders
+Allow: /profile
+
+# Disallow admin and internal pages
+Disallow: /admin/
+Disallow: /kitchen
+Disallow: /employee/
+Disallow: /api/
+Disallow: /debug
+Disallow: /test
+
+# Google-specific crawlers
+User-agent: Googlebot
+Allow: /
+Allow: /menu
+Allow: /catering
+
+User-agent: Googlebot-Image
+Allow: /images/
+Allow: /*.jpg
+Allow: /*.jpeg
+Allow: /*.png
+Allow: /*.gif
+Allow: /*.webp
+
+# Sitemap location
+Sitemap: https://favillaspizzeria.com/sitemap.xml
