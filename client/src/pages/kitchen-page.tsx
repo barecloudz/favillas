@@ -265,14 +265,15 @@ const KitchenPage = () => {
       {/* Notification sound */}
       <audio ref={audioRef} src="https://assets.mixkit.co/sfx/preview/mixkit-bell-notification-933.mp3" />
 
-      <div className="min-h-screen bg-gray-50 p-4">
+      <div className="min-h-screen bg-gray-50 p-2 md:p-4">
         {/* Compact Header Bar */}
-        <div className="flex justify-between items-center mb-4 bg-white rounded-lg shadow-sm p-3">
-          <h1 className="text-xl font-bold text-gray-800">🍕 Kitchen Display</h1>
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 md:mb-4 bg-white rounded-lg shadow-sm p-2 md:p-3 gap-2 sm:gap-0">
+          <h1 className="text-lg md:text-xl font-bold text-gray-800">🍕 Kitchen Display</h1>
+          <div className="flex items-center gap-2 md:gap-3 w-full sm:w-auto">
             <Button
               variant="ghost"
               size="sm"
+              className="text-xs md:text-sm"
               onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/kitchen/orders"] })}
             >
               🔄 Refresh
@@ -280,6 +281,7 @@ const KitchenPage = () => {
             <Button
               variant="ghost"
               size="sm"
+              className="text-xs md:text-sm"
               onClick={() => {
                 if (audioRef.current) {
                   audioRef.current.play();
@@ -288,27 +290,27 @@ const KitchenPage = () => {
             >
               🔊 Test
             </Button>
-            <span className="text-sm text-gray-600">Welcome, {user?.firstName}</span>
+            <span className="text-xs md:text-sm text-gray-600 hidden sm:inline">Welcome, {user?.firstName}</span>
           </div>
         </div>
 
-        {/* TV-Optimized Layout: 2 Main Columns */}
-        <div className="grid grid-cols-2 gap-6 h-[calc(100vh-120px)]">
+        {/* Responsive Layout: 1 column on iPad, 2 columns on larger screens */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 lg:h-[calc(100vh-120px)]">
 
           {/* LEFT COLUMN: Ready to Start & Cooking */}
           <div className="space-y-4">
             {/* Ready to Start Section */}
-            <div className="bg-white rounded-lg shadow-sm p-4 flex-1 max-h-[48%] overflow-y-auto">
-              <h2 className="text-lg font-bold text-yellow-600 mb-3 flex items-center">
+            <div className="bg-white rounded-lg shadow-sm p-3 md:p-4 flex-1 lg:max-h-[48%] overflow-y-auto">
+              <h2 className="text-base md:text-lg font-bold text-yellow-600 mb-3 flex items-center">
                 📋 Ready to Start
                 {pendingOrders.length > 0 && (
                   <Badge className="ml-2 bg-yellow-500">{pendingOrders.length}</Badge>
                 )}
               </h2>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {pendingOrders.map((order: any) => (
                   <Card key={order.id} className="border-l-4 border-yellow-400">
-                    <CardContent className="p-3">
+                    <CardContent className="p-2 md:p-3">
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-bold text-lg">#{order.id}</h3>
                         <Badge variant={order.order_type === 'delivery' ? 'default' : 'secondary'}>
@@ -361,17 +363,17 @@ const KitchenPage = () => {
             </div>
 
             {/* Cooking Section */}
-            <div className="bg-white rounded-lg shadow-sm p-4 flex-1 max-h-[48%] overflow-y-auto">
-              <h2 className="text-lg font-bold text-orange-600 mb-3 flex items-center">
+            <div className="bg-white rounded-lg shadow-sm p-3 md:p-4 flex-1 lg:max-h-[48%] overflow-y-auto">
+              <h2 className="text-base md:text-lg font-bold text-orange-600 mb-3 flex items-center">
                 🍳 Cooking
                 {orders?.filter((o: any) => o.status === "cooking").length > 0 && (
                   <Badge className="ml-2 bg-orange-500">{orders.filter((o: any) => o.status === "cooking").length}</Badge>
                 )}
               </h2>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {orders?.filter((o: any) => o.status === "cooking").map((order: any) => (
                   <Card key={order.id} className="border-l-4 border-orange-400">
-                    <CardContent className="p-3">
+                    <CardContent className="p-2 md:p-3">
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-bold text-lg">#{order.id}</h3>
                         <Badge variant={order.order_type === 'delivery' ? 'default' : 'secondary'}>
@@ -415,17 +417,17 @@ const KitchenPage = () => {
           {/* RIGHT COLUMN: Ready for Pickup & Completed */}
           <div className="space-y-4">
             {/* Ready for Pickup Section */}
-            <div className="bg-white rounded-lg shadow-sm p-4 flex-1 max-h-[48%] overflow-y-auto">
-              <h2 className="text-lg font-bold text-green-600 mb-3 flex items-center">
+            <div className="bg-white rounded-lg shadow-sm p-3 md:p-4 flex-1 lg:max-h-[48%] overflow-y-auto">
+              <h2 className="text-base md:text-lg font-bold text-green-600 mb-3 flex items-center">
                 📦 Ready for Pickup
                 {orders?.filter((o: any) => o.status === "completed").length > 0 && (
                   <Badge className="ml-2 bg-green-500">{orders.filter((o: any) => o.status === "completed").length}</Badge>
                 )}
               </h2>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {orders?.filter((o: any) => o.status === "completed").map((order: any) => (
                   <Card key={order.id} className="border-l-4 border-green-400">
-                    <CardContent className="p-3">
+                    <CardContent className="p-2 md:p-3">
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-bold text-lg">#{order.id}</h3>
                         <Badge variant={order.order_type === 'delivery' ? 'default' : 'secondary'}>
@@ -475,17 +477,17 @@ const KitchenPage = () => {
             </div>
 
             {/* Recently Picked Up Section */}
-            <div className="bg-white rounded-lg shadow-sm p-4 flex-1 max-h-[48%] overflow-y-auto">
-              <h2 className="text-lg font-bold text-gray-600 mb-3 flex items-center">
+            <div className="bg-white rounded-lg shadow-sm p-3 md:p-4 flex-1 lg:max-h-[48%] overflow-y-auto">
+              <h2 className="text-base md:text-lg font-bold text-gray-600 mb-3 flex items-center">
                 ✅ Recently Picked Up
                 {orders?.filter((o: any) => o.status === 'picked_up').length > 0 && (
                   <Badge className="ml-2 bg-gray-500">{orders.filter((o: any) => o.status === 'picked_up').length}</Badge>
                 )}
               </h2>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {orders?.filter((o: any) => o.status === 'picked_up').slice(0, 8).map((order: any) => (
                   <Card key={order.id} className="border-l-4 border-gray-400 opacity-75">
-                    <CardContent className="p-3">
+                    <CardContent className="p-2 md:p-3">
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-bold text-lg">#{order.id}</h3>
                         <Badge variant="secondary">
