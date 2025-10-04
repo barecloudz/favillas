@@ -9,7 +9,7 @@ import { mapSupabaseUser, MappedUser } from '@/lib/user-mapping';
 import { useLocation } from 'wouter';
 import { EmailConfirmationModal } from '@/components/auth/email-confirmation-modal';
 
-type LoginData = Pick<InsertUser, "username" | "password">;
+type LoginData = Pick<InsertUser, "email" | "password">;
 
 interface AuthContextType {
   user: MappedUser | null;
@@ -253,13 +253,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // All authentication now goes through Supabase
       console.log('📧 Using Supabase authentication...');
 
-      // Support both email and username format - treat as email if it contains @
-      const email = credentials.username.includes('@')
-        ? credentials.username
-        : `${credentials.username}@favillasnypizza.com`; // Convert username to email format
-
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
+        email: credentials.email,
         password: credentials.password,
       });
 
