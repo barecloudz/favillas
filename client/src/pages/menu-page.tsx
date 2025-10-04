@@ -21,7 +21,6 @@ import {
 import { useCart } from "@/hooks/use-cart";
 import MenuItemSimple from "@/components/menu/menu-item-simple";
 import MenuItemWithChoices from "@/components/menu/menu-item-with-choices";
-import { WarningBanner } from "@/components/warning-banner";
 
 const MenuPage = () => {
   const [location, navigate] = useLocation();
@@ -381,9 +380,7 @@ const MenuPage = () => {
         <meta name="description" content="Browse our delicious menu of authentic New York style pizzas, sides, drinks, and desserts." />
       </Helmet>
 
-      <WarningBanner />
-
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 md:pt-[72px] pt-[60px]">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
           <div className="max-w-7xl mx-auto flex items-center justify-between">

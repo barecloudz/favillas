@@ -31,6 +31,7 @@ import { CartProvider } from "@/hooks/use-cart";
 import CartSidebar from "@/components/cart/cart-sidebar";
 import Header from "@/components/layout/header";
 import LoginModalWrapper from "@/components/auth/login-modal-wrapper";
+import { WarningBanner } from "@/components/warning-banner";
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -79,6 +80,7 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <Header />
+            <WarningBanner />
             <CartSidebar />
             <LoginModalWrapper />
             <Router />

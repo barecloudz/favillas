@@ -30,7 +30,6 @@ import {
   Coins,
   Truck
 } from "lucide-react";
-import { WarningBanner } from "@/components/warning-banner";
 
 const RewardsPage = () => {
   const { user } = useAuth();
@@ -221,9 +220,7 @@ const RewardsPage = () => {
         <title>Rewards | Favilla's NY Pizza</title>
       </Helmet>
 
-      <WarningBanner />
-
-      <main className="min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-yellow-50 py-8 pt-header" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 8rem)' }}>
+      <main className="min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-yellow-50 py-8 md:pt-[144px] pt-[120px]">
         <div className="max-w-6xl mx-auto px-4">
           {/* Hero Header */}
           <div className="mb-8 text-center">
