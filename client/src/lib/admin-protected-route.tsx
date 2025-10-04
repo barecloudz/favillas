@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { Redirect, Route } from "wouter";
+import { useAuth } from "@/hooks/use-supabase-auth";
 
 export function AdminProtectedRoute({
   path,
@@ -9,24 +10,10 @@ export function AdminProtectedRoute({
   path: string;
   component: () => React.JSX.Element;
 }) {
-  const [adminUser, setAdminUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, isLoading } = useAuth();
 
-  useEffect(() => {
-    // Check for admin session in localStorage
-    try {
-      const storedAdmin = localStorage.getItem('admin-user');
-      if (storedAdmin) {
-        const admin = JSON.parse(storedAdmin);
-        if ((admin.role === 'admin' || admin.role === 'super_admin') && admin.isAdmin) {
-          setAdminUser(admin);
-        }
-      }
-    } catch (error) {
-      console.error('Error parsing admin session:', error);
-    }
-    setIsLoading(false);
-  }, []);
+  // Check if user is authenticated and has admin privileges
+  const isAdmin = user && (user.role === 'admin' || user.role === 'super_admin' || user.isAdmin === true);
 
   if (isLoading) {
     return (
@@ -38,10 +25,11 @@ export function AdminProtectedRoute({
     );
   }
 
-  if (!adminUser) {
+  // Not authenticated or not an admin - redirect to login
+  if (!user || !isAdmin) {
     return (
       <Route path={path}>
-        <Redirect to="/admin" />
+        <Redirect to="/auth" />
       </Route>
     );
   }
