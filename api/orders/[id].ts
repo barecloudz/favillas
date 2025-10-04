@@ -261,7 +261,26 @@ export const handler: Handler = async (event, context) => {
 
         const updatedOrder = updatedOrders[0];
 
-        // ShipDay integration - trigger when payment is confirmed
+        // ShipDay integration - trigger when order status changes to 'cooking' or 'preparing'
+        if (patchData.status === 'cooking' || patchData.status === 'preparing') {
+          if (updatedOrder.order_type === 'delivery' && !updatedOrder.shipday_order_id && process.env.SHIPDAY_API_KEY) {
+            try {
+              console.log('📦 Triggering ShipDay integration for order starting to cook');
+              const { createShipDayOrder } = await import('../shipday-integration');
+              const shipDayResult = await createShipDayOrder(orderId);
+
+              if (shipDayResult.success) {
+                console.log(`✅ Ship Day order created when starting cooking for order #${orderId}`);
+              } else {
+                console.warn(`⚠️ Ship Day order creation failed for order #${orderId}: ${shipDayResult.error}`);
+              }
+            } catch (shipDayError: any) {
+              console.error(`❌ Ship Day integration error for order #${orderId}:`, shipDayError);
+            }
+          }
+        }
+
+        // ShipDay integration - also trigger when payment is confirmed (fallback)
         if (patchData.paymentStatus === 'completed' || patchData.paymentStatus === 'succeeded') {
           if (updatedOrder.order_type === 'delivery' && updatedOrder.address_data && process.env.SHIPDAY_API_KEY) {
             try {
