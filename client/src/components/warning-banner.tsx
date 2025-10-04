@@ -1,7 +1,15 @@
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-supabase-auth";
 
 export function WarningBanner() {
+  const { user } = useAuth();
+
+  // Don't show warning banner for admins
+  if (user?.isAdmin) {
+    return null;
+  }
+
   return (
     <div className="fixed top-[64px] left-0 right-0 z-40 bg-red-600 text-white py-3 px-4">
       <div className="container mx-auto flex flex-col sm:flex-row items-center justify-center gap-3 text-center sm:text-left">
