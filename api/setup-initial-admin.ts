@@ -1,5 +1,6 @@
 import { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
+import postgres from 'postgres';
 
 /**
  * ONE-TIME SETUP ENDPOINT
@@ -104,14 +105,76 @@ export const handler: Handler = async (event, context) => {
       };
     }
 
-    console.log('✅ Super admin created successfully:', data.user?.email);
+    console.log('✅ Super admin created successfully in Supabase:', data.user?.email);
+
+    // Now create the corresponding database record with admin privileges
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: 'DATABASE_URL not configured' })
+      };
+    }
+
+    const sql = postgres(databaseUrl, {
+      max: 1,
+      idle_timeout: 20,
+      connect_timeout: 10,
+      prepare: false,
+      keep_alive: false,
+    });
+
+    try {
+      // Check if user already exists in database
+      const existingDbUser = await sql`
+        SELECT id FROM users WHERE supabase_user_id = ${data.user?.id}
+      `;
+
+      if (existingDbUser.length === 0) {
+        // Create database record for admin
+        await sql`
+          INSERT INTO users (
+            supabase_user_id,
+            email,
+            username,
+            first_name,
+            last_name,
+            role,
+            is_admin,
+            is_active,
+            created_at,
+            updated_at
+          ) VALUES (
+            ${data.user?.id},
+            ${email},
+            ${email},
+            'Super',
+            'Admin',
+            'super_admin',
+            true,
+            true,
+            NOW(),
+            NOW()
+          )
+        `;
+        console.log('✅ Database record created for super admin');
+      } else {
+        console.log('ℹ️ Database record already exists for super admin');
+      }
+
+      await sql.end();
+    } catch (dbError) {
+      console.error('⚠️ Error creating database record:', dbError);
+      // Continue anyway - user can still login, just might not have full admin access yet
+    }
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         success: true,
-        message: 'Initial super admin created successfully in Supabase',
+        message: 'Initial super admin created successfully in Supabase and database',
         credentials: {
           email: 'superadmin@favillaspizzeria.com',
           password: 'superadmin123',
