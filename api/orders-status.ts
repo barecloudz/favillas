@@ -182,15 +182,15 @@ export const handler: Handler = async (event, context) => {
       RETURNING *
     `;
 
-    // Trigger Ship Day integration when order starts cooking
-    if (status === 'cooking' && currentOrder[0].status !== 'cooking') {
+    // Trigger Ship Day integration when order status changes to 'preparing' (started cooking)
+    if (status === 'preparing' && currentOrder[0].status !== 'preparing') {
       try {
         // Import and call Ship Day integration
         const { createShipDayOrder } = await import('./shipday-integration');
         const shipDayResult = await createShipDayOrder(orderId);
 
         if (shipDayResult.success) {
-          console.log(`✅ Ship Day order created when starting cooking for order #${orderId}: ${shipDayResult.message}`);
+          console.log(`✅ Ship Day order created when preparing order #${orderId}: ${shipDayResult.message}`);
         } else {
           console.warn(`⚠️ Ship Day order creation failed for order #${orderId}: ${shipDayResult.error}`);
         }

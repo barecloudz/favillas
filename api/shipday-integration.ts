@@ -26,8 +26,8 @@ function formatOrderItemsForShipDay(orderItems: any[]): any[] {
     const basePrice = parseFloat(item.price || item.menu_item_price || "0");
     let totalPrice = basePrice;
 
-    // Parse and include detailed options/choices/addons
-    let optionsText = [];
+    // Array to collect addons as strings (ShipDay format)
+    let addOns: string[] = [];
 
     if (item.options) {
       try {
@@ -38,7 +38,8 @@ function formatOrderItemsForShipDay(orderItems: any[]): any[] {
           // New choice system format: [{ groupName: "Size", itemName: "Large", price: 2.00 }]
           options.forEach(option => {
             if (option.itemName && option.groupName) {
-              optionsText.push(`${option.groupName}: ${option.itemName}`);
+              // Add to addOns array as "Group: Item" format
+              addOns.push(`${option.groupName}: ${option.itemName}`);
               if (option.price && option.price > 0) {
                 totalPrice += parseFloat(option.price);
               }
@@ -46,27 +47,27 @@ function formatOrderItemsForShipDay(orderItems: any[]): any[] {
           });
         } else if (typeof options === 'object') {
           // Legacy selectedOptions format
-          if (options.size) optionsText.push(`Size: ${options.size}`);
+          if (options.size) addOns.push(`Size: ${options.size}`);
           if (options.toppings && Array.isArray(options.toppings)) {
-            optionsText.push(`Toppings: ${options.toppings.join(', ')}`);
+            options.toppings.forEach(t => addOns.push(t));
           }
           if (options.extras && Array.isArray(options.extras)) {
-            optionsText.push(`Extras: ${options.extras.join(', ')}`);
+            options.extras.forEach(e => addOns.push(e));
           }
           if (options.addOns && Array.isArray(options.addOns)) {
-            optionsText.push(`Add-ons: ${options.addOns.join(', ')}`);
+            options.addOns.forEach(a => addOns.push(a));
           }
           if (options.customizations && Array.isArray(options.customizations)) {
-            optionsText.push(`Customizations: ${options.customizations.join(', ')}`);
+            options.customizations.forEach(c => addOns.push(c));
           }
 
           // Handle half & half pizzas
           if (options.halfAndHalf) {
             if (options.leftToppings && Array.isArray(options.leftToppings)) {
-              optionsText.push(`Left Half: ${options.leftToppings.map(t => t.name || t).join(', ')}`);
+              options.leftToppings.forEach(t => addOns.push(`Left: ${t.name || t}`));
             }
             if (options.rightToppings && Array.isArray(options.rightToppings)) {
-              optionsText.push(`Right Half: ${options.rightToppings.map(t => t.name || t).join(', ')}`);
+              options.rightToppings.forEach(t => addOns.push(`Right: ${t.name || t}`));
             }
           }
         }
@@ -75,25 +76,21 @@ function formatOrderItemsForShipDay(orderItems: any[]): any[] {
       }
     }
 
-    // Include special instructions
+    // Include special instructions in addOns
     if (item.special_instructions) {
-      optionsText.push(`Special: ${item.special_instructions}`);
-    }
-
-    // Format the complete item name with all details
-    if (optionsText.length > 0) {
-      itemName += ` (${optionsText.join(' | ')})`;
+      addOns.push(`Special: ${item.special_instructions}`);
     }
 
     return {
       name: itemName,
       unitPrice: totalPrice > 0 ? totalPrice : basePrice,
-      quantity: parseInt(item.quantity || "1")
+      quantity: parseInt(item.quantity || "1"),
+      addOns: addOns // ShipDay expects array of strings
     };
   });
 }
 
-// Create Ship Day order when order status changes to cooking/preparing
+// Create Ship Day order when order status changes to 'preparing' (started cooking)
 export async function createShipDayOrder(orderId: number): Promise<{ success: boolean; message?: string; error?: string }> {
   if (!process.env.SHIPDAY_API_KEY) {
     return { success: false, error: 'ShipDay API key not configured' };
