@@ -1481,6 +1481,11 @@ export const handler: Handler = async (event, context) => {
               SELECT * FROM order_items WHERE order_id = ${orderId}
             `;
 
+            console.log('📦 ShipDay: Fetched order items for order', orderId, ':', {
+              itemCount: orderItems.length,
+              items: orderItems.map(i => ({ name: i.name, quantity: i.quantity, options: i.options }))
+            });
+
             // Get user contact info
             let userContactInfo;
             if (currentOrder[0].user_id) {
@@ -1519,6 +1524,8 @@ export const handler: Handler = async (event, context) => {
                 quantity: itemQuantity
               };
             });
+
+            console.log('📦 ShipDay: Formatted items for payload:', formattedItems);
 
             const shipdayPayload = {
               orderItems: formattedItems,
@@ -1561,6 +1568,8 @@ export const handler: Handler = async (event, context) => {
             // Dispatch to ShipDay asynchronously (don't block the response)
             setTimeout(async () => {
               try {
+                console.log('📦 ShipDay: Sending payload to ShipDay API:', JSON.stringify(shipdayPayload, null, 2));
+
                 const shipdayResponse = await fetch('https://api.shipday.com/orders', {
                   method: 'POST',
                   headers: {
