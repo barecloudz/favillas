@@ -83,7 +83,16 @@ const CustomerDisplay = () => {
 
       <div className="min-h-screen bg-gray-900 text-white overflow-hidden">
         {/* Main Display */}
-        <div className="grid grid-cols-2 gap-0 h-screen">
+        <div className="grid grid-cols-2 gap-0 h-screen relative">
+
+            {/* Centered Logo Overlay */}
+            <div className="absolute top-8 left-1/2 -translate-x-1/2 z-10">
+              <img
+                src={logoUrl}
+                alt={companyName}
+                className="h-32 w-32 rounded-full shadow-2xl border-4 border-gray-800"
+              />
+            </div>
 
             {/* Cooking Column */}
             <div className="bg-gray-800 h-full flex flex-col">
