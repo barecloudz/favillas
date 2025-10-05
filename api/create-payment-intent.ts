@@ -128,6 +128,11 @@ export const handler: Handler = async (event, context) => {
 
       // Add tip if provided
       const tip = orderData.tip ? parseFloat(orderData.tip) : 0;
+      console.log('💵 Tip calculation:', {
+        rawTip: orderData.tip,
+        parsedTip: tip,
+        tipType: typeof orderData.tip
+      });
 
       // Apply discount if provided
       const discount = orderData.discount ? parseFloat(orderData.discount) : 0;
