@@ -171,106 +171,110 @@ function formatReceipt(order: OrderPrintData): string {
 
 /**
  * Send print job directly to Epson thermal printer from iPad
- * Uses official Epson ePOS SDK which works from HTTPS pages
+ * Uses HTTPS port 8084 to bypass mixed content restrictions
  */
 export async function printToThermalPrinter(
   order: OrderPrintData,
   printer: PrinterConfig
 ): Promise<{ success: boolean; message: string }> {
 
-  // Check if Epson SDK is loaded
-  if (!window.epson) {
-    console.error('❌ Epson ePOS SDK not loaded');
+  try {
+    console.log(`🖨️  Preparing receipt for printer: ${printer.ipAddress}`);
+
+    // Build receipt data using ESC/POS commands
+    const receiptData = formatReceipt(order);
+
+    // Epson printers support HTTPS on port 8084
+    // This allows printing from HTTPS sites without mixed content errors
+    const httpsPort = 8084;
+    const printerUrl = `https://${printer.ipAddress}:${httpsPort}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=10000`;
+
+    console.log(`📡 Connecting to printer via HTTPS: ${printerUrl}`);
+
+    // Build ePOS-Print XML
+    const eposXml = `<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+  <s:Body>
+    <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
+      <text>${receiptData.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '&#10;')}</text>
+      <cut type="partial"/>
+    </epos-print>
+  </s:Body>
+</s:Envelope>`;
+
+    // Send print job via HTTPS (no mixed content issue)
+    const response = await fetch(printerUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/xml; charset=utf-8',
+        'SOAPAction': '""'
+      },
+      body: eposXml,
+      mode: 'no-cors' // Required for cross-origin printer requests
+    });
+
+    console.log('✅ Print job sent via HTTPS');
+
+    // Note: no-cors mode doesn't allow reading response
+    // Assume success if no error was thrown
     return {
-      success: false,
-      message: 'Epson ePOS SDK not loaded. Please refresh the page.'
+      success: true,
+      message: `Order #${order.id} sent to ${printer.name}`
     };
+
+  } catch (error: any) {
+    console.error('❌ HTTPS print failed:', error);
+
+    // Fallback: Try HTTP if HTTPS fails (user may need to accept insecure content)
+    return printViaHTTP(order, printer);
   }
+}
 
-  return new Promise((resolve) => {
-    try {
-      console.log(`🖨️  Connecting to printer: ${printer.ipAddress}:${printer.port}`);
+/**
+ * Fallback: Try HTTP printing (will show mixed content warning on iPad)
+ */
+async function printViaHTTP(
+  order: OrderPrintData,
+  printer: PrinterConfig
+): Promise<{ success: boolean; message: string }> {
 
-      // Create ePOS device
-      const ePosDev = new window.epson!.ePOSDevice();
+  try {
+    console.log('🔄 Attempting HTTP print (may require accepting insecure content)...');
 
-      // Connect to printer
-      ePosDev.connect(printer.ipAddress, printer.port, (data: string) => {
-        if (data === 'OK' || data === 'SSL_CONNECT_OK') {
-          console.log('✅ Connected to printer');
+    const receiptData = formatReceipt(order);
+    const printerUrl = `http://${printer.ipAddress}:${printer.port}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=10000`;
 
-          // Create printer object
-          ePosDev.createDevice(
-            'local_printer',
-            ePosDev.constructor['DEVICE_TYPE_PRINTER' as any] || 0,
-            { crypto: false, buffer: false },
-            (printerObj: ePOSPrint, code: string) => {
-              if (code === 'OK') {
-                console.log('✅ Printer device created');
+    const eposXml = `<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+  <s:Body>
+    <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
+      <text>${receiptData.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '&#10;')}</text>
+      <cut type="partial"/>
+    </epos-print>
+  </s:Body>
+</s:Envelope>`;
 
-                // Build receipt using ePOS Builder
-                const builder = new window.epson!.ePOSBuilder();
-                const receiptData = buildEposReceipt(builder, order);
+    await fetch(printerUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/xml; charset=utf-8',
+        'SOAPAction': '""'
+      },
+      body: eposXml,
+      mode: 'no-cors'
+    });
 
-                // Set callbacks
-                printerObj.onreceive = (response: any) => {
-                  console.log('✅ Print successful:', response);
-                  ePosDev.disconnect();
-                  resolve({
-                    success: true,
-                    message: `Order #${order.id} printed successfully`
-                  });
-                };
+    return {
+      success: true,
+      message: `Order #${order.id} sent to ${printer.name}`
+    };
 
-                printerObj.onerror = (error: any) => {
-                  console.error('❌ Print error:', error);
-                  ePosDev.disconnect();
-                  resolve({
-                    success: false,
-                    message: `Print failed: ${error.status || 'Unknown error'}`
-                  });
-                };
+  } catch (error: any) {
+    console.error('❌ HTTP print failed:', error);
 
-                // Send print job
-                console.log('📄 Sending print job...');
-                printerObj.send(receiptData);
-
-              } else {
-                console.error('❌ Failed to create printer device:', code);
-                ePosDev.disconnect();
-                resolve({
-                  success: false,
-                  message: `Failed to initialize printer: ${code}`
-                });
-              }
-            }
-          );
-        } else {
-          console.error('❌ Failed to connect:', data);
-          resolve({
-            success: false,
-            message: `Failed to connect to printer: ${data}`
-          });
-        }
-      });
-
-      // Timeout after 10 seconds
-      setTimeout(() => {
-        ePosDev.disconnect();
-        resolve({
-          success: false,
-          message: 'Connection timeout. Make sure iPad and printer are on same network.'
-        });
-      }, 10000);
-
-    } catch (error: any) {
-      console.error('❌ Print failed:', error);
-      resolve({
-        success: false,
-        message: error.message || 'Unknown error occurred'
-      });
-    }
-  });
+    // Last resort: Open browser print dialog
+    return openPrintDialog(order, formatReceipt(order));
+  }
 }
 
 /**

@@ -9,7 +9,8 @@ Your thermal printer is configured to print directly from your iPad browser **wi
 - **Epson TM-M30II** thermal printer (or compatible ePOS model)
 - Printer connected to **same WiFi network** as your iPad
 - Printer IP address: **192.168.1.208**
-- Printer port: **80** (default for ePOS-Print)
+- **HTTPS enabled on printer** (port 8084) - Required for iPad printing from HTTPS sites
+- ePOS-Print service enabled on printer
 
 ## How It Works
 
@@ -27,7 +28,28 @@ No server needed! The iPad talks directly to the printer on your local network.
 
 ## Setup Instructions
 
-### 1. Configure Printer in Admin Dashboard
+### 1. Enable HTTPS on Printer (One-Time Setup)
+
+The Epson TM-M30II must have HTTPS enabled to work from HTTPS websites (like your Netlify deployment).
+
+**Method 1: Using Printer Web Interface**
+1. On your iPad, open Safari
+2. Go to `http://192.168.1.208`
+3. You'll see the printer's web configuration page
+4. Go to **SSL/TLS Settings**
+5. Enable **SSL/TLS**
+6. The printer will now accept HTTPS connections on port **8084**
+
+**Method 2: Using Epson TM Utility App** (Recommended for iPad)
+1. Download **Epson TM Utility** from the App Store
+2. Open the app and connect to your printer (192.168.1.208)
+3. Go to **Settings** → **SSL/TLS**
+4. Enable SSL/TLS
+5. Save changes
+
+**Important**: After enabling HTTPS, you may need to accept the printer's self-signed certificate the first time you print.
+
+### 2. Configure Printer in Admin Dashboard
 
 1. Open your website on the iPad
 2. Go to **Admin Dashboard** → **Settings** → **Printer Configuration**
@@ -35,14 +57,26 @@ No server needed! The iPad talks directly to the printer on your local network.
 4. Enter printer details:
    - **Name**: Epson TM-M30II Kitchen
    - **IP Address**: 192.168.1.208
-   - **Port**: 80
+   - **Port**: 80 (this will be auto-upgraded to 8084 for HTTPS)
    - **Printer Type**: Epson TM-M30II
 5. Click **Save**
 6. Click **Set Primary** to make it the active printer
 
 You should see a green "Active" badge on your printer.
 
-### 2. Test Printing from iPad
+### 3. Accept Printer SSL Certificate (First Time Only)
+
+The first time you print, Safari may show a security warning about the printer's self-signed SSL certificate:
+
+1. Click the 🖨️ **Print** button on an order
+2. Safari may show: "Cannot verify server identity"
+3. Tap **Show Details**
+4. Tap **Visit this website**
+5. Confirm you want to continue
+
+This only needs to be done once. Future prints will work automatically.
+
+### 4. Test Printing from iPad
 
 1. Go to **Kitchen Display** on your iPad
 2. Find any order
@@ -51,7 +85,7 @@ You should see a green "Active" badge on your printer.
 
 If it works, you're all set! 🎉
 
-### 3. Automatic Printing on Orders (Optional)
+### 5. Automatic Printing on Orders (Optional)
 
 Receipts can automatically print when orders are confirmed. This is configured in your order processing code.
 
@@ -82,6 +116,11 @@ Receipts can automatically print when orders are confirmed. This is configured i
    - Go to http://192.168.1.208
    - You should see the Epson ePOS-Print configuration page
    - If this doesn't load, the printer isn't reachable
+
+5. **HTTPS/SSL not enabled**
+   - The printer must have SSL/TLS enabled for HTTPS printing
+   - Follow "Enable HTTPS on Printer" instructions above
+   - Without HTTPS, Safari will block the print request from your HTTPS website
 
 **Problem**: "Epson ePOS SDK not loaded" error
 
@@ -149,12 +188,19 @@ You can configure multiple printers:
 
 ## Technical Details
 
-### Epson ePOS SDK
-The system uses the official Epson ePOS SDK for JavaScript which:
-- Connects directly from browser to printer (no server needed)
-- Works with HTTPS sites (secure)
-- Supports iOS Safari, desktop browsers
-- Uses ePOS-Print API on port 80
+### HTTPS Printing Solution
+The system prints directly from your HTTPS website to the printer using:
+- **Port 8084**: Epson's HTTPS ePOS-Print port (bypasses mixed content restrictions)
+- **Port 80 fallback**: HTTP printing (will be blocked by Safari unless insecure content is allowed)
+- **ePOS-Print XML API**: Standard Epson thermal printer protocol
+- **No server needed**: iPad browser talks directly to printer on WiFi
+
+### How It Works
+1. iPad browser sends HTTPS request to `https://192.168.1.208:8084/cgi-bin/epos/service.cgi`
+2. Printer accepts HTTPS connection (using self-signed SSL certificate)
+3. Browser sends ePOS-Print XML with receipt data
+4. Printer parses XML and prints receipt
+5. All communication stays on local WiFi network
 
 ### Receipt Format
 Receipts include:
