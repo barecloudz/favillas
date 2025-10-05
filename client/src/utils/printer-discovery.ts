@@ -21,8 +21,14 @@ export async function discoverEpsonPrinters(): Promise<DiscoveredPrinter[]> {
   // Get user's network range
   const baseIP = '192.168.1'; // Most common home network range
 
-  // Common Epson printer IPs to check (you can expand this range)
+  // Common Epson printer IPs to check
+  // Start with common static IPs and known printer range
   const ipsToCheck = [
+    // Known printer location
+    `${baseIP}.208`,
+    // Common static printer IPs
+    `${baseIP}.100`,
+    `${baseIP}.101`,
     `${baseIP}.200`,
     `${baseIP}.201`,
     `${baseIP}.202`,
@@ -31,9 +37,9 @@ export async function discoverEpsonPrinters(): Promise<DiscoveredPrinter[]> {
     `${baseIP}.205`,
     `${baseIP}.206`,
     `${baseIP}.207`,
-    `${baseIP}.208`,
     `${baseIP}.209`,
     `${baseIP}.210`,
+    `${baseIP}.250`,
   ];
 
   console.log(`🔍 Scanning ${ipsToCheck.length} IP addresses for Epson printers...`);
@@ -84,6 +90,8 @@ async function testPrinterPort(
     const protocol = useHttps ? 'https' : 'http';
     const testUrl = `${protocol}://${ipAddress}:${port}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=3000`;
 
+    console.log(`Testing ${ipAddress}:${port} (${protocol.toUpperCase()})...`);
+
     // Send a minimal test request
     const testXml = `<?xml version="1.0" encoding="utf-8"?>
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
@@ -95,32 +103,61 @@ async function testPrinterPort(
 </s:Envelope>`;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const timeoutId = setTimeout(() => controller.abort(), 2000); // Reduced to 2s for faster scanning
 
-    const response = await fetch(testUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/xml; charset=utf-8',
-        'SOAPAction': '""'
-      },
-      body: testXml,
-      mode: 'no-cors',
-      signal: controller.signal
-    });
+    try {
+      const response = await fetch(testUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/xml; charset=utf-8',
+          'SOAPAction': '""'
+        },
+        body: testXml,
+        mode: 'no-cors',
+        signal: controller.signal
+      });
 
-    clearTimeout(timeoutId);
+      clearTimeout(timeoutId);
 
-    // In no-cors mode, we can't read the response, but if fetch doesn't throw, printer is reachable
-    return {
-      ipAddress,
-      port,
-      name: `Epson Printer (${ipAddress})`,
-      modelName: 'TM-M30II', // Default assumption
-      status: 'available'
-    };
+      // In no-cors mode, we can't read the response
+      // But if fetch succeeds without throwing, there's *something* at this address
+      // Assume it's a printer if it didn't timeout/error
+      console.log(`✅ Response from ${ipAddress}:${port}`);
+
+      return {
+        ipAddress,
+        port,
+        name: `Epson Printer (${ipAddress})`,
+        modelName: 'TM-M30II', // Default assumption
+        status: 'available'
+      };
+
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+
+      // Check if it's just a timeout (could still be a printer with SSL issues)
+      if (fetchError.name === 'AbortError') {
+        console.log(`⏱️  Timeout at ${ipAddress}:${port}`);
+        return null;
+      }
+
+      // For HTTPS, TypeError often means SSL cert issue (which means printer IS there!)
+      if (useHttps && fetchError instanceof TypeError) {
+        console.log(`🔒 SSL error at ${ipAddress}:${port} - likely a printer with self-signed cert`);
+        return {
+          ipAddress,
+          port,
+          name: `Epson Printer (${ipAddress})`,
+          modelName: 'TM-M30II',
+          status: 'available'
+        };
+      }
+
+      return null;
+    }
 
   } catch (error: any) {
-    // Timeout or network error means no printer at this IP
+    // Outer catch for unexpected errors
     return null;
   }
 }
