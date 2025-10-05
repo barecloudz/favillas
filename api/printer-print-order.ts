@@ -220,26 +220,34 @@ export const handler: Handler = async (event, context) => {
     // Format receipt
     const receiptData = formatReceiptForThermalPrinter(order, items);
 
-    // Send to local printer server if available
+    // Try to send directly to printer via HTTP POST (if printer supports it)
+    // Many modern thermal printers like Epson TM-M30II support HTTP printing
     try {
-      const printerServerUrl = process.env.PRINTER_SERVER_URL || 'http://localhost:3001';
-      console.log('🖨️  Sending print job to printer server:', printerServerUrl);
+      const printerUrl = `http://${printer.ip_address}:${printer.port}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=10000`;
+      console.log('🖨️  Attempting direct HTTP print to:', printerUrl);
 
-      const printResponse = await fetch(`${printerServerUrl}/print`, {
+      // Epson ePOS XML format for direct printing
+      const eposXml = `<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+  <s:Body>
+    <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
+      <text>${receiptData.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</text>
+      <cut type="partial"/>
+    </epos-print>
+  </s:Body>
+</s:Envelope>`;
+
+      const printResponse = await fetch(printerUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'text/xml; charset=utf-8',
+          'SOAPAction': '""'
         },
-        body: JSON.stringify({
-          receiptData,
-          orderId
-        })
+        body: eposXml
       });
 
       if (printResponse.ok) {
-        const printResult = await printResponse.json();
-        console.log('✅ Print job sent successfully:', printResult);
-
+        console.log('✅ Direct print successful');
         return {
           statusCode: 200,
           headers,
@@ -256,19 +264,19 @@ export const handler: Handler = async (event, context) => {
           })
         };
       } else {
-        console.warn('⚠️  Printer server responded with error:', await printResponse.text());
-        throw new Error('Printer server unavailable');
+        console.warn('⚠️  Printer HTTP endpoint responded with error:', await printResponse.text());
+        throw new Error('Direct print failed');
       }
     } catch (printerError) {
-      console.warn('⚠️  Could not reach printer server:', printerError);
+      console.warn('⚠️  Direct print not supported, returning formatted receipt:', printerError);
 
-      // Fallback: return formatted receipt without printing
+      // Return formatted receipt - the frontend can handle printing via browser
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           success: true,
-          message: `Order #${orderId} formatted (printer server offline)`,
+          message: `Order #${orderId} formatted for printing`,
           printer: {
             id: printer.id,
             name: printer.name,
@@ -277,7 +285,7 @@ export const handler: Handler = async (event, context) => {
           },
           receiptData,
           printed: false,
-          note: 'Printer server not reachable. Start thermal-printer-server.js to enable printing.'
+          note: 'Network printing from Netlify functions is not possible. Printing must be done from client device on same network.'
         })
       };
     }

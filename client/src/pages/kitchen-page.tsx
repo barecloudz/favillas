@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, Printer, Volume2 } from "lucide-react";
+import { printToThermalPrinter } from "@/utils/thermal-printer";
 
 const KitchenPage = () => {
   const { user } = useAuth();
@@ -130,22 +131,69 @@ const KitchenPage = () => {
   const printOrder = async (orderId: number) => {
     try {
       console.log(`🖨️ Printing order #${orderId}`);
-      const response = await apiRequest("POST", "/api/printer/print-order", { orderId });
-      const result = await response.json();
+
+      // Get active printer configuration
+      const printerResponse = await apiRequest("GET", "/api/printer/config");
+      const printers = await printerResponse.json();
+      const activePrinter = printers.find((p: any) => p.isActive);
+
+      if (!activePrinter) {
+        toast({
+          title: "No Printer Configured",
+          description: "Please configure a printer in Settings",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Find the order in our orders list
+      const order = orders?.find((o: any) => o.id === orderId);
+      if (!order) {
+        toast({
+          title: "Order Not Found",
+          description: `Could not find order #${orderId}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Print directly from browser to thermal printer on local network
+      const result = await printToThermalPrinter(
+        {
+          id: order.id,
+          orderType: order.order_type,
+          customerName: order.customer_name,
+          phone: order.phone,
+          address: order.address,
+          items: order.items,
+          total: parseFloat(order.total),
+          tax: parseFloat(order.tax || 0),
+          deliveryFee: parseFloat(order.delivery_fee || 0),
+          tip: parseFloat(order.tip || 0),
+          specialInstructions: order.special_instructions,
+          createdAt: order.created_at
+        },
+        {
+          ipAddress: activePrinter.ipAddress,
+          port: activePrinter.port,
+          name: activePrinter.name
+        }
+      );
 
       if (result.success) {
         toast({
-          title: "Print Job Sent",
-          description: `Order #${orderId} sent to ${result.printer?.name || 'printer'}`,
+          title: "Print Successful",
+          description: result.message,
         });
       } else {
         toast({
           title: "Print Failed",
-          description: result.message || "Could not print order",
+          description: result.message,
           variant: "destructive",
         });
       }
     } catch (error: any) {
+      console.error('Print error:', error);
       toast({
         title: "Print Error",
         description: error.message || "Could not connect to printer",
