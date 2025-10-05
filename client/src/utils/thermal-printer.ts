@@ -170,8 +170,8 @@ function formatReceipt(order: OrderPrintData): string {
 }
 
 /**
- * Send print job directly to Epson thermal printer from iPad
- * Tries HTTP directly - works if user allows insecure content in Safari
+ * Send print job to thermal printer via local printer server
+ * The printer server must be running on local network (localhost:3001 or computer IP:3001)
  */
 export async function printToThermalPrinter(
   order: OrderPrintData,
@@ -184,10 +184,41 @@ export async function printToThermalPrinter(
     // Build receipt data using ESC/POS commands
     const receiptData = formatReceipt(order);
 
-    // Try HTTP on port 80 directly
-    // Safari will block this with mixed content warning
-    // User needs to tap "Show Details" -> "Visit this website" to allow it
-    return await printViaHTTP(order, printer);
+    // Try local printer server first (default: localhost:3001)
+    // User can configure the printer server address in environment or printer config
+    const printerServerUrl = getPrinterServerUrl();
+
+    console.log(`📡 Sending to printer server: ${printerServerUrl}`);
+
+    try {
+      const response = await fetch(`${printerServerUrl}/print`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          receiptData,
+          orderId: order.id
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Print successful via local server');
+        return {
+          success: true,
+          message: `Order #${order.id} printed successfully`
+        };
+      } else {
+        throw new Error('Printer server returned error');
+      }
+    } catch (serverError: any) {
+      console.warn('⚠️  Local printer server not reachable:', serverError.message);
+      console.log('💡 Make sure thermal-printer-server.cjs is running');
+
+      // Fallback: Try direct HTTP to printer (will likely be blocked by Safari)
+      return await printViaHTTP(order, printer);
+    }
 
   } catch (error: any) {
     console.error('❌ Print failed:', error);
@@ -195,6 +226,23 @@ export async function printToThermalPrinter(
     // Last resort: Open browser print dialog
     return openPrintDialog(order, formatReceipt(order));
   }
+}
+
+/**
+ * Get printer server URL
+ * Checks localStorage for custom server, otherwise uses localhost:3001
+ */
+function getPrinterServerUrl(): string {
+  // Check if custom printer server URL is configured
+  const customUrl = localStorage.getItem('printerServerUrl');
+  if (customUrl) {
+    return customUrl;
+  }
+
+  // Default: localhost:3001 (for same device) or LAN IP
+  // In production, this should be the IP of the computer running the server
+  // e.g., http://192.168.1.100:3001
+  return 'http://localhost:3001';
 }
 
 /**
