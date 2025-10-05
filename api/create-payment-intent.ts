@@ -99,11 +99,18 @@ export const handler: Handler = async (event, context) => {
         const basePrice = parseFloat(menuItems[0].base_price);
         const itemQuantity = parseInt(item.quantity) || 1;
 
-        // Calculate item total (base price + customizations)
+        // Calculate item total (base price + options/customizations)
         let itemTotal = basePrice * itemQuantity;
 
-        // Add customization prices if present
-        if (item.customizations && Array.isArray(item.customizations)) {
+        // Add option prices if present (new format)
+        if (item.options && Array.isArray(item.options)) {
+          for (const option of item.options) {
+            const optionPrice = parseFloat(option.price) || 0;
+            itemTotal += optionPrice * itemQuantity;
+          }
+        }
+        // Legacy: Add customization prices if present (old format)
+        else if (item.customizations && Array.isArray(item.customizations)) {
           for (const customization of item.customizations) {
             const customPrice = parseFloat(customization.price) || 0;
             itemTotal += customPrice * itemQuantity;
