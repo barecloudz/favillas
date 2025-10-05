@@ -132,52 +132,58 @@ function formatReceipt(order: OrderPrintData): string {
 }
 
 /**
- * Send print job to thermal printer via HTTP
- * (Works with Epson ePOS-compatible printers)
+ * Send print job to thermal printer via local printer server
+ * Uses http://localhost:3001 printer server that forwards to thermal printer
  */
 export async function printToThermalPrinter(
   order: OrderPrintData,
   printer: PrinterConfig
 ): Promise<{ success: boolean; message: string }> {
+  const receiptData = formatReceipt(order);
+
+  // Try to use local printer server (must be running on same device as browser)
+  const printerServerUrl = 'http://localhost:3001';
+
   try {
-    const receiptData = formatReceipt(order);
+    console.log(`🖨️  Sending to printer server: ${printerServerUrl}/print`);
 
-    // Try Epson ePOS HTTP endpoint
-    const printerUrl = `http://${printer.ipAddress}:${printer.port}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=10000`;
-
-    // Format as ePOS XML
-    const eposXml = `<?xml version="1.0" encoding="utf-8"?>
-<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
-  <s:Body>
-    <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
-      <text>${receiptData.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '&#10;')}</text>
-      <cut type="partial"/>
-    </epos-print>
-  </s:Body>
-</s:Envelope>`;
-
-    const response = await fetch(printerUrl, {
+    const response = await fetch(`${printerServerUrl}/print`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'text/xml; charset=utf-8',
-        'SOAPAction': '""'
+        'Content-Type': 'application/json'
       },
-      body: eposXml
+      body: JSON.stringify({
+        receiptData,
+        orderId: order.id
+      })
     });
 
     if (response.ok) {
+      const result = await response.json();
+      console.log('✅ Print successful:', result);
       return {
         success: true,
-        message: `Order #${order.id} sent to ${printer.name}`
+        message: `Order #${order.id} printed successfully`
       };
     } else {
-      throw new Error(`Printer responded with status ${response.status}`);
+      const errorText = await response.text();
+      console.error('❌ Printer server error:', errorText);
+      throw new Error(`Printer server error: ${response.status}`);
     }
   } catch (error: any) {
-    console.error('Print error:', error);
+    console.error('❌ Print failed:', error);
+
+    // Check if it's a connection error
+    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+      return {
+        success: false,
+        message: `Printer server not running. Please start the printer server:\n\nOn iPad/computer on same network:\n1. Open Terminal\n2. cd to project folder\n3. Run: node thermal-printer-server.cjs\n\nOr install as a service to run automatically.`
+      };
+    }
+
     return {
       success: false,
-      message: error.message || 'Failed to connect to printer'
+      message: error.message || 'Failed to print'
     };
   }
 }
