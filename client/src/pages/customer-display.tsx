@@ -244,7 +244,6 @@ const CustomerDisplay = () => {
               </div>
             </div>
           </div>
-        </div>
 
         {/* Footer Info */}
         <div className="fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 px-6 py-2">
