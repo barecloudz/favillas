@@ -1534,6 +1534,14 @@ export const handler: Handler = async (event, context) => {
 
             console.log('📦 ShipDay: Formatted items for payload:', formattedItems);
 
+            // Parse order breakdown for costing
+            const orderBreakdown = addressData.orderBreakdown || {};
+            const subtotal = orderBreakdown.subtotal || parseFloat(currentOrder[0].total) - parseFloat(currentOrder[0].tax || 0) - parseFloat(currentOrder[0].delivery_fee || 0) - parseFloat(currentOrder[0].tip || 0);
+            const tax = parseFloat(currentOrder[0].tax || 0);
+            const deliveryFee = parseFloat(currentOrder[0].delivery_fee || 0);
+            const tip = parseFloat(currentOrder[0].tip || 0);
+            const discount = (orderBreakdown.discount || 0) + (orderBreakdown.voucherDiscount || 0);
+
             const shipdayPayload = {
               orderItems: formattedItems,
               pickup: {
@@ -1564,7 +1572,14 @@ export const handler: Handler = async (event, context) => {
                 }
               },
               orderNumber: `FAV-${orderId}`,
-              totalOrderCost: parseFloat(currentOrder[0].total), // Includes subtotal + tax + delivery fee + tip
+              costing: {
+                totalCost: subtotal,
+                deliveryFee: deliveryFee,
+                tip: tip,
+                discountAmount: discount,
+                tax: tax,
+                cashTip: 0
+              },
               paymentMethod: 'credit_card',
               customerName: customerName && customerName.trim() !== "" ? customerName.trim() : "Customer",
               customerPhoneNumber: customerPhone.replace(/[^\d]/g, ''),
