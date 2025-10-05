@@ -1140,8 +1140,10 @@ const CheckoutPage = () => {
                         </RadioGroup>
                         
                         {fulfillmentTime === "scheduled" && (
-                          <div className="mt-4">
-                            <Label htmlFor="scheduledTime">Select Date & Time</Label>
+                          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <Label htmlFor="scheduledTime" className="text-base font-semibold text-blue-900 mb-2 block">
+                              📅 Select Date & Time
+                            </Label>
                             <Input
                               type="datetime-local"
                               id="scheduledTime"
@@ -1149,7 +1151,11 @@ const CheckoutPage = () => {
                               onChange={(e) => setScheduledTime(e.target.value)}
                               min={new Date().toISOString().slice(0, 16)}
                               required={fulfillmentTime === "scheduled"}
+                              className="text-base font-medium border-2 border-blue-300 focus:border-blue-500 focus:ring-blue-500 h-12"
                             />
+                            <p className="text-sm text-blue-700 mt-2">
+                              💡 Your order will be prepared to be ready at this time
+                            </p>
                           </div>
                         )}
                         
