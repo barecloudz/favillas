@@ -171,7 +171,7 @@ function formatReceipt(order: OrderPrintData): string {
 
 /**
  * Send print job directly to Epson thermal printer from iPad
- * Uses Epson TM Print Assistant app URL scheme
+ * Tries HTTP directly - works if user allows insecure content in Safari
  */
 export async function printToThermalPrinter(
   order: OrderPrintData,
@@ -184,89 +184,16 @@ export async function printToThermalPrinter(
     // Build receipt data using ESC/POS commands
     const receiptData = formatReceipt(order);
 
-    // Try Epson TM Print Assistant app first (if installed on iPad)
-    // This app handles printing from Safari by registering a custom URL scheme
-    const success = await printViaTMPrintAssistant(receiptData, printer);
-    if (success) {
-      return {
-        success: true,
-        message: `Order #${order.id} sent to ${printer.name} via TM Print Assistant`
-      };
-    }
-
-    // Fallback 1: Try HTTPS port 8084 (if printer has SSL enabled)
-    const httpsPort = 8084;
-    const printerUrl = `https://${printer.ipAddress}:${httpsPort}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=10000`;
-
-    console.log(`📡 Trying HTTPS: ${printerUrl}`);
-
-    const eposXml = `<?xml version="1.0" encoding="utf-8"?>
-<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
-  <s:Body>
-    <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
-      <text>${receiptData.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '&#10;')}</text>
-      <cut type="partial"/>
-    </epos-print>
-  </s:Body>
-</s:Envelope>`;
-
-    const response = await fetch(printerUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/xml; charset=utf-8',
-        'SOAPAction': '""'
-      },
-      body: eposXml,
-      mode: 'no-cors'
-    });
-
-    console.log('✅ Print job sent via HTTPS');
-
-    return {
-      success: true,
-      message: `Order #${order.id} sent to ${printer.name}`
-    };
+    // Try HTTP on port 80 directly
+    // Safari will block this with mixed content warning
+    // User needs to tap "Show Details" -> "Visit this website" to allow it
+    return await printViaHTTP(order, printer);
 
   } catch (error: any) {
-    console.error('❌ HTTPS print failed:', error);
-    return printViaHTTP(order, printer);
-  }
-}
+    console.error('❌ Print failed:', error);
 
-/**
- * Print via Epson TM Print Assistant app (iPad only)
- * Returns true if app handled the print, false if app not installed
- */
-async function printViaTMPrintAssistant(
-  receiptData: string,
-  printer: PrinterConfig
-): Promise<boolean> {
-  try {
-    // Convert receipt to base64 for URL encoding
-    const base64Data = btoa(receiptData);
-
-    // Epson TM Print Assistant URL scheme
-    // Format: epos-print://print?address={ip}&data={base64_receipt}
-    const tmPrintUrl = `epos-print://print?address=${printer.ipAddress}&data=${encodeURIComponent(base64Data)}`;
-
-    console.log('📱 Attempting to open TM Print Assistant app...');
-
-    // Try to open the app
-    // If app is installed, this will switch to the app and print
-    // If not installed, this will fail silently
-    window.location.href = tmPrintUrl;
-
-    // Wait a bit to see if app launches
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // If we're still here, assume app handled it
-    // (We can't actually detect if the app opened due to browser security)
-    console.log('✅ Print request sent to TM Print Assistant');
-    return true;
-
-  } catch (error) {
-    console.log('⚠️  TM Print Assistant not available, trying direct connection...');
-    return false;
+    // Last resort: Open browser print dialog
+    return openPrintDialog(order, formatReceipt(order));
   }
 }
 
