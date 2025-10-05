@@ -126,6 +126,34 @@ const KitchenPage = () => {
            !isOrderReadyToStart(order);
   }) : [];
 
+  // Print order receipt
+  const printOrder = async (orderId: number) => {
+    try {
+      console.log(`🖨️ Printing order #${orderId}`);
+      const response = await apiRequest("POST", "/api/printer/print-order", { orderId });
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: "Print Job Sent",
+          description: `Order #${orderId} sent to ${result.printer?.name || 'printer'}`,
+        });
+      } else {
+        toast({
+          title: "Print Failed",
+          description: result.message || "Could not print order",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Print Error",
+        description: error.message || "Could not connect to printer",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Update order status
   const updateOrderStatus = async (orderId: number, status: string) => {
     try {
@@ -486,7 +514,7 @@ const KitchenPage = () => {
                           <Button
                             className="w-full sm:flex-1 h-12 text-base font-medium"
                             variant="outline"
-                            onClick={() => printOrder(order)}
+                            onClick={() => printOrder(order.id)}
                           >
                             <Printer className="h-4 w-4 mr-2" />
                             Print

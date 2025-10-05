@@ -319,6 +319,12 @@
   to = "/.netlify/functions/printer-discover"
   status = 200
 
+# Printer print order endpoint
+[[redirects]]
+  from = "/api/printer/print-order"
+  to = "/.netlify/functions/printer-print-order"
+  status = 200
+
 # Send order confirmation email endpoint
 [[redirects]]
   from = "/api/send-order-confirmation"

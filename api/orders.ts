@@ -1265,10 +1265,33 @@ export const handler: Handler = async (event, context) => {
           });
         }
 
-        // ASYNC: Send email confirmation (don't block order response)
+        // ASYNC: Send email confirmation and print receipt (don't block order response)
         // NOTE: ShipDay integration moved to status update (when kitchen clicks "Start Cooking")
         setTimeout(async () => {
           try {
+            // Auto-print order receipt to thermal printer
+            try {
+              console.log('🖨️  Orders API: Auto-printing order receipt for order #', newOrder.id);
+              const printResponse = await fetch(`${process.env.URL || 'http://localhost:8888'}/.netlify/functions/printer-print-order`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  orderId: newOrder.id
+                })
+              });
+
+              if (printResponse.ok) {
+                const printResult = await printResponse.json();
+                console.log('✅ Orders API: Order auto-printed successfully:', printResult);
+              } else {
+                console.warn('⚠️  Orders API: Auto-print failed (printer may not be configured):', await printResponse.text());
+              }
+            } catch (printError) {
+              console.warn('⚠️  Orders API: Auto-print error (continuing without printing):', printError);
+              // Don't fail order creation if printing fails
+            }
 
             // Send order confirmation email
             const customerEmail = orderData.email || authPayload?.email;
