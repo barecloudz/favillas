@@ -1264,85 +1264,10 @@ export const handler: Handler = async (event, context) => {
           });
         }
 
-        // ASYNC: ShipDay integration and email (don't block order response)
+        // ASYNC: Send email confirmation (don't block order response)
+        // NOTE: ShipDay integration moved to status update (when kitchen clicks "Start Cooking")
         setTimeout(async () => {
           try {
-            // ShipDay integration for delivery orders
-            if (orderData.orderType === "delivery" && orderData.addressData && process.env.SHIPDAY_API_KEY && (orderData.paymentStatus === 'completed' || orderData.paymentStatus === 'succeeded')) {
-              console.log('📦 Orders API: Starting async ShipDay integration for order', newOrder.id);
-
-              const customerName = userContactInfo?.first_name && userContactInfo?.last_name
-                ? `${userContactInfo.first_name} ${userContactInfo.last_name}`.trim()
-                : (userContactInfo?.username || "Customer");
-
-              const customerEmail = userContactInfo?.email || "";
-              const customerPhone = orderData.phone || userContactInfo?.phone || "";
-
-              const shipdayPayload = {
-                orderItems: transformedItems.map(item => ({
-                  name: item.name || item.menu_item_name || "Menu Item",
-                  unitPrice: parseFloat(item.price || item.menu_item_price || "0"),
-                  quantity: parseInt(item.quantity || "1")
-                })),
-                pickup: {
-                  address: {
-                    street: "123 Main St",
-                    city: "Asheville",
-                    state: "NC",
-                    zip: "28801",
-                    country: "United States"
-                  },
-                  contactPerson: {
-                    name: "Favillas NY Pizza",
-                    phone: "5551234567"
-                  }
-                },
-                dropoff: {
-                  address: {
-                    street: orderData.addressData.street || orderData.addressData.fullAddress,
-                    city: orderData.addressData.city,
-                    state: orderData.addressData.state,
-                    zip: orderData.addressData.zipCode,
-                    country: "United States"
-                  },
-                  contactPerson: {
-                    name: customerName && customerName.trim() !== "" ? customerName.trim() : "Customer",
-                    phone: customerPhone.replace(/[^\d]/g, ''),
-                    ...(customerEmail && { email: customerEmail })
-                  }
-                },
-                orderNumber: `FAV-${newOrder.id}`,
-                totalOrderCost: parseFloat(newOrder.total),
-                paymentMethod: 'credit_card',
-                customerName: customerName && customerName.trim() !== "" ? customerName.trim() : "Customer",
-                customerPhoneNumber: customerPhone.replace(/[^\d]/g, ''),
-                customerAddress: `${orderData.addressData.street || orderData.addressData.fullAddress}, ${orderData.addressData.city}, ${orderData.addressData.state} ${orderData.addressData.zipCode}`,
-                ...(customerEmail && { customerEmail: customerEmail })
-              };
-
-              const shipdayResponse = await fetch('https://api.shipday.com/orders', {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Basic ${process.env.SHIPDAY_API_KEY}`,
-                  'Accept': 'application/json',
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(shipdayPayload)
-              });
-
-              const shipdayResult = await shipdayResponse.text();
-              if (shipdayResponse.ok) {
-                const parsedResult = JSON.parse(shipdayResult);
-                if (parsedResult.success) {
-                  await sql`
-                    UPDATE orders
-                    SET shipday_order_id = ${parsedResult.orderId}, shipday_status = 'pending'
-                    WHERE id = ${newOrder.id}
-                  `;
-                  console.log(`✅ Orders API: ShipDay order created async for order #${newOrder.id}`);
-                }
-              }
-            }
 
             // Send order confirmation email
             const customerEmail = orderData.email || authPayload?.email;
@@ -1533,6 +1458,124 @@ export const handler: Handler = async (event, context) => {
         const updatedOrder = await sql.unsafe(updateQuery, updateValues);
 
         console.log('✅ Order updated successfully:', updatedOrder[0]);
+
+        // SHIPDAY INTEGRATION: Dispatch to ShipDay when status changes to "cooking" for delivery orders
+        if (requestData.status === 'cooking' && currentOrder[0].order_type === 'delivery' && process.env.SHIPDAY_API_KEY) {
+          console.log('📦 Orders API: Status changed to cooking - dispatching to ShipDay for order', orderId);
+
+          // Parse address data
+          let addressData;
+          try {
+            addressData = typeof currentOrder[0].address_data === 'string'
+              ? JSON.parse(currentOrder[0].address_data)
+              : currentOrder[0].address_data;
+          } catch (e) {
+            console.error('❌ Failed to parse address_data:', e);
+            addressData = null;
+          }
+
+          if (addressData) {
+            // Get order items
+            const orderItems = await sql`
+              SELECT * FROM order_items WHERE order_id = ${orderId}
+            `;
+
+            // Get user contact info
+            let userContactInfo;
+            if (currentOrder[0].user_id) {
+              const userResult = await sql`SELECT first_name, last_name, email, phone FROM users WHERE id = ${currentOrder[0].user_id}`;
+              userContactInfo = userResult[0];
+            } else if (currentOrder[0].supabase_user_id) {
+              const userResult = await sql`SELECT first_name, last_name, email, phone FROM users WHERE supabase_user_id = ${currentOrder[0].supabase_user_id}`;
+              userContactInfo = userResult[0];
+            }
+
+            const customerName = userContactInfo?.first_name && userContactInfo?.last_name
+              ? `${userContactInfo.first_name} ${userContactInfo.last_name}`.trim()
+              : (userContactInfo?.username || "Customer");
+
+            const customerEmail = userContactInfo?.email || currentOrder[0].email || "";
+            const customerPhone = currentOrder[0].phone || userContactInfo?.phone || "";
+
+            const shipdayPayload = {
+              orderItems: orderItems.map(item => ({
+                name: item.name || item.menu_item_name || "Menu Item",
+                unitPrice: parseFloat(item.price || item.menu_item_price || "0"),
+                quantity: parseInt(item.quantity || "1")
+              })),
+              pickup: {
+                address: {
+                  street: "123 Main St",
+                  city: "Asheville",
+                  state: "NC",
+                  zip: "28801",
+                  country: "United States"
+                },
+                contactPerson: {
+                  name: "Favillas NY Pizza",
+                  phone: "5551234567"
+                }
+              },
+              dropoff: {
+                address: {
+                  street: addressData.street || addressData.fullAddress,
+                  city: addressData.city,
+                  state: addressData.state,
+                  zip: addressData.zipCode,
+                  country: "United States"
+                },
+                contactPerson: {
+                  name: customerName && customerName.trim() !== "" ? customerName.trim() : "Customer",
+                  phone: customerPhone.replace(/[^\d]/g, ''),
+                  ...(customerEmail && { email: customerEmail })
+                }
+              },
+              orderNumber: `FAV-${orderId}`,
+              totalOrderCost: parseFloat(currentOrder[0].total),
+              paymentMethod: 'credit_card',
+              customerName: customerName && customerName.trim() !== "" ? customerName.trim() : "Customer",
+              customerPhoneNumber: customerPhone.replace(/[^\d]/g, ''),
+              customerAddress: `${addressData.street || addressData.fullAddress}, ${addressData.city}, ${addressData.state} ${addressData.zipCode}`,
+              ...(customerEmail && { customerEmail: customerEmail })
+            };
+
+            // Dispatch to ShipDay asynchronously (don't block the response)
+            setTimeout(async () => {
+              try {
+                const shipdayResponse = await fetch('https://api.shipday.com/orders', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Basic ${process.env.SHIPDAY_API_KEY}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(shipdayPayload)
+                });
+
+                const shipdayResult = await shipdayResponse.text();
+                if (shipdayResponse.ok) {
+                  const parsedResult = JSON.parse(shipdayResult);
+                  if (parsedResult.success) {
+                    await sql`
+                      UPDATE orders
+                      SET shipday_order_id = ${parsedResult.orderId}, shipday_status = 'pending'
+                      WHERE id = ${orderId}
+                    `;
+                    console.log(`✅ Orders API: ShipDay order created for order #${orderId} when status changed to cooking`);
+                  } else {
+                    console.error('❌ ShipDay API returned unsuccessful response:', parsedResult);
+                  }
+                } else {
+                  console.error('❌ ShipDay API request failed:', shipdayResponse.status, shipdayResult);
+                }
+              } catch (shipdayError) {
+                console.error('❌ ShipDay integration error:', shipdayError);
+              }
+            }, 100);
+          } else {
+            console.warn('⚠️ No address data available for ShipDay dispatch');
+          }
+        }
 
         return {
           statusCode: 200,
