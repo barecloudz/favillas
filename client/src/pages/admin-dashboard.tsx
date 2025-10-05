@@ -7143,7 +7143,7 @@ const PrinterManagement = ({
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold">{printer.name}</h3>
-                          {printer.isPrimary && (
+                          {printer.isActive && (
                             <Badge variant="default" className="text-xs">PRIMARY</Badge>
                           )}
                         </div>
@@ -7156,7 +7156,7 @@ const PrinterManagement = ({
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      {!printer.isPrimary && (
+                      {!printer.isActive && (
                         <Button
                           variant="outline"
                           size="sm"

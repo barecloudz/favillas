@@ -1,7 +1,45 @@
 /**
- * Client-side thermal printer utility
- * Sends print jobs directly from browser to printer on local network
+ * Client-side thermal printer utility for iPad
+ * Uses Epson ePOS SDK to print directly from browser to printer on same network
+ * Works with HTTPS sites by using ePOS-Print URL scheme supported by iOS Safari
  */
+
+// Declare Epson SDK types
+declare global {
+  interface Window {
+    epson?: {
+      ePOSDevice: new () => ePOSDevice;
+      ePOSBuilder: new () => ePOSBuilder;
+    };
+  }
+}
+
+interface ePOSDevice {
+  connect(ipAddress: string, port: number | string, callback: (data: string) => void): void;
+  createDevice(
+    deviceId: string,
+    deviceType: number,
+    options: any,
+    callback: (device: ePOSPrint, code: string) => void
+  ): void;
+  disconnect(): void;
+}
+
+interface ePOSPrint {
+  send(message: string): void;
+  onreceive: ((response: any) => void) | null;
+  onerror: ((error: any) => void) | null;
+}
+
+interface ePOSBuilder {
+  addTextAlign(align: number): ePOSBuilder;
+  addTextSize(width: number, height: number): ePOSBuilder;
+  addText(text: string): ePOSBuilder;
+  addTextStyle(reverse: boolean, underline: boolean, bold: boolean, color: number): ePOSBuilder;
+  addFeedLine(lines: number): ePOSBuilder;
+  addCut(type: number): ePOSBuilder;
+  toString(): string;
+}
 
 export interface PrinterConfig {
   ipAddress: string;
@@ -132,70 +170,220 @@ function formatReceipt(order: OrderPrintData): string {
 }
 
 /**
- * Send print job directly to Epson thermal printer using WebSocket
- * This bypasses HTTPS mixed content restrictions
+ * Send print job directly to Epson thermal printer from iPad
+ * Uses official Epson ePOS SDK which works from HTTPS pages
  */
 export async function printToThermalPrinter(
   order: OrderPrintData,
   printer: PrinterConfig
 ): Promise<{ success: boolean; message: string }> {
-  const receiptData = formatReceipt(order);
+
+  // Check if Epson SDK is loaded
+  if (!window.epson) {
+    console.error('❌ Epson ePOS SDK not loaded');
+    return {
+      success: false,
+      message: 'Epson ePOS SDK not loaded. Please refresh the page.'
+    };
+  }
 
   return new Promise((resolve) => {
     try {
-      // Try WebSocket connection to printer (wss won't work, but ws might)
-      // Epson TM-M30II supports WebSocket on port 8008
-      const wsUrl = `ws://${printer.ipAddress}:8008/`;
-      console.log(`🖨️  Connecting via WebSocket: ${wsUrl}`);
+      console.log(`🖨️  Connecting to printer: ${printer.ipAddress}:${printer.port}`);
 
-      const ws = new WebSocket(wsUrl);
+      // Create ePOS device
+      const ePosDev = new window.epson!.ePOSDevice();
 
-      ws.onopen = () => {
-        console.log('✅ WebSocket connected to printer');
+      // Connect to printer
+      ePosDev.connect(printer.ipAddress, printer.port, (data: string) => {
+        if (data === 'OK' || data === 'SSL_CONNECT_OK') {
+          console.log('✅ Connected to printer');
 
-        // Send ePOS-Print XML via WebSocket
-        const eposXml = `<?xml version="1.0" encoding="utf-8"?>
-<epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
-  <text>${receiptData.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '&#10;')}</text>
-  <cut type="partial"/>
-</epos-print>`;
+          // Create printer object
+          ePosDev.createDevice(
+            'local_printer',
+            ePosDev.constructor['DEVICE_TYPE_PRINTER' as any] || 0,
+            { crypto: false, buffer: false },
+            (printerObj: ePOSPrint, code: string) => {
+              if (code === 'OK') {
+                console.log('✅ Printer device created');
 
-        ws.send(eposXml);
+                // Build receipt using ePOS Builder
+                const builder = new window.epson!.ePOSBuilder();
+                const receiptData = buildEposReceipt(builder, order);
 
-        setTimeout(() => {
-          ws.close();
+                // Set callbacks
+                printerObj.onreceive = (response: any) => {
+                  console.log('✅ Print successful:', response);
+                  ePosDev.disconnect();
+                  resolve({
+                    success: true,
+                    message: `Order #${order.id} printed successfully`
+                  });
+                };
+
+                printerObj.onerror = (error: any) => {
+                  console.error('❌ Print error:', error);
+                  ePosDev.disconnect();
+                  resolve({
+                    success: false,
+                    message: `Print failed: ${error.status || 'Unknown error'}`
+                  });
+                };
+
+                // Send print job
+                console.log('📄 Sending print job...');
+                printerObj.send(receiptData);
+
+              } else {
+                console.error('❌ Failed to create printer device:', code);
+                ePosDev.disconnect();
+                resolve({
+                  success: false,
+                  message: `Failed to initialize printer: ${code}`
+                });
+              }
+            }
+          );
+        } else {
+          console.error('❌ Failed to connect:', data);
           resolve({
-            success: true,
-            message: `Order #${order.id} sent to ${printer.name}`
+            success: false,
+            message: `Failed to connect to printer: ${data}`
           });
-        }, 1000);
-      };
-
-      ws.onerror = (error) => {
-        console.error('❌ WebSocket error:', error);
-        ws.close();
-
-        // Fallback: Open browser print dialog with formatted receipt
-        resolve(openPrintDialog(order, receiptData));
-      };
-
-      ws.onclose = () => {
-        console.log('🔌 WebSocket closed');
-      };
-
-      // Timeout after 5 seconds
-      setTimeout(() => {
-        if (ws.readyState !== WebSocket.CLOSED) {
-          ws.close();
-          resolve(openPrintDialog(order, receiptData));
         }
-      }, 5000);
+      });
+
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        ePosDev.disconnect();
+        resolve({
+          success: false,
+          message: 'Connection timeout. Make sure iPad and printer are on same network.'
+        });
+      }, 10000);
 
     } catch (error: any) {
       console.error('❌ Print failed:', error);
-      resolve(openPrintDialog(order, receiptData));
+      resolve({
+        success: false,
+        message: error.message || 'Unknown error occurred'
+      });
     }
   });
+}
+
+/**
+ * Build receipt using Epson ePOS Builder API
+ */
+function buildEposReceipt(builder: ePOSBuilder, order: OrderPrintData): string {
+  // Constants for alignment and styling
+  const ALIGN_CENTER = 1;
+  const ALIGN_LEFT = 0;
+  const CUT_FEED = 0;
+
+  // Header - Center aligned, bold, double height
+  builder
+    .addTextAlign(ALIGN_CENTER)
+    .addTextStyle(false, false, true, 0)
+    .addTextSize(2, 2)
+    .addText("FAVILLA'S NY PIZZA\n")
+    .addTextSize(1, 1)
+    .addTextStyle(false, false, false, 0)
+    .addFeedLine(1);
+
+  // Order details - Left aligned
+  builder
+    .addTextAlign(ALIGN_LEFT)
+    .addText(`Order #${order.id}\n`)
+    .addText(`${order.orderType === 'delivery' ? 'DELIVERY' : 'PICKUP'}\n`)
+    .addText(`${new Date(order.createdAt).toLocaleString()}\n`)
+    .addText('--------------------------------\n');
+
+  // Customer info for delivery
+  if (order.orderType === 'delivery') {
+    builder
+      .addText(`Customer: ${order.customerName || 'Guest'}\n`)
+      .addText(`Phone: ${order.phone || 'N/A'}\n`);
+    if (order.address) {
+      builder.addText(`Address: ${order.address}\n`);
+    }
+    builder.addText('--------------------------------\n');
+  }
+
+  // Items
+  builder
+    .addTextStyle(false, false, true, 0)
+    .addText('ITEMS:\n')
+    .addTextStyle(false, false, false, 0);
+
+  order.items.forEach((item: any) => {
+    const itemName = item.menuItem?.name || item.name || 'Item';
+    const qty = item.quantity;
+    const price = parseFloat(item.price || 0);
+
+    builder.addText(`${qty}x ${itemName}\n`);
+
+    // Add options
+    if (item.options && Array.isArray(item.options)) {
+      item.options.forEach((opt: any) => {
+        builder.addText(`   + ${opt.itemName || opt.name}\n`);
+      });
+    }
+
+    // Special instructions
+    if (item.specialInstructions) {
+      builder.addText(`   NOTE: ${item.specialInstructions}\n`);
+    }
+
+    builder.addText(`   $${price.toFixed(2)}\n`);
+  });
+
+  builder.addText('--------------------------------\n');
+
+  // Totals
+  const subtotal = order.total - (order.tax || 0) - (order.deliveryFee || 0);
+  builder.addText(`Subtotal:        $${subtotal.toFixed(2)}\n`);
+
+  if (order.deliveryFee && order.deliveryFee > 0) {
+    builder.addText(`Delivery Fee:    $${order.deliveryFee.toFixed(2)}\n`);
+  }
+
+  if (order.tax && order.tax > 0) {
+    builder.addText(`Tax:             $${order.tax.toFixed(2)}\n`);
+  }
+
+  if (order.tip && order.tip > 0) {
+    builder.addText(`Tip:             $${order.tip.toFixed(2)}\n`);
+  }
+
+  builder
+    .addTextStyle(false, false, true, 0)
+    .addText(`TOTAL:           $${order.total.toFixed(2)}\n`)
+    .addTextStyle(false, false, false, 0)
+    .addText('--------------------------------\n');
+
+  // Special instructions
+  if (order.specialInstructions) {
+    builder
+      .addFeedLine(1)
+      .addTextStyle(false, false, true, 0)
+      .addText('SPECIAL INSTRUCTIONS:')
+      .addTextStyle(false, false, false, 0)
+      .addText('\n')
+      .addText(`${order.specialInstructions}\n`)
+      .addText('--------------------------------\n');
+  }
+
+  // Footer
+  builder
+    .addFeedLine(1)
+    .addTextAlign(ALIGN_CENTER)
+    .addText('Thank you!\n')
+    .addFeedLine(3)
+    .addCut(CUT_FEED);
+
+  return builder.toString();
 }
 
 /**
