@@ -1497,12 +1497,30 @@ export const handler: Handler = async (event, context) => {
             const customerEmail = userContactInfo?.email || currentOrder[0].email || "";
             const customerPhone = currentOrder[0].phone || userContactInfo?.phone || "";
 
+            // Format items as simple name + quantity (no prices - ShipDay uses totalOrderCost for pricing)
+            const formattedItems = orderItems.map(item => {
+              const itemName = item.name || item.menu_item_name || "Menu Item";
+              const itemQuantity = parseInt(item.quantity || "1");
+
+              // Parse options/customizations if they exist
+              let optionsText = '';
+              try {
+                const options = typeof item.options === 'string' ? JSON.parse(item.options) : item.options;
+                if (Array.isArray(options) && options.length > 0) {
+                  optionsText = ' (' + options.map(opt => opt.itemName || opt.name).join(', ') + ')';
+                }
+              } catch (e) {
+                // Ignore parsing errors
+              }
+
+              return {
+                name: itemName + optionsText,
+                quantity: itemQuantity
+              };
+            });
+
             const shipdayPayload = {
-              orderItems: orderItems.map(item => ({
-                name: item.name || item.menu_item_name || "Menu Item",
-                unitPrice: parseFloat(item.price || item.menu_item_price || "0"),
-                quantity: parseInt(item.quantity || "1")
-              })),
+              orderItems: formattedItems,
               pickup: {
                 address: {
                   street: "123 Main St",
@@ -1531,7 +1549,7 @@ export const handler: Handler = async (event, context) => {
                 }
               },
               orderNumber: `FAV-${orderId}`,
-              totalOrderCost: parseFloat(currentOrder[0].total),
+              totalOrderCost: parseFloat(currentOrder[0].total), // Includes subtotal + tax + delivery fee + tip
               paymentMethod: 'credit_card',
               customerName: customerName && customerName.trim() !== "" ? customerName.trim() : "Customer",
               customerPhoneNumber: customerPhone.replace(/[^\d]/g, ''),
