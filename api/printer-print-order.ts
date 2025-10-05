@@ -220,26 +220,67 @@ export const handler: Handler = async (event, context) => {
     // Format receipt
     const receiptData = formatReceiptForThermalPrinter(order, items);
 
-    // TODO: Send to actual printer when printer server is available
-    // For now, just return the formatted receipt
-    console.log('📄 Formatted receipt for order', orderId, ':', receiptData);
+    // Send to local printer server if available
+    try {
+      const printerServerUrl = process.env.PRINTER_SERVER_URL || 'http://localhost:3001';
+      console.log('🖨️  Sending print job to printer server:', printerServerUrl);
 
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({
-        success: true,
-        message: `Order #${orderId} formatted for printing`,
-        printer: {
-          id: printer.id,
-          name: printer.name,
-          ip: printer.ip_address,
-          port: printer.port
+      const printResponse = await fetch(`${printerServerUrl}/print`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        receiptData,
-        note: 'Printer integration requires local printer server to send actual print jobs'
-      })
-    };
+        body: JSON.stringify({
+          receiptData,
+          orderId
+        })
+      });
+
+      if (printResponse.ok) {
+        const printResult = await printResponse.json();
+        console.log('✅ Print job sent successfully:', printResult);
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            success: true,
+            message: `Order #${orderId} sent to printer`,
+            printer: {
+              id: printer.id,
+              name: printer.name,
+              ip: printer.ip_address,
+              port: printer.port
+            },
+            printed: true
+          })
+        };
+      } else {
+        console.warn('⚠️  Printer server responded with error:', await printResponse.text());
+        throw new Error('Printer server unavailable');
+      }
+    } catch (printerError) {
+      console.warn('⚠️  Could not reach printer server:', printerError);
+
+      // Fallback: return formatted receipt without printing
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: true,
+          message: `Order #${orderId} formatted (printer server offline)`,
+          printer: {
+            id: printer.id,
+            name: printer.name,
+            ip: printer.ip_address,
+            port: printer.port
+          },
+          receiptData,
+          printed: false,
+          note: 'Printer server not reachable. Start thermal-printer-server.js to enable printing.'
+        })
+      };
+    }
 
   } catch (error) {
     console.error('Print order error:', error);
