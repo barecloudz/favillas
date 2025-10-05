@@ -1542,6 +1542,23 @@ export const handler: Handler = async (event, context) => {
             const tip = parseFloat(currentOrder[0].tip || 0);
             const discount = (orderBreakdown.discount || 0) + (orderBreakdown.voucherDiscount || 0);
 
+            console.log('📦 ShipDay: Costing calculation:', {
+              orderData: {
+                total: currentOrder[0].total,
+                tax: currentOrder[0].tax,
+                delivery_fee: currentOrder[0].delivery_fee,
+                tip: currentOrder[0].tip
+              },
+              orderBreakdown,
+              calculated: {
+                subtotal,
+                tax,
+                deliveryFee,
+                tip,
+                discount
+              }
+            });
+
             const shipdayPayload = {
               orderItems: formattedItems,
               pickup: {
@@ -1572,14 +1589,10 @@ export const handler: Handler = async (event, context) => {
                 }
               },
               orderNumber: `FAV-${orderId}`,
-              costing: {
-                totalCost: subtotal,
-                deliveryFee: deliveryFee,
-                tip: tip,
-                discountAmount: discount,
-                tax: tax,
-                cashTip: 0
-              },
+              totalOrderCost: parseFloat(currentOrder[0].total),
+              deliveryFee: deliveryFee,
+              tip: tip,
+              tax: tax,
               paymentMethod: 'credit_card',
               customerName: customerName && customerName.trim() !== "" ? customerName.trim() : "Customer",
               customerPhoneNumber: customerPhone.replace(/[^\d]/g, ''),
