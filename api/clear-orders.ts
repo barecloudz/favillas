@@ -59,7 +59,11 @@ export const handler: Handler = async (event, context) => {
     const countResult = await sql`SELECT COUNT(*) as count FROM orders`;
     const orderCount = parseInt(countResult[0].count);
 
-    // Delete all order items first (foreign key constraint)
+    // Delete points transactions first (foreign key constraint)
+    await sql`DELETE FROM points_transactions`;
+    console.log('✅ Deleted all points transactions');
+
+    // Delete all order items (foreign key constraint)
     await sql`DELETE FROM order_items`;
     console.log('✅ Deleted all order items');
 
