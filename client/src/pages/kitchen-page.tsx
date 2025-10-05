@@ -131,7 +131,11 @@ const KitchenPage = () => {
     try {
       console.log(`📤 Sending PATCH to /api/orders/${orderId} with status:`, status);
       const response = await apiRequest("PATCH", `/api/orders/${orderId}`, { status });
-      console.log('📥 PATCH response:', response);
+      const responseData = await response.json();
+      console.log('📥 PATCH response data:', responseData);
+      if (responseData.shipdayDebug) {
+        console.log('🚀 ShipDay Debug Data:', responseData.shipdayDebug);
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/kitchen/orders"] });
 
       // Send WebSocket message to update customer display immediately
