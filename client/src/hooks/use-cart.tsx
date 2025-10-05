@@ -98,7 +98,15 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Calculate totals only with valid items
   const total = validItems.reduce((sum, item) => {
-    const itemTotal = (typeof item.price === 'number' ? item.price : parseFloat(item.price)) * item.quantity;
+    const basePrice = typeof item.price === 'number' ? item.price : parseFloat(item.price);
+
+    // Add option prices if present
+    let optionsPrice = 0;
+    if (item.options && Array.isArray(item.options)) {
+      optionsPrice = item.options.reduce((optSum, opt) => optSum + (opt.price || 0), 0);
+    }
+
+    const itemTotal = (basePrice + optionsPrice) * item.quantity;
     return sum + itemTotal;
   }, 0);
   const tax = total * TAX_RATE;
