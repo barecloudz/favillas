@@ -14,21 +14,23 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
     const maxRetries = 8; // Increased from 3 to 8
     const retryDelay = 300; // Increased from 200ms to 300ms
 
-    console.log('🔐 getAuthHeaders: Starting authentication check...');
+    // Reduced logging for production
+    // console.log('🔐 getAuthHeaders: Starting authentication check...');
 
     while (!session && retries < maxRetries) {
       try {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         session = currentSession;
 
-        console.log(`🔍 Auth attempt ${retries + 1}/${maxRetries}:`, {
-          hasSession: !!session,
-          hasAccessToken: !!session?.access_token,
-          userEmail: session?.user?.email
-        });
+        // Only log on first attempt or if failing
+        // console.log(`🔍 Auth attempt ${retries + 1}/${maxRetries}:`, {
+        //   hasSession: !!session,
+        //   hasAccessToken: !!session?.access_token,
+        //   userEmail: session?.user?.email
+        // });
 
         if (!session && retries < maxRetries - 1) {
-          console.log(`🔄 No session found, retrying in ${retryDelay}ms... (${retries + 1}/${maxRetries})`);
+          // console.log(`🔄 No session found, retrying in ${retryDelay}ms... (${retries + 1}/${maxRetries})`);
           await new Promise(resolve => setTimeout(resolve, retryDelay));
           retries++;
         } else {
@@ -46,13 +48,13 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
     }
 
     if (session?.access_token) {
-      console.log('🔑 SUCCESS: Using Supabase access token for authentication', {
-        tokenLength: session.access_token.length,
-        userEmail: session.user?.email
-      });
+      // console.log('🔑 SUCCESS: Using Supabase access token for authentication', {
+      //   tokenLength: session.access_token.length,
+      //   userEmail: session.user?.email
+      // });
       headers.Authorization = `Bearer ${session.access_token}`;
     } else {
-      console.log('⚠️ FAILED: No Supabase session found after all retries - requests will be unauthenticated');
+      console.warn('⚠️ No Supabase session - requests will be unauthenticated');
     }
 
     return headers;
@@ -83,20 +85,20 @@ export async function apiRequest(
     fetchOptions.body = JSON.stringify(data);
   }
 
-  console.log(`🌐 API ${method} ${url}`, {
-    hasAuth: !!headers.Authorization,
-    authType: headers.Authorization ? 'Supabase' : 'none'
-  });
+  // Reduced logging - only log failures
+  // console.log(`🌐 API ${method} ${url}`, {
+  //   hasAuth: !!headers.Authorization,
+  //   authType: headers.Authorization ? 'Supabase' : 'none'
+  // });
 
   const response = await fetch(url, fetchOptions);
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.log(`❌ API Request failed: ${JSON.stringify({
-      url,
-      method,
-      error: errorText
-    })}`);
+    // Only log actual errors (not 401/403 which are expected sometimes)
+    if (response.status !== 401 && response.status !== 403) {
+      console.error(`❌ API ${method} ${url} failed (${response.status}):`, errorText.substring(0, 200));
+    }
 
     if (response.status === 401 && unauthorizedBehavior === "returnNull") {
       return new Response("null", { status: 200 });
