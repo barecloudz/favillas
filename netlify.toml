@@ -295,9 +295,27 @@
   to = "/.netlify/functions/admin-catering-inquiries"
   status = 200
 
+# Printer test connection endpoint (must be BEFORE generic printer/config/*)
+[[redirects]]
+  from = "/api/printer/config/*/test-connection"
+  to = "/.netlify/functions/printer-test-connection"
+  status = 200
+
+# Printer set primary endpoint (must be BEFORE generic printer/config/*)
+[[redirects]]
+  from = "/api/printer/config/*/set-primary"
+  to = "/.netlify/functions/printer-set-primary"
+  status = 200
+
 # Printer configuration endpoint
 [[redirects]]
   from = "/api/printer/config"
+  to = "/.netlify/functions/printer-config"
+  status = 200
+
+# Printer configuration with ID (for PUT/DELETE)
+[[redirects]]
+  from = "/api/printer/config/*"
   to = "/.netlify/functions/printer-config"
   status = 200
 
@@ -305,12 +323,6 @@
 [[redirects]]
   from = "/api/printer/status"
   to = "/.netlify/functions/printer-status"
-  status = 200
-
-# Printer test connection endpoint (with wildcard for printer ID)
-[[redirects]]
-  from = "/api/printer/config/*/test-connection"
-  to = "/.netlify/functions/printer-test-connection"
   status = 200
 
 # Printer discovery endpoint

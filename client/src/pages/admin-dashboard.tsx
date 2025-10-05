@@ -8865,7 +8865,10 @@ const PrinterManagementSection = () => {
   const handleTestPrint = async (printer: any) => {
     setIsTestLoading(printer.id);
     try {
-      const response = await apiRequest('POST', `/api/printer/config/${printer.id}/test-connection`);
+      const response = await apiRequest('POST', `/api/printer/config/${printer.id}/test-connection`, {
+        ipAddress: printer.ipAddress,
+        port: printer.port
+      });
       const result = await response.json();
       
       if (result.success) {

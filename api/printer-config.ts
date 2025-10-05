@@ -103,9 +103,14 @@ export const handler: Handler = async (event, context) => {
 
     } else if (event.httpMethod === 'PUT') {
       // Update printer configuration
-      const { id, name, ipAddress, port, printerType, isActive } = JSON.parse(event.body || '{}');
+      // Extract ID from URL path if present (e.g., /api/printer/config/8)
+      const pathMatch = event.path.match(/\/printer\/config\/(\d+)/);
+      const urlId = pathMatch ? parseInt(pathMatch[1]) : null;
 
-      if (!id) {
+      const { id, name, ipAddress, port, printerType, isActive } = JSON.parse(event.body || '{}');
+      const printerId = urlId || id;
+
+      if (!printerId) {
         return {
           statusCode: 400,
           headers,
@@ -114,15 +119,15 @@ export const handler: Handler = async (event, context) => {
       }
 
       const result = await sql`
-        UPDATE printer_config 
-        SET 
+        UPDATE printer_config
+        SET
           name = ${name || null},
           ip_address = ${ipAddress || null},
           port = ${port ? parseInt(port) : null},
           printer_type = ${printerType || null},
           is_active = ${isActive !== undefined ? isActive : null},
           updated_at = NOW()
-        WHERE id = ${id}
+        WHERE id = ${printerId}
         RETURNING *
       `;
 
@@ -152,9 +157,22 @@ export const handler: Handler = async (event, context) => {
 
     } else if (event.httpMethod === 'DELETE') {
       // Delete printer configuration
-      const { id } = JSON.parse(event.body || '{}');
+      // Extract ID from URL path if present (e.g., /api/printer/config/8)
+      const pathMatch = event.path.match(/\/printer\/config\/(\d+)/);
+      const urlId = pathMatch ? parseInt(pathMatch[1]) : null;
 
-      if (!id) {
+      // Try to get ID from body as fallback
+      let bodyId = null;
+      try {
+        const body = JSON.parse(event.body || '{}');
+        bodyId = body.id;
+      } catch (e) {
+        // Body parsing failed, just use URL ID
+      }
+
+      const printerId = urlId || bodyId;
+
+      if (!printerId) {
         return {
           statusCode: 400,
           headers,
@@ -163,8 +181,8 @@ export const handler: Handler = async (event, context) => {
       }
 
       const result = await sql`
-        DELETE FROM printer_config 
-        WHERE id = ${id}
+        DELETE FROM printer_config
+        WHERE id = ${printerId}
         RETURNING *
       `;
 
