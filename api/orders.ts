@@ -1461,6 +1461,13 @@ export const handler: Handler = async (event, context) => {
         console.log('✅ Order updated successfully:', updatedOrder[0]);
 
         // SHIPDAY INTEGRATION: Dispatch to ShipDay when status changes to "cooking" for delivery orders
+        console.log('🔍 ShipDay check:', {
+          requestStatus: requestData.status,
+          orderType: currentOrder[0].order_type,
+          hasShipdayKey: !!process.env.SHIPDAY_API_KEY,
+          willDispatch: requestData.status === 'cooking' && currentOrder[0].order_type === 'delivery' && !!process.env.SHIPDAY_API_KEY
+        });
+
         if (requestData.status === 'cooking' && currentOrder[0].order_type === 'delivery' && process.env.SHIPDAY_API_KEY) {
           console.log('📦 Orders API: Status changed to cooking - dispatching to ShipDay for order', orderId);
 
