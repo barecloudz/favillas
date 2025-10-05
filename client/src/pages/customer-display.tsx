@@ -97,18 +97,19 @@ const CustomerDisplay = () => {
                 </div>
               </div>
 
-              <div className="flex-1 p-6 space-y-4 overflow-y-auto">
+              <div className="flex-1 p-6 overflow-y-auto">
                 {cookingOrders.length === 0 ? (
                   <div className="text-center text-gray-400 py-12">
                     <Clock className="w-16 h-16 mx-auto mb-4 opacity-50" />
                     <p className="text-xl">No orders cooking</p>
                   </div>
                 ) : (
-                  cookingOrders.map((order: any) => (
-                    <div
-                      key={order.id}
-                      className="bg-gray-700 rounded-lg p-4 border-l-4 border-yellow-500 hover:bg-gray-650 transition-colors"
-                    >
+                  <div className="grid grid-cols-2 gap-4">
+                    {cookingOrders.map((order: any) => (
+                      <div
+                        key={order.id}
+                        className="bg-gray-700 rounded-lg p-4 border-l-4 border-yellow-500 hover:bg-gray-650 transition-colors"
+                      >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                           {order.order_type === 'delivery' && (
@@ -152,7 +153,8 @@ const CustomerDisplay = () => {
                         )}
                       </div>
                     </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
@@ -169,25 +171,26 @@ const CustomerDisplay = () => {
                 </div>
               </div>
 
-              <div className="flex-1 p-6 space-y-4 overflow-y-auto">
+              <div className="flex-1 p-6 overflow-y-auto">
                 {readyOrders.length === 0 ? (
                   <div className="text-center text-gray-400 py-12">
                     <CheckCircle className="w-16 h-16 mx-auto mb-4 opacity-50" />
                     <p className="text-xl">No orders ready</p>
                   </div>
                 ) : (
-                  readyOrders.map((order: any) => {
-                    const readyTime = new Date(order.updated_at || order.created_at);
-                    const now = new Date();
-                    const minutesReady = Math.floor((now.getTime() - readyTime.getTime()) / (1000 * 60));
+                  <div className="grid grid-cols-2 gap-4">
+                    {readyOrders.map((order: any) => {
+                      const readyTime = new Date(order.updated_at || order.created_at);
+                      const now = new Date();
+                      const minutesReady = Math.floor((now.getTime() - readyTime.getTime()) / (1000 * 60));
 
-                    return (
-                      <div
-                        key={order.id}
-                        className={`bg-gray-700 rounded-lg p-4 border-l-4 border-green-500 hover:bg-gray-650 transition-colors ${
-                          minutesReady > 10 ? 'animate-pulse bg-red-900 border-red-500' : ''
-                        }`}
-                      >
+                      return (
+                        <div
+                          key={order.id}
+                          className={`bg-gray-700 rounded-lg p-4 border-l-4 border-green-500 hover:bg-gray-650 transition-colors ${
+                            minutesReady > 10 ? 'animate-pulse bg-red-900 border-red-500' : ''
+                          }`}
+                        >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
                             {order.order_type === 'delivery' && (
@@ -238,8 +241,9 @@ const CustomerDisplay = () => {
                           )}
                         </div>
                       </div>
-                    );
-                  })
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             </div>
