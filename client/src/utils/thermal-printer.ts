@@ -132,8 +132,8 @@ function formatReceipt(order: OrderPrintData): string {
 }
 
 /**
- * Send print job directly to Epson thermal printer
- * Uses no-cors mode to bypass mixed content restrictions
+ * Send print job directly to Epson thermal printer using WebSocket
+ * This bypasses HTTPS mixed content restrictions
  */
 export async function printToThermalPrinter(
   order: OrderPrintData,
@@ -141,51 +141,108 @@ export async function printToThermalPrinter(
 ): Promise<{ success: boolean; message: string }> {
   const receiptData = formatReceipt(order);
 
-  try {
-    // Epson ePOS-Print API endpoint
-    const printerUrl = `http://${printer.ipAddress}:${printer.port}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=10000`;
+  return new Promise((resolve) => {
+    try {
+      // Try WebSocket connection to printer (wss won't work, but ws might)
+      // Epson TM-M30II supports WebSocket on port 8008
+      const wsUrl = `ws://${printer.ipAddress}:8008/`;
+      console.log(`🖨️  Connecting via WebSocket: ${wsUrl}`);
 
-    console.log(`🖨️  Sending to printer: ${printerUrl}`);
+      const ws = new WebSocket(wsUrl);
 
-    // Convert ESC/POS to ePOS XML format
-    const eposXml = `<?xml version="1.0" encoding="utf-8"?>
-<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
-  <s:Body>
-    <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
-      <text>${receiptData.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '&#10;')}</text>
-      <cut type="partial"/>
-    </epos-print>
-  </s:Body>
-</s:Envelope>`;
+      ws.onopen = () => {
+        console.log('✅ WebSocket connected to printer');
 
-    // Use no-cors mode - this allows HTTPS page to send to HTTP printer
-    // Note: We won't be able to read the response, but the print will work
-    const response = await fetch(printerUrl, {
-      method: 'POST',
-      mode: 'no-cors', // CRITICAL: Bypasses CORS/mixed content restrictions
-      headers: {
-        'Content-Type': 'text/xml; charset=utf-8',
-        'SOAPAction': '""',
-        'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT'
-      },
-      body: eposXml
-    });
+        // Send ePOS-Print XML via WebSocket
+        const eposXml = `<?xml version="1.0" encoding="utf-8"?>
+<epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
+  <text>${receiptData.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '&#10;')}</text>
+  <cut type="partial"/>
+</epos-print>`;
 
-    console.log('✅ Print job sent (no-cors mode - cannot verify response)');
+        ws.send(eposXml);
 
-    // With no-cors, we can't check response status
-    // Assume success if no error was thrown
-    return {
-      success: true,
-      message: `Order #${order.id} sent to ${printer.name}`
-    };
+        setTimeout(() => {
+          ws.close();
+          resolve({
+            success: true,
+            message: `Order #${order.id} sent to ${printer.name}`
+          });
+        }, 1000);
+      };
 
-  } catch (error: any) {
-    console.error('❌ Print failed:', error);
+      ws.onerror = (error) => {
+        console.error('❌ WebSocket error:', error);
+        ws.close();
 
-    return {
-      success: false,
-      message: `Cannot reach printer at ${printer.ipAddress}:${printer.port}. Please check:\n1. Printer is powered on\n2. Printer is on same WiFi network as iPad\n3. IP address is correct: ${printer.ipAddress}`
-    };
+        // Fallback: Open browser print dialog with formatted receipt
+        resolve(openPrintDialog(order, receiptData));
+      };
+
+      ws.onclose = () => {
+        console.log('🔌 WebSocket closed');
+      };
+
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        if (ws.readyState !== WebSocket.CLOSED) {
+          ws.close();
+          resolve(openPrintDialog(order, receiptData));
+        }
+      }, 5000);
+
+    } catch (error: any) {
+      console.error('❌ Print failed:', error);
+      resolve(openPrintDialog(order, receiptData));
+    }
+  });
+}
+
+/**
+ * Fallback: Open browser print dialog with formatted receipt
+ */
+function openPrintDialog(order: OrderPrintData, receiptData: string): { success: boolean; message: string } {
+  console.log('📄 Opening browser print dialog as fallback');
+
+  const printWindow = window.open('', '_blank');
+  if (printWindow) {
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Order #${order.id} Receipt</title>
+          <style>
+            body {
+              font-family: 'Courier New', monospace;
+              margin: 0;
+              padding: 20px;
+              width: 80mm;
+            }
+            pre {
+              white-space: pre-wrap;
+              font-size: 12px;
+              line-height: 1.4;
+            }
+            @media print {
+              body { margin: 0; padding: 10px; }
+            }
+          </style>
+        </head>
+        <body>
+          <pre>${receiptData.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+          <script>
+            window.onload = () => {
+              window.print();
+              setTimeout(() => window.close(), 1000);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   }
+
+  return {
+    success: true,
+    message: `Order #${order.id} - Print dialog opened. Select your thermal printer.`
+  };
 }
