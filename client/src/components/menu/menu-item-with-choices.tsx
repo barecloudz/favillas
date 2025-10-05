@@ -260,10 +260,14 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
         selections.forEach(selectionId => {
           const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
           if (choiceItem) {
+            // Use dynamic price if available, otherwise fall back to base price
+            const dynamicPrice = dynamicPrices[selectionId];
+            const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
+
             options.push({
               groupName: group.name,
               itemName: choiceItem.name,
-              price: parseFloat(choiceItem.price) || 0
+              price: price
             });
           }
         });
