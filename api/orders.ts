@@ -1217,14 +1217,15 @@ export const handler: Handler = async (event, context) => {
             const pointsResult = await sql.begin(async (sql) => {
               console.log('🔒 Orders API: Starting atomic transaction for points award');
 
-              if (finalUserId) {
-                // Award points to legacy user using final user ID
-                console.log('🎯 Orders API: Awarding points to LEGACY user:', finalUserId);
-                return await awardPointsToLegacyUser(sql, finalUserId, newOrder, pointsToAward);
-              } else if (finalSupabaseUserId) {
+              // Prioritize Supabase user ID over legacy user ID
+              if (finalSupabaseUserId) {
                 // Award points to Supabase user using final Supabase ID
                 console.log('🎯 Orders API: Awarding points to SUPABASE user:', finalSupabaseUserId);
                 return await awardPointsToSupabaseUser(sql, finalSupabaseUserId, newOrder, pointsToAward, authPayload);
+              } else if (finalUserId) {
+                // Award points to legacy user using final user ID
+                console.log('🎯 Orders API: Awarding points to LEGACY user:', finalUserId);
+                return await awardPointsToLegacyUser(sql, finalUserId, newOrder, pointsToAward);
               } else {
                 throw new Error('No valid user identifier for points award');
               }
