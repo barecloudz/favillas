@@ -148,6 +148,16 @@ export const handler: Handler = async (event, context) => {
         hasUnifiedAccount = true;
         unifiedUserId = dbUser[0].id;
         console.log('✅ Found unified account for Supabase user:', unifiedUserId);
+      } else {
+        // Fallback: Try to find by email (for manually created admin accounts)
+        const emailUser = await sql`
+          SELECT id FROM users WHERE email = ${authPayload.username}
+        `;
+        if (emailUser.length > 0) {
+          hasUnifiedAccount = true;
+          unifiedUserId = emailUser[0].id;
+          console.log('✅ Found unified account by email:', unifiedUserId);
+        }
       }
     }
 
