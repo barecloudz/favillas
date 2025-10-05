@@ -1,19 +1,24 @@
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-supabase-auth";
 
 export function WarningBanner() {
   const [location] = useLocation();
+  const { user } = useAuth();
 
   // Don't show on auth pages, kitchen, or admin pages
   if (location.startsWith("/auth") || location.startsWith("/kitchen") || location.startsWith("/admin") || location.startsWith("/employee")) {
     return null;
   }
 
+  // Don't show warning banner for admins
+  if (user?.isAdmin) {
+    return null;
+  }
+
   return (
-    <div className="fixed w-full z-40 bg-red-600 text-white py-3 px-4 md:top-[72px] top-[56px]" style={{
-      paddingTop: 'env(safe-area-inset-top, 0px)',
-    }}>
+    <div className="fixed top-[64px] left-0 right-0 z-40 bg-red-600 text-white py-3 px-4">
       <div className="container mx-auto flex flex-col sm:flex-row items-center justify-center gap-3 text-center sm:text-left">
         <div className="flex items-center gap-2">
           <AlertCircle className="h-5 w-5 flex-shrink-0" />
@@ -24,7 +29,7 @@ export function WarningBanner() {
         <Button
           variant="secondary"
           size="sm"
-          className="flex-shrink-0 bg-white text-red-600 hover:bg-gray-100 font-semibold"
+          className="flex-shrink-0 bg-white text-red-600 hover:bg-gray-100"
           onClick={() => window.open('https://www.restaurantlogin.com/api/fb/0y_q57', '_blank')}
         >
           Click Here

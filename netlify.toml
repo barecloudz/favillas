@@ -223,6 +223,24 @@
   to = "/.netlify/functions/create-supabase-admin"
   status = 200
 
+# Initial admin setup endpoint (one-time use)
+[[redirects]]
+  from = "/api/setup-initial-admin"
+  to = "/.netlify/functions/setup-initial-admin"
+  status = 200
+
+# Upgrade user to admin endpoint
+[[redirects]]
+  from = "/api/upgrade-to-admin"
+  to = "/.netlify/functions/upgrade-to-admin"
+  status = 200
+
+# Clear all orders endpoint (admin only)
+[[redirects]]
+  from = "/api/clear-orders"
+  to = "/.netlify/functions/clear-orders"
+  status = 200
+
 # Admin delivery zones endpoint
 [[redirects]]
   from = "/api/admin/delivery-zones"

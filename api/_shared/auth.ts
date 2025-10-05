@@ -221,7 +221,7 @@ export function hasRequiredRole(authPayload: AuthPayload | null, requiredRoles: 
  */
 export function isStaff(authPayload: AuthPayload | null): boolean {
   if (!authPayload) return false;
-  return ['admin', 'kitchen', 'manager'].includes(authPayload.role);
+  return ['admin', 'super_admin', 'kitchen', 'manager'].includes(authPayload.role);
 }
 
 /**
