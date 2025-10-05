@@ -1468,6 +1468,8 @@ export const handler: Handler = async (event, context) => {
           willDispatch: requestData.status === 'cooking' && currentOrder[0].order_type === 'delivery' && !!process.env.SHIPDAY_API_KEY
         });
 
+        let shipdayDebugData = null;
+
         if (requestData.status === 'cooking' && currentOrder[0].order_type === 'delivery' && process.env.SHIPDAY_API_KEY) {
           console.log('📦 Orders API: Status changed to cooking - dispatching to ShipDay for order', orderId);
 
@@ -1544,22 +1546,26 @@ export const handler: Handler = async (event, context) => {
             const tip = parseFloat(currentOrder[0].tip || 0);
             const discount = (orderBreakdown.discount || 0) + (orderBreakdown.voucherDiscount || 0);
 
-            console.log('📦 ShipDay: Costing calculation:', {
-              orderData: {
+            // Store debug info before timeout
+            const debugInfo = {
+              rawOrderData: {
                 total: currentOrder[0].total,
                 tax: currentOrder[0].tax,
                 delivery_fee: currentOrder[0].delivery_fee,
-                tip: currentOrder[0].tip
+                tip: currentOrder[0].tip,
+                allFields: Object.keys(currentOrder[0])
               },
-              orderBreakdown,
-              calculated: {
+              calculatedCosting: {
                 subtotal,
                 tax,
                 deliveryFee,
                 tip,
                 discount
-              }
-            });
+              },
+              formattedItems
+            };
+
+            console.log('📦 ShipDay Debug Info:', debugInfo);
 
             const shipdayPayload = {
               orderItems: formattedItems,
@@ -1600,6 +1606,14 @@ export const handler: Handler = async (event, context) => {
               customerPhoneNumber: customerPhone.replace(/[^\d]/g, ''),
               customerAddress: `${addressData.street || addressData.fullAddress}, ${addressData.city}, ${addressData.state} ${addressData.zipCode}`,
               ...(customerEmail && { customerEmail: customerEmail })
+            };
+
+            // Store debug data for response
+            shipdayDebugData = {
+              rawOrderData: debugInfo.rawOrderData,
+              calculatedCosting: debugInfo.calculatedCosting,
+              formattedItems: debugInfo.formattedItems,
+              shipdayPayload
             };
 
             // Dispatch to ShipDay asynchronously (don't block the response)
@@ -1647,7 +1661,9 @@ export const handler: Handler = async (event, context) => {
           headers,
           body: JSON.stringify({
             message: 'Order updated successfully',
-            order: updatedOrder[0]
+            order: updatedOrder[0],
+            // Include debug info for preview testing
+            ...(shipdayDebugData ? { shipdayDebug: shipdayDebugData } : {})
           })
         };
 
