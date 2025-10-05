@@ -8794,38 +8794,57 @@ const PrinterManagementSection = () => {
     }
   });
 
-  // Discover printers mutation
+  // Discover printers mutation (client-side discovery)
   const discoverMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest('GET', '/api/printer/discover');
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to discover printers');
-      }
-      return await response.json();
+      const { discoverEpsonPrinters } = await import('@/utils/printer-discovery');
+      return await discoverEpsonPrinters();
     },
-    onSuccess: (data) => {
-      const foundCount = data.printers?.length || 0;
-      toast({
-        title: "Discovery Complete",
-        description: `Found ${foundCount} printer(s) on the network.`,
-      });
-      
-      if (foundCount > 0) {
-        // Show discovered printers in toast or modal
-        console.log('Discovered printers:', data.printers);
+    onSuccess: (discoveredPrinters) => {
+      const foundCount = discoveredPrinters.length;
+
+      if (foundCount === 0) {
+        toast({
+          title: "No Printers Found",
+          description: "Scanned 192.168.1.200-210. Make sure your printer is powered on and connected to WiFi.",
+        });
+      } else {
+        toast({
+          title: "Discovery Complete",
+          description: `Found ${foundCount} printer(s): ${discoveredPrinters.map(p => p.ipAddress).join(', ')}`,
+        });
+
+        // Auto-add discovered printers if they don't exist
+        discoveredPrinters.forEach(async (printer) => {
+          // Check if printer already exists
+          const exists = printers.some((p: any) => p.ipAddress === printer.ipAddress);
+          if (!exists) {
+            // Add the discovered printer
+            createPrinterMutation.mutate({
+              name: printer.name,
+              ip: printer.ipAddress,
+              port: printer.port.toString(),
+              type: printer.modelName || 'TM-M30II',
+              isActive: false
+            });
+          }
+        });
       }
     },
     onError: (error: Error) => {
       toast({
         title: "Discovery Failed",
-        description: error.message,
+        description: error.message || 'Failed to scan network for printers',
         variant: "destructive",
       });
     }
   });
 
   const handleDiscoverPrinters = () => {
+    toast({
+      title: "Scanning Network",
+      description: "Checking 192.168.1.200-210 for Epson printers. This may take 10-15 seconds...",
+    });
     discoverMutation.mutate();
   };
 
