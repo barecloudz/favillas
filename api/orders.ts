@@ -1362,8 +1362,11 @@ export const handler: Handler = async (event, context) => {
       }
 
     } else if (event.httpMethod === 'PATCH') {
+      console.log('📝 PATCH request received for orders endpoint');
+
       // PATCH requests require staff authentication
       if (!authPayload || !isStaff(authPayload)) {
+        console.log('❌ PATCH authentication failed');
         return {
           statusCode: 401,
           headers,
@@ -1372,6 +1375,7 @@ export const handler: Handler = async (event, context) => {
       }
 
       const requestData = JSON.parse(event.body || '{}');
+      console.log('📝 PATCH request data:', requestData);
 
       // Extract order ID from URL path (e.g., /api/orders/14)
       let orderId = requestData.orderId;
