@@ -29,7 +29,7 @@ const KitchenPage = () => {
   // Query for active orders
   const { data: orders, isLoading, error } = useQuery({
     queryKey: ["/api/kitchen/orders"],
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 2000, // Refetch every 2 seconds for real-time updates
     enabled: !!user, // Only fetch when user is authenticated
   });
 

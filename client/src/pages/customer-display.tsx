@@ -19,7 +19,7 @@ const CustomerDisplay = () => {
   // Query for active orders
   const { data: orders, isLoading } = useQuery({
     queryKey: ["/api/kitchen/orders"],
-    refetchInterval: 3000, // Refetch every 3 seconds for near real-time updates
+    refetchInterval: 1000, // Refetch every 1 second for immediate updates
   });
 
   // Setup WebSocket for real-time order updates
@@ -73,66 +73,22 @@ const CustomerDisplay = () => {
       </Helmet>
 
       <div className="min-h-screen bg-gray-900 text-white overflow-hidden">
-        {/* Header */}
-        <header className="bg-[#d73a31] shadow-lg">
-          <div className="container mx-auto px-8 py-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-6">
-                <img src={logoUrl} alt={companyName} className="h-16" />
-                <div>
-                  <h1 className="text-3xl font-bold text-white">{companyName}</h1>
-                  <p className="text-red-100">Order Status</p>
-                </div>
-              </div>
-
-              <div className="flex-1 text-center">
-                <div className="text-2xl font-bold text-white">
-                  WEBSITE ORDERS
-                </div>
-                <p className="text-red-100 text-sm">
-                  Online orders will appear on this display
-                </p>
-              </div>
-
-              <div className="text-right">
-                <div className="text-2xl font-mono font-bold text-white">
-                  {currentTime.toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: true
-                  })}
-                </div>
-                <div className="text-red-100">
-                  {currentTime.toLocaleDateString([], {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        </header>
-
         {/* Main Display */}
-        <div className="container mx-auto px-8 py-8">
-          <div className="grid grid-cols-2 gap-12 h-[calc(100vh-200px)]">
+        <div className="grid grid-cols-2 gap-0 h-screen">
 
             {/* Cooking Column */}
-            <div className="bg-gray-800 rounded-lg shadow-xl">
-              <div className="bg-yellow-600 rounded-t-lg px-6 py-4">
+            <div className="bg-gray-800 h-full flex flex-col">
+              <div className="bg-yellow-600 px-6 py-8">
                 <div className="flex items-center justify-center space-x-3">
-                  <ChefHat className="w-8 h-8 text-white" />
-                  <h2 className="text-2xl font-bold text-white">NOW COOKING</h2>
+                  <ChefHat className="w-12 h-12 text-white" />
+                  <h2 className="text-4xl font-bold text-white">NOW COOKING</h2>
                 </div>
-                <div className="text-center text-yellow-100 mt-1">
+                <div className="text-center text-yellow-100 mt-2 text-xl">
                   {cookingOrders.length} {cookingOrders.length === 1 ? 'Order' : 'Orders'}
                 </div>
               </div>
 
-              <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(100vh-300px)]">
+              <div className="flex-1 p-6 space-y-4 overflow-y-auto">
                 {cookingOrders.length === 0 ? (
                   <div className="text-center text-gray-400 py-12">
                     <Clock className="w-16 h-16 mx-auto mb-4 opacity-50" />
@@ -193,18 +149,18 @@ const CustomerDisplay = () => {
             </div>
 
             {/* Ready Column */}
-            <div className="bg-gray-800 rounded-lg shadow-xl">
-              <div className="bg-green-600 rounded-t-lg px-6 py-4">
+            <div className="bg-gray-800 h-full flex flex-col">
+              <div className="bg-green-600 px-6 py-8">
                 <div className="flex items-center justify-center space-x-3">
-                  <CheckCircle className="w-8 h-8 text-white" />
-                  <h2 className="text-2xl font-bold text-white">READY FOR PICKUP</h2>
+                  <CheckCircle className="w-12 h-12 text-white" />
+                  <h2 className="text-4xl font-bold text-white">READY FOR PICKUP</h2>
                 </div>
-                <div className="text-center text-green-100 mt-1">
+                <div className="text-center text-green-100 mt-2 text-xl">
                   {readyOrders.length} {readyOrders.length === 1 ? 'Order' : 'Orders'}
                 </div>
               </div>
 
-              <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(100vh-300px)]">
+              <div className="flex-1 p-6 space-y-4 overflow-y-auto">
                 {readyOrders.length === 0 ? (
                   <div className="text-center text-gray-400 py-12">
                     <CheckCircle className="w-16 h-16 mx-auto mb-4 opacity-50" />
@@ -282,32 +238,41 @@ const CustomerDisplay = () => {
         </div>
 
         {/* Footer Info */}
-        <div className="fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 px-8 py-3">
-          <div className="flex items-center justify-between text-sm text-gray-400">
-            <div className="flex items-center space-x-6">
-              <span className="flex items-center space-x-2">
-                <Car className="w-4 h-4 text-blue-400" />
-                <span>Delivery Order</span>
-              </span>
-              <span>Orders update automatically</span>
-            </div>
-
+        <div className="fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 px-6 py-2">
+          <div className="flex items-center justify-between text-xs text-gray-400">
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+              <span className="flex items-center space-x-1">
+                <Car className="w-3 h-3 text-blue-400" />
+                <span>Delivery</span>
+              </span>
+              <div className="flex items-center space-x-1">
+                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
                 <span>Cooking: {cookingOrders.length}</span>
               </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <div className="flex items-center space-x-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span>Ready: {readyOrders.length}</span>
               </div>
               {isLoading && (
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
                   <span>Updating...</span>
                 </div>
               )}
             </div>
+
+            <div className="text-center">
+              <div className="text-lg font-mono font-bold text-white">
+                {currentTime.toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: true
+                })}
+              </div>
+            </div>
+
+            <div className="w-48"></div>
           </div>
         </div>
       </div>
