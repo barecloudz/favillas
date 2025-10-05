@@ -1489,9 +1489,14 @@ export const handler: Handler = async (event, context) => {
           }
 
           if (addressData) {
-            // Get order items
+            // Get order items with menu item names
             const orderItems = await sql`
-              SELECT * FROM order_items WHERE order_id = ${orderId}
+              SELECT
+                oi.*,
+                mi.name as menu_item_name
+              FROM order_items oi
+              LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+              WHERE oi.order_id = ${orderId}
             `;
 
             console.log('📦 ShipDay: Fetched order items for order', orderId, ':', {
