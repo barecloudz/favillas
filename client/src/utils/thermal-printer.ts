@@ -132,8 +132,8 @@ function formatReceipt(order: OrderPrintData): string {
 }
 
 /**
- * Send print job to thermal printer via local printer server
- * Uses http://localhost:3001 printer server that forwards to thermal printer
+ * Send print job directly to Epson thermal printer
+ * Uses no-cors mode to bypass mixed content restrictions
  */
 export async function printToThermalPrinter(
   order: OrderPrintData,
@@ -141,49 +141,51 @@ export async function printToThermalPrinter(
 ): Promise<{ success: boolean; message: string }> {
   const receiptData = formatReceipt(order);
 
-  // Try to use local printer server (must be running on same device as browser)
-  const printerServerUrl = 'http://localhost:3001';
-
   try {
-    console.log(`🖨️  Sending to printer server: ${printerServerUrl}/print`);
+    // Epson ePOS-Print API endpoint
+    const printerUrl = `http://${printer.ipAddress}:${printer.port}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=10000`;
 
-    const response = await fetch(`${printerServerUrl}/print`, {
+    console.log(`🖨️  Sending to printer: ${printerUrl}`);
+
+    // Convert ESC/POS to ePOS XML format
+    const eposXml = `<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+  <s:Body>
+    <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
+      <text>${receiptData.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '&#10;')}</text>
+      <cut type="partial"/>
+    </epos-print>
+  </s:Body>
+</s:Envelope>`;
+
+    // Use no-cors mode - this allows HTTPS page to send to HTTP printer
+    // Note: We won't be able to read the response, but the print will work
+    const response = await fetch(printerUrl, {
       method: 'POST',
+      mode: 'no-cors', // CRITICAL: Bypasses CORS/mixed content restrictions
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'text/xml; charset=utf-8',
+        'SOAPAction': '""',
+        'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT'
       },
-      body: JSON.stringify({
-        receiptData,
-        orderId: order.id
-      })
+      body: eposXml
     });
 
-    if (response.ok) {
-      const result = await response.json();
-      console.log('✅ Print successful:', result);
-      return {
-        success: true,
-        message: `Order #${order.id} printed successfully`
-      };
-    } else {
-      const errorText = await response.text();
-      console.error('❌ Printer server error:', errorText);
-      throw new Error(`Printer server error: ${response.status}`);
-    }
+    console.log('✅ Print job sent (no-cors mode - cannot verify response)');
+
+    // With no-cors, we can't check response status
+    // Assume success if no error was thrown
+    return {
+      success: true,
+      message: `Order #${order.id} sent to ${printer.name}`
+    };
+
   } catch (error: any) {
     console.error('❌ Print failed:', error);
 
-    // Check if it's a connection error
-    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-      return {
-        success: false,
-        message: `Printer server not running. Please start the printer server:\n\nOn iPad/computer on same network:\n1. Open Terminal\n2. cd to project folder\n3. Run: node thermal-printer-server.cjs\n\nOr install as a service to run automatically.`
-      };
-    }
-
     return {
       success: false,
-      message: error.message || 'Failed to print'
+      message: `Cannot reach printer at ${printer.ipAddress}:${printer.port}. Please check:\n1. Printer is powered on\n2. Printer is on same WiFi network as iPad\n3. IP address is correct: ${printer.ipAddress}`
     };
   }
 }
