@@ -341,7 +341,7 @@ export const handler: Handler = async (event, context) => {
           calculatedLastName: authPayload.lastName || (authPayload.fullName ? authPayload.fullName.split(' ').slice(1).join(' ') : 'Google User')
         });
 
-        const updatedUser = await sql`
+        updatedUser = await sql`
           UPDATE users
           SET
             phone = ${phone || ''},
@@ -357,7 +357,7 @@ export const handler: Handler = async (event, context) => {
           RETURNING id, username, email, phone, address, city, state, zip_code, role, created_at, updated_at, supabase_user_id, first_name, last_name
         `;
 
-        if (updatedUser.length === 0) {
+        if (!updatedUser || updatedUser.length === 0) {
           return {
             statusCode: 404,
             headers,

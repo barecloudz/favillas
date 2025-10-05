@@ -141,11 +141,20 @@ export const handler: Handler = async (event, context) => {
     }
 
     // Verify order is paid
+    console.log('🔍 Award Points: Checking payment status:', {
+      payment_status: orderData.payment_status,
+      isAccepted: ['completed', 'succeeded', 'paid'].includes(orderData.payment_status)
+    });
+
     if (!['completed', 'succeeded', 'paid'].includes(orderData.payment_status)) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'Order is not paid' })
+        body: JSON.stringify({
+          error: 'Order is not paid',
+          paymentStatus: orderData.payment_status,
+          orderId: orderId
+        })
       };
     }
 
