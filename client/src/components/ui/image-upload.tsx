@@ -54,16 +54,8 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       const formData = new FormData();
       formData.append('image', file);
 
-      // Route to Express server for local development
-      const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const expressPort = localStorage.getItem('express-dev-port') || '5000';
-      const uploadUrl = isLocalDev ? `http://localhost:${expressPort}/api/image-upload-test` : '/api/image-upload-test';
-
-      const response = await fetch(uploadUrl, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
+      // Use apiRequest to include auth token (it will auto-detect FormData)
+      const response = await apiRequest('POST', '/api/image-upload-test', formData);
 
       if (!response.ok) {
         const errorText = await response.text();

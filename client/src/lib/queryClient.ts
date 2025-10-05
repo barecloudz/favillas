@@ -72,17 +72,22 @@ export async function apiRequest(
 ): Promise<Response> {
   const headers = await getAuthHeaders();
 
+  // Check if data is FormData (for file uploads)
+  const isFormData = data instanceof FormData;
+
   const fetchOptions: RequestInit = {
     method,
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-    },
+    headers: isFormData
+      ? headers // Don't set Content-Type for FormData - browser will set it with boundary
+      : {
+          "Content-Type": "application/json",
+          ...headers,
+        },
     credentials: "include", // Include cookies for any remaining legacy endpoints
   };
 
   if (data) {
-    fetchOptions.body = JSON.stringify(data);
+    fetchOptions.body = isFormData ? data : JSON.stringify(data);
   }
 
   // Reduced logging - only log failures
