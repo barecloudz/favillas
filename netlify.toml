@@ -307,6 +307,12 @@
   to = "/.netlify/functions/printer-status"
   status = 200
 
+# Printer test connection endpoint (with wildcard for printer ID)
+[[redirects]]
+  from = "/api/printer/config/*/test-connection"
+  to = "/.netlify/functions/printer-test-connection"
+  status = 200
+
 # Send order confirmation email endpoint
 [[redirects]]
   from = "/api/send-order-confirmation"
