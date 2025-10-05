@@ -140,6 +140,15 @@ const KitchenPage = () => {
         timestamp: new Date().toISOString()
       });
 
+      // Auto-switch to the appropriate tab
+      if (status === 'cooking') {
+        setActiveTab('cooking');
+      } else if (status === 'completed') {
+        setActiveTab('completed');
+      } else if (status === 'picked_up') {
+        setActiveTab('picked_up');
+      }
+
       toast({
         title: "Order Updated",
         description: `Order #${orderId} has been marked as ${status}.`,

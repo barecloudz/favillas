@@ -60,9 +60,18 @@ const CustomerDisplay = () => {
     return `${firstName} ${lastInitial}`.trim();
   };
 
-  // Filter orders by status
-  const cookingOrders = orders?.filter((order: any) => order.status === 'cooking') || [];
-  const readyOrders = orders?.filter((order: any) => order.status === 'completed') || [];
+  // Filter orders by status and ensure uniqueness
+  const cookingOrders = orders
+    ?.filter((order: any) => order.status === 'cooking')
+    .reduce((unique: any[], order: any) => {
+      return unique.find((o: any) => o.id === order.id) ? unique : [...unique, order];
+    }, []) || [];
+
+  const readyOrders = orders
+    ?.filter((order: any) => order.status === 'completed')
+    .reduce((unique: any[], order: any) => {
+      return unique.find((o: any) => o.id === order.id) ? unique : [...unique, order];
+    }, []) || [];
   // Note: picked_up orders are excluded from customer display
 
   return (
