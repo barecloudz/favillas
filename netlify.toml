@@ -235,6 +235,12 @@
   to = "/.netlify/functions/upgrade-to-admin"
   status = 200
 
+# Clear all orders endpoint (admin only)
+[[redirects]]
+  from = "/api/clear-orders"
+  to = "/.netlify/functions/clear-orders"
+  status = 200
+
 # Admin delivery zones endpoint
 [[redirects]]
   from = "/api/admin/delivery-zones"
