@@ -1510,10 +1510,11 @@ export const handler: Handler = async (event, context) => {
             const customerEmail = userContactInfo?.email || currentOrder[0].email || "";
             const customerPhone = currentOrder[0].phone || userContactInfo?.phone || "";
 
-            // Format items as simple name + quantity (no prices - ShipDay uses totalOrderCost for pricing)
+            // Format items for ShipDay
             const formattedItems = orderItems.map(item => {
               const itemName = item.name || item.menu_item_name || "Menu Item";
               const itemQuantity = parseInt(item.quantity || "1");
+              const itemPrice = parseFloat(item.price || "0") / itemQuantity; // Unit price
 
               // Parse options/customizations if they exist
               let optionsText = '';
@@ -1528,7 +1529,8 @@ export const handler: Handler = async (event, context) => {
 
               return {
                 name: itemName + optionsText,
-                quantity: itemQuantity
+                quantity: itemQuantity,
+                unitPrice: itemPrice
               };
             });
 
