@@ -295,6 +295,18 @@
   to = "/.netlify/functions/admin-catering-inquiries"
   status = 200
 
+# Printer configuration endpoint
+[[redirects]]
+  from = "/api/printer/config"
+  to = "/.netlify/functions/printer/config"
+  status = 200
+
+# Printer status endpoint
+[[redirects]]
+  from = "/api/printer/status"
+  to = "/.netlify/functions/printer/status"
+  status = 200
+
 # Send order confirmation email endpoint
 [[redirects]]
   from = "/api/send-order-confirmation"
