@@ -74,6 +74,14 @@ export const handler: Handler = async (event, context) => {
 
     if (orderData && orderData.items && Array.isArray(orderData.items)) {
       console.log('🔒 Validating payment amount against order items...');
+      console.log('📦 Full orderData received:', JSON.stringify({
+        tax: orderData.tax,
+        tip: orderData.tip,
+        deliveryFee: orderData.deliveryFee,
+        discount: orderData.discount,
+        voucherDiscount: orderData.voucherDiscount,
+        itemCount: orderData.items.length
+      }));
 
       const sql = getDB();
 
