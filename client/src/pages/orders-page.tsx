@@ -97,8 +97,8 @@ const OrdersPage = () => {
   };
 
   const getStatusColor = (status: string, shipdayStatus?: string, orderType?: string) => {
-    // Check if order is actually completed via shipday
-    if (shipdayStatus === 'delivered' || (orderType === 'pickup' && shipdayStatus === 'picked_up')) {
+    // Check if order is actually completed via shipday or status
+    if (status === 'picked_up' || shipdayStatus === 'delivered' || shipdayStatus === 'picked_up') {
       return "bg-gray-100 text-gray-800";
     }
 
@@ -113,8 +113,8 @@ const OrdersPage = () => {
   };
 
   const getStatusIcon = (status: string, shipdayStatus?: string, orderType?: string) => {
-    // Check if order is actually completed via shipday
-    if (shipdayStatus === 'delivered' || (orderType === 'pickup' && shipdayStatus === 'picked_up')) {
+    // Check if order is actually completed via shipday or status
+    if (status === 'picked_up' || shipdayStatus === 'delivered' || shipdayStatus === 'picked_up') {
       return <CheckCircle className="h-4 w-4" />;
     }
 
@@ -129,12 +129,12 @@ const OrdersPage = () => {
   };
 
   const getDisplayStatus = (status: string, shipdayStatus?: string, orderType?: string) => {
-    // Show "Completed" if order has been delivered or picked up
+    // Show "Picked Up" or "Delivered" based on status or shipday_status
+    if (status === 'picked_up' || shipdayStatus === 'picked_up') {
+      return 'Picked Up';
+    }
     if (shipdayStatus === 'delivered') {
       return 'Delivered';
-    }
-    if (orderType === 'pickup' && shipdayStatus === 'picked_up') {
-      return 'Picked Up';
     }
 
     // Otherwise show the main status
@@ -303,12 +303,13 @@ Thank you for choosing Favilla's NY Pizza!
                     <p className="text-2xl font-bold text-purple-600">
                       {orders.filter((order: any) => {
                         // Order is completed if:
-                        // 1. Status is 'completed', OR
+                        // 1. Status is 'completed' or 'picked_up', OR
                         // 2. Delivery order that has been delivered (shipday_status === 'delivered'), OR
-                        // 3. Pickup order that is marked as ready/completed
+                        // 3. Pickup order that is marked as picked up (shipday_status === 'picked_up')
                         return order.status === 'completed' ||
+                               order.status === 'picked_up' ||
                                order.shipday_status === 'delivered' ||
-                               (order.orderType === 'pickup' && order.shipday_status === 'picked_up');
+                               order.shipday_status === 'picked_up';
                       }).length}
                     </p>
                   </div>
@@ -326,10 +327,12 @@ Thank you for choosing Favilla's NY Pizza!
                       {orders.filter((order: any) => {
                         // Order is active if:
                         // 1. Status is pending, processing, or ready, AND
-                        // 2. NOT already delivered or picked up
+                        // 2. NOT already delivered or picked up (check both status and shipday_status)
                         const isActiveStatus = ['pending', 'processing', 'ready'].includes(order.status);
-                        const notCompleted = order.shipday_status !== 'delivered' &&
-                                           !(order.orderType === 'pickup' && order.shipday_status === 'picked_up');
+                        const notCompleted = order.status !== 'completed' &&
+                                           order.status !== 'picked_up' &&
+                                           order.shipday_status !== 'delivered' &&
+                                           order.shipday_status !== 'picked_up';
                         return isActiveStatus && notCompleted;
                       }).length}
                     </p>
@@ -493,8 +496,9 @@ Thank you for choosing Favilla's NY Pizza!
                         </Button>
                         
                         {(order.status === 'completed' ||
+                          order.status === 'picked_up' ||
                           order.shipday_status === 'delivered' ||
-                          (order.orderType === 'pickup' && order.shipday_status === 'picked_up')) && (
+                          order.shipday_status === 'picked_up') && (
                           <Button
                             size="sm"
                             onClick={() => handleReorder(order)}
