@@ -134,13 +134,24 @@ export const handler: Handler = async (event, context) => {
       let userPointsRecord;
 
       if (hasUnifiedAccount && unifiedUserId) {
-        // UNIFIED: Use user_id for points lookup (works for both legacy users and unified Supabase users)
+        // UNIFIED: Try user_id first, then supabase_user_id as fallback
         console.log('🔍 Using unified account lookup with user_id:', unifiedUserId);
-        const userPointsResult = await sql`
+        let userPointsResult = await sql`
           SELECT id, points, total_redeemed, updated_at FROM user_points
           WHERE user_id = ${unifiedUserId}
           FOR UPDATE
         `;
+
+        // If not found by user_id, try supabase_user_id
+        if (userPointsResult.length === 0 && authPayload.supabaseUserId) {
+          console.log('🔍 Trying supabase_user_id lookup as fallback:', authPayload.supabaseUserId);
+          userPointsResult = await sql`
+            SELECT id, points, total_redeemed, updated_at FROM user_points
+            WHERE supabase_user_id = ${authPayload.supabaseUserId}
+            FOR UPDATE
+          `;
+        }
+
         userPointsRecord = userPointsResult[0];
         currentPoints = userPointsRecord?.points || 0;
         console.log('🎁 Unified user current points (locked):', currentPoints);
@@ -169,6 +180,12 @@ export const handler: Handler = async (event, context) => {
       }
 
       if (!userPointsRecord) {
+        console.error('❌ No user_points record found for:', {
+          hasUnifiedAccount,
+          unifiedUserId,
+          supabaseUserId: authPayload.supabaseUserId,
+          isSupabase: authPayload.isSupabase
+        });
         throw new Error('User points record not found');
       }
 
@@ -287,13 +304,14 @@ export const handler: Handler = async (event, context) => {
         `;
 
         // Update user_points balance with safeguards against negative points
+        // Use the same ID field that we found the record with
         const updateResult = await sql`
           UPDATE user_points
           SET
             points = GREATEST(points - ${rewardData.points_required}, 0),
             total_redeemed = total_redeemed + ${rewardData.points_required},
             updated_at = NOW()
-          WHERE user_id = ${unifiedUserId}
+          WHERE id = ${userPointsRecord.id}
           AND points >= ${rewardData.points_required}
           RETURNING points, total_redeemed
         `;
@@ -317,13 +335,14 @@ export const handler: Handler = async (event, context) => {
         `;
 
         // Update user_points balance with safeguards against negative points
+        // Use the record ID that we already found
         const updateResult = await sql`
           UPDATE user_points
           SET
             points = GREATEST(points - ${rewardData.points_required}, 0),
             total_redeemed = total_redeemed + ${rewardData.points_required},
             updated_at = NOW()
-          WHERE supabase_user_id = ${authPayload.supabaseUserId}
+          WHERE id = ${userPointsRecord.id}
           AND points >= ${rewardData.points_required}
           RETURNING points, total_redeemed
         `;
@@ -347,13 +366,14 @@ export const handler: Handler = async (event, context) => {
         `;
 
         // Update user_points balance with safeguards against negative points
+        // Use the record ID that we already found
         const updateResult = await sql`
           UPDATE user_points
           SET
             points = GREATEST(points - ${rewardData.points_required}, 0),
             total_redeemed = total_redeemed + ${rewardData.points_required},
             updated_at = NOW()
-          WHERE user_id = ${authPayload.userId}
+          WHERE id = ${userPointsRecord.id}
           AND points >= ${rewardData.points_required}
           RETURNING points, total_redeemed
         `;
