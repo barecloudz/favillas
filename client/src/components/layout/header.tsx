@@ -37,6 +37,7 @@ const Header = () => {
   const cartItemCount = items.reduce((total, item) => total + item.quantity, 0);
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileProfileMenuOpen, setMobileProfileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -51,9 +52,15 @@ const Header = () => {
     try {
       await signOut();
       setMobileMenuOpen(false);
+      setMobileProfileMenuOpen(false);
     } catch (error) {
       console.error('Logout failed:', error);
     }
+  };
+
+  const handleNavigate = (path: string) => {
+    setMobileProfileMenuOpen(false);
+    navigate(path);
   };
 
   // Don't show header on auth pages
@@ -229,60 +236,13 @@ const Header = () => {
             </Link>
             <div className="flex items-center space-x-2 w-20 justify-end">
               {user ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      <Avatar className="h-6 w-6">
-                        <AvatarFallback className="text-xs">
-                          {user.firstName?.[0]}{user.lastName?.[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem onClick={() => navigate("/profile")}>
-                      <User className="mr-2 h-4 w-4" />
-                      <span>My Profile</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate("/orders")}>
-                      <ShoppingBag className="mr-2 h-4 w-4" />
-                      <span>My Orders</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate("/rewards")}>
-                      <Star className="mr-2 h-4 w-4" />
-                      <span>Rewards</span>
-                    </DropdownMenuItem>
-                    {(user.role === "employee" || user.isAdmin) && (
-                      <DropdownMenuItem onClick={() => navigate("/employee/clock")}>
-                        <Clock className="mr-2 h-4 w-4" />
-                        <span>Clock In/Out</span>
-                      </DropdownMenuItem>
-                    )}
-                    {user.isAdmin && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => navigate("/admin/dashboard")}>
-                          <BarChart3 className="mr-2 h-4 w-4" />
-                          <span>Admin Dashboard</span>
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    {(user.isAdmin || user.role === "employee" || user.role === "kitchen" || user.role === "manager") && (
-                      <>
-                        {!user.isAdmin && <DropdownMenuSeparator />}
-                        <DropdownMenuItem onClick={() => navigate("/kitchen")}>
-                          <ChefHat className="mr-2 h-4 w-4" />
-                          <span>Kitchen Display</span>
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Log out</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <Button variant="ghost" size="sm" onClick={() => setMobileProfileMenuOpen(true)}>
+                  <Avatar className="h-6 w-6">
+                    <AvatarFallback className="text-xs">
+                      {user.firstName?.[0]}{user.lastName?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
               ) : (
                 <Link href="/auth">
                   <Button size="sm" className="bg-[#d73a31] hover:bg-[#c73128] text-white">
@@ -335,59 +295,15 @@ const Header = () => {
             
             <div className="flex flex-col items-center space-y-1">
               {user ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <div className={`flex flex-col items-center space-y-1 cursor-pointer transition-colors ${
-                      location === "/profile" ? "text-[#d73a31]" : "text-gray-600 hover:text-[#d73a31]"
-                    }`}>
-                      <User className="h-6 w-6" />
-                      <span className="text-xs font-semibold">Profile</span>
-                    </div>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem onClick={() => navigate("/profile")}>
-                      <User className="mr-2 h-4 w-4" />
-                      <span>My Profile</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate("/orders")}>
-                      <ShoppingBag className="mr-2 h-4 w-4" />
-                      <span>My Orders</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate("/rewards")}>
-                      <Star className="mr-2 h-4 w-4" />
-                      <span>Rewards</span>
-                    </DropdownMenuItem>
-                    {(user.role === "employee" || user.isAdmin) && (
-                      <DropdownMenuItem onClick={() => navigate("/employee/clock")}>
-                        <Clock className="mr-2 h-4 w-4" />
-                        <span>Clock In/Out</span>
-                      </DropdownMenuItem>
-                    )}
-                    {user.isAdmin && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => navigate("/admin/dashboard")}>
-                          <BarChart3 className="mr-2 h-4 w-4" />
-                          <span>Admin Dashboard</span>
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    {(user.isAdmin || user.role === "employee" || user.role === "kitchen" || user.role === "manager") && (
-                      <>
-                        {!user.isAdmin && <DropdownMenuSeparator />}
-                        <DropdownMenuItem onClick={() => navigate("/kitchen")}>
-                          <ChefHat className="mr-2 h-4 w-4" />
-                          <span>Kitchen Display</span>
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Log out</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <div
+                  className={`flex flex-col items-center space-y-1 cursor-pointer transition-colors ${
+                    location === "/profile" ? "text-[#d73a31]" : "text-gray-600 hover:text-[#d73a31]"
+                  }`}
+                  onClick={() => setMobileProfileMenuOpen(true)}
+                >
+                  <User className="h-6 w-6" />
+                  <span className="text-xs font-semibold">Profile</span>
+                </div>
               ) : (
                 <Link href="/auth">
                   <div className="flex flex-col items-center space-y-1 text-gray-600 hover:text-[#d73a31] transition-colors">
@@ -399,6 +315,140 @@ const Header = () => {
             </div>
           </div>
         </nav>
+
+        {/* Full-Screen Mobile Profile Menu Overlay */}
+        {mobileProfileMenuOpen && (
+          <div
+            className="fixed inset-0 z-[100] bg-white md:hidden animate-in slide-in-from-right duration-300"
+            style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+          >
+            {/* Header with Close Button */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center space-x-3">
+                <Avatar className="h-12 w-12">
+                  <AvatarFallback className="text-lg bg-[#d73a31] text-white">
+                    {user?.firstName?.[0]}{user?.lastName?.[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h2 className="font-semibold text-lg">{user?.firstName} {user?.lastName}</h2>
+                  <p className="text-sm text-gray-600">{user?.email}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setMobileProfileMenuOpen(false)}
+                className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-700" />
+              </button>
+            </div>
+
+            {/* Menu Items */}
+            <div className="flex flex-col p-4 space-y-2">
+              <button
+                onClick={() => handleNavigate("/profile")}
+                className="flex items-center space-x-4 p-4 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-50">
+                  <User className="h-6 w-6 text-blue-600" />
+                </div>
+                <div className="flex-1 text-left">
+                  <h3 className="font-semibold text-gray-900">My Profile</h3>
+                  <p className="text-sm text-gray-500">View and edit your profile</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleNavigate("/orders")}
+                className="flex items-center space-x-4 p-4 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-50">
+                  <ShoppingBag className="h-6 w-6 text-green-600" />
+                </div>
+                <div className="flex-1 text-left">
+                  <h3 className="font-semibold text-gray-900">My Orders</h3>
+                  <p className="text-sm text-gray-500">Track your order history</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleNavigate("/rewards")}
+                className="flex items-center space-x-4 p-4 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-yellow-50">
+                  <Star className="h-6 w-6 text-yellow-600" />
+                </div>
+                <div className="flex-1 text-left">
+                  <h3 className="font-semibold text-gray-900">Rewards</h3>
+                  <p className="text-sm text-gray-500">View your points and rewards</p>
+                </div>
+              </button>
+
+              {(user?.role === "employee" || user?.isAdmin) && (
+                <button
+                  onClick={() => handleNavigate("/employee/clock")}
+                  className="flex items-center space-x-4 p-4 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-purple-50">
+                    <Clock className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h3 className="font-semibold text-gray-900">Clock In/Out</h3>
+                    <p className="text-sm text-gray-500">Manage your time</p>
+                  </div>
+                </button>
+              )}
+
+              {user?.isAdmin && (
+                <>
+                  <div className="h-px bg-gray-200 my-2"></div>
+                  <button
+                    onClick={() => handleNavigate("/admin/dashboard")}
+                    className="flex items-center space-x-4 p-4 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-50">
+                      <BarChart3 className="h-6 w-6 text-red-600" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <h3 className="font-semibold text-gray-900">Admin Dashboard</h3>
+                      <p className="text-sm text-gray-500">Manage your restaurant</p>
+                    </div>
+                  </button>
+                </>
+              )}
+
+              {(user?.isAdmin || user?.role === "employee" || user?.role === "kitchen" || user?.role === "manager") && (
+                <button
+                  onClick={() => handleNavigate("/kitchen")}
+                  className="flex items-center space-x-4 p-4 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-orange-50">
+                    <ChefHat className="h-6 w-6 text-orange-600" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h3 className="font-semibold text-gray-900">Kitchen Display</h3>
+                    <p className="text-sm text-gray-500">View orders in kitchen</p>
+                  </div>
+                </button>
+              )}
+
+              <div className="h-px bg-gray-200 my-2"></div>
+
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-4 p-4 rounded-xl hover:bg-red-50 active:bg-red-100 transition-colors"
+              >
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-50">
+                  <LogOut className="h-6 w-6 text-red-600" />
+                </div>
+                <div className="flex-1 text-left">
+                  <h3 className="font-semibold text-red-600">Log Out</h3>
+                  <p className="text-sm text-gray-500">Sign out of your account</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Add bottom padding to main content for mobile */}
         <div className="pb-16 md:pb-0"></div>
