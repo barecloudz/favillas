@@ -96,7 +96,12 @@ const OrdersPage = () => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string, shipdayStatus?: string, orderType?: string) => {
+    // Check if order is actually completed via shipday
+    if (shipdayStatus === 'delivered' || (orderType === 'pickup' && shipdayStatus === 'picked_up')) {
+      return "bg-gray-100 text-gray-800";
+    }
+
     switch (status) {
       case "pending": return "bg-yellow-100 text-yellow-800";
       case "processing": return "bg-blue-100 text-blue-800";
@@ -107,7 +112,12 @@ const OrdersPage = () => {
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: string, shipdayStatus?: string, orderType?: string) => {
+    // Check if order is actually completed via shipday
+    if (shipdayStatus === 'delivered' || (orderType === 'pickup' && shipdayStatus === 'picked_up')) {
+      return <CheckCircle className="h-4 w-4" />;
+    }
+
     switch (status) {
       case "pending": return <Clock className="h-4 w-4" />;
       case "processing": return <Package className="h-4 w-4" />;
@@ -116,6 +126,19 @@ const OrdersPage = () => {
       case "cancelled": return <AlertCircle className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
     }
+  };
+
+  const getDisplayStatus = (status: string, shipdayStatus?: string, orderType?: string) => {
+    // Show "Completed" if order has been delivered or picked up
+    if (shipdayStatus === 'delivered') {
+      return 'Delivered';
+    }
+    if (orderType === 'pickup' && shipdayStatus === 'picked_up') {
+      return 'Picked Up';
+    }
+
+    // Otherwise show the main status
+    return status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown';
   };
 
   const handleReorder = (order: any) => {
@@ -278,21 +301,37 @@ Thank you for choosing Favilla's NY Pizza!
                   <div>
                     <p className="text-sm font-medium text-gray-600">Completed</p>
                     <p className="text-2xl font-bold text-purple-600">
-                      {orders.filter((order: any) => order.status === 'completed').length}
+                      {orders.filter((order: any) => {
+                        // Order is completed if:
+                        // 1. Status is 'completed', OR
+                        // 2. Delivery order that has been delivered (shipday_status === 'delivered'), OR
+                        // 3. Pickup order that is marked as ready/completed
+                        return order.status === 'completed' ||
+                               order.shipday_status === 'delivered' ||
+                               (order.orderType === 'pickup' && order.shipday_status === 'picked_up');
+                      }).length}
                     </p>
                   </div>
                   <CheckCircle className="h-8 w-8 text-purple-600" />
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Active</p>
                     <p className="text-2xl font-bold text-orange-600">
-                      {orders.filter((order: any) => ['pending', 'processing', 'ready'].includes(order.status)).length}
+                      {orders.filter((order: any) => {
+                        // Order is active if:
+                        // 1. Status is pending, processing, or ready, AND
+                        // 2. NOT already delivered or picked up
+                        const isActiveStatus = ['pending', 'processing', 'ready'].includes(order.status);
+                        const notCompleted = order.shipday_status !== 'delivered' &&
+                                           !(order.orderType === 'pickup' && order.shipday_status === 'picked_up');
+                        return isActiveStatus && notCompleted;
+                      }).length}
                     </p>
                   </div>
                   <Clock className="h-8 w-8 text-orange-600" />
@@ -365,10 +404,10 @@ Thank you for choosing Favilla's NY Pizza!
                       <div>
                         <CardTitle className="flex items-center space-x-2">
                           <span>Order #{order.id}</span>
-                          <Badge className={getStatusColor(order.status)}>
-                            {getStatusIcon(order.status)}
+                          <Badge className={getStatusColor(order.status, order.shipday_status, order.orderType)}>
+                            {getStatusIcon(order.status, order.shipday_status, order.orderType)}
                             <span className="ml-1">
-                              {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Unknown'}
+                              {getDisplayStatus(order.status, order.shipday_status, order.orderType)}
                             </span>
                           </Badge>
                         </CardTitle>
@@ -453,8 +492,10 @@ Thank you for choosing Favilla's NY Pizza!
                           Download Receipt
                         </Button>
                         
-                        {order.status === 'completed' && (
-                          <Button 
+                        {(order.status === 'completed' ||
+                          order.shipday_status === 'delivered' ||
+                          (order.orderType === 'pickup' && order.shipday_status === 'picked_up')) && (
+                          <Button
                             size="sm"
                             onClick={() => handleReorder(order)}
                             className="bg-[#d73a31] hover:bg-[#c73128]"
