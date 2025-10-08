@@ -126,6 +126,7 @@ const RewardsPage = () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user-rewards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/redemptions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/active-vouchers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-profile"] });
     },
     onError: (error: any) => {
       toast({
