@@ -1,14 +1,41 @@
-import React from "react";
+import React, { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const SeoContentSection: React.FC = () => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   return (
-    <section className="py-16 bg-white">
+    <section className="py-12 bg-white">
       <div className="container mx-auto px-4">
-        {/* Main SEO Content */}
+        {/* Collapsible About Us Section */}
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-4xl md:text-5xl font-bold text-center mb-8 text-[#d73a31]">
-            Best Pizza in Asheville, NC - Authentic Italian Cuisine
-          </h1>
+          <div className="text-center mb-6">
+            <Button
+              onClick={() => setIsExpanded(!isExpanded)}
+              variant="outline"
+              className="text-lg font-semibold text-[#d73a31] border-[#d73a31] hover:bg-[#d73a31] hover:text-white transition-colors"
+            >
+              {isExpanded ? (
+                <>
+                  Hide About Us <ChevronUp className="ml-2 h-5 w-5" />
+                </>
+              ) : (
+                <>
+                  About Favilla's Pizza <ChevronDown className="ml-2 h-5 w-5" />
+                </>
+              )}
+            </Button>
+          </div>
+
+          <div
+            className={`transition-all duration-300 ease-in-out overflow-hidden ${
+              isExpanded ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"
+            }`}
+          >
+            <h1 className="text-4xl md:text-5xl font-bold text-center mb-8 text-[#d73a31]">
+              Best Pizza in Asheville, NC - Authentic Italian Cuisine
+            </h1>
 
           <div className="prose prose-lg max-w-none">
             <h2 className="text-3xl font-bold mb-4 text-gray-900">Voted Best Pizza in Asheville</h2>
@@ -31,8 +58,7 @@ const SeoContentSection: React.FC = () => {
               Beyond our award-winning pizza, Favilla's offers an extensive menu of <strong>Italian food in Asheville</strong>.
               Our <strong>calzones in Asheville</strong> are hand-folded masterpieces, stuffed with ricotta, mozzarella, and your choice of
               premium toppings. Try our <strong>stromboli in Asheville</strong> - rolled with savory meats, cheeses, and vegetables,
-              then baked until golden brown. Our <strong>authentic Italian pasta</strong> dishes are made with traditional recipes
-              passed down through generations of our Italian family.
+              then baked until golden brown.
             </p>
 
             <h3 className="text-2xl font-bold mb-3 text-gray-900">Our Menu Features:</h3>
@@ -41,9 +67,9 @@ const SeoContentSection: React.FC = () => {
               <li><strong>Sicilian Square Pizza</strong> - Thick, fluffy crust with robust flavors</li>
               <li><strong>Gourmet Calzones</strong> - Stuffed with premium ingredients</li>
               <li><strong>Italian Stromboli</strong> - Rolled and baked to golden perfection</li>
-              <li><strong>Traditional Pasta</strong> - Authentic Italian recipes with fresh garlic bread</li>
               <li><strong>Fresh Salads</strong> - Crisp greens with house-made dressings</li>
               <li><strong>Appetizers</strong> - Garlic knots, mozzarella sticks, and more</li>
+              <li><strong>Desserts</strong> - Sweet treats to complete your meal</li>
             </ul>
 
             <h2 className="text-3xl font-bold mb-4 text-gray-900">Pizza Delivery & Pickup in Asheville</h2>
@@ -78,7 +104,7 @@ const SeoContentSection: React.FC = () => {
             <p className="text-lg text-gray-700 mb-6 leading-relaxed">
               Ready to taste why we're known as the <strong>best pizza place in Asheville</strong>? Order online now for
               delivery or pickup. Whether you're craving a classic cheese pizza, loaded specialty pie, hearty calzone,
-              or traditional Italian pasta, Favilla's has something for everyone. Join our rewards program and earn points
+              or delicious stromboli, Favilla's has something for everyone. Join our rewards program and earn points
               with every order. Experience the authentic taste of Italy right here in Asheville, NC!
             </p>
           </div>
@@ -90,6 +116,7 @@ const SeoContentSection: React.FC = () => {
               <strong>Asheville Pizza Delivery Areas:</strong> Downtown Asheville, West Asheville, North Asheville,
               South Asheville, East Asheville, Biltmore Village, Kenilworth, and surrounding neighborhoods in Asheville, NC.
             </p>
+          </div>
           </div>
         </div>
       </div>
