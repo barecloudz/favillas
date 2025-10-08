@@ -245,6 +245,22 @@ export const handler: Handler = async (event, context) => {
           WHERE id = ${authPayload.userId}
           RETURNING *
         `;
+
+        if (!updatedUser || updatedUser.length === 0) {
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({ error: 'User not found' })
+          };
+        }
+
+        console.log('✅ Legacy user profile updated successfully:', updatedUser[0]);
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify(updatedUser[0])
+        };
       } else if (authPayload.supabaseUserId) {
         // Supabase-only user - update by supabase_user_id
         console.log('🔄 User Profile API: Updating Supabase user profile:', authPayload.supabaseUserId);
