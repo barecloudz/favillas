@@ -414,6 +414,7 @@ export const handler: Handler = async (event, context) => {
           tax: parseFloat(order.tax || '0'),
           delivery_fee: parseFloat(order.delivery_fee || '0'),
           tip: parseFloat(order.tip || '0'),
+          shipday_status: order.shipday_status, // Include shipday status
           items: transformedItems,
           userContactInfo
         };
@@ -501,6 +502,7 @@ export const handler: Handler = async (event, context) => {
               tax: parseFloat(order.tax || '0'),
               delivery_fee: parseFloat(order.delivery_fee || '0'),
               tip: parseFloat(order.tip || '0'),
+              shipday_status: order.shipday_status, // Include shipday status
               items: transformedItems
             };
 
@@ -518,6 +520,7 @@ export const handler: Handler = async (event, context) => {
               tax: parseFloat(order.tax || '0'),
               delivery_fee: parseFloat(order.delivery_fee || '0'),
               tip: parseFloat(order.tip || '0'),
+              shipday_status: order.shipday_status, // Include shipday status
               items: []
             };
           }
