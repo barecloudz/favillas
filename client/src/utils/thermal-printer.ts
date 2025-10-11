@@ -179,42 +179,63 @@ export async function printToThermalPrinter(
 ): Promise<{ success: boolean; message: string }> {
 
   try {
-    console.log(`🖨️  Preparing receipt for printer: ${printer.ipAddress}`);
+    console.log(`🖨️  Preparing receipt for order #${order.id}`);
 
-    // Build receipt data using ESC/POS commands
-    const receiptData = formatReceipt(order);
-
-    // Try local printer server first (default: localhost:3001)
-    // User can configure the printer server address in environment or printer config
+    // Try Raspberry Pi printer server first
     const printerServerUrl = getPrinterServerUrl();
 
     console.log(`📡 Sending to printer server: ${printerServerUrl}`);
 
     try {
+      // Format receipt data for Raspberry Pi printer server
+      const receipt = {
+        storeName: "Favilla's NY Pizza",
+        storeAddress: "Your Store Address", // Update this
+        storePhone: "828-225-2885",
+        orderId: order.id,
+        orderDate: order.createdAt,
+        orderType: order.orderType,
+        scheduledTime: null, // Add if you have scheduled orders
+        customerName: order.customerName,
+        customerPhone: order.phone,
+        customerAddress: order.address,
+        items: order.items.map((item: any) => ({
+          name: item.menuItem?.name || item.name || 'Item',
+          quantity: item.quantity,
+          price: parseFloat(item.price || 0),
+          options: item.options || [],
+          specialInstructions: item.specialInstructions
+        })),
+        subtotal: order.total - (order.tax || 0) - (order.deliveryFee || 0),
+        tax: order.tax || 0,
+        deliveryFee: order.deliveryFee || 0,
+        tip: order.tip || 0,
+        discount: 0,
+        total: order.total
+      };
+
       const response = await fetch(`${printerServerUrl}/print`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          receiptData,
-          orderId: order.id
-        })
+        body: JSON.stringify({ receipt })
       });
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ Print successful via local server');
+        console.log('✅ Print successful via Raspberry Pi printer server');
         return {
           success: true,
           message: `Order #${order.id} printed successfully`
         };
       } else {
-        throw new Error('Printer server returned error');
+        const error = await response.json();
+        throw new Error(error.message || 'Printer server returned error');
       }
     } catch (serverError: any) {
-      console.warn('⚠️  Local printer server not reachable:', serverError.message);
-      console.log('💡 Make sure thermal-printer-server.cjs is running');
+      console.warn('⚠️  Raspberry Pi printer server not reachable:', serverError.message);
+      console.log('💡 Make sure Raspberry Pi is on and printer-server is running');
 
       // Fallback: Try direct HTTP to printer (will likely be blocked by Safari)
       return await printViaHTTP(order, printer);
@@ -230,7 +251,7 @@ export async function printToThermalPrinter(
 
 /**
  * Get printer server URL
- * Checks localStorage for custom server, otherwise uses localhost:3001
+ * Checks localStorage for custom server, otherwise uses Raspberry Pi default
  */
 function getPrinterServerUrl(): string {
   // Check if custom printer server URL is configured
@@ -239,10 +260,9 @@ function getPrinterServerUrl(): string {
     return customUrl;
   }
 
-  // Default: localhost:3001 (for same device) or LAN IP
-  // In production, this should be the IP of the computer running the server
-  // e.g., http://192.168.1.100:3001
-  return 'http://localhost:3001';
+  // Default: Raspberry Pi printer server on store network
+  // This can be changed in Admin > System Settings
+  return 'http://192.168.1.18:3001';
 }
 
 /**

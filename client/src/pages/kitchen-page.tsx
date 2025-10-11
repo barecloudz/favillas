@@ -56,15 +56,64 @@ const KitchenPage = () => {
           if (audioRef.current) {
             audioRef.current.play();
           }
-          
+
           // Show toast notification
           toast({
             title: "New Order Received",
             description: `Order #${data.order.id} has been placed.`,
           });
-          
+
           // Refresh orders list
           queryClient.invalidateQueries({ queryKey: ["/api/kitchen/orders"] });
+
+          // Auto-print new order if enabled
+          const autoPrintEnabled = localStorage.getItem('autoPrintOrders') !== 'false';
+          if (autoPrintEnabled) {
+            console.log('🖨️  Auto-printing new order #' + data.order.id);
+
+            // Get printer config and print
+            apiRequest("GET", "/api/printer/config")
+              .then(response => response.json())
+              .then(printers => {
+                const activePrinter = printers.find((p: any) => p.isActive);
+                if (activePrinter && data.order) {
+                  printToThermalPrinter(
+                    {
+                      id: data.order.id,
+                      orderType: data.order.order_type || data.order.orderType,
+                      customerName: data.order.customer_name || data.order.customerName,
+                      phone: data.order.phone,
+                      address: data.order.address,
+                      items: data.order.items || [],
+                      total: parseFloat(data.order.total || 0),
+                      tax: parseFloat(data.order.tax || 0),
+                      deliveryFee: parseFloat(data.order.delivery_fee || data.order.deliveryFee || 0),
+                      tip: parseFloat(data.order.tip || 0),
+                      specialInstructions: data.order.special_instructions || data.order.specialInstructions,
+                      createdAt: data.order.created_at || data.order.createdAt || new Date().toISOString()
+                    },
+                    {
+                      ipAddress: activePrinter.ipAddress,
+                      port: activePrinter.port,
+                      name: activePrinter.name
+                    }
+                  ).then(result => {
+                    if (result.success) {
+                      console.log('✅ Auto-print successful for order #' + data.order.id);
+                    } else {
+                      console.warn('⚠️  Auto-print failed:', result.message);
+                    }
+                  }).catch(error => {
+                    console.error('❌ Auto-print error:', error);
+                  });
+                } else {
+                  console.log('⚠️  Auto-print skipped: No active printer configured');
+                }
+              })
+              .catch(error => {
+                console.error('❌ Failed to get printer config for auto-print:', error);
+              });
+          }
         } else if (data.type === 'orderStatusUpdate' || data.type === 'paymentCompleted') {
           // Refresh orders list
           queryClient.invalidateQueries({ queryKey: ["/api/kitchen/orders"] });
