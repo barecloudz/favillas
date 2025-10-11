@@ -182,7 +182,7 @@ export async function printToThermalPrinter(
     console.log(`🖨️  Preparing receipt for order #${order.id}`);
 
     // Try Raspberry Pi printer server first
-    const printerServerUrl = getPrinterServerUrl();
+    const printerServerUrl = await getPrinterServerUrl();
 
     console.log(`📡 Sending to printer server: ${printerServerUrl}`);
 
@@ -253,15 +253,32 @@ export async function printToThermalPrinter(
  * Get printer server URL
  * Checks localStorage for custom server, otherwise uses Raspberry Pi default
  */
-function getPrinterServerUrl(): string {
-  // Check if custom printer server URL is configured
+async function getPrinterServerUrl(): Promise<string> {
+  // Check if custom printer server URL is configured in localStorage first
   const customUrl = localStorage.getItem('printerServerUrl');
   if (customUrl) {
     return customUrl;
   }
 
+  // Try to fetch from system settings
+  try {
+    const response = await fetch('/api/admin/system-settings', {
+      credentials: 'include'
+    });
+    if (response.ok) {
+      const settingsData = await response.json();
+      const printerSettings = settingsData.printer || [];
+      const serverUrlSetting = printerSettings.find((s: any) => s.setting_key === 'PRINTER_SERVER_URL');
+      if (serverUrlSetting && serverUrlSetting.setting_value) {
+        return serverUrlSetting.setting_value;
+      }
+    }
+  } catch (error) {
+    console.warn('Could not fetch printer server URL from settings, using default');
+  }
+
   // Default: Raspberry Pi printer server on store network
-  // This can be changed in Admin > System Settings
+  // This can be changed in Admin > System Settings > Printer Settings
   return 'http://192.168.1.18:3001';
 }
 
