@@ -93,7 +93,18 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
         oscillator2.stop(audioContextRef.current.currentTime + 0.4);
 
       } else if (soundType === 'bell') {
-        // Bell sound with harmonics
+        // Use uploaded bell sound from Supabase
+        const bellSoundUrl = 'https://tamsxlebouauwiivoyxa.supabase.co/storage/v1/object/public/notification-sounds/bell%20sound.wav';
+        try {
+          const audio = new Audio(bellSoundUrl);
+          audio.volume = volume;
+          await audio.play();
+          return; // Exit early since we're using HTML5 Audio
+        } catch (error) {
+          console.warn('Failed to play bell sound, using synthesized fallback:', error);
+        }
+
+        // Fallback: Bell sound with harmonics
         const fundamental = audioContextRef.current.createOscillator();
         const harmonic2 = audioContextRef.current.createOscillator();
         const harmonic3 = audioContextRef.current.createOscillator();
