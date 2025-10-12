@@ -94,7 +94,8 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       g.name === 'Size' ||
       g.name === 'Calzone Size' ||
       g.name === 'Stromboli Size' ||
-      g.name === 'Traditional Pizza Size'
+      g.name === 'Traditional Pizza Size' ||
+      g.name === 'Specialty Gourmet Pizza Size'
     );
     if (!sizeGroup || !selectedChoices[sizeGroup.id]) return null;
 
@@ -114,7 +115,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       const groupName = group.name;
 
       // Always show size selection groups
-      if (groupName === 'Size' || groupName === 'Calzone Size' || groupName === 'Stromboli Size' || groupName === 'Traditional Pizza Size') return true;
+      if (groupName === 'Size' || groupName === 'Calzone Size' || groupName === 'Stromboli Size' || groupName === 'Traditional Pizza Size' || groupName === 'Specialty Gourmet Pizza Size') return true;
 
       // If no size selected yet, don't show topping groups
       if (!selectedSize) return false;
@@ -193,7 +194,8 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       const isSizeGroup = group?.name === 'Size' ||
                           group?.name === 'Calzone Size' ||
                           group?.name === 'Stromboli Size' ||
-                          group?.name === 'Traditional Pizza Size';
+                          group?.name === 'Traditional Pizza Size' ||
+                          group?.name === 'Specialty Gourmet Pizza Size';
 
       selections.forEach(selectionId => {
         const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
@@ -272,7 +274,8 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       const isSizeGroup = group?.name === 'Size' ||
                           group?.name === 'Calzone Size' ||
                           group?.name === 'Stromboli Size' ||
-                          group?.name === 'Traditional Pizza Size';
+                          group?.name === 'Traditional Pizza Size' ||
+                          group?.name === 'Specialty Gourmet Pizza Size';
       console.log('🔍 [Choice Selection] Group found for collapse check:', {
         group,
         groupId: parseInt(groupId),
