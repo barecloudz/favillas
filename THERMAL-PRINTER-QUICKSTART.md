@@ -154,8 +154,73 @@ To make the printer server start automatically when your computer boots:
 **Mac/Linux (systemd or launchd):**
 See PRINTER-SETUP.md for detailed instructions.
 
+## Raspberry Pi Printer Server
+
+The printer is now connected to a Raspberry Pi (192.168.1.18:3001) running a Node.js printer server.
+
+### Points Display Issue Fix
+
+**Problem:** Receipt shows "Sign up to earn points" for ALL users, even those with accounts.
+
+**Location:** Raspberry Pi at `~/printer-server/server.js`
+
+**Required Fix:** Update the points section to check the `isGuest` flag:
+
+```javascript
+// Points section - check if user is guest or has account
+if (receipt.pointsEarned && receipt.pointsEarned > 0) {
+  builder.addFeedLine(1);
+  builder.addTextAlign(builder.ALIGN_CENTER);
+
+  if (receipt.isGuest) {
+    // Guest user - encourage sign up
+    builder.addTextStyle(false, false, true, builder.COLOR_1);
+    builder.addText('REWARDS AVAILABLE!\n');
+    builder.addTextStyle(false, false, false, builder.COLOR_1);
+    builder.addText('Sign up to earn ' + receipt.pointsEarned + ' points\n');
+    builder.addText('with this order!\n');
+  } else {
+    // Logged in user - show points earned
+    builder.addTextStyle(false, false, true, builder.COLOR_1);
+    builder.addText('POINTS EARNED!\n');
+    builder.addTextStyle(false, false, false, builder.COLOR_1);
+    builder.addText('You earned ' + receipt.pointsEarned + ' points\n');
+    builder.addText('with this order!\n');
+  }
+
+  builder.addTextAlign(builder.ALIGN_LEFT);
+}
+```
+
+### Data Sent from Client
+
+The client sends the following fields to help determine points display:
+
+```javascript
+{
+  // ... other fields
+  pointsEarned: 26,  // 1 point per dollar spent
+  isGuest: false     // true if user not logged in, false if user has account
+}
+```
+
+### How to Apply Fix
+
+SSH into the Raspberry Pi and edit the server:
+
+```bash
+ssh blake@192.168.1.18
+cd ~/printer-server
+nano server.js
+# Add the points section code above
+# Press Ctrl+X, Y, Enter to save
+pkill node  # Stop current server
+node server.js  # Restart server
+```
+
 ## Support
 
-- Printer status: Check http://192.168.1.208 in browser
-- Server logs: Check terminal running thermal-printer-server.cjs
+- Printer status: Check https://192.168.1.18:3001/health
+- Raspberry Pi: SSH to blake@192.168.1.18
+- Server logs: Check terminal on Raspberry Pi running server.js
 - Client logs: Open iPad Safari → Develop → iPad → Console
