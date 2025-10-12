@@ -7899,7 +7899,7 @@ const SettingsPanel = () => {
                                 <input
                                   type="file"
                                   id="custom-sound-upload"
-                                  accept="audio/*"
+                                  accept=".mp3,.wav,.ogg,audio/mpeg,audio/wav,audio/ogg"
                                   onChange={handleCustomSoundUpload}
                                   className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100"
                                 />
