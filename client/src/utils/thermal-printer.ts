@@ -181,10 +181,10 @@ export async function printToThermalPrinter(
   try {
     console.log(`🖨️  Preparing receipt for order #${order.id}`);
 
-    // Try Raspberry Pi printer server first
+    // Try Raspberry Pi printer server via Netlify proxy function (avoids mixed content issues)
     const printerServerUrl = await getPrinterServerUrl();
 
-    console.log(`📡 Sending to printer server: ${printerServerUrl}`);
+    console.log(`📡 Sending to printer server via proxy: ${printerServerUrl}`);
 
     try {
       // Format receipt data for Raspberry Pi printer server
@@ -214,12 +214,16 @@ export async function printToThermalPrinter(
         total: order.total
       };
 
-      const response = await fetch(`${printerServerUrl}/print`, {
+      // Use Netlify function to proxy the request (avoids HTTPS mixed content block)
+      const response = await fetch('/.netlify/functions/proxy-print', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ receipt })
+        body: JSON.stringify({
+          printerServerUrl,
+          receipt
+        })
       });
 
       if (response.ok) {
@@ -237,8 +241,8 @@ export async function printToThermalPrinter(
       console.warn('⚠️  Raspberry Pi printer server not reachable:', serverError.message);
       console.log('💡 Make sure Raspberry Pi is on and printer-server is running');
 
-      // Fallback: Try direct HTTP to printer (will likely be blocked by Safari)
-      return await printViaHTTP(order, printer);
+      // Fallback: Open browser print dialog
+      return openPrintDialog(order, formatReceipt(order));
     }
 
   } catch (error: any) {
