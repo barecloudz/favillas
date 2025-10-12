@@ -7410,10 +7410,16 @@ const SettingsPanel = () => {
 
   // Create a test sound function for this component
   const playTestSound = useCallback(async () => {
-    if (!soundNotificationsEnabled) return;
+    if (!soundNotificationsEnabled) {
+      alert('Please enable sound notifications first');
+      return;
+    }
+
+    console.log('Playing test sound:', soundType, 'Volume:', soundVolume);
 
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      console.log('AudioContext state:', audioContext.state);
 
       if (audioContext.state === 'suspended') {
         await audioContext.resume();
@@ -7511,7 +7517,8 @@ const SettingsPanel = () => {
         return; // Exit early since we're using HTML5 Audio instead of Web Audio API
       }
     } catch (error) {
-      console.warn('Failed to play test sound:', error);
+      console.error('Failed to play test sound:', error);
+      alert(`Failed to play test sound: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }, [soundNotificationsEnabled, soundType, soundVolume, customSoundUrl]);
 
