@@ -238,18 +238,21 @@ export async function printToThermalPrinter(
         throw new Error(error.message || 'Printer server returned error');
       }
     } catch (serverError: any) {
-      console.warn('⚠️  Raspberry Pi printer server not reachable:', serverError.message);
-      console.log('💡 Make sure Raspberry Pi is on and printer-server is running');
+      console.error('❌ Raspberry Pi printer server error:', serverError);
 
-      // Fallback: Open browser print dialog
-      return openPrintDialog(order, formatReceipt(order));
+      return {
+        success: false,
+        message: `Printer server connection failed: ${serverError.message}. Make sure Raspberry Pi at ${printerServerUrl} is on and printer-server is running.`
+      };
     }
 
   } catch (error: any) {
     console.error('❌ Print failed:', error);
 
-    // Last resort: Open browser print dialog
-    return openPrintDialog(order, formatReceipt(order));
+    return {
+      success: false,
+      message: `Print failed: ${error.message || 'Unknown error'}. Check that the Raspberry Pi printer server is accessible.`
+    };
   }
 }
 
