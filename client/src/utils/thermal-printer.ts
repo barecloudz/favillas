@@ -194,7 +194,7 @@ export async function printToThermalPrinter(
     // Format receipt data for Raspberry Pi printer server
     const receipt = {
       storeName: "Favilla's NY Pizza",
-      storeAddress: "5 Regent Park Blvd, Hendersonville, NC 28792",
+      storeAddress: "5 Regent Park Blvd, Asheville, NC 28806",
       storePhone: "828-225-2885",
       orderId: order.id,
       orderDate: order.createdAt,

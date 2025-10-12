@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-supabase-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { setupWebSocket, sendMessage } from "@/lib/websocket";
 import { useToast } from "@/hooks/use-toast";
+import { useAdminWebSocket } from "@/hooks/use-admin-websocket";
 import { Helmet } from "react-helmet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,70 @@ const KitchenPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("pending");
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Load notification settings from system settings
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundType, setSoundType] = useState<'chime' | 'bell' | 'ding' | 'beep' | 'dingbell' | 'custom'>('dingbell');
+  const [soundVolume, setSoundVolume] = useState(0.5);
+
+  // Fetch notification settings on mount
+  useEffect(() => {
+    fetch('/api/admin/system-settings?category=notifications', { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => {
+        const settings = data.notifications || [];
+        const enabled = settings.find((s: any) => s.setting_key === 'NOTIFICATION_SOUND_ENABLED');
+        const type = settings.find((s: any) => s.setting_key === 'NOTIFICATION_SOUND_TYPE');
+        const volume = settings.find((s: any) => s.setting_key === 'NOTIFICATION_SOUND_VOLUME');
+
+        if (enabled) setSoundEnabled(enabled.setting_value === 'true');
+        if (type) setSoundType(type.setting_value as any);
+        if (volume) setSoundVolume(parseFloat(volume.setting_value));
+      })
+      .catch(err => console.warn('Failed to load notification settings:', err));
+  }, []);
+
+  // Use admin websocket with notification sound settings
+  const { playTestSound } = useAdminWebSocket({
+    enableSounds: soundEnabled,
+    soundType: soundType,
+    volume: soundVolume,
+    onNewOrder: (order) => {
+      // Auto-print if enabled
+      const autoPrintEnabled = localStorage.getItem('autoPrintOrders') !== 'false';
+      if (autoPrintEnabled) {
+        console.log('🖨️  Auto-printing new order #' + order.id);
+        printToThermalPrinter(
+          {
+            id: order.id,
+            orderType: order.order_type || order.orderType,
+            customerName: order.customer_name || order.customerName,
+            phone: order.phone,
+            address: order.address,
+            items: order.items || [],
+            total: parseFloat(order.total || 0),
+            tax: parseFloat(order.tax || 0),
+            deliveryFee: parseFloat(order.delivery_fee || order.deliveryFee || 0),
+            tip: parseFloat(order.tip || 0),
+            specialInstructions: order.special_instructions || order.specialInstructions,
+            createdAt: order.created_at || order.createdAt || new Date().toISOString(),
+            userId: order.user_id || order.userId
+          },
+          {
+            ipAddress: '192.168.1.18',
+            port: 3001,
+            name: 'Kitchen Printer'
+          }
+        ).then(result => {
+          if (result.success) {
+            console.log('✅ Auto-print successful');
+          } else {
+            console.error('❌ Auto-print failed:', result.message);
+          }
+        });
+      }
+    }
+  });
 
   const formatPrice = (price: string | number) => {
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
