@@ -146,8 +146,23 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       return false;
     });
 
+    // Sort groups: size groups always first, then by priority
+    const sortedGroups = filteredGroups.sort((a, b) => {
+      const aIsSize = a.name === 'Size' || a.name === 'Calzone Size' || a.name === 'Stromboli Size' ||
+                      a.name === 'Traditional Pizza Size' || a.name === 'Specialty Gourmet Pizza Size';
+      const bIsSize = b.name === 'Size' || b.name === 'Calzone Size' || b.name === 'Stromboli Size' ||
+                      b.name === 'Traditional Pizza Size' || b.name === 'Specialty Gourmet Pizza Size';
+
+      // Size groups always come first
+      if (aIsSize && !bIsSize) return -1;
+      if (!aIsSize && bIsSize) return 1;
+
+      // Otherwise sort by priority
+      return (a.priority || 0) - (b.priority || 0);
+    });
+
     // Group by priority
-    const groupsByPriority = filteredGroups.reduce((acc, group) => {
+    const groupsByPriority = sortedGroups.reduce((acc, group) => {
       const priority = group.priority || 0;
       if (!acc[priority]) acc[priority] = [];
       acc[priority].push(group);
@@ -436,7 +451,11 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
 
                 <div className="space-y-8 py-6">
                   {visibleChoiceGroups.map((group, index) => {
-                    const isPrimaryGroup = group.name === 'Size';
+                    const isPrimaryGroup = group.name === 'Size' ||
+                                           group.name === 'Calzone Size' ||
+                                           group.name === 'Stromboli Size' ||
+                                           group.name === 'Traditional Pizza Size' ||
+                                           group.name === 'Specialty Gourmet Pizza Size';
                     const isSelected = selectedChoices[group.id] && selectedChoices[group.id].length > 0;
 
                     return (
