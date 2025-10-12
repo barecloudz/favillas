@@ -7242,7 +7242,7 @@ const SettingsPanel = () => {
     return true;
   });
 
-  const [soundType, setSoundType] = useState<'chime' | 'bell' | 'ding' | 'beep' | 'custom'>(() => {
+  const [soundType, setSoundType] = useState<'chime' | 'bell' | 'ding' | 'beep' | 'dingbell' | 'custom'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('adminSoundType');
       return saved ? JSON.parse(saved) : 'chime';
@@ -7526,6 +7526,17 @@ const SettingsPanel = () => {
         gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.15);
         oscillator.start(audioContext.currentTime);
         oscillator.stop(audioContext.currentTime + 0.15);
+      } else if (soundType === 'dingbell') {
+        // Play uploaded bell sound from Supabase
+        const dingBellUrl = 'https://tamsxlebouauwiivoyxa.supabase.co/storage/v1/object/public/notification-sounds/bellsound.wav';
+        try {
+          const audio = new Audio(dingBellUrl);
+          audio.volume = volume;
+          await audio.play();
+        } catch (error) {
+          console.warn('Failed to play ding bell sound:', error);
+        }
+        return; // Exit early since we're using HTML5 Audio
       } else if (soundType === 'custom' && customSoundUrl) {
         // Play custom uploaded audio file (base64 data URL)
         try {
@@ -7898,7 +7909,7 @@ const SettingsPanel = () => {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                               <Label htmlFor="sound-type" className="text-sm font-medium">Sound Type</Label>
-                              <Select value={soundType} onValueChange={(value: 'chime' | 'bell' | 'ding' | 'beep' | 'custom') => setSoundType(value)}>
+                              <Select value={soundType} onValueChange={(value: 'chime' | 'bell' | 'ding' | 'beep' | 'dingbell' | 'custom') => setSoundType(value)}>
                                 <SelectTrigger id="sound-type" className="w-full">
                                   <SelectValue />
                                 </SelectTrigger>
@@ -7907,6 +7918,7 @@ const SettingsPanel = () => {
                                   <SelectItem value="bell">🔔 Bell</SelectItem>
                                   <SelectItem value="ding">✨ Ding</SelectItem>
                                   <SelectItem value="beep">📢 Beep</SelectItem>
+                                  <SelectItem value="dingbell">🛎️ Ding Bell</SelectItem>
                                   <SelectItem value="custom">📁 Custom Upload</SelectItem>
                                 </SelectContent>
                               </Select>
@@ -8037,6 +8049,13 @@ const SettingsPanel = () => {
                               onClick={() => { setSoundType('beep'); setTimeout(playTestSound, 100); }}
                             >
                               📢 Beep
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => { setSoundType('dingbell'); setTimeout(playTestSound, 100); }}
+                            >
+                              🛎️ Ding Bell
                             </Button>
                             {customSoundUrl && (
                               <Button

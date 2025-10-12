@@ -13,7 +13,7 @@ interface AdminWebSocketHookOptions {
   onNewOrder?: (order: any) => void;
   onOrderUpdate?: (order: any) => void;
   enableSounds?: boolean;
-  soundType?: 'chime' | 'bell' | 'ding' | 'beep' | 'custom';
+  soundType?: 'chime' | 'bell' | 'ding' | 'beep' | 'dingbell' | 'custom';
   volume?: number; // 0.0 to 1.0
   customSoundUrl?: string;
 }
@@ -157,6 +157,18 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
 
         oscillator.start(audioContextRef.current.currentTime);
         oscillator.stop(audioContextRef.current.currentTime + 0.15);
+
+      } else if (soundType === 'dingbell') {
+        // Use uploaded bell sound from Supabase
+        const dingBellUrl = 'https://tamsxlebouauwiivoyxa.supabase.co/storage/v1/object/public/notification-sounds/bellsound.wav';
+        try {
+          const audio = new Audio(dingBellUrl);
+          audio.volume = volume;
+          await audio.play();
+        } catch (error) {
+          console.warn('Failed to play ding bell sound:', error);
+        }
+        return; // Exit early since we're using HTML5 Audio
 
       } else if (soundType === 'custom' && options.customSoundUrl) {
         // Play custom uploaded audio file (base64 data URL)
