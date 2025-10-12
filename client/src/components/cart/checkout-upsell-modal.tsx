@@ -156,7 +156,19 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
       const response = await fetch('/api/menu');
       if (response.ok) {
         const data = await response.json();
-        return Array.isArray(data) ? data : [];
+        if (Array.isArray(data)) {
+          // Transform API data to match component interface
+          return data.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            description: item.description || '',
+            price: parseFloat(item.basePrice) || 0,
+            category: item.category,
+            image_url: item.imageUrl || item.image_url,
+            is_available: item.isAvailable !== false
+          }));
+        }
+        return [];
       }
       return [];
     },
