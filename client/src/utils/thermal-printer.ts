@@ -181,49 +181,45 @@ export async function printToThermalPrinter(
   try {
     console.log(`🖨️  Preparing receipt for order #${order.id}`);
 
-    // Try Raspberry Pi printer server via Netlify proxy function (avoids mixed content issues)
     const printerServerUrl = await getPrinterServerUrl();
+    console.log(`📡 Sending to printer server: ${printerServerUrl}`);
 
-    console.log(`📡 Sending to printer server via proxy: ${printerServerUrl}`);
+    // Format receipt data for Raspberry Pi printer server
+    const receipt = {
+      storeName: "Favilla's NY Pizza",
+      storeAddress: "Your Store Address", // Update this
+      storePhone: "828-225-2885",
+      orderId: order.id,
+      orderDate: order.createdAt,
+      orderType: order.orderType,
+      scheduledTime: null, // Add if you have scheduled orders
+      customerName: order.customerName,
+      customerPhone: order.phone,
+      customerAddress: order.address,
+      items: order.items.map((item: any) => ({
+        name: item.menuItem?.name || item.name || 'Item',
+        quantity: item.quantity,
+        price: parseFloat(item.price || 0),
+        options: item.options || [],
+        specialInstructions: item.specialInstructions
+      })),
+      subtotal: order.total - (order.tax || 0) - (order.deliveryFee || 0),
+      tax: order.tax || 0,
+      deliveryFee: order.deliveryFee || 0,
+      tip: order.tip || 0,
+      discount: 0,
+      total: order.total
+    };
 
     try {
-      // Format receipt data for Raspberry Pi printer server
-      const receipt = {
-        storeName: "Favilla's NY Pizza",
-        storeAddress: "Your Store Address", // Update this
-        storePhone: "828-225-2885",
-        orderId: order.id,
-        orderDate: order.createdAt,
-        orderType: order.orderType,
-        scheduledTime: null, // Add if you have scheduled orders
-        customerName: order.customerName,
-        customerPhone: order.phone,
-        customerAddress: order.address,
-        items: order.items.map((item: any) => ({
-          name: item.menuItem?.name || item.name || 'Item',
-          quantity: item.quantity,
-          price: parseFloat(item.price || 0),
-          options: item.options || [],
-          specialInstructions: item.specialInstructions
-        })),
-        subtotal: order.total - (order.tax || 0) - (order.deliveryFee || 0),
-        tax: order.tax || 0,
-        deliveryFee: order.deliveryFee || 0,
-        tip: order.tip || 0,
-        discount: 0,
-        total: order.total
-      };
-
-      // Use Netlify function to proxy the request (avoids HTTPS mixed content block)
-      const response = await fetch('/.netlify/functions/proxy-print', {
+      // Send directly to Raspberry Pi printer server
+      // Note: This requires the browser and Raspberry Pi to be on the same network
+      const response = await fetch(`${printerServerUrl}/print`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          printerServerUrl,
-          receipt
-        })
+        body: JSON.stringify({ receipt })
       });
 
       if (response.ok) {
@@ -234,15 +230,23 @@ export async function printToThermalPrinter(
           message: `Order #${order.id} printed successfully`
         };
       } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Printer server returned error');
+        const errorText = await response.text();
+        throw new Error(`Printer server error: ${errorText}`);
       }
     } catch (serverError: any) {
       console.error('❌ Raspberry Pi printer server error:', serverError);
 
+      // Check if it's a network/CORS error
+      if (serverError.message?.includes('fetch') || serverError.name === 'TypeError') {
+        return {
+          success: false,
+          message: `Cannot reach printer at ${printerServerUrl}. Make sure: 1) Raspberry Pi is on and printer-server is running, 2) You're on the same network (WiFi), 3) CORS is enabled on the printer server.`
+        };
+      }
+
       return {
         success: false,
-        message: `Printer server connection failed: ${serverError.message}. Make sure Raspberry Pi at ${printerServerUrl} is on and printer-server is running.`
+        message: `Print failed: ${serverError.message}. Make sure Raspberry Pi at ${printerServerUrl} is on and printer-server is running.`
       };
     }
 
