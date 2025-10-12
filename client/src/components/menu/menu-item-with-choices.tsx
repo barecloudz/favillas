@@ -169,19 +169,36 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
 
   // Calculate total price with selections and dynamic pricing
   const calculateTotalPrice = () => {
-    let total = parseFloat(item.basePrice) || 0;
+    let total = 0;
+    let hasSizeSelection = false;
 
     Object.entries(selectedChoices).forEach(([groupId, selections]) => {
+      const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
+      const isSizeGroup = group?.name === 'Size' || group?.name === 'Calzone Size' || group?.name === 'Stromboli Size';
+
       selections.forEach(selectionId => {
         const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
         if (choiceItem) {
           // Use dynamic price if available, otherwise fall back to base price
           const dynamicPrice = dynamicPrices[selectionId];
           const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
-          total += price;
+
+          // For size selections, this IS the base price (don't add basePrice separately)
+          if (isSizeGroup) {
+            total += price;
+            hasSizeSelection = true;
+          } else {
+            // For toppings, add to price
+            total += price;
+          }
         }
       });
     });
+
+    // If no size was selected, use the item's base price
+    if (!hasSizeSelection) {
+      total += parseFloat(item.basePrice) || 0;
+    }
 
     return total;
   };
