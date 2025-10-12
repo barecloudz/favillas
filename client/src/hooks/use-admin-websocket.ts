@@ -24,6 +24,7 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const dingbellAudioRef = useRef<HTMLAudioElement | null>(null);
   const reconnectAttemptsRef = useRef<number>(0);
   const maxReconnectAttempts = 3;
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -54,6 +55,15 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
       } catch (error) {
         console.warn('Audio context not available:', error);
       }
+    }
+
+    // Preload dingbell audio for iOS
+    if (!dingbellAudioRef.current && typeof window !== 'undefined') {
+      const dingBellUrl = 'https://tamsxlebouauwiivoyxa.supabase.co/storage/v1/object/public/notification-sounds/bellsound.wav';
+      dingbellAudioRef.current = new Audio(dingBellUrl);
+      dingbellAudioRef.current.preload = 'auto';
+      dingbellAudioRef.current.load();
+      console.log('🔔 Preloaded dingbell audio');
     }
   }, []);
 
@@ -159,14 +169,33 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
         oscillator.stop(audioContextRef.current.currentTime + 0.15);
 
       } else if (soundType === 'dingbell') {
-        // Use uploaded bell sound from Supabase
-        const dingBellUrl = 'https://tamsxlebouauwiivoyxa.supabase.co/storage/v1/object/public/notification-sounds/bellsound.wav';
+        // Use preloaded bell sound from Supabase
+        console.log('🔔 Attempting to play dingbell sound');
         try {
-          const audio = new Audio(dingBellUrl);
-          audio.volume = volume;
-          await audio.play();
-        } catch (error) {
-          console.warn('Failed to play ding bell sound:', error);
+          if (!dingbellAudioRef.current) {
+            // If not preloaded, create new instance
+            const dingBellUrl = 'https://tamsxlebouauwiivoyxa.supabase.co/storage/v1/object/public/notification-sounds/bellsound.wav';
+            dingbellAudioRef.current = new Audio(dingBellUrl);
+          }
+
+          // Reset to beginning and set volume
+          dingbellAudioRef.current.currentTime = 0;
+          dingbellAudioRef.current.volume = volume;
+
+          const playPromise = dingbellAudioRef.current.play();
+          if (playPromise !== undefined) {
+            await playPromise;
+            console.log('✅ Dingbell sound played successfully');
+          }
+        } catch (error: any) {
+          console.error('❌ Failed to play ding bell sound:', error);
+          console.error('Error name:', error.name);
+          console.error('Error message:', error.message);
+
+          // If audio fails, show a toast to prompt user interaction
+          if (error.name === 'NotAllowedError') {
+            console.warn('⚠️ Audio blocked - user interaction required. Click "Test Sound" button first to enable audio on iPad.');
+          }
         }
         return; // Exit early since we're using HTML5 Audio
 
