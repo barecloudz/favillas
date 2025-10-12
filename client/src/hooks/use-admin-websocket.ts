@@ -94,7 +94,7 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
 
       } else if (soundType === 'bell') {
         // Use uploaded bell sound from Supabase
-        const bellSoundUrl = 'https://tamsxlebouauwiivoyxa.supabase.co/storage/v1/object/public/notification-sounds/bell%20sound.wav';
+        const bellSoundUrl = 'https://tamsxlebouauwiivoyxa.supabase.co/storage/v1/object/public/notification-sounds/bellsound.wav';
         try {
           const audio = new Audio(bellSoundUrl);
           audio.volume = volume;
