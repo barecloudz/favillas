@@ -7274,53 +7274,77 @@ const SettingsPanel = () => {
     return 0.3;
   });
 
-  // Save sound preferences to localStorage
+  // Save sound preferences to localStorage AND system settings
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // Save to localStorage for immediate access
       localStorage.setItem('adminSoundNotifications', JSON.stringify(soundNotificationsEnabled));
       localStorage.setItem('adminSoundType', JSON.stringify(soundType));
       localStorage.setItem('adminSoundVolume', JSON.stringify(soundVolume));
       localStorage.setItem('adminCustomSoundUrl', customSoundUrl);
       localStorage.setItem('adminCustomSoundName', customSoundName);
+
+      // Save to system settings (debounced to avoid excessive API calls)
+      const timeoutId = setTimeout(async () => {
+        try {
+          await fetch('/api/admin/system-settings', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              category: 'notifications',
+              settings: [
+                { key: 'sound_enabled', value: String(soundNotificationsEnabled) },
+                { key: 'sound_type', value: soundType },
+                { key: 'sound_volume', value: String(soundVolume) },
+                { key: 'custom_sound_url', value: customSoundUrl },
+                { key: 'custom_sound_name', value: customSoundName }
+              ]
+            })
+          });
+        } catch (err) {
+          console.warn('Failed to save notification settings:', err);
+        }
+      }, 1000); // Debounce by 1 second
+
+      return () => clearTimeout(timeoutId);
     }
   }, [soundNotificationsEnabled, soundType, soundVolume, customSoundUrl, customSoundName]);
 
-  // Fetch user's saved custom notification sound on mount
+  // Fetch notification settings from system settings on mount
   useEffect(() => {
-    const fetchCustomSound = async () => {
+    const fetchNotificationSettings = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-
-        if (!token) return;
-
-        const response = await fetch('/api/notification-sound', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
+        // Fetch from system settings
+        const response = await fetch('/api/admin/system-settings?category=notifications', {
+          credentials: 'include'
         });
 
         if (response.ok) {
           const data = await response.json();
-          if (data.customNotificationSoundUrl) {
-            setCustomSoundUrl(data.customNotificationSoundUrl);
-            // Extract filename from URL
-            const urlParts = data.customNotificationSoundUrl.split('/');
-            const filename = urlParts[urlParts.length - 1];
-            setCustomSoundName(filename);
+          const settings = data.notifications || [];
 
-            // Update localStorage for backward compatibility
-            localStorage.setItem('adminCustomSoundUrl', data.customNotificationSoundUrl);
-            localStorage.setItem('adminCustomSoundName', filename);
-          }
+          // Update state from system settings
+          const soundEnabled = settings.find((s: any) => s.key === 'sound_enabled');
+          const soundTypeVal = settings.find((s: any) => s.key === 'sound_type');
+          const soundVolumeVal = settings.find((s: any) => s.key === 'sound_volume');
+          const customUrl = settings.find((s: any) => s.key === 'custom_sound_url');
+          const customName = settings.find((s: any) => s.key === 'custom_sound_name');
+
+          if (soundEnabled) setSoundNotificationsEnabled(soundEnabled.value === 'true');
+          if (soundTypeVal) setSoundType(soundTypeVal.value as any);
+          if (soundVolumeVal) setSoundVolume(parseFloat(soundVolumeVal.value));
+          if (customUrl && customUrl.value) setCustomSoundUrl(customUrl.value);
+          if (customName && customName.value) setCustomSoundName(customName.value);
         }
       } catch (error) {
-        console.error('Failed to fetch custom notification sound:', error);
+        console.error('Failed to fetch notification settings:', error);
       }
     };
 
-    fetchCustomSound();
+    fetchNotificationSettings();
   }, []); // Run once on mount
 
   // Handle custom sound file upload
@@ -7381,6 +7405,26 @@ const SettingsPanel = () => {
         // Also update localStorage for backward compatibility
         localStorage.setItem('adminCustomSoundUrl', data.url);
         localStorage.setItem('adminCustomSoundName', file.name);
+
+        // Save to system settings so all devices can access
+        try {
+          await fetch('/api/admin/system-settings', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              category: 'notifications',
+              settings: [
+                { key: 'custom_sound_url', value: data.url },
+                { key: 'custom_sound_name', value: file.name }
+              ]
+            })
+          });
+        } catch (err) {
+          console.warn('Failed to save to system settings:', err);
+        }
 
         // Test the uploaded sound
         const audio = new Audio(data.url);
