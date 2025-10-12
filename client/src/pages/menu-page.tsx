@@ -460,7 +460,14 @@ const MenuPage = () => {
             </div>
           ) : (
             <div className="space-y-8">
-              {Object.entries(itemsByCategory).map(([categoryName, items]: [string, any]) => (
+              {Object.entries(itemsByCategory)
+                .sort(([categoryA], [categoryB]) => {
+                  // Sort categories by their order value
+                  const catA = categoriesData?.categories?.find((c: any) => c.name === categoryA);
+                  const catB = categoriesData?.categories?.find((c: any) => c.name === categoryB);
+                  return (catA?.order || 999) - (catB?.order || 999);
+                })
+                .map(([categoryName, items]: [string, any]) => (
                 <div key={categoryName}>
                   <h2 className="text-xl font-bold text-gray-900 mb-4">{categoryName}</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
