@@ -60,6 +60,8 @@ export interface OrderPrintData {
   tip?: number;
   specialInstructions?: string;
   createdAt: string;
+  userId?: number;
+  pointsEarned?: number;
 }
 
 /**
@@ -184,10 +186,15 @@ export async function printToThermalPrinter(
     const printerServerUrl = await getPrinterServerUrl();
     console.log(`📡 Sending to printer server: ${printerServerUrl}`);
 
+    // Calculate points earned (1 point per dollar)
+    const pointsPerDollar = 1;
+    const pointsEarned = Math.floor(order.total * pointsPerDollar);
+    const isGuest = !order.userId;
+
     // Format receipt data for Raspberry Pi printer server
     const receipt = {
       storeName: "Favilla's NY Pizza",
-      storeAddress: "Your Store Address", // Update this
+      storeAddress: "123 Main Street, Hendersonville, NC 28792",
       storePhone: "828-225-2885",
       orderId: order.id,
       orderDate: order.createdAt,
@@ -208,7 +215,9 @@ export async function printToThermalPrinter(
       deliveryFee: order.deliveryFee || 0,
       tip: order.tip || 0,
       discount: 0,
-      total: order.total
+      total: order.total,
+      pointsEarned: pointsEarned,
+      isGuest: isGuest
     };
 
     try {
