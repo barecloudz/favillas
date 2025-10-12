@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { setupWebSocket, sendMessage } from "@/lib/websocket";
+import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminWebSocket } from "@/hooks/use-admin-websocket";
 import { Helmet } from "react-helmet";
@@ -97,100 +96,6 @@ const KitchenPage = () => {
     refetchInterval: 2000, // Refetch every 2 seconds for real-time updates
     enabled: !!user, // Only fetch when user is authenticated
   });
-
-  // Setup WebSocket for real-time order updates
-  useEffect(() => {
-    const socket = setupWebSocket();
-    
-    // Register as kitchen client
-    socket.addEventListener('open', () => {
-      socket.send(JSON.stringify({
-        type: 'register',
-        client: 'kitchen'
-      }));
-    });
-    
-    // Handle incoming messages
-    socket.addEventListener('message', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        
-        if (data.type === 'newOrder') {
-          // Play notification sound
-          if (audioRef.current) {
-            audioRef.current.play();
-          }
-
-          // Show toast notification
-          toast({
-            title: "New Order Received",
-            description: `Order #${data.order.id} has been placed.`,
-          });
-
-          // Refresh orders list
-          queryClient.invalidateQueries({ queryKey: ["/api/kitchen/orders"] });
-
-          // Auto-print new order if enabled
-          const autoPrintEnabled = localStorage.getItem('autoPrintOrders') !== 'false';
-          if (autoPrintEnabled) {
-            console.log('🖨️  Auto-printing new order #' + data.order.id);
-
-            // Get printer config and print
-            apiRequest("GET", "/api/printer/config")
-              .then(response => response.json())
-              .then(printers => {
-                const activePrinter = printers.find((p: any) => p.isActive);
-                if (activePrinter && data.order) {
-                  printToThermalPrinter(
-                    {
-                      id: data.order.id,
-                      orderType: data.order.order_type || data.order.orderType,
-                      customerName: data.order.customer_name || data.order.customerName,
-                      phone: data.order.phone,
-                      address: data.order.address,
-                      items: data.order.items || [],
-                      total: parseFloat(data.order.total || 0),
-                      tax: parseFloat(data.order.tax || 0),
-                      deliveryFee: parseFloat(data.order.delivery_fee || data.order.deliveryFee || 0),
-                      tip: parseFloat(data.order.tip || 0),
-                      specialInstructions: data.order.special_instructions || data.order.specialInstructions,
-                      createdAt: data.order.created_at || data.order.createdAt || new Date().toISOString()
-                    },
-                    {
-                      ipAddress: activePrinter.ipAddress,
-                      port: activePrinter.port,
-                      name: activePrinter.name
-                    }
-                  ).then(result => {
-                    if (result.success) {
-                      console.log('✅ Auto-print successful for order #' + data.order.id);
-                    } else {
-                      console.warn('⚠️  Auto-print failed:', result.message);
-                    }
-                  }).catch(error => {
-                    console.error('❌ Auto-print error:', error);
-                  });
-                } else {
-                  console.log('⚠️  Auto-print skipped: No active printer configured');
-                }
-              })
-              .catch(error => {
-                console.error('❌ Failed to get printer config for auto-print:', error);
-              });
-          }
-        } else if (data.type === 'orderStatusUpdate' || data.type === 'paymentCompleted') {
-          // Refresh orders list
-          queryClient.invalidateQueries({ queryKey: ["/api/kitchen/orders"] });
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
-    });
-    
-    return () => {
-      socket.close();
-    };
-  }, [toast]);
 
   // Helper function to check if order is ready to start (for scheduled orders)
   const isOrderReadyToStart = (order: any) => {
@@ -383,10 +288,7 @@ const KitchenPage = () => {
         <title>Kitchen Display | Favilla's NY Pizza</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
-      
-      {/* Notification sound */}
-      <audio ref={audioRef} src="https://assets.mixkit.co/sfx/preview/mixkit-bell-notification-933.mp3" />
-      
+
       <div className="min-h-screen bg-gray-100 overflow-y-auto">
         <header className="bg-[#d73a31] text-white p-3 md:p-4 shadow-md">
           <div className="container mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
@@ -397,16 +299,7 @@ const KitchenPage = () => {
                 size="sm"
                 className="text-white border-white hover:bg-white hover:text-[#d73a31]"
                 onClick={() => {
-                  if (audioRef.current) {
-                    audioRef.current.play().catch(error => {
-                      console.warn('Failed to play sound:', error);
-                      toast({
-                        title: "Cannot play sound",
-                        description: "Click anywhere on the page first to enable audio",
-                        variant: "destructive",
-                      });
-                    });
-                  }
+                  playTestSound();
                 }}
               >
                 <Volume2 className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />
