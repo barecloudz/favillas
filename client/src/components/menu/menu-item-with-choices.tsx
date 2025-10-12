@@ -91,7 +91,10 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
   // Get selected size name for conditional topping display
   const getSelectedSize = () => {
     const sizeGroup = itemChoiceGroups.find(g =>
-      g.name === 'Size' || g.name === 'Calzone Size' || g.name === 'Stromboli Size'
+      g.name === 'Size' ||
+      g.name === 'Calzone Size' ||
+      g.name === 'Stromboli Size' ||
+      g.name === 'Traditional Pizza Size'
     );
     if (!sizeGroup || !selectedChoices[sizeGroup.id]) return null;
 
@@ -111,18 +114,31 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       const groupName = group.name;
 
       // Always show size selection groups
-      if (groupName === 'Size' || groupName === 'Calzone Size' || groupName === 'Stromboli Size') return true;
+      if (groupName === 'Size' || groupName === 'Calzone Size' || groupName === 'Stromboli Size' || groupName === 'Traditional Pizza Size') return true;
 
       // If no size selected yet, don't show topping groups
       if (!selectedSize) return false;
 
       // Show topping groups that match the selected size
+      // Calzone/Stromboli sizes
       if (groupName.includes('Small') && selectedSize === 'Small') return true;
       if (groupName.includes('Medium') && selectedSize === 'Medium') return true;
       if (groupName.includes('Large') && selectedSize === 'Large') return true;
 
+      // Traditional Pizza sizes
+      if (groupName.includes('(10")') && selectedSize === '10"') return true;
+      if (groupName.includes('(14")') && selectedSize === '14"') return true;
+      if (groupName.includes('(16")') && selectedSize === '16"') return true;
+      if (groupName.includes('(Sicilian)') && selectedSize === 'Sicilian') return true;
+
       // Show groups that don't have size specification
-      if (!groupName.includes('Small') && !groupName.includes('Medium') && !groupName.includes('Large')) {
+      if (!groupName.includes('Small') &&
+          !groupName.includes('Medium') &&
+          !groupName.includes('Large') &&
+          !groupName.includes('(10")') &&
+          !groupName.includes('(14")') &&
+          !groupName.includes('(16")') &&
+          !groupName.includes('(Sicilian)')) {
         return true;
       }
 
@@ -174,7 +190,10 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
 
     Object.entries(selectedChoices).forEach(([groupId, selections]) => {
       const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
-      const isSizeGroup = group?.name === 'Size' || group?.name === 'Calzone Size' || group?.name === 'Stromboli Size';
+      const isSizeGroup = group?.name === 'Size' ||
+                          group?.name === 'Calzone Size' ||
+                          group?.name === 'Stromboli Size' ||
+                          group?.name === 'Traditional Pizza Size';
 
       selections.forEach(selectionId => {
         const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
@@ -250,7 +269,10 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
 
       // If this is a size selection, collapse the size section
       const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
-      const isSizeGroup = group?.name === 'Size' || group?.name === 'Calzone Size' || group?.name === 'Stromboli Size';
+      const isSizeGroup = group?.name === 'Size' ||
+                          group?.name === 'Calzone Size' ||
+                          group?.name === 'Stromboli Size' ||
+                          group?.name === 'Traditional Pizza Size';
       console.log('🔍 [Choice Selection] Group found for collapse check:', {
         group,
         groupId: parseInt(groupId),
