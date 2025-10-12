@@ -88,12 +88,47 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
   const itemChoiceGroups = getItemChoiceGroups();
   const hasChoices = itemChoiceGroups.length > 0;
 
+  // Get selected size name for conditional topping display
+  const getSelectedSize = () => {
+    const sizeGroup = itemChoiceGroups.find(g => g.name === 'Size');
+    if (!sizeGroup || !selectedChoices[sizeGroup.id]) return null;
+
+    const sizeChoiceId = selectedChoices[sizeGroup.id][0];
+    const sizeChoice = choiceItems.find(ci => ci.id === parseInt(sizeChoiceId));
+    return sizeChoice?.name;
+  };
+
   // Determine which choice groups should be visible based on conditional display logic
   const getVisibleChoiceGroups = () => {
     if (itemChoiceGroups.length === 0) return [];
 
+    const selectedSize = getSelectedSize();
+
+    // Filter groups based on size selection
+    let filteredGroups = itemChoiceGroups.filter(group => {
+      const groupName = group.name;
+
+      // Always show size selection
+      if (groupName === 'Size') return true;
+
+      // If no size selected yet, don't show topping groups
+      if (!selectedSize) return false;
+
+      // Show topping groups that match the selected size
+      if (groupName.includes('Small') && selectedSize === 'Small') return true;
+      if (groupName.includes('Medium') && selectedSize === 'Medium') return true;
+      if (groupName.includes('Large') && selectedSize === 'Large') return true;
+
+      // Show groups that don't have size specification
+      if (!groupName.includes('Small') && !groupName.includes('Medium') && !groupName.includes('Large')) {
+        return true;
+      }
+
+      return false;
+    });
+
     // Group by priority
-    const groupsByPriority = itemChoiceGroups.reduce((acc, group) => {
+    const groupsByPriority = filteredGroups.reduce((acc, group) => {
       const priority = group.priority || 0;
       if (!acc[priority]) acc[priority] = [];
       acc[priority].push(group);
