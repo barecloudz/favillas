@@ -5065,7 +5065,7 @@ const MenuEditor = ({ menuItems }: any) => {
             </div>
             
             <div className="space-y-2">
-              {categories.map((category) => (
+              {[...categories].sort((a, b) => a.order - b.order).map((category) => (
                 <div
                   key={category.id}
                   className="flex items-center border rounded-lg bg-white hover:bg-gray-50 transition-opacity duration-200"
