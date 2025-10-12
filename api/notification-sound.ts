@@ -2,7 +2,7 @@ import { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { users } from '../../shared/schema';
+import { users } from '../shared/schema';
 import { eq } from 'drizzle-orm';
 
 const supabase = createClient(
