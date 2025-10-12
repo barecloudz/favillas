@@ -7296,11 +7296,11 @@ const SettingsPanel = () => {
             body: JSON.stringify({
               category: 'notifications',
               settings: [
-                { key: 'sound_enabled', value: String(soundNotificationsEnabled) },
-                { key: 'sound_type', value: soundType },
-                { key: 'sound_volume', value: String(soundVolume) },
-                { key: 'custom_sound_url', value: customSoundUrl },
-                { key: 'custom_sound_name', value: customSoundName }
+                { setting_key: 'NOTIFICATION_SOUND_ENABLED', setting_value: String(soundNotificationsEnabled) },
+                { setting_key: 'NOTIFICATION_SOUND_TYPE', setting_value: soundType },
+                { setting_key: 'NOTIFICATION_SOUND_VOLUME', setting_value: String(soundVolume) },
+                { setting_key: 'NOTIFICATION_CUSTOM_SOUND_URL', setting_value: customSoundUrl },
+                { setting_key: 'NOTIFICATION_CUSTOM_SOUND_NAME', setting_value: customSoundName }
               ]
             })
           });
@@ -7326,18 +7326,18 @@ const SettingsPanel = () => {
           const data = await response.json();
           const settings = data.notifications || [];
 
-          // Update state from system settings
-          const soundEnabled = settings.find((s: any) => s.key === 'sound_enabled');
-          const soundTypeVal = settings.find((s: any) => s.key === 'sound_type');
-          const soundVolumeVal = settings.find((s: any) => s.key === 'sound_volume');
-          const customUrl = settings.find((s: any) => s.key === 'custom_sound_url');
-          const customName = settings.find((s: any) => s.key === 'custom_sound_name');
+          // Update state from system settings (using setting_key and setting_value)
+          const soundEnabled = settings.find((s: any) => s.setting_key === 'NOTIFICATION_SOUND_ENABLED');
+          const soundTypeVal = settings.find((s: any) => s.setting_key === 'NOTIFICATION_SOUND_TYPE');
+          const soundVolumeVal = settings.find((s: any) => s.setting_key === 'NOTIFICATION_SOUND_VOLUME');
+          const customUrl = settings.find((s: any) => s.setting_key === 'NOTIFICATION_CUSTOM_SOUND_URL');
+          const customName = settings.find((s: any) => s.setting_key === 'NOTIFICATION_CUSTOM_SOUND_NAME');
 
-          if (soundEnabled) setSoundNotificationsEnabled(soundEnabled.value === 'true');
-          if (soundTypeVal) setSoundType(soundTypeVal.value as any);
-          if (soundVolumeVal) setSoundVolume(parseFloat(soundVolumeVal.value));
-          if (customUrl && customUrl.value) setCustomSoundUrl(customUrl.value);
-          if (customName && customName.value) setCustomSoundName(customName.value);
+          if (soundEnabled) setSoundNotificationsEnabled(soundEnabled.setting_value === 'true');
+          if (soundTypeVal) setSoundType(soundTypeVal.setting_value as any);
+          if (soundVolumeVal) setSoundVolume(parseFloat(soundVolumeVal.setting_value));
+          if (customUrl && customUrl.setting_value) setCustomSoundUrl(customUrl.setting_value);
+          if (customName && customName.setting_value) setCustomSoundName(customName.setting_value);
         }
       } catch (error) {
         console.error('Failed to fetch notification settings:', error);
@@ -7417,8 +7417,8 @@ const SettingsPanel = () => {
             body: JSON.stringify({
               category: 'notifications',
               settings: [
-                { key: 'custom_sound_url', value: data.url },
-                { key: 'custom_sound_name', value: file.name }
+                { setting_key: 'NOTIFICATION_CUSTOM_SOUND_URL', setting_value: data.url },
+                { setting_key: 'NOTIFICATION_CUSTOM_SOUND_NAME', setting_value: file.name }
               ]
             })
           });
