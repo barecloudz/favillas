@@ -2,17 +2,20 @@
 -- This creates a collapsible "Customize My Calzone/Stromboli" section with toppings
 
 -- ============================================
--- 1. CREATE SIZE CHOICE GROUP (Required - Must Pick One)
+-- 1. CREATE SIZE CHOICE GROUPS (Required - Must Pick One)
+-- Separate size groups for Calzones and Strombolis since they have different prices
 -- ============================================
 INSERT INTO choice_groups (name, description, "order", is_active, is_required, max_selections, min_selections)
 VALUES
-  ('Size', 'Choose your size', 1, true, true, 1, 1)
+  ('Calzone Size', 'Choose your calzone size', 1, true, true, 1, 1),
+  ('Stromboli Size', 'Choose your stromboli size', 1, true, true, 1, 1)
 ON CONFLICT DO NOTHING;
 
--- Get the size group ID for reference
+-- Get the size group IDs for reference
 DO $$
 DECLARE
-  size_group_id integer;
+  calzone_size_group_id integer;
+  stromboli_size_group_id integer;
   normal_toppings_small_group_id integer;
   normal_toppings_medium_group_id integer;
   normal_toppings_large_group_id integer;
@@ -20,14 +23,23 @@ DECLARE
   specialty_toppings_medium_group_id integer;
   specialty_toppings_large_group_id integer;
 BEGIN
-  SELECT id INTO size_group_id FROM choice_groups WHERE name = 'Size' LIMIT 1;
+  SELECT id INTO calzone_size_group_id FROM choice_groups WHERE name = 'Calzone Size' LIMIT 1;
+  SELECT id INTO stromboli_size_group_id FROM choice_groups WHERE name = 'Stromboli Size' LIMIT 1;
 
-  -- Add size options
+  -- Add calzone size options
   INSERT INTO choice_items (choice_group_id, name, price, "order", is_active, is_default)
   VALUES
-    (size_group_id, 'Small', 0.00, 1, true, false),
-    (size_group_id, 'Medium', 0.00, 2, true, true),
-    (size_group_id, 'Large', 0.00, 3, true, false)
+    (calzone_size_group_id, 'Small', 11.49, 1, true, false),
+    (calzone_size_group_id, 'Medium', 16.49, 2, true, true),
+    (calzone_size_group_id, 'Large', 21.49, 3, true, false)
+  ON CONFLICT DO NOTHING;
+
+  -- Add stromboli size options
+  INSERT INTO choice_items (choice_group_id, name, price, "order", is_active, is_default)
+  VALUES
+    (stromboli_size_group_id, 'Small', 13.95, 1, true, false),
+    (stromboli_size_group_id, 'Medium', 18.95, 2, true, true),
+    (stromboli_size_group_id, 'Large', 23.95, 3, true, false)
   ON CONFLICT DO NOTHING;
 
   -- ============================================
