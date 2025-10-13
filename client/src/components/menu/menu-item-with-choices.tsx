@@ -436,7 +436,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                   onClick={(event) => setTriggerElement(event.currentTarget)}
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" />
-                  Customize
+                  See Options
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white to-gray-50">
