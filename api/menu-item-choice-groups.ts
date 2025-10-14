@@ -27,7 +27,7 @@ export const handler: Handler = async (event, context) => {
   // Set CORS headers
   const headers = {
     'Access-Control-Allow-Origin': event.headers.origin || '*',
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json',
@@ -93,6 +93,45 @@ export const handler: Handler = async (event, context) => {
       
       return {
         statusCode: 201,
+        headers,
+        body: JSON.stringify(result[0])
+      };
+
+    } else if (event.httpMethod === 'PUT') {
+      // Extract ID from URL path
+      const urlParts = event.path?.split('/') || [];
+      const associationId = urlParts[urlParts.length - 1];
+
+      if (!associationId || isNaN(parseInt(associationId))) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ message: 'Invalid association ID' })
+        };
+      }
+
+      const requestBody = JSON.parse(event.body || '{}');
+      const { order, isRequired } = requestBody;
+
+      const result = await sql`
+        UPDATE menu_item_choice_groups
+        SET
+          "order" = COALESCE(${order}, "order"),
+          is_required = COALESCE(${isRequired}, is_required)
+        WHERE id = ${parseInt(associationId)}
+        RETURNING *
+      `;
+
+      if (result.length === 0) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ message: 'Association not found' })
+        };
+      }
+
+      return {
+        statusCode: 200,
         headers,
         body: JSON.stringify(result[0])
       };
