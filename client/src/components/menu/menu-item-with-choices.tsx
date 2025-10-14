@@ -115,8 +115,8 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
     let filteredGroups = itemChoiceGroups.filter(group => {
       const groupName = group.name;
 
-      // Always show size selection groups
-      if (groupName === 'Size' || groupName === 'Calzone Size' || groupName === 'Stromboli Size' || groupName === 'Traditional Pizza Size' || groupName === 'Specialty Gourmet Pizza Size') return true;
+      // Always show primary selection groups (size/flavor)
+      if (groupName === 'Size' || groupName === 'Calzone Size' || groupName === 'Stromboli Size' || groupName === 'Traditional Pizza Size' || groupName === 'Specialty Gourmet Pizza Size' || groupName === 'Wing Flavors') return true;
 
       // If no size selected yet, don't show topping groups
       if (!selectedSize) return false;
