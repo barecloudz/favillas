@@ -18,7 +18,7 @@ export function WarningBanner() {
         <div className="flex items-center gap-2">
           <AlertCircle className="h-5 w-5 flex-shrink-0" />
           <p className="text-sm sm:text-base">
-            <strong>We're almost ready with our new system. Expected to be ready Tuesday, Oct 14. Status needs printer server.</strong> Any orders placed through here will not be received. If you are looking to place an order now:
+            <strong>We're almost ready with our new system. Expected to be ready Tuesday, Oct 21. Status: Rewards system broken & menu updates underway.</strong> <span className="inline-flex items-center gap-1.5"><span className="inline-block w-2 h-2 bg-green-400 rounded-full"></span>Printer server working</span> Any orders placed through here will not be received. If you are looking to place an order now:
           </p>
         </div>
         <Button
