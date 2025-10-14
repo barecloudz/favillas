@@ -3812,10 +3812,10 @@ const MenuEditor = ({ menuItems }: any) => {
 
     // Create the assignment
     createMenuItemChoiceGroupMutation.mutate({
-      menu_item_id: itemId,
-      choice_group_id: choiceId,
+      menuItemId: itemId,
+      choiceGroupId: choiceId,
       order: order,
-      is_required: isRequired
+      isRequired: isRequired
     });
   };
 
