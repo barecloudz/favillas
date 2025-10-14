@@ -3297,6 +3297,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/menu-item-choice-groups/:id", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user.isAdmin) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertMenuItemChoiceGroupSchema.partial().parse(req.body);
+      const menuItemChoiceGroup = await storage.updateMenuItemChoiceGroup(id, validatedData);
+
+      if (!menuItemChoiceGroup) {
+        return res.status(404).json({ message: "Menu item choice group not found" });
+      }
+
+      res.json(menuItemChoiceGroup);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update menu item choice group" });
+    }
+  });
+
   app.delete("/api/menu-item-choice-groups/:id", async (req, res) => {
     if (!req.isAuthenticated() || !req.user.isAdmin) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -3305,11 +3328,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const deleted = await storage.deleteMenuItemChoiceGroup(id);
-      
+
       if (!deleted) {
         return res.status(404).json({ message: "Menu item choice group not found" });
       }
-      
+
       res.json({ message: "Menu item choice group deleted successfully" });
     } catch (error: any) {
       res.status(500).json({ message: error.message });

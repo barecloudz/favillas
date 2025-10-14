@@ -3553,11 +3553,11 @@ const MenuEditor = ({ menuItems }: any) => {
   const [newChoiceData, setNewChoiceData] = useState({ name: '', description: '', priority: 0 });
   const [editingChoiceData, setEditingChoiceData] = useState({ name: '', description: '', priority: 0 });
   const [editingChoiceItem, setEditingChoiceItem] = useState<any>(null);
-  const [newChoiceItemData, setNewChoiceItemData] = useState({ 
-    name: '', 
-    description: '', 
-    price: '0.00', 
-    isDefault: false 
+  const [newChoiceItemData, setNewChoiceItemData] = useState({
+    name: '',
+    description: '',
+    price: '0.00',
+    isDefault: false
   });
   const [editingChoiceItemData, setEditingChoiceItemData] = useState({
     name: '',
@@ -3571,6 +3571,11 @@ const MenuEditor = ({ menuItems }: any) => {
 
   const [availableSizes, setAvailableSizes] = useState<any[]>([]);
   const [isSavingPricing, setIsSavingPricing] = useState(false);
+
+  // New state for menu item choice groups management
+  const [expandedItemChoiceGroups, setExpandedItemChoiceGroups] = useState<Set<number>>(new Set());
+  const [draggingOver, setDraggingOver] = useState<number | null>(null);
+  const [reorderingGroup, setReorderingGroup] = useState<{itemId: number, groupId: number} | null>(null);
 
   // Fetch size choices for a specific category
   const fetchSizesForCategory = async (category: string) => {
@@ -3788,17 +3793,49 @@ const MenuEditor = ({ menuItems }: any) => {
   };
 
   const addChoiceToItem = (itemId: number, choiceId: number) => {
-    setItemChoices(prev => ({
-      ...prev,
-      [itemId]: [...(prev[itemId] || []), choiceId]
-    }));
+    // Check if already assigned
+    const existingGroups = menuItemChoiceGroupsMap[itemId] || [];
+    if (existingGroups.some(g => g.choice_group_id === choiceId)) {
+      toast({
+        title: "Already assigned",
+        description: "This choice group is already assigned to this menu item",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Determine if this should be required and the order
+    const choiceGroup = choiceGroups.find((cg: any) => cg.id === choiceId);
+    const groupName = choiceGroup?.name?.toLowerCase() || '';
+    const isRequired = groupName.includes('size') || groupName.includes('wing flavors');
+    const order = existingGroups.length + 1;
+
+    // Create the assignment
+    createMenuItemChoiceGroupMutation.mutate({
+      menu_item_id: itemId,
+      choice_group_id: choiceId,
+      order: order,
+      is_required: isRequired
+    });
   };
 
-  const removeChoiceFromItem = (itemId: number, choiceId: number) => {
-    setItemChoices(prev => ({
-      ...prev,
-      [itemId]: (prev[itemId] || []).filter(id => id !== choiceId)
-    }));
+  const removeChoiceFromItem = (itemId: number, assignmentId: number) => {
+    // Find the assignment
+    const assignment = menuItemChoiceGroups.find((micg: any) => micg.id === assignmentId);
+    if (!assignment) return;
+
+    // Show confirmation for primary groups
+    const choiceGroup = choiceGroups.find((cg: any) => cg.id === assignment.choice_group_id);
+    const groupName = choiceGroup?.name?.toLowerCase() || '';
+    const isPrimary = groupName.includes('size') || groupName.includes('wing flavors');
+
+    if (isPrimary) {
+      if (!confirm(`This is a primary choice group (${choiceGroup?.name}). Are you sure you want to remove it?`)) {
+        return;
+      }
+    }
+
+    deleteMenuItemChoiceGroupMutation.mutate(assignmentId);
   };
 
   // Get sorted categories
@@ -3964,6 +4001,48 @@ const MenuEditor = ({ menuItems }: any) => {
       return response.json();
     }
   });
+
+  // Fetch menu item choice groups
+  const { data: menuItemChoiceGroups = [], refetch: refetchMenuItemChoiceGroups } = useQuery({
+    queryKey: ['menu-item-choice-groups'],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest('GET', '/api/menu-item-choice-groups');
+        if (!response.ok) {
+          console.error('Failed to fetch menu item choice groups:', response.status);
+          return [];
+        }
+        const data = await response.json();
+        console.log('Fetched menu item choice groups:', data);
+        return data || [];
+      } catch (error) {
+        console.error('Error fetching menu item choice groups:', error);
+        return [];
+      }
+    }
+  });
+
+  // Group menu item choice groups by menu item ID for easy lookup
+  const menuItemChoiceGroupsMap = React.useMemo(() => {
+    const map: { [key: number]: any[] } = {};
+    menuItemChoiceGroups.forEach((micg: any) => {
+      if (!map[micg.menu_item_id]) {
+        map[micg.menu_item_id] = [];
+      }
+      // Find the choice group name from our choiceGroups data
+      const choiceGroup = choiceGroups.find((cg: any) => cg.id === micg.choice_group_id);
+      map[micg.menu_item_id].push({
+        ...micg,
+        choice_group_name: choiceGroup?.name || 'Unknown Group',
+        choice_group_description: choiceGroup?.description || ''
+      });
+    });
+    // Sort each item's groups by order
+    Object.keys(map).forEach(itemId => {
+      map[parseInt(itemId)].sort((a, b) => a.order - b.order);
+    });
+    return map;
+  }, [menuItemChoiceGroups, choiceGroups]);
 
   // Load existing category choice group assignments
   React.useEffect(() => {
@@ -4155,6 +4234,62 @@ const MenuEditor = ({ menuItems }: any) => {
         variant: "destructive",
       });
     }
+  });
+
+  // Menu item choice group mutations
+  const createMenuItemChoiceGroupMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('POST', '/api/menu-item-choice-groups', data),
+    onSuccess: () => {
+      refetchMenuItemChoiceGroups();
+      toast({
+        title: "Success",
+        description: "Choice group assigned to menu item successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to assign choice group to menu item",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateMenuItemChoiceGroupMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      apiRequest('PUT', `/api/menu-item-choice-groups/${id}`, data),
+    onSuccess: () => {
+      refetchMenuItemChoiceGroups();
+      toast({
+        title: "Success",
+        description: "Choice group updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update choice group",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMenuItemChoiceGroupMutation = useMutation({
+    mutationFn: (id: number) => apiRequest('DELETE', `/api/menu-item-choice-groups/${id}`),
+    onSuccess: () => {
+      refetchMenuItemChoiceGroups();
+      toast({
+        title: "Success",
+        description: "Choice group removed from menu item",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove choice group",
+        variant: "destructive",
+      });
+    },
   });
 
   const handleCreateChoice = (data: any) => {
@@ -4408,7 +4543,7 @@ const MenuEditor = ({ menuItems }: any) => {
   // Component to display assigned choice groups
   const AssignedChoices = ({ choiceIds, onRemove }: { choiceIds: number[], onRemove: (choiceId: number) => void }) => {
     if (choiceIds.length === 0) return null;
-    
+
     return (
       <div className="mt-2 space-y-1">
         <p className="text-xs font-medium text-gray-600">Choice Groups:</p>
@@ -4416,7 +4551,7 @@ const MenuEditor = ({ menuItems }: any) => {
           {choiceIds.map(choiceId => {
             const choice = choiceGroups.find((c: any) => c.id === choiceId);
             if (!choice) return null;
-            
+
             return (
               <div key={choiceId} className="flex items-center space-x-1 bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
                 <span>{choice.name}</span>
@@ -4430,6 +4565,206 @@ const MenuEditor = ({ menuItems }: any) => {
             );
           })}
         </div>
+      </div>
+    );
+  };
+
+  // Enhanced component to display menu item choice group badges with full management
+  const MenuItemChoiceGroupBadges = ({ itemId }: { itemId: number }) => {
+    const assignments = menuItemChoiceGroupsMap[itemId] || [];
+    const [isExpanded, setIsExpanded] = useState(expandedItemChoiceGroups.has(itemId));
+    const [showAddDropdown, setShowAddDropdown] = useState(false);
+
+    if (assignments.length === 0 && !showAddDropdown) {
+      return (
+        <div className="mt-2">
+          <button
+            onClick={() => setShowAddDropdown(true)}
+            className="text-xs text-blue-600 hover:text-blue-800"
+          >
+            + Add Choice Groups
+          </button>
+        </div>
+      );
+    }
+
+    const toggleRequired = (assignment: any) => {
+      updateMenuItemChoiceGroupMutation.mutate({
+        id: assignment.id,
+        data: {
+          is_required: !assignment.is_required,
+          order: assignment.order
+        }
+      });
+    };
+
+    const handleReorder = (assignment: any, direction: 'up' | 'down') => {
+      const currentIndex = assignments.findIndex(a => a.id === assignment.id);
+      const swapIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+
+      if (swapIndex < 0 || swapIndex >= assignments.length) return;
+
+      const swapAssignment = assignments[swapIndex];
+
+      // Update both assignments with swapped orders
+      updateMenuItemChoiceGroupMutation.mutate({
+        id: assignment.id,
+        data: { order: swapAssignment.order, is_required: assignment.is_required }
+      });
+      updateMenuItemChoiceGroupMutation.mutate({
+        id: swapAssignment.id,
+        data: { order: assignment.order, is_required: swapAssignment.is_required }
+      });
+    };
+
+    const getBadgeColor = (assignment: any) => {
+      const groupName = assignment.choice_group_name?.toLowerCase() || '';
+
+      // Primary required groups (red)
+      if (assignment.is_required && (groupName.includes('size') || groupName.includes('flavors'))) {
+        return 'bg-red-100 text-red-800 border-red-200';
+      }
+      // Other required groups (blue)
+      if (assignment.is_required) {
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      }
+      // Optional groups (gray)
+      return 'bg-gray-100 text-gray-700 border-gray-200';
+    };
+
+    const availableChoiceGroups = choiceGroups.filter((cg: any) =>
+      !assignments.some(a => a.choice_group_id === cg.id)
+    );
+
+    return (
+      <div className="mt-3 space-y-2">
+        {/* Compact Badge View */}
+        <div className="flex items-center justify-between">
+          <div className="flex flex-wrap gap-1.5">
+            {assignments.map((assignment, index) => (
+              <div
+                key={assignment.id}
+                className={`flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-medium border ${getBadgeColor(assignment)}`}
+              >
+                <span className="font-bold">{assignment.order}</span>
+                <span>{assignment.is_required ? '•' : '○'}</span>
+                <span>{assignment.choice_group_name}</span>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => {
+              const newExpanded = new Set(expandedItemChoiceGroups);
+              if (isExpanded) {
+                newExpanded.delete(itemId);
+              } else {
+                newExpanded.add(itemId);
+              }
+              setExpandedItemChoiceGroups(newExpanded);
+              setIsExpanded(!isExpanded);
+            }}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {/* Expanded Management Panel */}
+        {isExpanded && (
+          <div className="bg-gray-50 border rounded-lg p-3 space-y-3">
+            <div className="text-sm font-medium text-gray-700">Choice Groups Management</div>
+
+            {/* List of assigned groups with controls */}
+            <div className="space-y-2">
+              {assignments.map((assignment, index) => (
+                <div key={assignment.id} className="flex items-center justify-between bg-white p-2 rounded border">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex flex-col">
+                      <button
+                        onClick={() => handleReorder(assignment, 'up')}
+                        disabled={index === 0}
+                        className={`text-xs ${index === 0 ? 'text-gray-300' : 'text-gray-500 hover:text-gray-700'}`}
+                      >
+                        ▲
+                      </button>
+                      <button
+                        onClick={() => handleReorder(assignment, 'down')}
+                        disabled={index === assignments.length - 1}
+                        className={`text-xs ${index === assignments.length - 1 ? 'text-gray-300' : 'text-gray-500 hover:text-gray-700'}`}
+                      >
+                        ▼
+                      </button>
+                    </div>
+                    <span className="font-bold text-sm">{assignment.order}</span>
+                    <div>
+                      <div className="font-medium text-sm">{assignment.choice_group_name}</div>
+                      {assignment.choice_group_description && (
+                        <div className="text-xs text-gray-500">{assignment.choice_group_description}</div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => toggleRequired(assignment)}
+                      className={`px-2 py-1 text-xs rounded ${
+                        assignment.is_required
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      {assignment.is_required ? 'Required' : 'Optional'}
+                    </button>
+                    <button
+                      onClick={() => removeChoiceFromItem(itemId, assignment.id)}
+                      className="text-red-500 hover:text-red-700 text-sm font-bold"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Add new choice group dropdown */}
+            {availableChoiceGroups.length > 0 && (
+              <div className="relative">
+                {showAddDropdown ? (
+                  <div className="flex items-center space-x-2">
+                    <select
+                      className="flex-1 text-sm border rounded px-2 py-1"
+                      onChange={(e) => {
+                        const choiceId = parseInt(e.target.value);
+                        if (choiceId) {
+                          addChoiceToItem(itemId, choiceId);
+                          setShowAddDropdown(false);
+                        }
+                      }}
+                      defaultValue=""
+                    >
+                      <option value="">Select a choice group...</option>
+                      {availableChoiceGroups.map((cg: any) => (
+                        <option key={cg.id} value={cg.id}>{cg.name}</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => setShowAddDropdown(false)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowAddDropdown(true)}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    + Add Choice Group
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -4595,55 +4930,65 @@ const MenuEditor = ({ menuItems }: any) => {
                       {isExpanded && (
                         <div className="p-4 space-y-3">
                           {categoryItems.map((item: any) => (
-                            <div 
-                              key={item.id} 
-                              className="flex items-center justify-between p-3 border rounded hover:bg-gray-50"
-                              onDragOver={(e) => e.preventDefault()}
-                              onDrop={(e) => handleItemDrop(e, item.id)}
+                            <div
+                              key={item.id}
+                              className={`border rounded-lg transition-all ${draggingOver === item.id ? 'ring-2 ring-blue-400 bg-blue-50' : 'hover:bg-gray-50'}`}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                setDraggingOver(item.id);
+                              }}
+                              onDragLeave={() => setDraggingOver(null)}
+                              onDrop={(e) => {
+                                handleItemDrop(e, item.id);
+                                setDraggingOver(null);
+                              }}
                             >
-                                                              <div className="flex items-center space-x-3">
-                                  <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
-                                    {item.imageUrl ? (
-                                      <img 
-                                        src={item.imageUrl} 
-                                        alt={item.name} 
-                                        className="w-10 h-10 object-cover rounded"
-                                      />
-                                    ) : (
-                                      <Pizza className="h-6 w-6 text-gray-400" />
-                                    )}
+                              <div className="p-3">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex items-start space-x-3 flex-1">
+                                    <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center flex-shrink-0">
+                                      {item.imageUrl ? (
+                                        <img
+                                          src={item.imageUrl}
+                                          alt={item.name}
+                                          className="w-10 h-10 object-cover rounded"
+                                        />
+                                      ) : (
+                                        <Pizza className="h-6 w-6 text-gray-400" />
+                                      )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center justify-between">
+                                        <h4 className="font-medium text-gray-900">{item.name}</h4>
+                                        <span className="font-semibold text-gray-900 ml-2">{formatCurrency(item.basePrice || 0)}</span>
+                                      </div>
+                                      {item.description && (
+                                        <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
+                                      )}
+                                      <MenuItemChoiceGroupBadges itemId={item.id} />
+                                    </div>
                                   </div>
-                                  <div className="flex-1">
-                                    <h4 className="font-medium">{item.name}</h4>
-                                    {item.description && (
-                                      <p className="text-sm text-gray-500">{item.description}</p>
-                                    )}
-                                    <AssignedChoices 
-                                      choiceIds={itemChoices[item.id] || []}
-                                      onRemove={(choiceId) => removeChoiceFromItem(item.id, choiceId)}
-                                    />
+                                  <div className="flex items-center space-x-2 ml-3">
+                                    <Badge variant={item.isAvailable !== false ? "default" : "secondary"}>
+                                      {item.isAvailable !== false ? "Active" : "Inactive"}
+                                    </Badge>
+                                    <div className="flex space-x-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setEditingItem(item)}
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => deleteMenuItemMutation.mutate(item.id)}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
                                   </div>
-                                </div>
-                              <div className="flex items-center space-x-3">
-                                <span className="font-semibold">{formatCurrency(item.basePrice || 0)}</span>
-                                <Badge variant={item.isAvailable !== false ? "default" : "secondary"}>
-                                  {item.isAvailable !== false ? "Active" : "Inactive"}
-                                </Badge>
-                                <div className="flex space-x-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setEditingItem(item)}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => deleteMenuItemMutation.mutate(item.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
                                 </div>
                               </div>
                             </div>
