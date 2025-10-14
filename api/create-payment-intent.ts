@@ -104,24 +104,32 @@ export const handler: Handler = async (event, context) => {
           };
         }
 
-        const basePrice = parseFloat(menuItems[0].base_price);
         const itemQuantity = parseInt(item.quantity) || 1;
 
-        // Calculate item total (base price + options/customizations)
-        let itemTotal = basePrice * itemQuantity;
+        // Use the pre-calculated item price from frontend if available
+        // This handles complex pricing scenarios (size selections, dynamic pricing, etc.)
+        let itemTotal = 0;
+        if (item.price !== undefined && item.price !== null) {
+          // Frontend already calculated the total price including all options
+          itemTotal = parseFloat(item.price) * itemQuantity;
+        } else {
+          // Fallback: Calculate from base price + options
+          const basePrice = parseFloat(menuItems[0].base_price);
+          itemTotal = basePrice * itemQuantity;
 
-        // Add option prices if present (new format)
-        if (item.options && Array.isArray(item.options)) {
-          for (const option of item.options) {
-            const optionPrice = parseFloat(option.price) || 0;
-            itemTotal += optionPrice * itemQuantity;
+          // Add option prices if present (new format)
+          if (item.options && Array.isArray(item.options)) {
+            for (const option of item.options) {
+              const optionPrice = parseFloat(option.price) || 0;
+              itemTotal += optionPrice * itemQuantity;
+            }
           }
-        }
-        // Legacy: Add customization prices if present (old format)
-        else if (item.customizations && Array.isArray(item.customizations)) {
-          for (const customization of item.customizations) {
-            const customPrice = parseFloat(customization.price) || 0;
-            itemTotal += customPrice * itemQuantity;
+          // Legacy: Add customization prices if present (old format)
+          else if (item.customizations && Array.isArray(item.customizations)) {
+            for (const customization of item.customizations) {
+              const customPrice = parseFloat(customization.price) || 0;
+              itemTotal += customPrice * itemQuantity;
+            }
           }
         }
 
