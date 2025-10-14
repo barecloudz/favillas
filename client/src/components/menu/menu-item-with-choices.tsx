@@ -9,6 +9,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ShoppingCart, Plus, Minus } from "lucide-react";
 
+// Primary choice groups that set the base price or are required selections
+const PRIMARY_GROUPS = [
+  'Size', 'Calzone Size', 'Stromboli Size',
+  'Traditional Pizza Size', 'Specialty Gourmet Pizza Size',
+  'Wing Flavors', 'Garden Salad Size',
+  'Salad Dressing', 'Dressing Style'
+];
+
+const isPrimaryChoiceGroup = (groupName: string) => PRIMARY_GROUPS.includes(groupName);
+
 interface MenuItemProps {
   item: {
     id: number;
@@ -465,7 +475,10 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                            group.name === 'Stromboli Size' ||
                                            group.name === 'Traditional Pizza Size' ||
                                            group.name === 'Specialty Gourmet Pizza Size' ||
-                                           group.name === 'Wing Flavors';
+                                           group.name === 'Wing Flavors' ||
+                                           group.name === 'Garden Salad Size' ||
+                                           group.name === 'Salad Dressing' ||
+                                           group.name === 'Dressing Style';
                     const isSelected = selectedChoices[group.id] && selectedChoices[group.id].length > 0;
 
                     return (
