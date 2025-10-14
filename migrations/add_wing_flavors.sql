@@ -5,8 +5,8 @@
 -- Similar to size selection but for flavor choices
 
 -- Step 1: Insert the Wing Flavors choice group
-INSERT INTO choice_groups (name, description, "order", is_active, allow_multiple, max_selections, min_selections)
-VALUES ('Wing Flavors', 'Choose your wing flavor', 2, true, false, 1, 1);
+INSERT INTO choice_groups (name, description, "order", is_active, is_required, max_selections, min_selections)
+VALUES ('Wing Flavors', 'Choose your wing flavor', 2, true, true, 1, 1);
 
 -- Step 2: Add wing flavor choices (all $0.00 - no extra cost)
 INSERT INTO choice_items (choice_group_id, name, price, "order", is_active)
