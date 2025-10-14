@@ -95,7 +95,8 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       g.name === 'Calzone Size' ||
       g.name === 'Stromboli Size' ||
       g.name === 'Traditional Pizza Size' ||
-      g.name === 'Specialty Gourmet Pizza Size'
+      g.name === 'Specialty Gourmet Pizza Size' ||
+      g.name === 'Wing Flavors'
     );
     if (!sizeGroup || !selectedChoices[sizeGroup.id]) return null;
 
@@ -290,7 +291,8 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                           group?.name === 'Calzone Size' ||
                           group?.name === 'Stromboli Size' ||
                           group?.name === 'Traditional Pizza Size' ||
-                          group?.name === 'Specialty Gourmet Pizza Size';
+                          group?.name === 'Specialty Gourmet Pizza Size' ||
+                          group?.name === 'Wing Flavors';
       console.log('🔍 [Choice Selection] Group found for collapse check:', {
         group,
         groupId: parseInt(groupId),
@@ -340,10 +342,17 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       return;
     }
 
-    // Special validation for size selection
-    const sizeGroup = itemChoiceGroups.find(group => group.name === 'Size');
-    if (sizeGroup && (!selectedChoices[sizeGroup.id] || selectedChoices[sizeGroup.id].length === 0)) {
-      alert('Please select a size before adding to cart.');
+    // Special validation for primary group selection (size/flavor)
+    const primaryGroup = itemChoiceGroups.find(group =>
+      group.name === 'Size' ||
+      group.name === 'Calzone Size' ||
+      group.name === 'Stromboli Size' ||
+      group.name === 'Traditional Pizza Size' ||
+      group.name === 'Specialty Gourmet Pizza Size' ||
+      group.name === 'Wing Flavors'
+    );
+    if (primaryGroup && (!selectedChoices[primaryGroup.id] || selectedChoices[primaryGroup.id].length === 0)) {
+      alert('Please select a size/flavor before adding to cart.');
       return;
     }
 
@@ -666,7 +675,14 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                     </div>
 
                     {(() => {
-                      const sizeGroup = itemChoiceGroups.find(group => group.name === 'Size');
+                      const sizeGroup = itemChoiceGroups.find(group =>
+                        group.name === 'Size' ||
+                        group.name === 'Calzone Size' ||
+                        group.name === 'Stromboli Size' ||
+                        group.name === 'Traditional Pizza Size' ||
+                        group.name === 'Specialty Gourmet Pizza Size' ||
+                        group.name === 'Wing Flavors'
+                      );
                       const hasSizeSelected = sizeGroup && selectedChoices[sizeGroup.id] && selectedChoices[sizeGroup.id].length > 0;
 
                       console.log('🔍 [Add to Cart Button] Debug info:', {
