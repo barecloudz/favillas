@@ -455,7 +455,8 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                            group.name === 'Calzone Size' ||
                                            group.name === 'Stromboli Size' ||
                                            group.name === 'Traditional Pizza Size' ||
-                                           group.name === 'Specialty Gourmet Pizza Size';
+                                           group.name === 'Specialty Gourmet Pizza Size' ||
+                                           group.name === 'Wing Flavors';
                     const isSelected = selectedChoices[group.id] && selectedChoices[group.id].length > 0;
 
                     return (
