@@ -517,7 +517,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                     <div className="flex items-center space-x-2">
                                       {price > 0 && (
                                         <Badge className="bg-[#d73a31] text-white text-sm font-bold">
-                                          +${formatPrice(price)}
+                                          {isPrimaryGroup ? '$' : '+$'}{formatPrice(price)}
                                         </Badge>
                                       )}
                                       <Button
@@ -572,7 +572,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                         ? 'bg-[#d73a31] text-white'
                                         : 'bg-gray-100 text-gray-700'
                                     }`}>
-                                      +${formatPrice(price)}
+                                      {isPrimaryGroup ? '$' : '+$'}{formatPrice(price)}
                                     </Badge>
                                   )}
                                 </div>
@@ -620,7 +620,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                     ? 'bg-green-500 text-white'
                                     : 'bg-gray-100 text-gray-700'
                                 }`}>
-                                  +${formatPrice(price)}
+                                  {isPrimaryGroup ? '$' : '+$'}{formatPrice(price)}
                                 </Badge>
                               )}
                             </div>
