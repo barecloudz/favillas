@@ -3550,7 +3550,14 @@ const MenuEditor = ({ menuItems }: any) => {
   const [expandedChoices, setExpandedChoices] = useState<Set<number>>(new Set());
   const [isCreateChoiceOpen, setIsCreateChoiceOpen] = useState(false);
   const [editingChoice, setEditingChoice] = useState<any>(null);
-  const [newChoiceData, setNewChoiceData] = useState({ name: '', description: '', priority: 0 });
+  const [newChoiceData, setNewChoiceData] = useState({
+    name: '',
+    description: '',
+    priority: 0,
+    minSelections: 0,
+    maxSelections: 1,
+    isRequired: false
+  });
   const [editingChoiceData, setEditingChoiceData] = useState({ name: '', description: '', priority: 0 });
   const [editingChoiceItem, setEditingChoiceItem] = useState<any>(null);
   const [newChoiceItemData, setNewChoiceItemData] = useState({
@@ -5035,7 +5042,7 @@ const MenuEditor = ({ menuItems }: any) => {
                 </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="max-h-[calc(100vh-200px)] overflow-y-auto">
               <div className="space-y-2">
                 {sortedChoices.map((choice) => {
                   const isExpanded = expandedChoices.has(choice.id);
@@ -5524,9 +5531,9 @@ const MenuEditor = ({ menuItems }: any) => {
             <DialogTitle>Add New Choice Group</DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
             <div>
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">Name *</Label>
               <Input
                 id="name"
                 placeholder="e.g., Toppings, Size, Add-ons"
@@ -5543,7 +5550,48 @@ const MenuEditor = ({ menuItems }: any) => {
                 onChange={(e) => setNewChoiceData({ ...newChoiceData, description: e.target.value })}
               />
             </div>
-            <div>
+
+            <div className="border-t pt-4">
+              <h4 className="font-medium mb-3">Selection Rules</h4>
+
+              <div className="flex items-center space-x-2 mb-3">
+                <input
+                  type="checkbox"
+                  id="isRequired"
+                  checked={newChoiceData.isRequired}
+                  onChange={(e) => setNewChoiceData({ ...newChoiceData, isRequired: e.target.checked })}
+                  className="w-4 h-4"
+                />
+                <Label htmlFor="isRequired" className="cursor-pointer">Required (Customer must make a selection)</Label>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="minSelections">Minimum Selections</Label>
+                  <Input
+                    id="minSelections"
+                    type="number"
+                    min="0"
+                    value={newChoiceData.minSelections}
+                    onChange={(e) => setNewChoiceData({ ...newChoiceData, minSelections: parseInt(e.target.value) || 0 })}
+                  />
+                  <small className="text-gray-500">Min items required</small>
+                </div>
+                <div>
+                  <Label htmlFor="maxSelections">Maximum Selections</Label>
+                  <Input
+                    id="maxSelections"
+                    type="number"
+                    min="1"
+                    value={newChoiceData.maxSelections}
+                    onChange={(e) => setNewChoiceData({ ...newChoiceData, maxSelections: parseInt(e.target.value) || 1 })}
+                  />
+                  <small className="text-gray-500">Max items allowed</small>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
               <Label htmlFor="priority">Priority (Display Order)</Label>
               <Input
                 id="priority"
@@ -5560,7 +5608,14 @@ const MenuEditor = ({ menuItems }: any) => {
                 onClick={() => {
                   if (newChoiceData.name) {
                     handleCreateChoice(newChoiceData);
-                    setNewChoiceData({ name: '', description: '', priority: 0 });
+                    setNewChoiceData({
+                      name: '',
+                      description: '',
+                      priority: 0,
+                      minSelections: 0,
+                      maxSelections: 1,
+                      isRequired: false
+                    });
                   }
                 }}
                 disabled={!newChoiceData.name}
@@ -5569,7 +5624,14 @@ const MenuEditor = ({ menuItems }: any) => {
               </Button>
               <Button variant="outline" onClick={() => {
                 setIsCreateChoiceOpen(false);
-                setNewChoiceData({ name: '', description: '' });
+                setNewChoiceData({
+                  name: '',
+                  description: '',
+                  priority: 0,
+                  minSelections: 0,
+                  maxSelections: 1,
+                  isRequired: false
+                });
               }}>
                 Cancel
               </Button>

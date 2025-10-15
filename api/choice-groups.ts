@@ -105,11 +105,15 @@ export const handler: Handler = async (event, context) => {
       }
       
       const { name, description, minSelections, maxSelections, isRequired, priority } = JSON.parse(event.body || '{}');
-      
+
       const result = await sql`
         UPDATE choice_groups
-        SET name = ${name}, description = ${description}, min_selections = ${minSelections},
-            max_selections = ${maxSelections}, is_required = ${isRequired}, priority = ${priority || 0}
+        SET name = COALESCE(${name}, name),
+            description = COALESCE(${description}, description),
+            min_selections = COALESCE(${minSelections}, min_selections),
+            max_selections = COALESCE(${maxSelections}, max_selections),
+            is_required = COALESCE(${isRequired}, is_required),
+            priority = COALESCE(${priority}, priority)
         WHERE id = ${parseInt(groupId)}
         RETURNING *
       `;
