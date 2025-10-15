@@ -35,6 +35,7 @@ import {
   Plus,
   Edit,
   Trash2,
+  Copy,
   Eye,
   DollarSign,
   ShoppingCart,
@@ -4311,6 +4312,59 @@ const MenuEditor = ({ menuItems }: any) => {
     deleteChoiceGroupMutation.mutate(id);
   };
 
+  const handleDuplicateChoice = async (id: number) => {
+    const choice = choiceGroups.find((c: any) => c.id === id);
+    if (!choice) return;
+
+    try {
+      // Create the new choice group
+      const newGroupResponse = await apiRequest('POST', '/api/choice-groups', {
+        name: `${choice.name} (Copy)`,
+        description: choice.description,
+        minSelections: choice.minSelections,
+        maxSelections: choice.maxSelections,
+        isRequired: choice.isRequired,
+        priority: choice.priority || 0
+      });
+
+      if (!newGroupResponse.ok) {
+        throw new Error('Failed to create choice group');
+      }
+
+      const newGroup = await newGroupResponse.json();
+
+      // Get all items from the original group
+      const items = choiceItems.filter((item: any) => item.choiceGroupId === id);
+
+      // Create copies of all items in the new group
+      for (const item of items) {
+        await apiRequest('POST', '/api/choice-items', {
+          choiceGroupId: newGroup.id,
+          name: item.name,
+          description: item.description,
+          price: item.price,
+          order: item.order,
+          isDefault: item.isDefault
+        });
+      }
+
+      // Refresh data
+      refetchChoiceGroups();
+      refetchChoiceItems();
+
+      toast({
+        title: "Success",
+        description: `Duplicated "${choice.name}" with ${items.length} items`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to duplicate choice group",
+        variant: "destructive",
+      });
+    }
+  };
+
   const toggleChoiceStatus = (id: number) => {
     const choice = choiceGroups.find((c: any) => c.id === id);
     if (choice) {
@@ -5079,8 +5133,8 @@ const MenuEditor = ({ menuItems }: any) => {
                           </Badge>
                         </div>
                         <div className="flex items-center space-x-1">
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -5089,8 +5143,19 @@ const MenuEditor = ({ menuItems }: any) => {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDuplicateChoice(choice.id);
+                            }}
+                            title="Duplicate this choice group with all its items"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -5099,8 +5164,8 @@ const MenuEditor = ({ menuItems }: any) => {
                           >
                             {(choice.isActive !== false) ? "Deactivate" : "Activate"}
                           </Button>
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
