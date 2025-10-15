@@ -61,7 +61,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
     return numPrice.toFixed(2);
   };
 
-  // Get choice groups for this menu item, sorted by priority
+  // Get choice groups for this menu item, sorted by order field
   const getItemChoiceGroups = () => {
     console.log(`🔍 [MenuItemWithChoices] Processing item "${item.name}" (id: ${item.id})`);
     console.log(`🔍 [MenuItemWithChoices] Available data:`, {
@@ -90,9 +90,10 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       return {
         ...group,
         items,
-        isRequired: micg.is_required
+        isRequired: micg.is_required,
+        displayOrder: micg.order || 0  // Use the order from menu_item_choice_groups
       };
-    }).filter(Boolean).sort((a, b) => (a.priority || 0) - (b.priority || 0));
+    }).filter(Boolean).sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));  // Sort by displayOrder instead of priority
 
     console.log(`🔍 [MenuItemWithChoices] Final result for item "${item.name}":`, result);
     return result;
@@ -118,112 +119,10 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
     return sizeChoice?.name;
   };
 
-  // Determine which choice groups should be visible based on conditional display logic
+  // Simplified: Show all choice groups in the order set by admin
   const getVisibleChoiceGroups = () => {
-    if (itemChoiceGroups.length === 0) return [];
-
-    const selectedSize = getSelectedSize();
-
-    // Check if this item has any size-based groups at all
-    const hasSizeGroup = itemChoiceGroups.some(g =>
-      g.name === 'Size' || g.name === 'Calzone Size' || g.name === 'Stromboli Size' ||
-      g.name === 'Traditional Pizza Size' || g.name === 'Specialty Gourmet Pizza Size' ||
-      g.name === 'Wing Flavors' || g.name === 'Garden Salad Size'
-    );
-
-    // Filter groups based on size selection
-    let filteredGroups = itemChoiceGroups.filter(group => {
-      const groupName = group.name;
-
-      // Always show primary selection groups (size/flavor)
-      if (isPrimaryChoiceGroup(groupName)) return true;
-
-      // If this item doesn't have a size group, show all options immediately
-      if (!hasSizeGroup) return true;
-
-      // If no size selected yet, don't show topping groups
-      if (!selectedSize) return false;
-
-      // Show topping groups that match the selected size
-      // Calzone/Stromboli sizes
-      if (groupName.includes('Small') && selectedSize === 'Small') return true;
-      if (groupName.includes('Medium') && selectedSize === 'Medium') return true;
-      if (groupName.includes('Large') && selectedSize === 'Large') return true;
-
-      // Traditional Pizza sizes
-      if (groupName.includes('(10")') && selectedSize === '10"') return true;
-      if (groupName.includes('(14")') && selectedSize === '14"') return true;
-      if (groupName.includes('(16")') && selectedSize === '16"') return true;
-      if (groupName.includes('(Sicilian)') && selectedSize === 'Sicilian') return true;
-
-      // Show groups that don't have size specification
-      if (!groupName.includes('Small') &&
-          !groupName.includes('Medium') &&
-          !groupName.includes('Large') &&
-          !groupName.includes('(10")') &&
-          !groupName.includes('(14")') &&
-          !groupName.includes('(16")') &&
-          !groupName.includes('(Sicilian)')) {
-        return true;
-      }
-
-      return false;
-    });
-
-    // Sort groups: size groups always first, then by priority
-    const sortedGroups = filteredGroups.sort((a, b) => {
-      const aIsSize = a.name === 'Size' || a.name === 'Calzone Size' || a.name === 'Stromboli Size' ||
-                      a.name === 'Traditional Pizza Size' || a.name === 'Specialty Gourmet Pizza Size';
-      const bIsSize = b.name === 'Size' || b.name === 'Calzone Size' || b.name === 'Stromboli Size' ||
-                      b.name === 'Traditional Pizza Size' || b.name === 'Specialty Gourmet Pizza Size';
-
-      // Size groups always come first
-      if (aIsSize && !bIsSize) return -1;
-      if (!aIsSize && bIsSize) return 1;
-
-      // Otherwise sort by priority
-      return (a.priority || 0) - (b.priority || 0);
-    });
-
-    // Group by priority
-    const groupsByPriority = sortedGroups.reduce((acc, group) => {
-      const priority = group.priority || 0;
-      if (!acc[priority]) acc[priority] = [];
-      acc[priority].push(group);
-      return acc;
-    }, {} as { [key: number]: any[] });
-
-    const priorities = Object.keys(groupsByPriority).map(p => parseInt(p)).sort((a, b) => a - b);
-    let visibleGroups: any[] = [];
-
-    // If item doesn't have a size group, show all priority groups immediately
-    if (!hasSizeGroup) {
-      return sortedGroups;
-    }
-
-    // Always show the first priority group (usually sizes)
-    if (priorities.length > 0) {
-      visibleGroups = [...groupsByPriority[priorities[0]]];
-    }
-
-    // Show subsequent priority groups only if the previous priority has selections
-    for (let i = 1; i < priorities.length; i++) {
-      const previousPriority = priorities[i - 1];
-      const previousGroups = groupsByPriority[previousPriority];
-
-      // Check if any group in the previous priority has selections
-      const hasPreviousSelections = previousGroups.some(group =>
-        selectedChoices[group.id] && selectedChoices[group.id].length > 0
-      );
-
-      if (hasPreviousSelections) {
-        visibleGroups.push(...groupsByPriority[priorities[i]]);
-      } else {
-        break; // Stop here, don't show further priorities
-      }
-    }
-
-    return visibleGroups;
+    // Just return all groups - they're already sorted by displayOrder
+    return itemChoiceGroups;
   };
 
   const visibleChoiceGroups = getVisibleChoiceGroups();
@@ -509,27 +408,19 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
 
                     return (
                     <div key={group.id} className={`space-y-4 p-4 rounded-xl border-2 transition-all ${
-                      isPrimaryGroup
-                        ? isSelected
-                          ? 'border-[#d73a31] bg-red-50/50 shadow-lg'
-                          : 'border-red-200 bg-red-50/30 shadow-md animate-pulse'
-                        : isSelected
-                          ? 'border-green-300 bg-green-50/50 shadow-md'
-                          : 'border-gray-200 bg-white shadow-sm hover:shadow-md'
+                      isSelected
+                        ? 'border-[#d73a31] bg-red-50/50 shadow-lg'
+                        : 'border-gray-200 bg-white shadow-sm hover:shadow-md hover:border-gray-300'
                     }`}>
                       <div className="flex justify-between items-center">
-                        <Label className={`text-lg font-bold flex items-center gap-2 ${
-                          isPrimaryGroup ? 'text-[#d73a31]' : 'text-gray-800'
-                        }`}>
-                          {isPrimaryGroup && <span className="text-2xl">🍕</span>}
-                          {!isPrimaryGroup && group.name.toLowerCase().includes('topping') && <span className="text-xl">🧀</span>}
+                        <Label className="text-lg font-bold flex items-center gap-2 text-gray-800">
+                          {index + 1}.
                           {group.name}
-                          {group.isRequired && <span className="text-red-500 ml-1 text-xl">*</span>}
-                          {isSizeBasedGroup && !isSelected && <span className="text-sm font-normal text-red-500 ml-2 animate-bounce">(Choose Size First!)</span>}
+                          {group.isRequired && <span className="text-red-500 ml-1 text-sm">(Required)</span>}
                         </Label>
                         {group.maxSelections && group.maxSelections > 1 && (
                           <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                            Max {group.maxSelections}
+                            Choose up to {group.maxSelections}
                           </span>
                         )}
                       </div>
