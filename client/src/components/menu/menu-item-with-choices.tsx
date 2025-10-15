@@ -14,7 +14,10 @@ const PRIMARY_GROUPS = [
   'Size', 'Calzone Size', 'Stromboli Size',
   'Traditional Pizza Size', 'Specialty Gourmet Pizza Size',
   'Wing Flavors', 'Garden Salad Size',
-  'Salad Dressing', 'Dressing Style'
+  'Salad Dressing', 'Dressing Style',
+  'Caesar Salad Dressing', 'Greek Salad Dressing',
+  'Antipasto Salad Dressing', 'Chef Salad Dressing',
+  'Tuna Salad Dressing', 'Grilled Chicken Salad Dressing'
 ];
 
 const isPrimaryChoiceGroup = (groupName: string) => PRIMARY_GROUPS.includes(groupName);
@@ -121,12 +124,22 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
 
     const selectedSize = getSelectedSize();
 
+    // Check if this item has any size-based groups at all
+    const hasSizeGroup = itemChoiceGroups.some(g =>
+      g.name === 'Size' || g.name === 'Calzone Size' || g.name === 'Stromboli Size' ||
+      g.name === 'Traditional Pizza Size' || g.name === 'Specialty Gourmet Pizza Size' ||
+      g.name === 'Wing Flavors' || g.name === 'Garden Salad Size'
+    );
+
     // Filter groups based on size selection
     let filteredGroups = itemChoiceGroups.filter(group => {
       const groupName = group.name;
 
       // Always show primary selection groups (size/flavor)
-      if (groupName === 'Size' || groupName === 'Calzone Size' || groupName === 'Stromboli Size' || groupName === 'Traditional Pizza Size' || groupName === 'Specialty Gourmet Pizza Size' || groupName === 'Wing Flavors') return true;
+      if (isPrimaryChoiceGroup(groupName)) return true;
+
+      // If this item doesn't have a size group, show all options immediately
+      if (!hasSizeGroup) return true;
 
       // If no size selected yet, don't show topping groups
       if (!selectedSize) return false;
@@ -182,6 +195,11 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
 
     const priorities = Object.keys(groupsByPriority).map(p => parseInt(p)).sort((a, b) => a - b);
     let visibleGroups: any[] = [];
+
+    // If item doesn't have a size group, show all priority groups immediately
+    if (!hasSizeGroup) {
+      return sortedGroups;
+    }
 
     // Always show the first priority group (usually sizes)
     if (priorities.length > 0) {
@@ -479,6 +497,13 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                            group.name === 'Garden Salad Size' ||
                                            group.name === 'Salad Dressing' ||
                                            group.name === 'Dressing Style';
+                    const isSizeBasedGroup = group.name === 'Size' ||
+                                            group.name === 'Calzone Size' ||
+                                            group.name === 'Stromboli Size' ||
+                                            group.name === 'Traditional Pizza Size' ||
+                                            group.name === 'Specialty Gourmet Pizza Size' ||
+                                            group.name === 'Wing Flavors' ||
+                                            group.name === 'Garden Salad Size';
                     const isSelected = selectedChoices[group.id] && selectedChoices[group.id].length > 0;
 
                     return (
@@ -499,7 +524,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                           {!isPrimaryGroup && group.name.toLowerCase().includes('topping') && <span className="text-xl">🧀</span>}
                           {group.name}
                           {group.isRequired && <span className="text-red-500 ml-1 text-xl">*</span>}
-                          {isPrimaryGroup && !isSelected && <span className="text-sm font-normal text-red-500 ml-2 animate-bounce">(Choose Size First!)</span>}
+                          {isSizeBasedGroup && !isSelected && <span className="text-sm font-normal text-red-500 ml-2 animate-bounce">(Choose Size First!)</span>}
                         </Label>
                         {group.maxSelections && group.maxSelections > 1 && (
                           <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
@@ -694,9 +719,11 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                         group.name === 'Stromboli Size' ||
                         group.name === 'Traditional Pizza Size' ||
                         group.name === 'Specialty Gourmet Pizza Size' ||
-                        group.name === 'Wing Flavors'
+                        group.name === 'Wing Flavors' ||
+                        group.name === 'Garden Salad Size'
                       );
                       const hasSizeSelected = sizeGroup && selectedChoices[sizeGroup.id] && selectedChoices[sizeGroup.id].length > 0;
+                      const canAddToCart = !sizeGroup || hasSizeSelected; // Can add if no size group OR size is selected
 
                       console.log('🔍 [Add to Cart Button] Debug info:', {
                         sizeGroup,
@@ -704,20 +731,21 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                         sizeGroupId: sizeGroup?.id,
                         sizeGroupSelections: sizeGroup ? selectedChoices[sizeGroup.id] : 'no size group',
                         hasSizeSelected,
+                        canAddToCart,
                         sizeCollapsed
                       });
 
                       return (
                         <Button
                           className={`w-full py-4 text-lg font-bold transition-all transform hover:scale-105 ${
-                            hasSizeSelected
+                            canAddToCart
                               ? 'bg-[#d73a31] hover:bg-[#c73128] text-white shadow-lg'
                               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                           }`}
                           onClick={handleAddToCartWithChoices}
-                          disabled={!hasSizeSelected}
+                          disabled={!canAddToCart}
                         >
-                          {hasSizeSelected ? (
+                          {canAddToCart ? (
                             <>
                               <ShoppingCart className="h-5 w-5 mr-2" />
                               Add to Cart - ${formatPrice(calculateTotalPrice() * quantity)}
