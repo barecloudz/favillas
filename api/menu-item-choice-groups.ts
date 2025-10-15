@@ -111,24 +111,45 @@ export const handler: Handler = async (event, context) => {
       }
 
       const requestBody = JSON.parse(event.body || '{}');
-      const { order, isRequired } = requestBody;
+      // Accept both camelCase and snake_case for compatibility
+      const { order, isRequired, is_required } = requestBody;
+      const requiredValue = isRequired !== undefined ? isRequired : is_required;
 
-      const result = await sql`
-        UPDATE menu_item_choice_groups
-        SET
-          "order" = COALESCE(${order}, "order"),
-          is_required = COALESCE(${isRequired}, is_required)
-        WHERE id = ${parseInt(associationId)}
-        RETURNING *
+      // Only update fields that are provided (not undefined)
+      const updateFields: any = {};
+      if (order !== undefined) updateFields.order = order;
+      if (requiredValue !== undefined) updateFields.is_required = requiredValue;
+
+      if (Object.keys(updateFields).length === 0) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ message: 'No valid fields to update' })
+        };
+      }
+
+      // Get current record to use as defaults for missing fields
+      const current = await sql`
+        SELECT * FROM menu_item_choice_groups WHERE id = ${parseInt(associationId)}
       `;
 
-      if (result.length === 0) {
+      if (current.length === 0) {
         return {
           statusCode: 404,
           headers,
           body: JSON.stringify({ message: 'Association not found' })
         };
       }
+
+      // Update with provided values or keep current values
+      const result = await sql`
+        UPDATE menu_item_choice_groups
+        SET
+          "order" = ${updateFields.order !== undefined ? updateFields.order : current[0].order},
+          is_required = ${updateFields.is_required !== undefined ? updateFields.is_required : current[0].is_required}
+        WHERE id = ${parseInt(associationId)}
+        RETURNING *
+      `;
 
       return {
         statusCode: 200,
