@@ -74,6 +74,14 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       .filter(micg => micg.menu_item_id === item.id);
 
     console.log(`🔍 [MenuItemWithChoices] Found ${itemChoiceGroupIds.length} choice group assignments for this item:`, itemChoiceGroupIds);
+    console.log(`🔍 [MenuItemWithChoices] Full assignment details:`, itemChoiceGroupIds.map(micg => ({
+      id: micg.id,
+      menu_item_id: micg.menu_item_id,
+      choice_group_id: micg.choice_group_id,
+      choice_group_name: micg.choice_group_name,
+      order: micg.order,
+      is_required: micg.is_required
+    })));
 
     const result = itemChoiceGroupIds.map(micg => {
       const group = choiceGroups.find(cg => cg.id === micg.choice_group_id);
