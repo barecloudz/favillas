@@ -2,12 +2,15 @@ import React, { useState, useEffect } from "react";
 import { useCart, CartItem } from "@/hooks/use-cart";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ShoppingCart, X, Trash2, Plus, Minus, Pizza, Edit } from "lucide-react";
 import { Link } from "wouter";
 import CheckoutPromptModal from "@/components/auth/checkout-prompt-modal";
@@ -27,6 +30,34 @@ const CartSidebar: React.FC = () => {
     clearCart,
     addItem
   } = useCart();
+
+  // Fetch choice groups data for editing
+  const { data: choiceGroups = [] } = useQuery({
+    queryKey: ['choice-groups'],
+    queryFn: async () => {
+      const response = await fetch('/api/choice-groups');
+      if (response.ok) return await response.json();
+      return [];
+    }
+  });
+
+  const { data: choiceItems = [] } = useQuery({
+    queryKey: ['choice-items'],
+    queryFn: async () => {
+      const response = await fetch('/api/choice-items');
+      if (response.ok) return await response.json();
+      return [];
+    }
+  });
+
+  const { data: menuItemChoiceGroups = [] } = useQuery({
+    queryKey: ['menu-item-choice-groups'],
+    queryFn: async () => {
+      const response = await fetch('/api/menu-item-choice-groups');
+      if (response.ok) return await response.json();
+      return [];
+    }
+  });
 
   // Clean up corrupted items when cart opens
   useEffect(() => {
@@ -68,6 +99,7 @@ const CartSidebar: React.FC = () => {
     price: number;
   }>>([]);
   const [editedInstructions, setEditedInstructions] = useState("");
+  const [selectedChoices, setSelectedChoices] = useState<{ [key: string]: string[] }>({});
   const [showCheckoutPrompt, setShowCheckoutPrompt] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
@@ -116,6 +148,31 @@ const CartSidebar: React.FC = () => {
     };
   }, [isOpen]);
 
+  // Get available choice groups for an item
+  const getItemChoiceGroups = (itemId: number) => {
+    const itemGroups = menuItemChoiceGroups
+      .filter((micg: any) => micg.menu_item_id === itemId)
+      .map((micg: any) => {
+        const group = choiceGroups.find((cg: any) => cg.id === micg.choice_group_id);
+        if (!group) return null;
+
+        const items = choiceItems
+          .filter((ci: any) => ci.choiceGroupId === group.id)
+          .sort((a: any, b: any) => a.order - b.order);
+
+        return {
+          ...group,
+          items,
+          isRequired: micg.is_required,
+          displayOrder: micg.order || 0
+        };
+      })
+      .filter(Boolean)
+      .sort((a: any, b: any) => a.displayOrder - b.displayOrder);
+
+    return itemGroups;
+  };
+
   // Handle opening edit modal
   const handleEditItem = (item: CartItem, event?: React.MouseEvent) => {
     if (event) {
@@ -124,6 +181,28 @@ const CartSidebar: React.FC = () => {
     setEditingItem(item);
     setEditedOptions(item.options || []);
     setEditedInstructions(item.specialInstructions || "");
+
+    // Initialize selectedChoices from existing options
+    const initialSelections: { [key: string]: string[] } = {};
+    const availableGroups = getItemChoiceGroups(item.id);
+
+    if (item.options && item.options.length > 0) {
+      item.options.forEach(option => {
+        // Find the group and choice item IDs
+        const group = availableGroups.find((g: any) => g.name === option.groupName);
+        if (group) {
+          const choiceItem = group.items.find((ci: any) => ci.name === option.itemName);
+          if (choiceItem) {
+            if (!initialSelections[group.id]) {
+              initialSelections[group.id] = [];
+            }
+            initialSelections[group.id].push(choiceItem.id.toString());
+          }
+        }
+      });
+    }
+
+    setSelectedChoices(initialSelections);
   };
 
   // Handle removing an addon
@@ -135,19 +214,39 @@ const CartSidebar: React.FC = () => {
   const handleSaveEdit = () => {
     if (!editingItem) return;
 
+    const availableGroups = getItemChoiceGroups(editingItem.id);
+
+    // Build options array from selectedChoices
+    const newOptions: Array<{ groupName: string; itemName: string; price: number }> = [];
+    Object.entries(selectedChoices).forEach(([groupId, selections]) => {
+      const group = availableGroups.find((g: any) => g.id === parseInt(groupId));
+      if (group) {
+        selections.forEach(selectionId => {
+          const choiceItem = group.items.find((item: any) => item.id === parseInt(selectionId));
+          if (choiceItem) {
+            newOptions.push({
+              groupName: group.name,
+              itemName: choiceItem.name,
+              price: parseFloat(choiceItem.price) || 0
+            });
+          }
+        });
+      }
+    });
+
+    // Calculate new price
+    const basePrice = parseFloat(String(editingItem.basePrice || editingItem.price)) || 0;
+    const addonPrice = newOptions.reduce((sum, opt) => sum + opt.price, 0);
+    const newPrice = basePrice + addonPrice;
+
     // Remove the original item
     removeItem(editingItem);
-
-    // Calculate new price (base item price + addon prices)
-    const basePrice = editingItem.price - (editingItem.options?.reduce((sum, opt) => sum + opt.price, 0) || 0);
-    const addonPrice = editedOptions.reduce((sum, opt) => sum + opt.price, 0);
-    const newPrice = basePrice + addonPrice;
 
     // Add the updated item
     const updatedItem: CartItem = {
       ...editingItem,
       price: newPrice,
-      options: editedOptions,
+      options: newOptions,
       specialInstructions: editedInstructions
     };
 
@@ -156,6 +255,7 @@ const CartSidebar: React.FC = () => {
     // Close modal
     setEditingItem(null);
     setEditedOptions([]);
+    setSelectedChoices({});
     setEditedInstructions("");
   };
 
@@ -163,7 +263,26 @@ const CartSidebar: React.FC = () => {
   const handleCancelEdit = () => {
     setEditingItem(null);
     setEditedOptions([]);
+    setSelectedChoices({});
     setEditedInstructions("");
+  };
+
+  // Handle choice selection in edit modal
+  const handleChoiceSelection = (groupId: string, itemId: string, isRadio: boolean) => {
+    setSelectedChoices(prev => {
+      if (isRadio) {
+        return { ...prev, [groupId]: [itemId] };
+      } else {
+        const currentSelections = prev[groupId] || [];
+        const isSelected = currentSelections.includes(itemId);
+        return {
+          ...prev,
+          [groupId]: isSelected
+            ? currentSelections.filter(id => id !== itemId)
+            : [...currentSelections, itemId]
+        };
+      }
+    });
   };
 
   // Check if upselling should be shown
@@ -477,61 +596,106 @@ const CartSidebar: React.FC = () => {
 
       {/* Edit Item Modal */}
       <Dialog open={!!editingItem} onOpenChange={(open) => !open && handleCancelEdit()}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit {editingItem?.name}</DialogTitle>
           </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* Current Addons */}
-            {editedOptions.length > 0 && (
-              <div>
-                <Label className="text-sm font-medium">Current Addons</Label>
-                <div className="mt-2 space-y-2">
-                  {editedOptions.map((option, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                      <div>
-                        <span className="text-sm font-medium">{option.groupName}: {option.itemName}</span>
-                        {option.price > 0 && (
-                          <span className="text-sm text-green-600 ml-2">+${formatPrice(option.price)}</span>
-                        )}
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleRemoveAddon(index)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+
+          <ScrollArea className="max-h-[70vh] pr-4">
+            <div className="space-y-4">
+              {/* Choice Groups */}
+              {editingItem && getItemChoiceGroups(editingItem.id).map((group: any, index: number) => (
+                <div key={group.id} className="space-y-3 p-3 border rounded-lg">
+                  <Label className="text-base font-semibold flex items-center gap-2">
+                    {index + 1}. {group.name}
+                    {group.isRequired && <span className="text-red-500 text-sm">(Required)</span>}
+                  </Label>
+
+                  {group.maxSelections === 1 ? (
+                    /* Radio group for single selection */
+                    <RadioGroup
+                      value={selectedChoices[group.id]?.[0] || ""}
+                      onValueChange={(value) => handleChoiceSelection(group.id.toString(), value, true)}
+                    >
+                      {group.items.map((choiceItem: any) => {
+                        const isSelected = selectedChoices[group.id]?.includes(choiceItem.id.toString());
+                        return (
+                          <div
+                            key={choiceItem.id}
+                            className={`flex items-center justify-between p-2 rounded border cursor-pointer ${
+                              isSelected ? 'border-[#d73a31] bg-red-50' : 'border-gray-200'
+                            }`}
+                            onClick={() => handleChoiceSelection(group.id.toString(), choiceItem.id.toString(), true)}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value={choiceItem.id.toString()} className="pointer-events-none" />
+                              <Label className="cursor-pointer">{choiceItem.name}</Label>
+                            </div>
+                            {parseFloat(choiceItem.price) > 0 && (
+                              <span className={`text-sm font-medium ${isSelected ? 'text-[#d73a31]' : 'text-gray-600'}`}>
+                                +${formatPrice(parseFloat(choiceItem.price))}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </RadioGroup>
+                  ) : (
+                    /* Checkbox group for multiple selections */
+                    <div className="space-y-2">
+                      {group.items.map((choiceItem: any) => {
+                        const isSelected = selectedChoices[group.id]?.includes(choiceItem.id.toString());
+                        return (
+                          <div
+                            key={choiceItem.id}
+                            className={`flex items-center justify-between p-2 rounded border cursor-pointer ${
+                              isSelected ? 'border-green-500 bg-green-50' : 'border-gray-200'
+                            }`}
+                            onClick={() => handleChoiceSelection(group.id.toString(), choiceItem.id.toString(), false)}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                checked={isSelected}
+                                className="pointer-events-none"
+                              />
+                              <Label className="cursor-pointer">{choiceItem.name}</Label>
+                            </div>
+                            {parseFloat(choiceItem.price) > 0 && (
+                              <span className={`text-sm font-medium ${isSelected ? 'text-green-600' : 'text-gray-600'}`}>
+                                +${formatPrice(parseFloat(choiceItem.price))}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
+                  )}
                 </div>
+              ))}
+
+              {/* Special Instructions */}
+              <div>
+                <Label htmlFor="instructions" className="text-sm font-medium">Special Instructions</Label>
+                <Textarea
+                  id="instructions"
+                  value={editedInstructions}
+                  onChange={(e) => setEditedInstructions(e.target.value)}
+                  placeholder="Any special requests for this item..."
+                  className="mt-1"
+                  rows={3}
+                />
               </div>
-            )}
-
-            {/* Special Instructions */}
-            <div>
-              <Label htmlFor="instructions" className="text-sm font-medium">Special Instructions</Label>
-              <Textarea
-                id="instructions"
-                value={editedInstructions}
-                onChange={(e) => setEditedInstructions(e.target.value)}
-                placeholder="Any special requests for this item..."
-                className="mt-1"
-                rows={3}
-              />
             </div>
+          </ScrollArea>
 
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button variant="outline" onClick={handleCancelEdit}>
-                Cancel
-              </Button>
-              <Button onClick={handleSaveEdit} className="bg-[#d73a31] hover:bg-[#c73128]">
-                Save Changes
-              </Button>
-            </div>
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-2 pt-4 border-t">
+            <Button variant="outline" onClick={handleCancelEdit}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit} className="bg-[#d73a31] hover:bg-[#c73128]">
+              Save Changes
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
