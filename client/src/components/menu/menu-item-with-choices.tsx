@@ -239,7 +239,8 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                           group?.name === 'Calzone Size' ||
                           group?.name === 'Stromboli Size' ||
                           group?.name === 'Traditional Pizza Size' ||
-                          group?.name === 'Specialty Gourmet Pizza Size';
+                          group?.name === 'Specialty Gourmet Pizza Size' ||
+                          group?.name === 'Garden Salad Size';
 
       selections.forEach(selectionId => {
         const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
