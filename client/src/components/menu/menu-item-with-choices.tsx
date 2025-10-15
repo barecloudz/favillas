@@ -119,9 +119,20 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
     return sizeChoice?.name;
   };
 
-  // Simplified: Show all choice groups in the order set by admin
+  // Progressive reveal: require size selection first for calzones/stromboli
   const getVisibleChoiceGroups = () => {
-    // Just return all groups - they're already sorted by displayOrder
+    // Check if there's a size group that requires selection first
+    const sizeGroup = itemChoiceGroups.find(g =>
+      g.name === 'Calzone Size' ||
+      g.name === 'Stromboli Size'
+    );
+
+    // If there's a size group and it hasn't been selected yet, only show the size group
+    if (sizeGroup && (!selectedChoices[sizeGroup.id] || selectedChoices[sizeGroup.id].length === 0)) {
+      return [sizeGroup];
+    }
+
+    // Otherwise, show all groups in the order set by admin
     return itemChoiceGroups;
   };
 
