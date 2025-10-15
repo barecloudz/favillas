@@ -104,16 +104,39 @@ export const handler: Handler = async (event, context) => {
         };
       }
       
-      const { name, description, minSelections, maxSelections, isRequired, priority } = JSON.parse(event.body || '{}');
+      const body = JSON.parse(event.body || '{}');
+
+      // Get current values first
+      const current = await sql`
+        SELECT * FROM choice_groups WHERE id = ${parseInt(groupId)}
+      `;
+
+      if (current.length === 0) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ message: 'Choice group not found' })
+        };
+      }
+
+      const currentGroup = current[0];
+
+      // Use provided values or fall back to current values
+      const name = body.name !== undefined ? body.name : currentGroup.name;
+      const description = body.description !== undefined ? body.description : currentGroup.description;
+      const minSelections = body.minSelections !== undefined ? body.minSelections : currentGroup.min_selections;
+      const maxSelections = body.maxSelections !== undefined ? body.maxSelections : currentGroup.max_selections;
+      const isRequired = body.isRequired !== undefined ? body.isRequired : currentGroup.is_required;
+      const priority = body.priority !== undefined ? body.priority : currentGroup.priority;
 
       const result = await sql`
         UPDATE choice_groups
-        SET name = COALESCE(${name}, name),
-            description = COALESCE(${description}, description),
-            min_selections = COALESCE(${minSelections}, min_selections),
-            max_selections = COALESCE(${maxSelections}, max_selections),
-            is_required = COALESCE(${isRequired}, is_required),
-            priority = COALESCE(${priority}, priority)
+        SET name = ${name},
+            description = ${description},
+            min_selections = ${minSelections},
+            max_selections = ${maxSelections},
+            is_required = ${isRequired},
+            priority = ${priority}
         WHERE id = ${parseInt(groupId)}
         RETURNING *
       `;
