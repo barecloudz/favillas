@@ -127,7 +127,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
     return sizeChoice?.name;
   };
 
-  // Progressive reveal: require size selection first for calzones/stromboli
+  // Progressive reveal: require size selection first for calzones/stromboli, then filter toppings by size
   const getVisibleChoiceGroups = () => {
     // Check if there's a size group that requires selection first
     const sizeGroup = itemChoiceGroups.find(g =>
@@ -138,6 +138,42 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
     // If there's a size group and it hasn't been selected yet, only show the size group
     if (sizeGroup && (!selectedChoices[sizeGroup.id] || selectedChoices[sizeGroup.id].length === 0)) {
       return [sizeGroup];
+    }
+
+    // If size is selected for calzone/stromboli, filter topping groups by size
+    if (sizeGroup && selectedChoices[sizeGroup.id] && selectedChoices[sizeGroup.id].length > 0) {
+      const selectedSizeId = selectedChoices[sizeGroup.id][0];
+      const selectedSizeChoice = choiceItems.find(ci => ci.id === parseInt(selectedSizeId));
+      const selectedSizeName = selectedSizeChoice?.name || '';
+
+      console.log('🔍 [Size Filter] Selected size:', selectedSizeName);
+
+      // Filter groups to show only size group and toppings that match the selected size
+      const filteredGroups = itemChoiceGroups.filter(g => {
+        // Always show the size group
+        if (g.id === sizeGroup.id) return true;
+
+        // For topping groups, check if they match the selected size
+        const groupName = g.name.toLowerCase();
+        const sizeName = selectedSizeName.toLowerCase();
+
+        // Check if this is a topping group
+        if (groupName.includes('topping')) {
+          // Match size in group name with selected size
+          if (sizeName.includes('small') && groupName.includes('small')) return true;
+          if (sizeName.includes('medium') && groupName.includes('medium')) return true;
+          if (sizeName.includes('large') && groupName.includes('large')) return true;
+
+          // Don't show toppings for other sizes
+          return false;
+        }
+
+        // Show all non-topping groups
+        return true;
+      });
+
+      console.log('🔍 [Size Filter] Filtered groups:', filteredGroups.map(g => g.name));
+      return filteredGroups;
     }
 
     // Otherwise, show all groups in the order set by admin
