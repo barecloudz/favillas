@@ -67,10 +67,11 @@ export const handler: Handler = async (event, context) => {
         // Initialize user points using same system as traditional registration
         try {
           await withDB(async (sql) => {
-            // Create user_points record with proper schema
+            // Create user_points record with proper schema - UPSERT to prevent duplicates
             await sql`
               INSERT INTO user_points (user_id, points, total_earned, total_redeemed, created_at, updated_at)
               VALUES (${userId}, 0, 0, 0, NOW(), NOW())
+              ON CONFLICT (user_id) DO NOTHING
             `;
 
             // Create initial transaction record for audit trail

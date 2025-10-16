@@ -318,16 +318,12 @@ export const handler: Handler = async (event, context) => {
               RETURNING *
             `;
 
-            // Initialize user points using correct schema for Supabase user
-            try {
-              await sql`
-                INSERT INTO user_points (supabase_user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
-                VALUES (${authPayload.supabaseUserId}, 0, 0, 0, NOW(), NOW(), NOW())
-              `;
-            } catch (pointsError) {
-              // User points might already exist - this is OK
-              console.log('User points already exist for Supabase user:', authPayload.supabaseUserId);
-            }
+            // Initialize user points using correct schema for Supabase user - UPSERT to prevent duplicates
+            await sql`
+              INSERT INTO user_points (supabase_user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
+              VALUES (${authPayload.supabaseUserId}, 0, 0, 0, NOW(), NOW(), NOW())
+              ON CONFLICT (supabase_user_id) DO NOTHING
+            `;
 
             console.log('✅ Created/Updated Supabase user account with points system:', newUserResult[0]);
 
@@ -427,16 +423,12 @@ export const handler: Handler = async (event, context) => {
             console.log('Legacy user already exists:', authPayload.userId);
           }
 
-          // Initialize user points using correct schema for legacy user
-          try {
-            await sql`
-              INSERT INTO user_points (user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
-              VALUES (${authPayload.userId}, 0, 0, 0, NOW(), NOW(), NOW())
-            `;
-          } catch (pointsError) {
-            // User points might already exist - this is OK
-            console.log('User points already exist for legacy user:', authPayload.userId);
-          }
+          // Initialize user points using correct schema for legacy user - UPSERT to prevent duplicates
+          await sql`
+            INSERT INTO user_points (user_id, points, total_earned, total_redeemed, last_earned_at, created_at, updated_at)
+            VALUES (${authPayload.userId}, 0, 0, 0, NOW(), NOW(), NOW())
+            ON CONFLICT (user_id) DO NOTHING
+          `;
 
           console.log('✅ Created legacy user account with points system');
         }
