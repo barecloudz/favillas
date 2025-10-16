@@ -27,7 +27,9 @@ const DEFAULT_CORS_CONFIG: Required<CorsOptions> = {
     'http://localhost:3001',
     'https://pizzaspinrewards.netlify.app',
     'https://pizza-spin-rewards.netlify.app',
-    'https://pizzaspin.netlify.app'
+    'https://pizzaspin.netlify.app',
+    'https://preview--pizzaspin.netlify.app',
+    'https://updates.favillaspizzeria.com'
   ],
   allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: [
