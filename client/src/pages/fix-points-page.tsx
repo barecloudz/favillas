@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-supabase-auth';
+import { supabase } from '@/lib/supabase';
 
 const FixPointsPage: React.FC = () => {
-  const { user, getAccessToken } = useAuth();
+  const { user, session } = useAuth();
   const [logs, setLogs] = useState<Array<{ message: string; type: string }>>([]);
   const [isRunning, setIsRunning] = useState(false);
 
@@ -22,8 +23,10 @@ const FixPointsPage: React.FC = () => {
     addLog('', 'info');
 
     try {
-      // Get auth token
-      const token = await getAccessToken();
+      // Get auth token from session
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const token = currentSession?.access_token || session?.access_token;
+
       if (!token) {
         addLog('❌ ERROR: Could not get auth token', 'error');
         addLog('Please make sure you are logged in', 'warning');
