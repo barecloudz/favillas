@@ -221,7 +221,7 @@ const RewardsPage = () => {
         <title>Rewards | Favilla's NY Pizza</title>
       </Helmet>
 
-      <main className="min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-yellow-50 py-8 md:pt-[144px] pt-[120px]">
+      <main className="min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-yellow-50 py-8 md:pt-[72px] pt-[60px]">
         <div className="max-w-6xl mx-auto px-4">
           {/* Hero Header */}
           <div className="mb-8 text-center">

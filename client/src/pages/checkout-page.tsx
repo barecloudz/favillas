@@ -751,7 +751,7 @@ const CheckoutPage = () => {
         <meta name="description" content="Complete your order at Favilla's NY Pizza. Easy and secure checkout with multiple payment options." />
       </Helmet>
 
-      <main className="bg-gray-50 py-12 md:pt-[144px] pt-[120px]">
+      <main className="bg-gray-50 py-12 md:pt-[72px] pt-[60px]">
         <div className="container mx-auto px-4">
           {/* Back Button */}
           <div className="mb-6">

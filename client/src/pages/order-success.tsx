@@ -524,7 +524,7 @@ Thank you for choosing Favilla's NY Pizza!
           <title>Order Confirmation | Favilla's NY Pizza</title>
         </Helmet>
 
-        <main className="min-h-screen bg-gray-50 flex items-center justify-center md:pt-[72px] pt-[60px]">
+        <main className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
             <p className="text-gray-600">Loading your order details...</p>
@@ -545,7 +545,7 @@ Thank you for choosing Favilla's NY Pizza!
           <title>Order Not Found | Favilla's NY Pizza</title>
         </Helmet>
 
-        <main className="min-h-screen bg-gray-50 flex items-center justify-center md:pt-[72px] pt-[60px]">
+        <main className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Order Not Found</h1>
             <p className="text-gray-600 mb-6">We couldn't find the order you're looking for.</p>
@@ -563,7 +563,7 @@ Thank you for choosing Favilla's NY Pizza!
         <title>Order Confirmation | Favilla's NY Pizza</title>
       </Helmet>
 
-      <main className="min-h-screen bg-gray-50 py-8 md:pt-[144px] pt-[120px]">
+      <main className="min-h-screen bg-gray-50 py-8 md:pt-[72px] pt-[60px]">
         <div className="max-w-4xl mx-auto px-4">
           {/* Success Header */}
           <div className="text-center mb-8">
