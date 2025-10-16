@@ -24,6 +24,7 @@ import FixOrderPage from "@/pages/fix-order";
 import Fix169Page from "@/pages/fix-169";
 import DebugOrdersPage from "@/pages/debug-orders";
 import EmployeeClockPage from "@/pages/employee-clock";
+import FixPointsPage from "@/pages/fix-points-page";
 import { AuthProvider } from "@/hooks/use-supabase-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { AdminProtectedRoute } from "@/lib/admin-protected-route";
@@ -65,6 +66,7 @@ function Router() {
         <ProtectedRoute path="/kitchen" component={KitchenPage} />
         <AdminProtectedRoute path="/admin/dashboard" component={AdminDashboard} />
         <ProtectedRoute path="/employee/clock" component={EmployeeClockPage} />
+        <AdminProtectedRoute path="/admin/fix-points" component={FixPointsPage} />
         <Route component={NotFound} />
       </Switch>
     </>

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fix Points System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #d73a31;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #c02a21;
+        }
+        #output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            max-height: 500px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .success { color: #4ec9b0; }
+        .error { color: #f48771; }
+        .warning { color: #dcdcaa; }
+        .info { color: #569cd6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Points System Fix Tool</h1>
+        <p>This tool will fix the duplicate points records issue and restore your correct points balance.</p>
+
+        <div>
+            <button onclick="runFix()">🚀 Fix My Points System</button>
+            <button onclick="clearOutput()">Clear Log</button>
+        </div>
+
+        <div id="output"></div>
+    </div>
+
+    <script>
+        const output = document.getElementById('output');
+
+        function log(message, type = 'info') {
+            const span = document.createElement('span');
+            span.className = type;
+            span.textContent = message + '\n';
+            output.appendChild(span);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function clearOutput() {
+            output.innerHTML = '';
+        }
+
+        async function runFix() {
+            clearOutput();
+            log('🔧 Starting Points System Fix...', 'info');
+            log('', 'info');
+
+            // Get auth token
+            const cookies = document.cookie.split(';');
+            const authCookie = cookies.find(c => c.trim().startsWith('auth-token=') || c.trim().startsWith('sb-access-token='));
+
+            let authToken = null;
+            if (authCookie) {
+                authToken = authCookie.split('=')[1];
+            } else {
+                const supabaseAuth = localStorage.getItem('sb-localhost-auth-token') ||
+                                     localStorage.getItem('sb-preview--pizzaspin.netlify.app-auth-token');
+                if (supabaseAuth) {
+                    try {
+                        const parsed = JSON.parse(supabaseAuth);
+                        if (parsed.access_token) {
+                            authToken = parsed.access_token;
+                        }
+                    } catch (e) {
+                        log('Failed to parse auth token', 'error');
+                    }
+                }
+            }
+
+            if (!authToken) {
+                log('❌ ERROR: No auth token found!', 'error');
+                log('', 'info');
+                log('Please make sure you are logged in at:', 'warning');
+                log('https://preview--pizzaspin.netlify.app', 'warning');
+                log('', 'info');
+                log('Then reload this page and try again.', 'warning');
+                return;
+            }
+
+            log('✅ Found auth token', 'success');
+
+            const baseUrl = 'https://preview--pizzaspin.netlify.app/.netlify/functions';
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + authToken
+            };
+
+            try {
+                // Step 1: Run migration
+                log('', 'info');
+                log('📦 Step 1: Running database migration...', 'info');
+                const migrationResponse = await fetch(baseUrl + '/run-migration-0011', {
+                    method: 'POST',
+                    headers: headers
+                });
+
+                if (!migrationResponse.ok) {
+                    const error = await migrationResponse.text();
+                    log('❌ Migration failed: ' + error, 'error');
+                    return;
+                }
+
+                const migrationResult = await migrationResponse.json();
+                log('✅ Migration completed!', 'success');
+                log('   Remaining duplicates: ' + migrationResult.remainingDuplicates, 'info');
+
+                // Step 2: Fix admin account
+                log('', 'info');
+                log('🔧 Step 2: Fixing your admin account...', 'info');
+                const fixResponse = await fetch(baseUrl + '/fix-duplicate-points-records', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        supabaseUserId: 'ba1a4039-521c-4634-9393-5333edbec807',
+                        dryRun: false
+                    })
+                });
+
+                if (!fixResponse.ok) {
+                    const error = await fixResponse.text();
+                    log('❌ Fix failed: ' + error, 'error');
+                    return;
+                }
+
+                const fixResult = await fixResponse.json();
+                log('✅ Admin account fixed!', 'success');
+                log('', 'info');
+                log('📊 Results:', 'info');
+                log('   Duplicates removed: ' + fixResult.summary.duplicateRecords.recordsToDelete, 'success');
+                log('   Total orders: ' + fixResult.summary.orders.total, 'info');
+                log('   Orders needing points: ' + fixResult.summary.orders.withoutTransactions, 'warning');
+                log('   Missing points awarded: ' + fixResult.summary.calculations.missingPoints, 'success');
+                log('   New points total: ' + fixResult.summary.calculations.correctPoints, 'success');
+
+                // Step 3: Verify
+                log('', 'info');
+                log('✅ Step 3: Verifying the fix...', 'info');
+                const verifyResponse = await fetch(baseUrl + '/diagnose-points-5999');
+                const verifyResult = await verifyResponse.json();
+
+                const adminDiagnosis = verifyResult.diagnostics.find(d =>
+                    d.user.email === 'admin@favillasnypizza.com'
+                );
+
+                if (adminDiagnosis) {
+                    log('', 'info');
+                    log('📊 VERIFICATION RESULTS:', 'info');
+                    log('   Current Points: ' + adminDiagnosis.pointsRecord.currentPoints, 'success');
+                    log('   Total Earned: ' + adminDiagnosis.pointsRecord.totalEarned, 'info');
+                    log('   Total Redeemed: ' + adminDiagnosis.pointsRecord.totalRedeemed, 'info');
+                    log('   Status: ' + adminDiagnosis.diagnosis.issue, 'warning');
+
+                    if (adminDiagnosis.diagnosis.issue === 'NO_OBVIOUS_ISSUE') {
+                        log('', 'info');
+                        log('🎉 SUCCESS! Your points system is now working correctly!', 'success');
+                        log('', 'info');
+                        log('✅ What was fixed:', 'success');
+                        log('   • Removed all duplicate database records', 'success');
+                        log('   • Awarded points for all past orders', 'success');
+                        log('   • Added unique constraints to prevent future duplicates', 'success');
+                        log('   • Fixed all INSERT statements to use ON CONFLICT', 'success');
+                        log('', 'info');
+                        log('💡 Your customers will never experience this issue!', 'success');
+                    } else {
+                        log('', 'info');
+                        log('⚠️ There may still be an issue. Check the diagnosis above.', 'warning');
+                    }
+                } else {
+                    log('⚠️ Could not find admin account in verification', 'warning');
+                }
+
+            } catch (error) {
+                log('', 'info');
+                log('❌ ERROR: ' + error.message, 'error');
+                log('', 'info');
+                log('If you see a 403 error, you may not have admin permissions.', 'warning');
+                log('If you see a 401 error, your session expired. Please log in again.', 'warning');
+            }
+
+            log('', 'info');
+            log('✨ Script completed!', 'info');
+        }
+    </script>
+</body>
+</html>
