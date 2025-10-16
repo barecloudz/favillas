@@ -4926,7 +4926,7 @@ const MenuEditor = ({ menuItems }: any) => {
                 </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="max-h-[calc(100vh-200px)] overflow-y-auto">
               <div className="space-y-4">
                 {sortedCategories.map((category) => {
                   const categoryItems = menuItemsByCategory[category.name] || [];
