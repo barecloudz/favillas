@@ -26,7 +26,7 @@ function formatOrderItemsForShipDay(orderItems: any[]): any[] {
     const basePrice = parseFloat(item.price || item.menu_item_price || "0");
     let totalPrice = basePrice;
 
-    // Array to collect addons as strings (ShipDay format)
+    // Array to collect addons as strings (ShipDay format - NO PRICES)
     let addOns: string[] = [];
 
     if (item.options) {
@@ -38,8 +38,9 @@ function formatOrderItemsForShipDay(orderItems: any[]): any[] {
           // New choice system format: [{ groupName: "Size", itemName: "Large", price: 2.00 }]
           options.forEach(option => {
             if (option.itemName && option.groupName) {
-              // Add to addOns array as "Group: Item" format
+              // Add to addOns array as "Group: Item" format (NO PRICE)
               addOns.push(`${option.groupName}: ${option.itemName}`);
+              // Add price to unitPrice total
               if (option.price && option.price > 0) {
                 totalPrice += parseFloat(option.price);
               }
@@ -49,25 +50,25 @@ function formatOrderItemsForShipDay(orderItems: any[]): any[] {
           // Legacy selectedOptions format
           if (options.size) addOns.push(`Size: ${options.size}`);
           if (options.toppings && Array.isArray(options.toppings)) {
-            options.toppings.forEach(t => addOns.push(t));
+            options.toppings.forEach(t => addOns.push(`Topping: ${typeof t === 'string' ? t : t.name || t}`));
           }
           if (options.extras && Array.isArray(options.extras)) {
-            options.extras.forEach(e => addOns.push(e));
+            options.extras.forEach(e => addOns.push(`Extra: ${typeof e === 'string' ? e : e.name || e}`));
           }
           if (options.addOns && Array.isArray(options.addOns)) {
-            options.addOns.forEach(a => addOns.push(a));
+            options.addOns.forEach(a => addOns.push(typeof a === 'string' ? a : a.name || a));
           }
           if (options.customizations && Array.isArray(options.customizations)) {
-            options.customizations.forEach(c => addOns.push(c));
+            options.customizations.forEach(c => addOns.push(`Custom: ${typeof c === 'string' ? c : c.name || c}`));
           }
 
           // Handle half & half pizzas
           if (options.halfAndHalf) {
             if (options.leftToppings && Array.isArray(options.leftToppings)) {
-              options.leftToppings.forEach(t => addOns.push(`Left: ${t.name || t}`));
+              options.leftToppings.forEach(t => addOns.push(`Left Half: ${t.name || t}`));
             }
             if (options.rightToppings && Array.isArray(options.rightToppings)) {
-              options.rightToppings.forEach(t => addOns.push(`Right: ${t.name || t}`));
+              options.rightToppings.forEach(t => addOns.push(`Right Half: ${t.name || t}`));
             }
           }
         }
@@ -76,17 +77,20 @@ function formatOrderItemsForShipDay(orderItems: any[]): any[] {
       }
     }
 
-    // Include special instructions in addOns
-    if (item.special_instructions) {
-      addOns.push(`Special: ${item.special_instructions}`);
-    }
-
-    return {
+    // Build the formatted item
+    const formattedItem: any = {
       name: itemName,
       unitPrice: totalPrice > 0 ? totalPrice : basePrice,
       quantity: parseInt(item.quantity || "1"),
-      addOns: addOns // ShipDay expects array of strings
+      addOns: addOns.length > 0 ? addOns : undefined // Only include if there are addOns
     };
+
+    // Use ShipDay's `detail` field for item-specific special instructions
+    if (item.special_instructions) {
+      formattedItem.detail = item.special_instructions;
+    }
+
+    return formattedItem;
   });
 }
 
@@ -172,12 +176,27 @@ export async function createShipDayOrder(orderId: number): Promise<{ success: bo
       };
     }
 
-    // Create Ship Day payload
-    const shipdayPayload = {
+    // Calculate correct order totals
+    const tipAmount = parseFloat(order.tip || "0");
+    const deliveryFeeAmount = parseFloat(order.delivery_fee || "0");
+    const taxAmount = parseFloat(order.tax || "0");
+    const grandTotal = parseFloat(order.total || "0");
+
+    // Items subtotal = grand total - delivery fee - tax - tip
+    const itemsSubtotal = grandTotal - deliveryFeeAmount - taxAmount - tipAmount;
+
+    // Create Ship Day payload with all required fields
+    const shipdayPayload: any = {
+      // Order Items with choices as strings (NO PRICES in addOns)
       orderItems: formattedItems,
-      tip: parseFloat(order.delivery_tip || order.tip || "0"),
-      orderTotal: parseFloat(order.subtotal || order.total),
-      deliveryFee: parseFloat(order.delivery_fee || "0"),
+
+      // Financial fields
+      tip: tipAmount,  // Tip amount (singular per common usage)
+      orderTotal: itemsSubtotal,  // Just the items subtotal
+      deliveryFee: deliveryFeeAmount,
+      totalOrderCost: grandTotal,  // Grand total including everything
+
+      // Pickup location (restaurant)
       pickup: {
         address: {
           street: "123 Main St", // TODO: Get from restaurant settings
@@ -191,6 +210,8 @@ export async function createShipDayOrder(orderId: number): Promise<{ success: bo
           phone: "5551234567" // TODO: Get from restaurant settings
         }
       },
+
+      // Dropoff location (customer)
       dropoff: {
         address: {
           street: addressData.street || addressData.fullAddress,
@@ -205,15 +226,25 @@ export async function createShipDayOrder(orderId: number): Promise<{ success: bo
           ...(customerEmail && { email: customerEmail })
         }
       },
+
+      // Order identification
       orderNumber: `FAV-${orderId}`,
-      totalOrderCost: parseFloat(order.total),
       paymentMethod: 'credit_card',
+
+      // Customer info (required at root level)
       customerName: customerName.trim() || "Customer",
       customerPhoneNumber: customerPhone.replace(/[^\d]/g, ''),
       customerAddress: `${addressData.street || addressData.fullAddress}, ${addressData.city}, ${addressData.state} ${addressData.zipCode}`,
       ...(customerEmail && { customerEmail: customerEmail }),
+
+      // Scheduled delivery fields
       ...scheduledFields
     };
+
+    // Add delivery instructions if provided (ORDER-LEVEL instructions for driver)
+    if (order.special_instructions) {
+      shipdayPayload.deliveryInstruction = order.special_instructions;
+    }
 
     console.log('📦 Sending detailed Ship Day payload with addons/choices:', JSON.stringify(shipdayPayload, null, 2));
 
