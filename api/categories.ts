@@ -64,13 +64,15 @@ export const handler: Handler = async (event, context) => {
         name: cat.name,
         order: cat.order,
         isActive: cat.is_active,
+        is_upsell_enabled: cat.is_upsell_enabled,
+        image_url: cat.image_url,
         created_at: cat.created_at
       }));
 
       return {
         statusCode: 200,
         headers: headersWithCache,
-        body: JSON.stringify({ categories })
+        body: JSON.stringify(categories)
       };
 
     } else if (event.httpMethod === 'POST') {

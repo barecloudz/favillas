@@ -247,7 +247,8 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
       item.id &&
       item.name &&
       item.category === categoryName &&
-      item.is_available !== false // Default to available if not set
+      item.is_available !== false && // Default to available if not set
+      item.price > 0 // Only show items with price > 0
     ).slice(0, 6); // Limit to 6 items for better UX
   };
 
@@ -384,35 +385,52 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={() => handleProceedToCheckout()}>
-      <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] min-h-[60vh] p-0 flex flex-col">
-        {/* Header with gradient background */}
-        <DialogHeader className="relative bg-gradient-to-r from-[#d73a31] to-[#ff6b5b] text-white p-4 sm:p-8 pb-4 sm:pb-6">
-          <div className="absolute inset-0 bg-black opacity-10"></div>
-          <div className="relative">
+      <DialogContent className="max-w-6xl w-[95vw] max-h-[95vh] p-0 flex flex-col rounded-3xl overflow-hidden shadow-2xl">
+        {/* Header with modern gradient background and pattern */}
+        <DialogHeader className="relative bg-gradient-to-br from-[#d73a31] via-[#e84c3d] to-[#ff6b5b] text-white p-6 sm:p-10 pb-6 sm:pb-8">
+          {/* Animated gradient overlay */}
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDE4YzAtOS45NC04LjA2LTE4LTE4LTE4UzAgOC4wNiAwIDE4czguMDYgMTggMTggMTggMTgtOC4wNiAxOC0xOHoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30"></div>
+
+          <div className="relative z-10">
             <div className="text-center">
-              <DialogTitle className="text-2xl sm:text-4xl font-extrabold mb-3 leading-tight tracking-wide">
-                {selectedCategory ? `Perfect ${selectedCategory} Pairings!` : '🍕 Make Your Order Complete!'}
+              {/* Icon/Emoji header */}
+              <div className="mb-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-white/20 backdrop-blur-sm rounded-full border-4 border-white/30 shadow-lg">
+                  <span className="text-3xl sm:text-4xl">{selectedCategory ? '✨' : '🎉'}</span>
+                </div>
+              </div>
+
+              <DialogTitle className="text-2xl sm:text-5xl font-black mb-3 sm:mb-4 leading-tight tracking-tight drop-shadow-lg">
+                {selectedCategory ? `${selectedCategory} Selection` : 'Complete Your Feast!'}
               </DialogTitle>
               {!selectedCategory && (
-                <p className="text-white/90 text-base sm:text-xl font-medium">
-                  Save more and get the full experience - these popular items pair perfectly with your order!
+                <p className="text-white/95 text-lg sm:text-2xl font-semibold drop-shadow-md max-w-2xl mx-auto">
+                  Add the perfect sides to make your meal unforgettable! 🌟
                 </p>
               )}
             </div>
           </div>
+
+          {/* Decorative wave at bottom */}
+          <svg className="absolute bottom-0 left-0 right-0 w-full" viewBox="0 0 1440 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 48h1440V0c-240 48-480 48-720 24C480 0 240 0 0 0v48z" fill="white"/>
+          </svg>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-4 sm:py-6">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 sm:py-8 bg-gradient-to-b from-white to-gray-50">
           {!selectedCategory ? (
-            // Category selection view - improved design
-            <div className="space-y-6">
+            // Category selection view - modern mobile app design
+            <div className="space-y-8 max-w-5xl mx-auto">
               <div className="text-center">
-                <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
-                  💰 Popular Add-Ons - Most Customers Love These!
+                <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-full text-base font-bold shadow-lg">
+                  <span className="mr-2">⭐</span>
+                  Most Popular Add-Ons
+                  <span className="ml-2">⭐</span>
                 </div>
+                <p className="mt-4 text-gray-600 text-sm sm:text-base">Tap a category to see delicious options</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 {missingCategories.map((category) => {
                   const IconComponent = getCategoryIcon(category);
                   const customImage = getCategoryImage(category.name);
@@ -422,47 +440,48 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
                   return (
                     <Card
                       key={category.id}
-                      className={`group cursor-pointer hover:shadow-xl transition-all duration-300 hover:scale-[1.02] border-2 ${colors.border} bg-gradient-to-br from-white to-gray-50 ${colors.cardBg} relative overflow-hidden`}
+                      className="group cursor-pointer hover:shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 border-0 bg-white rounded-3xl overflow-hidden relative"
                       onClick={() => setSelectedCategory(category.name)}
                     >
-                      {/* Subtle pattern overlay */}
-                      <div className="absolute inset-0 bg-white/50 group-hover:bg-white/20 transition-colors duration-300"></div>
+                      {/* Gradient background effect */}
+                      <div className={`absolute inset-0 bg-gradient-to-br ${colors.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}></div>
 
-                      <CardContent className="relative p-6 text-center">
-                        <div className="mb-4">
+                      <CardContent className="relative p-4 sm:p-6 text-center">
+                        <div className="mb-3 sm:mb-4">
                           {displayImage ? (
-                            <div className="relative">
+                            <div className="relative mx-auto w-20 h-20 sm:w-24 sm:h-24">
                               <img
                                 src={displayImage}
                                 alt={category.name}
-                                className="w-20 h-20 mx-auto rounded-xl object-cover shadow-md group-hover:shadow-lg transition-shadow duration-300"
+                                className="w-full h-full rounded-2xl object-cover shadow-lg ring-4 ring-white group-hover:ring-0 transition-all duration-300"
                               />
-                              <div className={`absolute -top-2 -right-2 ${colors.badge} text-white text-xs font-bold px-2 py-1 rounded-full`}>
-                                {customImage ? 'CUSTOM' : 'HOT!'}
+                              <div className="absolute -top-1 -right-1 bg-gradient-to-br from-orange-400 to-red-500 text-white text-xs font-black px-2 py-1 rounded-full shadow-md transform group-hover:scale-110 transition-transform">
+                                HOT
                               </div>
                             </div>
                           ) : (
-                            <div className="relative">
-                              <div className={`w-20 h-20 mx-auto bg-gradient-to-br ${colors.gradient} ${colors.hoverGradient} rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300`}>
-                                <IconComponent className="w-10 h-10 text-white" />
+                            <div className="relative mx-auto w-20 h-20 sm:w-24 sm:h-24">
+                              <div className={`w-full h-full bg-gradient-to-br ${colors.gradient} rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 transform group-hover:rotate-3`}>
+                                <IconComponent className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
                               </div>
-                              <div className={`absolute -top-2 -right-2 ${colors.badge} text-white text-xs font-bold px-2 py-1 rounded-full`}>
-                                NEW!
+                              <div className="absolute -top-1 -right-1 bg-gradient-to-br from-yellow-400 to-orange-500 text-white text-xs font-black px-2 py-1 rounded-full shadow-md animate-pulse">
+                                NEW
                               </div>
                             </div>
                           )}
                         </div>
 
-                        <h3 className={`font-bold text-xl text-gray-800 mb-2 ${colors.text} transition-colors duration-300`}>
+                        <h3 className="font-black text-base sm:text-lg text-gray-900 mb-1 sm:mb-2 group-hover:text-[#d73a31] transition-colors">
                           {category.name}
                         </h3>
 
-                        <p className="text-sm text-gray-600 mb-3">
-                          Perfect complement to your meal
-                        </p>
+                        <div className="flex items-center justify-center gap-1 text-xs text-gray-500 mb-3">
+                          <span>🔥</span>
+                          <span className="font-semibold">Popular Choice</span>
+                        </div>
 
-                        <div className={`${colors.badge} hover:opacity-90 text-white px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 shadow-md group-hover:shadow-lg`}>
-                          Browse {category.name} →
+                        <div className={`${colors.badge} text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-md group-hover:shadow-lg transition-all transform group-hover:-translate-y-0.5`}>
+                          Explore →
                         </div>
                       </CardContent>
                     </Card>
@@ -471,14 +490,18 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
               </div>
             </div>
           ) : (
-            // Items listing view - improved design
+            // Items listing view - improved design with better back button
             <div className="pb-6">
               <Button
-                variant="ghost"
                 onClick={() => setSelectedCategory(null)}
-                className="mb-6 text-[#d73a31] hover:text-[#c73128] hover:bg-[#d73a31]/10 px-0"
+                className="mb-6 bg-white hover:bg-gray-50 text-[#d73a31] border-2 border-[#d73a31] rounded-xl shadow-md hover:shadow-lg transition-all duration-200 font-semibold px-6 py-2"
               >
-                ← Back to All Categories
+                <span className="flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Back to Categories
+                </span>
               </Button>
 
               <div className="text-center mb-6">
