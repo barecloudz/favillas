@@ -7,8 +7,8 @@ export { resend };
 
 // Email configuration
 export const EMAIL_CONFIG = {
-  from: 'Pizza Spin Rewards <noreply@pizzaspinrewards.com>', // You'll need to verify your domain
-  replyTo: 'support@pizzaspinrewards.com'
+  from: 'Favillas NY Pizza <noreply@favillasnypizza.com>', // Change to your verified domain
+  replyTo: 'info@favillasnypizza.com' // Change to your support email
 };
 
 // Email types for tracking
