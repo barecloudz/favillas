@@ -97,7 +97,7 @@ export const handler: Handler = async (event, context) => {
       // Extract ID from URL path
       const pathParts = event.path.split('/');
       const rewardId = pathParts[pathParts.length - 1];
-      
+
       if (!rewardId || isNaN(parseInt(rewardId))) {
         return {
           statusCode: 400,
@@ -105,32 +105,47 @@ export const handler: Handler = async (event, context) => {
           body: JSON.stringify({ message: 'Invalid reward ID' })
         };
       }
-      
+
       const { name, description, pointsRequired, rewardType, discount, freeItem, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
 
-      const result = await sql`
-        UPDATE rewards
-        SET name = ${name || null},
-            description = ${description || null},
-            points_required = ${pointsRequired ? parseInt(pointsRequired) : null},
-            reward_type = ${rewardType || null},
-            discount = ${discount ? parseFloat(discount) : null},
-            free_item = ${freeItem || null},
-            min_order_amount = ${minOrderAmount ? parseFloat(minOrderAmount) : null},
-            expires_at = ${expiresAt || null},
-            updated_at = NOW()
-        WHERE id = ${parseInt(rewardId)}
-        RETURNING *
+      // First get the existing reward to preserve values
+      const existing = await sql`
+        SELECT * FROM rewards WHERE id = ${parseInt(rewardId)}
       `;
-      
-      if (result.length === 0) {
+
+      if (existing.length === 0) {
         return {
           statusCode: 404,
           headers,
           body: JSON.stringify({ message: 'Reward not found' })
         };
       }
-      
+
+      // Use existing values if new values are not provided
+      const updatedName = name !== undefined ? name : existing[0].name;
+      const updatedDescription = description !== undefined ? description : existing[0].description;
+      const updatedPointsRequired = pointsRequired !== undefined ? parseInt(pointsRequired) : existing[0].points_required;
+      const updatedRewardType = rewardType !== undefined ? rewardType : existing[0].reward_type;
+      const updatedDiscount = discount !== undefined ? (discount ? parseFloat(discount) : null) : existing[0].discount;
+      const updatedFreeItem = freeItem !== undefined ? freeItem : existing[0].free_item;
+      const updatedMinOrderAmount = minOrderAmount !== undefined ? (minOrderAmount ? parseFloat(minOrderAmount) : null) : existing[0].min_order_amount;
+      const updatedExpiresAt = expiresAt !== undefined ? expiresAt : existing[0].expires_at;
+
+      const result = await sql`
+        UPDATE rewards
+        SET name = ${updatedName},
+            description = ${updatedDescription},
+            points_required = ${updatedPointsRequired},
+            reward_type = ${updatedRewardType},
+            discount = ${updatedDiscount},
+            free_item = ${updatedFreeItem},
+            min_order_amount = ${updatedMinOrderAmount},
+            expires_at = ${updatedExpiresAt},
+            updated_at = NOW()
+        WHERE id = ${parseInt(rewardId)}
+        RETURNING *
+      `;
+
       return {
         statusCode: 200,
         headers,
