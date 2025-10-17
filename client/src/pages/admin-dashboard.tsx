@@ -16925,6 +16925,9 @@ const RewardsManagement = () => {
       rewardType: data.rewardType || 'discount',
       discount: data.rewardType === 'discount' ? parseFloat(data.discount) : null,
       freeItem: data.rewardType === 'free_item' ? data.freeItem : null,
+      freeItemMenuId: data.rewardType === 'free_item' ? data.freeItemMenuId : null,
+      freeItemCategory: data.rewardType === 'free_item' ? data.freeItemCategory : null,
+      freeItemAllFromCategory: data.rewardType === 'free_item' ? data.freeItemAllFromCategory : false,
       minOrderAmount: data.minOrderAmount ? parseFloat(data.minOrderAmount) : null,
       expiresAt: data.expiresAt || null,
     });
@@ -16940,6 +16943,9 @@ const RewardsManagement = () => {
         rewardType: data.rewardType || 'discount',
         discount: data.rewardType === 'discount' ? parseFloat(data.discount) : null,
         freeItem: data.rewardType === 'free_item' ? data.freeItem : null,
+        freeItemMenuId: data.rewardType === 'free_item' ? data.freeItemMenuId : null,
+        freeItemCategory: data.rewardType === 'free_item' ? data.freeItemCategory : null,
+        freeItemAllFromCategory: data.rewardType === 'free_item' ? data.freeItemAllFromCategory : false,
         minOrderAmount: data.minOrderAmount ? parseFloat(data.minOrderAmount) : null,
         expiresAt: data.expiresAt || null,
       },
@@ -17181,8 +17187,22 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
     rewardType: "discount",
     discount: "",
     freeItem: "",
+    freeItemMenuId: "",
+    freeItemCategory: "",
+    freeItemAllFromCategory: false,
     minOrderAmount: "",
     expiresAt: "",
+  });
+
+  // Fetch menu items for free item selection
+  const { data: menuItems = [] } = useQuery({
+    queryKey: ['/api/menu-items'],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/menu-items");
+      const data = await response.json();
+      return data;
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
   useEffect(() => {
@@ -17194,6 +17214,9 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
         rewardType: reward.reward_type || "discount",
         discount: reward.discount?.toString() || "",
         freeItem: reward.free_item || "",
+        freeItemMenuId: reward.free_item_menu_id?.toString() || "",
+        freeItemCategory: reward.free_item_category || "",
+        freeItemAllFromCategory: reward.free_item_all_from_category || false,
         minOrderAmount: reward.min_order_amount?.toString() || "",
         expiresAt: reward.expires_at ? new Date(reward.expires_at).toISOString().split('T')[0] : "",
       });
@@ -17205,11 +17228,22 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
         rewardType: "discount",
         discount: "",
         freeItem: "",
+        freeItemMenuId: "",
+        freeItemCategory: "",
+        freeItemAllFromCategory: false,
         minOrderAmount: "",
         expiresAt: "",
       });
     }
   }, [reward, open]);
+
+  // Get unique categories from menu items
+  const categories = Array.from(new Set(menuItems.map((item: any) => item.category).filter(Boolean)));
+
+  // Filter menu items by selected category
+  const filteredMenuItems = formData.freeItemCategory
+    ? menuItems.filter((item: any) => item.category === formData.freeItemCategory)
+    : [];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -17291,15 +17325,69 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
           )}
 
           {formData.rewardType === 'free_item' && (
-            <div className="space-y-2">
-              <Label htmlFor="freeItem">Free Item</Label>
-              <Input
-                id="freeItem"
-                value={formData.freeItem}
-                onChange={(e) => setFormData({ ...formData, freeItem: e.target.value })}
-                placeholder="e.g., Free Garlic Bread"
-                required
-              />
+            <div className="space-y-4">
+              {/* Category Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="freeItemCategory">Category</Label>
+                <select
+                  id="freeItemCategory"
+                  value={formData.freeItemCategory}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    freeItemCategory: e.target.value,
+                    freeItemMenuId: "", // Reset menu item when category changes
+                    freeItemAllFromCategory: false
+                  })}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  required
+                >
+                  <option value="">Select a category...</option>
+                  {categories.map((category: string) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Menu Item Selection */}
+              {formData.freeItemCategory && (
+                <div className="space-y-2">
+                  <Label htmlFor="freeItemMenuId">Menu Item</Label>
+                  <select
+                    id="freeItemMenuId"
+                    value={formData.freeItemMenuId}
+                    onChange={(e) => {
+                      const selectedValue = e.target.value;
+                      const isAllItems = selectedValue === "ALL_ITEMS";
+                      const selectedItem = isAllItems ? null : filteredMenuItems.find((item: any) => item.id.toString() === selectedValue);
+
+                      setFormData({
+                        ...formData,
+                        freeItemMenuId: isAllItems ? "" : selectedValue,
+                        freeItemAllFromCategory: isAllItems,
+                        freeItem: isAllItems ? `Any item from ${formData.freeItemCategory}` : (selectedItem ? selectedItem.name : "")
+                      });
+                    }}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    required
+                  >
+                    <option value="">Select an item...</option>
+                    <option value="ALL_ITEMS">⭐ All Items from {formData.freeItemCategory}</option>
+                    {filteredMenuItems.map((item: any) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name} - ${parseFloat(item.base_price || 0).toFixed(2)}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500">
+                    {formData.freeItemAllFromCategory
+                      ? `Customer can choose any 1 item from ${formData.freeItemCategory}`
+                      : "Choose which specific menu item customers will receive"
+                    }
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

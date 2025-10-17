@@ -69,7 +69,7 @@ export const handler: Handler = async (event, context) => {
       };
 
     } else if (event.httpMethod === 'POST') {
-      const { name, description, pointsRequired, rewardType, discount, freeItem, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
+      const { name, description, pointsRequired, rewardType, discount, freeItem, freeItemMenuId, freeItemCategory, freeItemAllFromCategory, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
 
       if (!name || !description) {
         return {
@@ -82,11 +82,29 @@ export const handler: Handler = async (event, context) => {
       }
 
       const result = await sql`
-        INSERT INTO rewards (name, description, points_required, reward_type, discount, free_item, min_order_amount, expires_at, is_active, created_at)
-        VALUES (${name}, ${description}, ${pointsRequired ? parseInt(pointsRequired) : 100}, ${rewardType || 'discount'}, ${discount ? parseFloat(discount) : null}, ${freeItem || null}, ${minOrderAmount ? parseFloat(minOrderAmount) : null}, ${expiresAt || null}, true, NOW())
+        INSERT INTO rewards (
+          name, description, points_required, reward_type, discount, free_item,
+          free_item_menu_id, free_item_category, free_item_all_from_category,
+          min_order_amount, expires_at, is_active, created_at
+        )
+        VALUES (
+          ${name},
+          ${description},
+          ${pointsRequired ? parseInt(pointsRequired) : 100},
+          ${rewardType || 'discount'},
+          ${discount ? parseFloat(discount) : null},
+          ${freeItem || null},
+          ${freeItemMenuId ? parseInt(freeItemMenuId) : null},
+          ${freeItemCategory || null},
+          ${freeItemAllFromCategory || false},
+          ${minOrderAmount ? parseFloat(minOrderAmount) : null},
+          ${expiresAt || null},
+          true,
+          NOW()
+        )
         RETURNING *
       `;
-      
+
       return {
         statusCode: 201,
         headers,
@@ -106,7 +124,7 @@ export const handler: Handler = async (event, context) => {
         };
       }
 
-      const { name, description, pointsRequired, rewardType, discount, freeItem, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
+      const { name, description, pointsRequired, rewardType, discount, freeItem, freeItemMenuId, freeItemCategory, freeItemAllFromCategory, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
 
       // First get the existing reward to preserve values
       const existing = await sql`
@@ -128,6 +146,9 @@ export const handler: Handler = async (event, context) => {
       const updatedRewardType = rewardType !== undefined ? rewardType : existing[0].reward_type;
       const updatedDiscount = discount !== undefined ? (discount ? parseFloat(discount) : null) : existing[0].discount;
       const updatedFreeItem = freeItem !== undefined ? freeItem : existing[0].free_item;
+      const updatedFreeItemMenuId = freeItemMenuId !== undefined ? (freeItemMenuId ? parseInt(freeItemMenuId) : null) : existing[0].free_item_menu_id;
+      const updatedFreeItemCategory = freeItemCategory !== undefined ? freeItemCategory : existing[0].free_item_category;
+      const updatedFreeItemAllFromCategory = freeItemAllFromCategory !== undefined ? freeItemAllFromCategory : existing[0].free_item_all_from_category;
       const updatedMinOrderAmount = minOrderAmount !== undefined ? (minOrderAmount ? parseFloat(minOrderAmount) : null) : existing[0].min_order_amount;
       const updatedExpiresAt = expiresAt !== undefined ? expiresAt : existing[0].expires_at;
 
@@ -139,6 +160,9 @@ export const handler: Handler = async (event, context) => {
             reward_type = ${updatedRewardType},
             discount = ${updatedDiscount},
             free_item = ${updatedFreeItem},
+            free_item_menu_id = ${updatedFreeItemMenuId},
+            free_item_category = ${updatedFreeItemCategory},
+            free_item_all_from_category = ${updatedFreeItemAllFromCategory},
             min_order_amount = ${updatedMinOrderAmount},
             expires_at = ${updatedExpiresAt},
             updated_at = NOW()
