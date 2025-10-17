@@ -79,7 +79,7 @@ export async function authenticateSupabaseUser(req: Request, res: Response, next
         supabaseUserId: user.id,
         role: 'customer',
         isActive: true,
-        marketingOptIn: false,
+        marketingOptIn: user.user_metadata?.marketing_opt_in !== false, // Get from Supabase metadata, default to true
       });
 
       // Initialize user points to 0

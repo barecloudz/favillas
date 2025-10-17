@@ -10,6 +10,10 @@ export interface AuthenticatedUser {
   email?: string;
   role?: string;
   isAdmin?: boolean;
+  firstName?: string;
+  lastName?: string;
+  fullName?: string;
+  marketingOptIn?: boolean;
 }
 
 export interface AuthResult {
@@ -124,7 +128,11 @@ async function validateSupabaseToken(token: string): Promise<AuthResult> {
         email: user.email || undefined,
         username: dbUser?.username || user.email || undefined,
         role: dbUser?.role || 'customer',
-        isAdmin: dbUser?.is_admin || false
+        isAdmin: dbUser?.is_admin || false,
+        firstName: user.user_metadata?.first_name || undefined,
+        lastName: user.user_metadata?.last_name || undefined,
+        fullName: user.user_metadata?.full_name || undefined,
+        marketingOptIn: user.user_metadata?.marketing_opt_in !== false // Default to true if not explicitly false
       }
     };
   } catch (error) {
