@@ -96,11 +96,14 @@ export const handler: Handler = async (event, context) => {
       console.log('🔒 Starting atomic transaction with optimistic locking for reward redemption');
 
       // Get the reward details with FOR UPDATE lock to prevent concurrent modifications
+      // Also fetch menu item details if it's a free_item reward
       const reward = await sql`
-        SELECT * FROM rewards
-        WHERE id = ${rewardId} AND is_active = true
-        AND (expires_at IS NULL OR expires_at > NOW())
-        FOR UPDATE
+        SELECT r.*, mi.name as menu_item_name, mi.base_price as menu_item_price, mi.image_url as menu_item_image
+        FROM rewards r
+        LEFT JOIN menu_items mi ON r.free_item_menu_id = mi.id
+        WHERE r.id = ${rewardId} AND r.is_active = true
+        AND (r.expires_at IS NULL OR r.expires_at > NOW())
+        FOR UPDATE OF r
       `;
 
       if (reward.length === 0) {
