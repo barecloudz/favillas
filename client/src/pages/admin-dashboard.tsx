@@ -16905,6 +16905,10 @@ const RewardsManagement = () => {
       });
     },
     onError: (error: any) => {
+      // Refetch to sync UI with database state (in case reward was already deleted)
+      refetch();
+      setIsDeleteDialogOpen(false);
+      setRewardToDelete(null);
       toast({
         title: "Error",
         description: error.message || "Failed to delete reward",
