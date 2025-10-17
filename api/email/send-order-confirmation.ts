@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { resend, EMAIL_CONFIG, EmailType } from './resend-client';
+import { resend, getEmailConfig, EmailType } from './resend-client';
 import { getOrderConfirmationTemplate } from './templates/order-confirmation';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -28,12 +28,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       paymentMethod: orderData.paymentMethod
     });
 
+    const emailConfig = getEmailConfig(EmailType.ORDER_CONFIRMATION);
+
     const { data, error } = await resend.emails.send({
-      from: EMAIL_CONFIG.from,
+      from: emailConfig.from,
       to: [customerEmail],
-      subject: `Order Confirmation - #${orderData.orderNumber} | Pizza Spin Rewards`,
+      subject: `Order Confirmation - #${orderData.orderNumber} | Favillas Pizzeria`,
       html: htmlTemplate,
-      replyTo: EMAIL_CONFIG.replyTo,
+      replyTo: emailConfig.replyTo,
       tags: [
         { name: 'type', value: EmailType.ORDER_CONFIRMATION },
         { name: 'order_id', value: orderData.orderNumber }

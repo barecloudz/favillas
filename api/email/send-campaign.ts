@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { resend, EMAIL_CONFIG, EmailType } from './resend-client';
+import { resend, getEmailConfig, EmailType } from './resend-client';
 import { getMarketingCampaignTemplate } from './templates/marketing-campaign';
 import { sql } from '@neondatabase/serverless';
 import { db } from '@/server/storage';
@@ -65,12 +65,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
 
       try {
+        const emailConfig = getEmailConfig(EmailType.MARKETING_CAMPAIGN);
+
         const { data, error } = await resend.emails.send({
-          from: EMAIL_CONFIG.from,
+          from: emailConfig.from,
           to: [subscriber.email],
           subject: subject,
           html: htmlTemplate,
-          replyTo: EMAIL_CONFIG.replyTo,
+          replyTo: emailConfig.replyTo,
           tags: [
             { name: 'type', value: EmailType.MARKETING_CAMPAIGN },
             { name: 'campaign', value: campaignName },
