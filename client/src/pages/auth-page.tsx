@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-supabase-auth";
+import { supabase } from "@/lib/supabase";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -46,7 +47,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const AuthPage = () => {
   const [location, navigate] = useLocation();
-  const { user, loading, signInWithGoogle, signOut, loginMutation, registerMutation, supabase } = useAuth();
+  const { user, loading, signInWithGoogle, signOut, loginMutation, registerMutation } = useAuth();
   const { toast } = useToast();
 
   // Get the tab from URL parameters
