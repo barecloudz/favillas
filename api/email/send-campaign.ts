@@ -4,6 +4,15 @@ import { getMarketingCampaignTemplate } from './templates/marketing-campaign';
 import { sql } from '@neondatabase/serverless';
 import { db } from '@/server/storage';
 
+// Helper function to sanitize tag values for Resend
+// Tags can only contain ASCII letters, numbers, underscores, or dashes
+function sanitizeTagValue(value: string): string {
+  return value
+    .replace(/\s+/g, '_')  // Replace spaces with underscores
+    .replace(/[^a-zA-Z0-9_-]/g, '')  // Remove any other invalid characters
+    .substring(0, 256);  // Resend has a 256 character limit for tag values
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -75,7 +84,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           replyTo: emailConfig.replyTo,
           tags: [
             { name: 'type', value: EmailType.MARKETING_CAMPAIGN },
-            { name: 'campaign', value: campaignName },
+            { name: 'campaign', value: sanitizeTagValue(campaignName) },
             { name: 'user_id', value: subscriber.id.toString() }
           ]
         });
