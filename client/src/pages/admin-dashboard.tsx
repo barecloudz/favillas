@@ -1123,8 +1123,11 @@ const AdminDashboard = () => {
       title: "Employee Management",
       icon: Clock,
       items: [
-        { name: "Employee Schedules", icon: Calendar, href: "employee-schedules" },
-        { name: "Payroll & Hours", icon: DollarSign, href: "payroll" },
+        // Hide payroll features from kitchen_admin role
+        ...(user?.role !== 'kitchen_admin' ? [
+          { name: "Employee Schedules", icon: Calendar, href: "employee-schedules" },
+          { name: "Payroll & Hours", icon: DollarSign, href: "payroll" },
+        ] : []),
         { name: "Tip Settings", icon: Gift, href: "tip-settings" },
       ]
     },
@@ -1365,12 +1368,32 @@ const AdminDashboard = () => {
               <UserManagementTab />
             )}
 
-            {activeTab === "employee-schedules" && (
+            {activeTab === "employee-schedules" && user?.role !== 'kitchen_admin' && (
               <ScheduleCreator />
             )}
 
-            {activeTab === "payroll" && (
+            {activeTab === "employee-schedules" && user?.role === 'kitchen_admin' && (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Access Restricted</h3>
+                  <p className="text-gray-600">Employee scheduling is not available for kitchen admin accounts.</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {activeTab === "payroll" && user?.role !== 'kitchen_admin' && (
               <PayrollDashboard />
+            )}
+
+            {activeTab === "payroll" && user?.role === 'kitchen_admin' && (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <DollarSign className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Access Restricted</h3>
+                  <p className="text-gray-600">Payroll features are not available for kitchen admin accounts.</p>
+                </CardContent>
+              </Card>
             )}
 
             {activeTab === "tip-settings" && (
@@ -11377,7 +11400,7 @@ const UserManagementTab = () => {
                       </Badge>
                     </td>
                     <td className="p-2">
-                      {(user.role === 'employee' || user.role === 'admin' || user.role === 'manager') ? (
+                      {(user.role === 'employee' || user.role === 'admin' || user.role === 'manager') && currentUser?.role !== 'kitchen_admin' ? (
                         <div className="flex items-center gap-2">
                           <span className="font-medium">
                             {user.hourlyRate ? `$${parseFloat(user.hourlyRate).toFixed(2)}/hr` : 'Not set'}

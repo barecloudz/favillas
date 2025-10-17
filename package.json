@@ -17,7 +17,8 @@
     "start": "cross-env NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
     "db:push": "drizzle-kit push",
-    "db:setup": "node scripts/setup-database.js"
+    "db:setup": "node scripts/setup-database.js",
+    "create:kitchen-admin": "tsx scripts/create-kitchen-admin.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
