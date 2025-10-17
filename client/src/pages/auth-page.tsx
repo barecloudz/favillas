@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { insertUserSchema } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -189,7 +190,7 @@ const AuthPage = () => {
                       {showForgotPassword ? (
                         <form onSubmit={handleForgotPassword} className="space-y-4">
                           <div className="space-y-2">
-                            <FormLabel htmlFor="reset-email">Email Address</FormLabel>
+                            <Label htmlFor="reset-email">Email Address</Label>
                             <Input
                               id="reset-email"
                               type="email"
