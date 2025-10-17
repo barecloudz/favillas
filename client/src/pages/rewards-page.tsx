@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
+import { useCart } from "@/hooks/use-cart";
 import Footer from "@/components/layout/footer";
 import { Helmet } from "react-helmet";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { 
+import { FreeItemSelectionModal } from "@/components/rewards/free-item-selection-modal";
+import {
   Star,
   Gift,
   Trophy,
@@ -35,9 +37,12 @@ const RewardsPage = () => {
   const { user } = useAuth();
   const [location, navigate] = useLocation();
   const { toast } = useToast();
+  const { addItem } = useCart();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("rewards");
-  
+  const [showFreeItemModal, setShowFreeItemModal] = useState(false);
+  const [redeemedReward, setRedeemedReward] = useState<any>(null);
+
   // Initialize WebSocket for real-time updates
   useWebSocket();
 
@@ -107,20 +112,68 @@ const RewardsPage = () => {
 
   const activeVouchers = activeVouchersData?.vouchers || [];
 
+  // Fetch menu items for free item selection
+  const { data: menuItems = [] } = useQuery({
+    queryKey: ['/api/menu-items'],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/menu-items");
+      const data = await response.json();
+      return data;
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
   // Redeem reward mutation
   const redeemRewardMutation = useMutation({
     mutationFn: async (rewardId: number) => {
       const response = await apiRequest("POST", `/api/rewards/${rewardId}/redeem`);
       return response.json();
     },
-    onSuccess: (data) => {
-      const voucherCode = data.voucher?.voucher_code || data.message?.match(/Code: ([A-Z0-9-]+)/)?.[1];
+    onSuccess: (data, rewardId) => {
+      console.log('🎁 Reward redemption response:', data);
 
-      toast({
-        title: "🎉 Reward Redeemed Successfully!",
-        description: `Your voucher is ready! Go to checkout and select it - no codes needed!`,
-        duration: 6000,
-      });
+      // Find the reward that was redeemed
+      const reward = rewards.find((r: any) => r.id === rewardId);
+
+      // Check if this is a free item reward with category selection
+      if (data.reward?.free_item_all_from_category && data.reward?.free_item_category) {
+        // Show modal for free item selection
+        setRedeemedReward(data.reward);
+        setShowFreeItemModal(true);
+
+        toast({
+          title: "🎉 Reward Redeemed!",
+          description: `Choose your free item from ${data.reward.free_item_category}`,
+          duration: 6000,
+        });
+      } else if (data.reward?.free_item_menu_id) {
+        // Specific free item - add directly to cart
+        const menuItem = menuItems.find((item: any) => item.id === data.reward.free_item_menu_id);
+        if (menuItem) {
+          addItem({
+            id: menuItem.id,
+            name: menuItem.name,
+            price: 0, // Free item
+            quantity: 1,
+            selectedOptions: {},
+            options: [],
+            specialInstructions: `Free item from reward: ${data.reward.name}`
+          });
+
+          toast({
+            title: "🎉 Free Item Added!",
+            description: `${menuItem.name} has been added to your cart for free!`,
+            duration: 6000,
+          });
+        }
+      } else {
+        // Regular voucher (discount)
+        toast({
+          title: "🎉 Reward Redeemed Successfully!",
+          description: `Your voucher is ready! Go to checkout and select it - no codes needed!`,
+          duration: 6000,
+        });
+      }
 
       // Refresh user data, redemptions, and active vouchers
       queryClient.invalidateQueries({ queryKey: ["/api/user-rewards"] });
@@ -195,6 +248,36 @@ const RewardsPage = () => {
     }
 
     redeemRewardMutation.mutate(reward.id);
+  };
+
+  // Handle free item selection from modal
+  const handleFreeItemSelect = (menuItem: any) => {
+    if (menuItem && redeemedReward) {
+      addItem({
+        id: menuItem.id,
+        name: menuItem.name,
+        price: 0, // Free item
+        quantity: 1,
+        selectedOptions: {},
+        options: [],
+        specialInstructions: `Free item from reward: ${redeemedReward.name}`
+      });
+
+      toast({
+        title: "🎉 Free Item Added!",
+        description: `${menuItem.name} has been added to your cart for free!`,
+        duration: 6000,
+      });
+
+      setShowFreeItemModal(false);
+      setRedeemedReward(null);
+    }
+  };
+
+  // Handle free item modal close
+  const handleFreeItemModalClose = () => {
+    setShowFreeItemModal(false);
+    setRedeemedReward(null);
   };
 
   if (!user) {
@@ -825,8 +908,17 @@ const RewardsPage = () => {
           </Card>
         </div>
       </main>
-      
+
       <Footer />
+
+      {/* Free Item Selection Modal */}
+      <FreeItemSelectionModal
+        isOpen={showFreeItemModal}
+        onClose={handleFreeItemModalClose}
+        onSelect={handleFreeItemSelect}
+        category={redeemedReward?.free_item_category || ""}
+        menuItems={menuItems}
+      />
     </>
   );
 };

@@ -16925,7 +16925,7 @@ const RewardsManagement = () => {
       rewardType: data.rewardType || 'discount',
       discount: data.rewardType === 'discount' ? parseFloat(data.discount) : null,
       freeItem: data.rewardType === 'free_item' ? data.freeItem : null,
-      freeItemMenuId: data.rewardType === 'free_item' ? data.freeItemMenuId : null,
+      freeItemMenuId: data.rewardType === 'free_item' && data.freeItemMenuId ? parseInt(data.freeItemMenuId) : null,
       freeItemCategory: data.rewardType === 'free_item' ? data.freeItemCategory : null,
       freeItemAllFromCategory: data.rewardType === 'free_item' ? data.freeItemAllFromCategory : false,
       minOrderAmount: data.minOrderAmount ? parseFloat(data.minOrderAmount) : null,
@@ -16943,7 +16943,7 @@ const RewardsManagement = () => {
         rewardType: data.rewardType || 'discount',
         discount: data.rewardType === 'discount' ? parseFloat(data.discount) : null,
         freeItem: data.rewardType === 'free_item' ? data.freeItem : null,
-        freeItemMenuId: data.rewardType === 'free_item' ? data.freeItemMenuId : null,
+        freeItemMenuId: data.rewardType === 'free_item' && data.freeItemMenuId ? parseInt(data.freeItemMenuId) : null,
         freeItemCategory: data.rewardType === 'free_item' ? data.freeItemCategory : null,
         freeItemAllFromCategory: data.rewardType === 'free_item' ? data.freeItemAllFromCategory : false,
         minOrderAmount: data.minOrderAmount ? parseFloat(data.minOrderAmount) : null,
@@ -17304,9 +17304,15 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
               onChange={(e) => setFormData({ ...formData, rewardType: e.target.value })}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <option value="discount">Discount</option>
-              <option value="free_item">Free Item</option>
+              <option value="discount">💸 Discount</option>
+              <option value="free_item">🍕 Free Item</option>
+              <option value="free_delivery">🚚 Free Delivery</option>
             </select>
+            <p className="text-xs text-gray-500">
+              {formData.rewardType === 'discount' && 'Give customers a percentage or fixed amount off their order'}
+              {formData.rewardType === 'free_item' && 'Give customers a free menu item of their choice'}
+              {formData.rewardType === 'free_delivery' && 'Waive the delivery fee for the customer'}
+            </p>
           </div>
 
           {formData.rewardType === 'discount' && (
