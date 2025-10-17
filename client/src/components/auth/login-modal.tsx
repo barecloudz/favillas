@@ -245,16 +245,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="login-password">Password</Label>
-                    <button
-                      type="button"
-                      onClick={() => setShowForgotPassword(true)}
-                      className="text-sm text-[#d73a31] hover:underline"
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
+                  <Label htmlFor="login-password">Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
@@ -267,6 +258,13 @@ const LoginModal: React.FC<LoginModalProps> = ({
                       required
                     />
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-sm text-[#d73a31] hover:underline font-medium"
+                  >
+                    Forgot password?
+                  </button>
                 </div>
 
                 <Button
