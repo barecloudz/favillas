@@ -16840,8 +16840,10 @@ const RewardsManagement = () => {
       }
       return response.json();
     },
-    onSuccess: () => {
-      refetch();
+    onSuccess: async () => {
+      // Invalidate and refetch the rewards query
+      await queryClient.invalidateQueries({ queryKey: [getRewardsEndpoint()] });
+      await refetch();
       setIsCreateDialogOpen(false);
       toast({
         title: "Reward Created",
@@ -16867,9 +16869,10 @@ const RewardsManagement = () => {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       // Force immediate refresh
-      refetch();
+      await queryClient.invalidateQueries({ queryKey: [getRewardsEndpoint()] });
+      await refetch();
       setEditingReward(null);
       toast({
         title: "Reward Updated",
@@ -16918,6 +16921,9 @@ const RewardsManagement = () => {
   });
 
   const handleCreateReward = (data: any) => {
+    // Convert "ALL_ITEMS" to null for the API
+    const menuId = data.freeItemMenuId === "ALL_ITEMS" ? null : data.freeItemMenuId;
+
     createRewardMutation.mutate({
       name: data.name,
       description: data.description,
@@ -16925,7 +16931,7 @@ const RewardsManagement = () => {
       rewardType: data.rewardType || 'discount',
       discount: data.rewardType === 'discount' ? parseFloat(data.discount) : null,
       freeItem: data.rewardType === 'free_item' ? data.freeItem : null,
-      freeItemMenuId: data.rewardType === 'free_item' && data.freeItemMenuId ? parseInt(data.freeItemMenuId) : null,
+      freeItemMenuId: data.rewardType === 'free_item' && menuId ? parseInt(menuId) : null,
       freeItemCategory: data.rewardType === 'free_item' ? data.freeItemCategory : null,
       freeItemAllFromCategory: data.rewardType === 'free_item' ? data.freeItemAllFromCategory : false,
       minOrderAmount: data.minOrderAmount ? parseFloat(data.minOrderAmount) : null,
@@ -16934,6 +16940,9 @@ const RewardsManagement = () => {
   };
 
   const handleUpdateReward = (data: any) => {
+    // Convert "ALL_ITEMS" to null for the API
+    const menuId = data.freeItemMenuId === "ALL_ITEMS" ? null : data.freeItemMenuId;
+
     updateRewardMutation.mutate({
       id: editingReward.id,
       rewardData: {
@@ -16943,7 +16952,7 @@ const RewardsManagement = () => {
         rewardType: data.rewardType || 'discount',
         discount: data.rewardType === 'discount' ? parseFloat(data.discount) : null,
         freeItem: data.rewardType === 'free_item' ? data.freeItem : null,
-        freeItemMenuId: data.rewardType === 'free_item' && data.freeItemMenuId ? parseInt(data.freeItemMenuId) : null,
+        freeItemMenuId: data.rewardType === 'free_item' && menuId ? parseInt(menuId) : null,
         freeItemCategory: data.rewardType === 'free_item' ? data.freeItemCategory : null,
         freeItemAllFromCategory: data.rewardType === 'free_item' ? data.freeItemAllFromCategory : false,
         minOrderAmount: data.minOrderAmount ? parseFloat(data.minOrderAmount) : null,
@@ -17207,6 +17216,11 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
 
   useEffect(() => {
     if (reward) {
+      // If free_item_all_from_category is true, set freeItemMenuId to "ALL_ITEMS"
+      const menuIdValue = reward.free_item_all_from_category
+        ? "ALL_ITEMS"
+        : (reward.free_item_menu_id?.toString() || "");
+
       setFormData({
         name: reward.name || "",
         description: reward.description || "",
@@ -17214,7 +17228,7 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
         rewardType: reward.reward_type || "discount",
         discount: reward.discount?.toString() || "",
         freeItem: reward.free_item || "",
-        freeItemMenuId: reward.free_item_menu_id?.toString() || "",
+        freeItemMenuId: menuIdValue,
         freeItemCategory: reward.free_item_category || "",
         freeItemAllFromCategory: reward.free_item_all_from_category || false,
         minOrderAmount: reward.min_order_amount?.toString() || "",
@@ -17370,7 +17384,7 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
 
                       setFormData({
                         ...formData,
-                        freeItemMenuId: isAllItems ? "" : selectedValue,
+                        freeItemMenuId: selectedValue, // Keep "ALL_ITEMS" as the value
                         freeItemAllFromCategory: isAllItems,
                         freeItem: isAllItems ? `Any item from ${formData.freeItemCategory}` : (selectedItem ? selectedItem.name : "")
                       });
