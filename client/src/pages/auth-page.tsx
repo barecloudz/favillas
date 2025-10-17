@@ -45,13 +45,16 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const AuthPage = () => {
   const [location, navigate] = useLocation();
-  const { user, loading, signInWithGoogle, signOut, loginMutation, registerMutation } = useAuth();
+  const { user, loading, signInWithGoogle, signOut, loginMutation, registerMutation, supabase } = useAuth();
   const { toast } = useToast();
-  
+
   // Get the tab from URL parameters
   const urlParams = new URLSearchParams(window.location.search);
   const tabFromUrl = urlParams.get('tab');
   const [activeTab, setActiveTab] = useState<string>(tabFromUrl === 'register' ? 'register' : 'login');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [isResetting, setIsResetting] = useState(false);
 
   // Handle Google Sign-In
   const handleGoogleSignIn = async () => {
@@ -65,6 +68,35 @@ const AuthPage = () => {
         description: "There was an error signing in with Google. Please try again.",
         variant: "destructive",
       });
+    }
+  };
+
+  // Handle Forgot Password
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsResetting(true);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Password reset email sent",
+        description: "Check your email for a link to reset your password",
+      });
+      setShowForgotPassword(false);
+      setResetEmail("");
+    } catch (error: any) {
+      toast({
+        title: "Failed to send reset email",
+        description: error.message || "Please try again later",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -154,43 +186,89 @@ const AuthPage = () => {
                     </TabsList>
 
                     <TabsContent value="login">
-                      <Form {...loginForm}>
-                        <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
-                          <FormField
-                            control={loginForm.control}
-                            name="email"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Email</FormLabel>
-                                <FormControl>
-                                  <Input type="email" placeholder="Enter your email" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={loginForm.control}
-                            name="password"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Password</FormLabel>
-                                <FormControl>
-                                  <Input type="password" placeholder="Enter your password" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <Button 
-                            type="submit" 
-                            className="w-full bg-[#d73a31] hover:bg-[#c73128]"
-                            disabled={loginMutation.isPending}
-                          >
-                            {loginMutation.isPending ? "Logging in..." : "Login"}
-                          </Button>
+                      {showForgotPassword ? (
+                        <form onSubmit={handleForgotPassword} className="space-y-4">
+                          <div className="space-y-2">
+                            <FormLabel htmlFor="reset-email">Email Address</FormLabel>
+                            <Input
+                              id="reset-email"
+                              type="email"
+                              placeholder="Enter your email"
+                              value={resetEmail}
+                              onChange={(e) => setResetEmail(e.target.value)}
+                              required
+                            />
+                            <p className="text-sm text-gray-500">
+                              We'll send you a link to reset your password
+                            </p>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setShowForgotPassword(false)}
+                              className="flex-1"
+                            >
+                              Back to Login
+                            </Button>
+                            <Button
+                              type="submit"
+                              className="flex-1 bg-[#d73a31] hover:bg-[#c73128]"
+                              disabled={isResetting}
+                            >
+                              {isResetting ? "Sending..." : "Send Reset Link"}
+                            </Button>
+                          </div>
                         </form>
-                      </Form>
+                      ) : (
+                        <Form {...loginForm}>
+                          <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+                            <FormField
+                              control={loginForm.control}
+                              name="email"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Email</FormLabel>
+                                  <FormControl>
+                                    <Input type="email" placeholder="Enter your email" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={loginForm.control}
+                              name="password"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Password</FormLabel>
+                                  <FormControl>
+                                    <Input type="password" placeholder="Enter your password" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <button
+                              type="button"
+                              onClick={() => setShowForgotPassword(true)}
+                              className="text-sm text-[#d73a31] hover:underline font-medium"
+                            >
+                              Forgot password?
+                            </button>
+
+                            <Button
+                              type="submit"
+                              className="w-full bg-[#d73a31] hover:bg-[#c73128]"
+                              disabled={loginMutation.isPending}
+                            >
+                              {loginMutation.isPending ? "Logging in..." : "Login"}
+                            </Button>
+                          </form>
+                        </Form>
+                      )}
                       
                       <div className="mt-6">
                         <div className="relative">
