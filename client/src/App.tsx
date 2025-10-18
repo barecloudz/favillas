@@ -33,6 +33,9 @@ import CartSidebar from "@/components/cart/cart-sidebar";
 import Header from "@/components/layout/header";
 import LoginModalWrapper from "@/components/auth/login-modal-wrapper";
 
+// Pages that should NOT show the main header (standalone full-screen pages)
+const STANDALONE_PAGES = ['/kitchen', '/display'];
+
 function ScrollToTop() {
   const [location] = useLocation();
   
@@ -74,14 +77,17 @@ function Router() {
 }
 
 function App() {
+  const [location] = useLocation();
+  const isStandalonePage = STANDALONE_PAGES.includes(location);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CartProvider>
           <TooltipProvider>
             <Toaster />
-            <Header />
-            <CartSidebar />
+            {!isStandalonePage && <Header />}
+            {!isStandalonePage && <CartSidebar />}
             <LoginModalWrapper />
             <Router />
           </TooltipProvider>
