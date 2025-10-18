@@ -10,13 +10,22 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Printer, Volume2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Loader2, Printer, Volume2, Columns3, LayoutGrid } from "lucide-react";
 import { printToThermalPrinter } from "@/utils/thermal-printer";
 
 const KitchenPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("pending");
+  const [isColumnMode, setIsColumnMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('kitchenColumnMode') === 'true';
+    }
+    return false;
+  });
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [showOrderModal, setShowOrderModal] = useState(false);
 
   // Load notification settings from system settings
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -299,6 +308,20 @@ const KitchenPage = () => {
                 size="sm"
                 className="text-white border-white hover:bg-white hover:text-[#d73a31]"
                 onClick={() => {
+                  const newMode = !isColumnMode;
+                  setIsColumnMode(newMode);
+                  localStorage.setItem('kitchenColumnMode', String(newMode));
+                }}
+              >
+                {isColumnMode ? <LayoutGrid className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" /> : <Columns3 className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />}
+                <span className="hidden sm:inline">{isColumnMode ? "Grid Mode" : "Column Mode"}</span>
+                <span className="sm:hidden">{isColumnMode ? "Grid" : "Columns"}</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-white border-white hover:bg-white hover:text-[#d73a31]"
+                onClick={() => {
                   playTestSound();
                 }}
               >
@@ -312,6 +335,167 @@ const KitchenPage = () => {
         </header>
 
         <main className="container mx-auto p-2 md:p-4">
+          {isColumnMode ? (
+            // Column Mode - 3 Column Kanban View
+            <>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-gray-700">Kitchen Display - Column View</h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/kitchen/orders"] })}
+                >
+                  🔄 Refresh
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-200px)]">
+                {/* Column 1: Ready to Start */}
+                <div className="flex flex-col bg-white rounded-lg shadow-sm border-2 border-red-200 overflow-hidden">
+                  <div className="bg-red-500 text-white p-3 font-bold text-center flex items-center justify-center gap-2">
+                    <span>Ready to Start</span>
+                    <Badge className="bg-white text-red-500">
+                      {orders?.filter((o: any) => o.status === "pending" && (o.fulfillmentTime === 'asap' || isOrderReadyToStart(o))).length || 0}
+                    </Badge>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                    {orders?.filter((o: any) => o.status === "pending" && (o.fulfillmentTime === 'asap' || isOrderReadyToStart(o))).map((order: any) => (
+                      <Card
+                        key={order.id}
+                        className="cursor-pointer hover:shadow-md transition-shadow border-red-200"
+                        onClick={() => {
+                          setSelectedOrder(order);
+                          setShowOrderModal(true);
+                        }}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <p className="text-2xl font-bold text-gray-900">
+                                {order.customer_name?.split(' ')[0] || 'Guest'}
+                              </p>
+                              <p className="text-sm text-gray-500">Order #{order.id}</p>
+                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              {order.order_type?.toUpperCase()}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-gray-500 mb-3">
+                            {new Date(order.created_at).toLocaleTimeString()}
+                          </p>
+                          <Button
+                            className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-medium"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateOrderStatus(order.id, 'cooking');
+                            }}
+                          >
+                            🍳 Start Cooking
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Column 2: Cooking */}
+                <div className="flex flex-col bg-white rounded-lg shadow-sm border-2 border-yellow-200 overflow-hidden">
+                  <div className="bg-yellow-500 text-white p-3 font-bold text-center flex items-center justify-center gap-2">
+                    <span>Cooking</span>
+                    <Badge className="bg-white text-yellow-600">
+                      {orders?.filter((o: any) => o.status === "cooking").length || 0}
+                    </Badge>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                    {orders?.filter((o: any) => o.status === "cooking").map((order: any) => (
+                      <Card
+                        key={order.id}
+                        className="cursor-pointer hover:shadow-md transition-shadow border-yellow-200"
+                        onClick={() => {
+                          setSelectedOrder(order);
+                          setShowOrderModal(true);
+                        }}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <p className="text-2xl font-bold text-gray-900">
+                                {order.customer_name?.split(' ')[0] || 'Guest'}
+                              </p>
+                              <p className="text-sm text-gray-500">Order #{order.id}</p>
+                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              {order.order_type?.toUpperCase()}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-gray-500 mb-3">
+                            {new Date(order.created_at).toLocaleTimeString()}
+                          </p>
+                          <Button
+                            className="w-full bg-green-500 hover:bg-green-600 text-white font-medium"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateOrderStatus(order.id, 'completed');
+                            }}
+                          >
+                            ✅ Complete
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Column 3: Ready for Pickup */}
+                <div className="flex flex-col bg-white rounded-lg shadow-sm border-2 border-green-200 overflow-hidden">
+                  <div className="bg-green-500 text-white p-3 font-bold text-center flex items-center justify-center gap-2">
+                    <span>Ready for Pickup</span>
+                    <Badge className="bg-white text-green-600">
+                      {orders?.filter((o: any) => o.status === "completed").length || 0}
+                    </Badge>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                    {orders?.filter((o: any) => o.status === "completed").map((order: any) => (
+                      <Card
+                        key={order.id}
+                        className="cursor-pointer hover:shadow-md transition-shadow border-green-200"
+                        onClick={() => {
+                          setSelectedOrder(order);
+                          setShowOrderModal(true);
+                        }}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <p className="text-2xl font-bold text-gray-900">
+                                {order.customer_name?.split(' ')[0] || 'Guest'}
+                              </p>
+                              <p className="text-sm text-gray-500">Order #{order.id}</p>
+                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              {order.order_type?.toUpperCase()}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-gray-500 mb-3">
+                            {new Date(order.created_at).toLocaleTimeString()}
+                          </p>
+                          <Button
+                            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateOrderStatus(order.id, 'picked_up');
+                            }}
+                          >
+                            📦 Picked Up
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 md:mb-6">
               <TabsList className="w-full sm:w-auto overflow-x-auto flex-wrap sm:flex-nowrap text-xs sm:text-sm">
@@ -559,7 +743,169 @@ const KitchenPage = () => {
               )}
             </TabsContent>
           </Tabs>
+          )}
         </main>
+
+        {/* Order Detail Modal */}
+        <Dialog open={showOrderModal} onOpenChange={setShowOrderModal}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold">
+                Order #{selectedOrder?.id} - {selectedOrder?.customer_name}
+              </DialogTitle>
+            </DialogHeader>
+            {selectedOrder && (
+              <div className="space-y-4">
+                {/* Order Header Info */}
+                <div className="flex flex-wrap gap-2">
+                  <Badge className={`
+                    ${selectedOrder.status === 'pending' ? 'bg-red-500' : ''}
+                    ${selectedOrder.status === 'cooking' ? 'bg-yellow-500' : ''}
+                    ${selectedOrder.status === 'completed' ? 'bg-green-500' : ''}
+                    ${selectedOrder.status === 'picked_up' ? 'bg-gray-500' : ''}
+                  `}>
+                    {selectedOrder.status.toUpperCase()}
+                  </Badge>
+                  <Badge variant="outline">
+                    {selectedOrder.order_type?.toUpperCase() || 'UNKNOWN'}
+                  </Badge>
+                  <Badge variant={selectedOrder.payment_status === 'paid' ? 'default' : 'outline'}>
+                    {selectedOrder.payment_status?.toUpperCase() || 'UNKNOWN'}
+                  </Badge>
+                </div>
+
+                {/* Customer Info */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="font-semibold mb-2">Customer Information</h3>
+                  <p className="text-sm"><strong>Name:</strong> {selectedOrder.customer_name}</p>
+                  <p className="text-sm"><strong>Phone:</strong> {selectedOrder.phone}</p>
+                  {selectedOrder.address && (
+                    <p className="text-sm"><strong>Address:</strong> {selectedOrder.address}</p>
+                  )}
+                  <p className="text-sm"><strong>Order Time:</strong> {new Date(selectedOrder.created_at).toLocaleString()}</p>
+                </div>
+
+                {/* Order Items */}
+                <div>
+                  <h3 className="font-semibold mb-2">Order Items</h3>
+                  <div className="space-y-3 border rounded-lg p-4">
+                    {selectedOrder.items?.map((item: any) => (
+                      <div key={item.id} className="border-b pb-3 last:border-b-0">
+                        <div className="flex justify-between font-medium">
+                          <span>{item.quantity}x {item.menuItem?.name || 'Unknown Item'}</span>
+                          <span>${formatPrice(item.price)}</span>
+                        </div>
+                        {/* Display detailed choices and addons */}
+                        {item.options && Array.isArray(item.options) && item.options.length > 0 && (
+                          <div className="text-sm text-gray-600 space-y-1 mt-1">
+                            {item.options.map((option: any, idx: number) => (
+                              <div key={idx} className="flex justify-between items-center">
+                                <span>{option.groupName}: {option.itemName}</span>
+                                {option.price && option.price > 0 && (
+                                  <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {item.specialInstructions && (
+                          <p className="text-sm text-gray-600 italic font-medium bg-yellow-100 px-2 py-1 rounded mt-2">
+                            Special: "{item.specialInstructions}"
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Special Instructions */}
+                {selectedOrder.special_instructions && (
+                  <div className="bg-yellow-50 p-4 rounded-lg">
+                    <h3 className="font-semibold mb-2">Special Instructions</h3>
+                    <p className="text-sm">{selectedOrder.special_instructions}</p>
+                  </div>
+                )}
+
+                {/* Scheduled Time */}
+                {selectedOrder.fulfillmentTime === 'scheduled' && selectedOrder.scheduledTime && (
+                  <div className="bg-purple-50 p-4 rounded-lg">
+                    <h3 className="font-semibold mb-2">Scheduled Time</h3>
+                    <p className="text-sm font-mono">
+                      {new Date(selectedOrder.scheduledTime).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+
+                {/* Order Total */}
+                <div className="border-t pt-4">
+                  <div className="flex justify-between font-bold text-lg">
+                    <span>Total:</span>
+                    <span>${formatPrice(Number(selectedOrder.total) + Number(selectedOrder.tax))}</span>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4 border-t">
+                  <Button
+                    className="flex-1"
+                    variant="outline"
+                    onClick={() => printOrder(selectedOrder.id)}
+                  >
+                    <Printer className="h-4 w-4 mr-2" />
+                    Print Order
+                  </Button>
+
+                  {selectedOrder.status === 'pending' && (
+                    <Button
+                      className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white"
+                      onClick={() => {
+                        updateOrderStatus(selectedOrder.id, 'cooking');
+                        setShowOrderModal(false);
+                      }}
+                    >
+                      🍳 Start Cooking
+                    </Button>
+                  )}
+
+                  {selectedOrder.status === 'cooking' && (
+                    <Button
+                      className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+                      onClick={() => {
+                        updateOrderStatus(selectedOrder.id, 'completed');
+                        setShowOrderModal(false);
+                      }}
+                    >
+                      ✅ Complete
+                    </Button>
+                  )}
+
+                  {selectedOrder.status === 'completed' && (
+                    <>
+                      <Button
+                        className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
+                        onClick={() => {
+                          updateOrderStatus(selectedOrder.id, 'picked_up');
+                          setShowOrderModal(false);
+                        }}
+                      >
+                        📦 Picked Up
+                      </Button>
+                      <Button
+                        className="flex-1 bg-gray-500 hover:bg-gray-600 text-white"
+                        onClick={() => {
+                          updateOrderStatus(selectedOrder.id, 'cooking');
+                          setShowOrderModal(false);
+                        }}
+                      >
+                        🔄 Reopen
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </>
   );

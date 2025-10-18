@@ -62,40 +62,45 @@ Visit us again soon!`,
     id: 'kitchen',
     name: 'Kitchen Ticket',
     description: 'Ticket for kitchen staff with prep instructions (no prices)',
-    template: `*** KITCHEN COPY ***
-===================
+    template: `╔═══════════════════╗
+║  KITCHEN TICKET   ║
+╚═══════════════════╝
 
 ORDER #{{orderNumber}}
-{{orderTime}}
-Customer: {{customerName}}
-Type: {{orderType}}
-{{#deliveryAddress}}
-Address: {{deliveryAddress}}
-{{/deliveryAddress}}
+Name: {{customerName}}
+Time: {{orderTime}}
 
-ITEMS TO PREPARE:
------------------
-{{#items}}
-[{{quantity}}] {{name}}
-{{#modifications}}
-  >> {{.}}
-{{/modifications}}
-{{#specialInstructions}}
-  ** {{specialInstructions}}
-{{/specialInstructions}}
-
-{{/items}}
-===================
 {{#isDelivery}}
-   DELIVERY ORDER   
+*** DELIVERY ***
 {{/isDelivery}}
 {{#isPickup}}
-   PICKUP ORDER     
+*** PICKUP ***
 {{/isPickup}}
+
+WHAT YOU NEED TO MAKE:
+═════════════════════
+
+{{#items}}
+┌─────────────────────
+│ {{quantity}}x {{name}}
+{{#modifications}}
+│   ✓ {{.}}
+{{/modifications}}
+{{#specialInstructions}}
+│   ⚠️  NOTE: {{specialInstructions}}
+{{/specialInstructions}}
+└─────────────────────
+
+{{/items}}
+
+═════════════════════
 {{#estimatedReadyTime}}
-Ready by: {{estimatedReadyTime}}
-{{/estimatedReadyTime}}`,
-    variables: ['orderNumber', 'orderTime', 'customerName', 'orderType', 'deliveryAddress', 'items', 'estimatedReadyTime', 'isPickup', 'isDelivery']
+⏰ Ready by: {{estimatedReadyTime}}
+{{/estimatedReadyTime}}
+{{#deliveryAddress}}
+📍 {{deliveryAddress}}
+{{/deliveryAddress}}`,
+    variables: ['orderNumber', 'orderTime', 'customerName', 'orderType', 'deliveryAddress', 'items', 'modifications', 'specialInstructions', 'estimatedReadyTime', 'isPickup', 'isDelivery']
   },
   {
     id: 'records',

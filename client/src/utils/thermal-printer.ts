@@ -65,9 +65,9 @@ export interface OrderPrintData {
 }
 
 /**
- * Format order for thermal printer (ESC/POS commands)
+ * Format customer receipt for thermal printer (ESC/POS commands)
  */
-function formatReceipt(order: OrderPrintData): string {
+function formatCustomerReceipt(order: OrderPrintData): string {
   const ESC = '\x1B';
   const GS = '\x1D';
 
@@ -172,7 +172,118 @@ function formatReceipt(order: OrderPrintData): string {
 }
 
 /**
+ * Format kitchen ticket for thermal printer (ESC/POS commands)
+ * Clear, easy-to-read format for kitchen staff
+ */
+function formatKitchenReceipt(order: OrderPrintData): string {
+  const ESC = '\x1B';
+  const GS = '\x1D';
+
+  let receipt = '';
+
+  // Initialize printer
+  receipt += `${ESC}@`; // Initialize
+
+  // Header - Center aligned, bold
+  receipt += `${ESC}a\x01`; // Center align
+  receipt += `${ESC}E\x01`; // Bold on
+  receipt += `${GS}!\x11`; // Double height and width
+  receipt += `KITCHEN TICKET\n`;
+  receipt += `${GS}!\x00`; // Normal size
+  receipt += `${ESC}E\x00`; // Bold off
+  receipt += `================================\n`;
+
+  // Order info - Left align, large text
+  receipt += `${ESC}a\x00`; // Left align
+  receipt += `${ESC}E\x01`; // Bold on
+  receipt += `${GS}!\x01`; // Double height
+  receipt += `ORDER #${order.id}\n`;
+  receipt += `${GS}!\x00`; // Normal size
+  receipt += `${ESC}E\x00`; // Bold off
+
+  receipt += `Name: ${order.customerName || 'Guest'}\n`;
+  receipt += `Time: ${new Date(order.createdAt).toLocaleTimeString()}\n`;
+  receipt += `\n`;
+
+  // Order type badge
+  receipt += `${ESC}E\x01`; // Bold on
+  if (order.orderType === 'delivery') {
+    receipt += `*** DELIVERY ***\n`;
+  } else {
+    receipt += `*** PICKUP ***\n`;
+  }
+  receipt += `${ESC}E\x00`; // Bold off
+  receipt += `\n`;
+
+  // What to make section
+  receipt += `${ESC}E\x01`; // Bold on
+  receipt += `WHAT YOU NEED TO MAKE:\n`;
+  receipt += `${ESC}E\x00`; // Bold off
+  receipt += `================================\n`;
+  receipt += `\n`;
+
+  // Items - Clear formatting for kitchen
+  order.items.forEach((item: any) => {
+    const itemName = item.menuItem?.name || item.name || 'Item';
+    const qty = item.quantity;
+
+    // Item with quantity - Bold, larger text
+    receipt += `${ESC}E\x01${GS}!\x01`; // Bold and double height
+    receipt += `${qty}x ${itemName}\n`;
+    receipt += `${GS}!\x00${ESC}E\x00`; // Normal size and weight
+
+    // Customizations/options - indented with checkmarks
+    if (item.options && Array.isArray(item.options)) {
+      item.options.forEach((opt: any) => {
+        const optionName = opt.itemName || opt.name || '';
+        const groupName = opt.groupName || '';
+        if (groupName && optionName) {
+          receipt += `  >> ${groupName}: ${optionName}\n`;
+        } else if (optionName) {
+          receipt += `  >> ${optionName}\n`;
+        }
+      });
+    }
+
+    // Special instructions - highlighted
+    if (item.specialInstructions) {
+      receipt += `${ESC}E\x01`; // Bold
+      receipt += `  !! NOTE: ${item.specialInstructions}\n`;
+      receipt += `${ESC}E\x00`; // Bold off
+    }
+
+    receipt += `--------------------------------\n`;
+  });
+
+  // Order-wide special instructions
+  if (order.specialInstructions) {
+    receipt += `\n`;
+    receipt += `${ESC}E\x01`; // Bold on
+    receipt += `ORDER NOTES:\n`;
+    receipt += `${order.specialInstructions}\n`;
+    receipt += `${ESC}E\x00`; // Bold off
+    receipt += `================================\n`;
+  }
+
+  // Delivery address if applicable
+  if (order.orderType === 'delivery' && order.address) {
+    receipt += `\n`;
+    receipt += `DELIVERY TO:\n`;
+    receipt += `${order.address}\n`;
+    receipt += `Phone: ${order.phone || 'N/A'}\n`;
+  }
+
+  receipt += `\n\n\n`;
+
+  // Cut paper
+  receipt += `${GS}V\x41\x03`; // Partial cut
+
+  return receipt;
+}
+
+/**
  * Send print job to thermal printer via local printer server
+ * Prints TWO receipts: 1) Customer receipt 2) Kitchen ticket
  * The printer server must be running on local network (localhost:3001 or computer IP:3001)
  */
 export async function printToThermalPrinter(
@@ -181,67 +292,65 @@ export async function printToThermalPrinter(
 ): Promise<{ success: boolean; message: string }> {
 
   try {
-    console.log(`🖨️  Preparing receipt for order #${order.id}`);
+    console.log(`🖨️  Preparing DUAL receipts (customer + kitchen) for order #${order.id}`);
 
     const printerServerUrl = await getPrinterServerUrl();
     console.log(`📡 Sending to printer server: ${printerServerUrl}`);
 
-    // Calculate points earned (1 point per dollar)
-    const pointsPerDollar = 1;
-    const pointsEarned = Math.floor(order.total * pointsPerDollar);
-    const isGuest = !order.userId;
+    // Generate both receipt formats
+    const customerReceipt = formatCustomerReceipt(order);
+    const kitchenReceipt = formatKitchenReceipt(order);
 
-    // Format receipt data for Raspberry Pi printer server
-    const receipt = {
-      storeName: "Favilla's NY Pizza",
-      storeAddress: "5 Regent Park Blvd, Asheville, NC 28806",
-      storePhone: "828-225-2885",
-      orderId: order.id,
-      orderDate: order.createdAt,
-      orderType: order.orderType,
-      scheduledTime: null, // Add if you have scheduled orders
-      customerName: order.customerName,
-      customerPhone: order.phone,
-      customerAddress: order.address,
-      items: order.items.map((item: any) => ({
-        name: item.menuItem?.name || item.name || 'Item',
-        quantity: item.quantity,
-        price: parseFloat(item.price || 0),
-        options: item.options || [],
-        specialInstructions: item.specialInstructions
-      })),
-      subtotal: order.total - (order.tax || 0) - (order.deliveryFee || 0),
-      tax: order.tax || 0,
-      deliveryFee: order.deliveryFee || 0,
-      tip: order.tip || 0,
-      discount: 0,
-      total: order.total,
-      pointsEarned: pointsEarned,
-      isGuest: isGuest
-    };
+    console.log(`📄 Customer receipt: ${customerReceipt.length} bytes`);
+    console.log(`📄 Kitchen receipt: ${kitchenReceipt.length} bytes`);
 
     try {
-      // Send directly to Raspberry Pi printer server
-      // Note: This requires the browser and Raspberry Pi to be on the same network
-      const response = await fetch(`${printerServerUrl}/print`, {
+      // Send CUSTOMER receipt first
+      console.log('📨 Sending customer receipt...');
+      const customerResponse = await fetch(`${printerServerUrl}/print`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ receipt })
+        body: JSON.stringify({
+          receiptData: customerReceipt,
+          orderId: order.id,
+          receiptType: 'customer'
+        })
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Print successful via Raspberry Pi printer server');
-        return {
-          success: true,
-          message: `Order #${order.id} printed successfully`
-        };
-      } else {
-        const errorText = await response.text();
-        throw new Error(`Printer server error: ${errorText}`);
+      if (!customerResponse.ok) {
+        throw new Error('Customer receipt print failed');
       }
+      console.log('✅ Customer receipt printed');
+
+      // Wait a moment between prints
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Send KITCHEN receipt second
+      console.log('📨 Sending kitchen receipt...');
+      const kitchenResponse = await fetch(`${printerServerUrl}/print`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          receiptData: kitchenReceipt,
+          orderId: order.id,
+          receiptType: 'kitchen'
+        })
+      });
+
+      if (!kitchenResponse.ok) {
+        throw new Error('Kitchen receipt print failed');
+      }
+      console.log('✅ Kitchen receipt printed');
+
+      return {
+        success: true,
+        message: `Order #${order.id} - Both receipts printed (customer + kitchen)`
+      };
+
     } catch (serverError: any) {
       console.error('❌ Raspberry Pi printer server error:', serverError);
 
@@ -313,7 +422,7 @@ async function printViaHTTP(
   try {
     console.log('🔄 Attempting HTTP print (may require accepting insecure content)...');
 
-    const receiptData = formatReceipt(order);
+    const receiptData = formatCustomerReceipt(order);
     const printerUrl = `http://${printer.ipAddress}:${printer.port}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=10000`;
 
     const eposXml = `<?xml version="1.0" encoding="utf-8"?>
@@ -345,7 +454,7 @@ async function printViaHTTP(
     console.error('❌ HTTP print failed:', error);
 
     // Last resort: Open browser print dialog
-    return openPrintDialog(order, formatReceipt(order));
+    return openPrintDialog(order, '');
   }
 }
 
@@ -486,13 +595,21 @@ function openPrintDialog(order: OrderPrintData, receiptData: string): { success:
               font-size: 12px;
               line-height: 1.4;
             }
+            .page-break {
+              page-break-after: always;
+              margin: 20px 0;
+            }
             @media print {
               body { margin: 0; padding: 10px; }
             }
           </style>
         </head>
         <body>
-          <pre>${receiptData.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+          <h3>Customer Receipt</h3>
+          <pre>${formatCustomerReceipt(order).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+          <div class="page-break"></div>
+          <h3>Kitchen Ticket</h3>
+          <pre>${formatKitchenReceipt(order).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
           <script>
             window.onload = () => {
               window.print();
@@ -507,6 +624,6 @@ function openPrintDialog(order: OrderPrintData, receiptData: string): { success:
 
   return {
     success: true,
-    message: `Order #${order.id} - Print dialog opened. Select your thermal printer.`
+    message: `Order #${order.id} - Print dialog opened. Both receipts ready.`
   };
 }
