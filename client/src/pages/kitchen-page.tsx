@@ -417,9 +417,9 @@ const KitchenPage = () => {
                           <div className="flex justify-between items-start mb-3">
                             <div>
                               <p className="text-2xl font-bold text-gray-900">
-                                {order.customer_name?.split(' ')[0] || 'Guest'}
+                                {order.customer_name || 'Guest'}
                               </p>
-                              <p className="text-sm text-gray-500">Order #{order.id}</p>
+                              <p className="text-sm font-bold text-black">Order #{order.id}</p>
                             </div>
                             <Badge variant="outline" className="text-xs">
                               {order.order_type?.toUpperCase()}
@@ -428,6 +428,30 @@ const KitchenPage = () => {
                           <p className="text-xs text-gray-500 mb-3">
                             {new Date(order.created_at).toLocaleTimeString()}
                           </p>
+
+                          {/* Order Items */}
+                          <div className="space-y-2 mb-3">
+                            {order.items?.map((item: any, idx: number) => (
+                              <div key={idx} className="text-sm">
+                                <div className="font-medium text-gray-800">
+                                  {item.quantity}x {item.menuItem?.name || 'Unknown Item'}
+                                </div>
+                                {item.options && Array.isArray(item.options) && item.options.length > 0 && (
+                                  <div className="text-xs text-gray-600 pl-4">
+                                    {item.options.map((option: any, optIdx: number) => (
+                                      <div key={optIdx}>• {option.itemName}</div>
+                                    ))}
+                                  </div>
+                                )}
+                                {item.specialInstructions && (
+                                  <div className="text-xs text-orange-600 pl-4 font-medium">
+                                    ⚠️ {item.specialInstructions}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+
                           <Button
                             className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-medium"
                             onClick={(e) => {
@@ -465,9 +489,9 @@ const KitchenPage = () => {
                           <div className="flex justify-between items-start mb-3">
                             <div>
                               <p className="text-2xl font-bold text-gray-900">
-                                {order.customer_name?.split(' ')[0] || 'Guest'}
+                                {order.customer_name || 'Guest'}
                               </p>
-                              <p className="text-sm text-gray-500">Order #{order.id}</p>
+                              <p className="text-sm font-bold text-black">Order #{order.id}</p>
                             </div>
                             <Badge variant="outline" className="text-xs">
                               {order.order_type?.toUpperCase()}
@@ -476,6 +500,30 @@ const KitchenPage = () => {
                           <p className="text-xs text-gray-500 mb-3">
                             {new Date(order.created_at).toLocaleTimeString()}
                           </p>
+
+                          {/* Order Items */}
+                          <div className="space-y-2 mb-3">
+                            {order.items?.map((item: any, idx: number) => (
+                              <div key={idx} className="text-sm">
+                                <div className="font-medium text-gray-800">
+                                  {item.quantity}x {item.menuItem?.name || 'Unknown Item'}
+                                </div>
+                                {item.options && Array.isArray(item.options) && item.options.length > 0 && (
+                                  <div className="text-xs text-gray-600 pl-4">
+                                    {item.options.map((option: any, optIdx: number) => (
+                                      <div key={optIdx}>• {option.itemName}</div>
+                                    ))}
+                                  </div>
+                                )}
+                                {item.specialInstructions && (
+                                  <div className="text-xs text-orange-600 pl-4 font-medium">
+                                    ⚠️ {item.specialInstructions}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+
                           <Button
                             className="w-full bg-green-500 hover:bg-green-600 text-white font-medium"
                             onClick={(e) => {
@@ -513,9 +561,9 @@ const KitchenPage = () => {
                           <div className="flex justify-between items-start mb-3">
                             <div>
                               <p className="text-2xl font-bold text-gray-900">
-                                {order.customer_name?.split(' ')[0] || 'Guest'}
+                                {order.customer_name || 'Guest'}
                               </p>
-                              <p className="text-sm text-gray-500">Order #{order.id}</p>
+                              <p className="text-sm font-bold text-black">Order #{order.id}</p>
                             </div>
                             <Badge variant="outline" className="text-xs">
                               {order.order_type?.toUpperCase()}
@@ -524,6 +572,30 @@ const KitchenPage = () => {
                           <p className="text-xs text-gray-500 mb-3">
                             {new Date(order.created_at).toLocaleTimeString()}
                           </p>
+
+                          {/* Order Items */}
+                          <div className="space-y-2 mb-3">
+                            {order.items?.map((item: any, idx: number) => (
+                              <div key={idx} className="text-sm">
+                                <div className="font-medium text-gray-800">
+                                  {item.quantity}x {item.menuItem?.name || 'Unknown Item'}
+                                </div>
+                                {item.options && Array.isArray(item.options) && item.options.length > 0 && (
+                                  <div className="text-xs text-gray-600 pl-4">
+                                    {item.options.map((option: any, optIdx: number) => (
+                                      <div key={optIdx}>• {option.itemName}</div>
+                                    ))}
+                                  </div>
+                                )}
+                                {item.specialInstructions && (
+                                  <div className="text-xs text-orange-600 pl-4 font-medium">
+                                    ⚠️ {item.specialInstructions}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+
                           <Button
                             className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium"
                             onClick={(e) => {
