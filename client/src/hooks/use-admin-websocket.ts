@@ -480,9 +480,19 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
     connect();
   }, [disconnect, connect]);
 
+  const sendMessage = useCallback((message: any) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(message));
+      console.log('WebSocket message sent:', message);
+    } else {
+      console.warn('WebSocket not connected, cannot send message:', message);
+    }
+  }, []);
+
   return {
     ws: wsRef.current,
     playTestSound: playNotificationSound,
+    sendMessage: sendMessage,
     retry: retry,
     isConnected: wsRef.current?.readyState === WebSocket.OPEN,
     reconnectAttempts: reconnectAttemptsRef.current
