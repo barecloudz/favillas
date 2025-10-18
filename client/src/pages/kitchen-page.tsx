@@ -50,7 +50,7 @@ const KitchenPage = () => {
   }, []);
 
   // Use admin websocket with notification sound settings
-  const { playTestSound } = useAdminWebSocket({
+  const { playTestSound, sendMessage } = useAdminWebSocket({
     enableSounds: soundEnabled,
     soundType: soundType,
     volume: soundVolume,
