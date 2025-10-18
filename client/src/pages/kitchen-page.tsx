@@ -11,12 +11,15 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Printer, Volume2, Columns3, LayoutGrid } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Loader2, Printer, Volume2, Columns3, LayoutGrid, User, Home, Settings, LogOut } from "lucide-react";
 import { printToThermalPrinter } from "@/utils/thermal-printer";
+import { useLocation } from "wouter";
 
 const KitchenPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("pending");
   const [isColumnMode, setIsColumnMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -306,7 +309,7 @@ const KitchenPage = () => {
               <Button
                 variant="outline"
                 size="sm"
-                className="text-white border-white hover:bg-white hover:text-[#d73a31]"
+                className="bg-white text-[#d73a31] border-white hover:bg-gray-100 font-medium"
                 onClick={() => {
                   const newMode = !isColumnMode;
                   setIsColumnMode(newMode);
@@ -320,7 +323,7 @@ const KitchenPage = () => {
               <Button
                 variant="outline"
                 size="sm"
-                className="text-white border-white hover:bg-white hover:text-[#d73a31]"
+                className="bg-white text-[#d73a31] border-white hover:bg-gray-100 font-medium"
                 onClick={() => {
                   playTestSound();
                 }}
@@ -329,7 +332,49 @@ const KitchenPage = () => {
                 <span className="hidden sm:inline">Test Sound</span>
                 <span className="sm:hidden">Test</span>
               </Button>
-              <span className="hidden sm:inline">Welcome, {user?.firstName}</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-white text-[#d73a31] border-white hover:bg-gray-100 font-medium"
+                  >
+                    <User className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />
+                    <span className="hidden sm:inline">{user?.firstName || 'Menu'}</span>
+                    <span className="sm:hidden">Menu</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel>
+                    {user?.firstName} {user?.lastName}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setLocation('/')}>
+                    <Home className="mr-2 h-4 w-4" />
+                    <span>Home</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setLocation('/admin/dashboard')}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Admin Dashboard</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      try {
+                        await apiRequest('POST', '/api/logout', {});
+                        setLocation('/');
+                        window.location.reload();
+                      } catch (error) {
+                        console.error('Logout failed:', error);
+                      }
+                    }}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Logout</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </header>
