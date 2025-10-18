@@ -100,12 +100,11 @@ async function createKitchenAdmin() {
     console.log('  ✅ Restaurant Settings');
     console.log('  ✅ Rewards Management');
     console.log('  ✅ Marketing Tools');
+    console.log('  ✅ Employee Schedules');
     console.log('');
     console.log('This user CANNOT access:');
     console.log('  ❌ Payroll & Hours');
     console.log('  ❌ Employee Hourly Rates');
-    console.log('  ❌ Clock In/Out System');
-    console.log('  ❌ Employee Schedules');
 
   } catch (error) {
     console.error('❌ Error creating kitchen admin:', error);
