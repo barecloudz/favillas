@@ -12,9 +12,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Loader2, Printer, Volume2, Columns3, LayoutGrid, User, Home, Settings, LogOut } from "lucide-react";
+import { Loader2, Printer, Volume2, Columns3, LayoutGrid, User, Home, Settings, LogOut, PauseCircle, PlayCircle } from "lucide-react";
 import { printToThermalPrinter } from "@/utils/thermal-printer";
 import { useLocation } from "wouter";
+import { useVacationMode } from "@/hooks/use-vacation-mode";
 
 const KitchenPage = () => {
   const { user } = useAuth();
@@ -29,6 +30,8 @@ const KitchenPage = () => {
   });
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const { isOrderingPaused, vacationMode } = useVacationMode();
+  const [isTogglingPause, setIsTogglingPause] = useState(false);
 
   // Load notification settings from system settings
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -274,6 +277,50 @@ const KitchenPage = () => {
     }
   };
 
+  // Toggle pause ordering (emergency pause)
+  const togglePauseOrdering = async () => {
+    setIsTogglingPause(true);
+    try {
+      const newPauseState = !isOrderingPaused;
+      const response = await fetch('/.netlify/functions/vacation-mode', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          isEnabled: newPauseState,
+          message: newPauseState
+            ? 'We are temporarily pausing orders due to high volume. Please check back shortly!'
+            : '',
+          startDate: '',
+          endDate: '',
+          reason: 'Emergency pause from kitchen'
+        })
+      });
+
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ['/api/vacation-mode'] });
+        toast({
+          title: newPauseState ? "Ordering Paused" : "Ordering Resumed",
+          description: newPauseState
+            ? "Customers will see a message that ordering is temporarily unavailable."
+            : "Customers can now place orders again.",
+        });
+      } else {
+        throw new Error('Failed to toggle pause state');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to toggle pause state",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTogglingPause(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -331,6 +378,27 @@ const KitchenPage = () => {
                 <Volume2 className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />
                 <span className="hidden sm:inline">Test Sound</span>
                 <span className="sm:hidden">Test</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className={`border-white hover:bg-gray-100 font-medium ${
+                  isOrderingPaused
+                    ? 'bg-yellow-500 text-white hover:bg-yellow-600'
+                    : 'bg-white text-[#d73a31]'
+                }`}
+                onClick={togglePauseOrdering}
+                disabled={isTogglingPause}
+              >
+                {isTogglingPause ? (
+                  <Loader2 className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                ) : isOrderingPaused ? (
+                  <PlayCircle className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />
+                ) : (
+                  <PauseCircle className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />
+                )}
+                <span className="hidden sm:inline">{isOrderingPaused ? "Resume Orders" : "Pause Orders"}</span>
+                <span className="sm:hidden">{isOrderingPaused ? "Resume" : "Pause"}</span>
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

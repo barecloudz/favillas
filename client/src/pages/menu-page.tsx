@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Helmet } from "react-helmet";
-import { Search, Plus, ShoppingCart, X, ChevronDown, Minus } from "lucide-react";
+import { Search, Plus, ShoppingCart, X, ChevronDown, Minus, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCart } from "@/hooks/use-cart";
+import { useVacationMode } from "@/hooks/use-vacation-mode";
 import MenuItemSimple from "@/components/menu/menu-item-simple";
 import MenuItemWithChoices from "@/components/menu/menu-item-with-choices";
 
@@ -32,6 +33,7 @@ const MenuPage = () => {
   const [quantity, setQuantity] = useState(1);
   const [animatingItem, setAnimatingItem] = useState<number | null>(null);
   const { addItem, items } = useCart();
+  const { isOrderingPaused, displayMessage } = useVacationMode();
 
   const formatPrice = (price: string | number) => {
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
@@ -381,17 +383,31 @@ const MenuPage = () => {
       </Helmet>
 
       <div className="min-h-screen bg-gray-50 md:pt-[72px] pt-[60px]">
+        {/* Vacation Mode Banner */}
+        {isOrderingPaused && (
+          <div className="bg-yellow-500 border-b-4 border-yellow-600 px-4 sm:px-6 lg:px-8 py-4">
+            <div className="max-w-7xl mx-auto flex items-center gap-3 text-white">
+              <AlertCircle className="h-6 w-6 flex-shrink-0" />
+              <div>
+                <p className="font-bold text-lg">Ordering Temporarily Unavailable</p>
+                <p className="text-sm">{displayMessage}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">Menu</h1>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => navigate("/checkout")}
               className="relative"
               data-cart-button="true"
               data-desktop-cart="true"
+              disabled={isOrderingPaused}
             >
               <ShoppingCart className="h-4 w-4 mr-2" />
               Cart
@@ -478,6 +494,7 @@ const MenuPage = () => {
                         choiceGroups={choiceGroups}
                         choiceItems={choiceItems}
                         menuItemChoiceGroups={menuItemChoiceGroups}
+                        isOrderingPaused={isOrderingPaused}
                       />
                     ))}
                   </div>

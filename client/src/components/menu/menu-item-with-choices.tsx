@@ -37,13 +37,15 @@ interface MenuItemProps {
   choiceGroups?: any[];
   choiceItems?: any[];
   menuItemChoiceGroups?: any[];
+  isOrderingPaused?: boolean;
 }
 
 const MenuItemWithChoices: React.FC<MenuItemProps> = ({
   item,
   choiceGroups = [],
   choiceItems = [],
-  menuItemChoiceGroups = []
+  menuItemChoiceGroups = [],
+  isOrderingPaused = false
 }) => {
   const { addItem, triggerPizzaAnimation } = useCart();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -424,11 +426,12 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button
-                  className="bg-[#d73a31] hover:bg-[#c73128] text-white"
+                  className="bg-[#d73a31] hover:bg-[#c73128] text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
                   onClick={(event) => setTriggerElement(event.currentTarget)}
+                  disabled={isOrderingPaused}
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" />
-                  See Options
+                  {isOrderingPaused ? 'Unavailable' : 'See Options'}
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white to-gray-50">
@@ -709,11 +712,12 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
             </Dialog>
           ) : (
             <Button
-              className="bg-[#d73a31] hover:bg-[#c73128] text-white"
+              className="bg-[#d73a31] hover:bg-[#c73128] text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
               onClick={handleSimpleAddToCart}
+              disabled={isOrderingPaused}
             >
               <ShoppingCart className="h-4 w-4 mr-2" />
-              Add to Cart
+              {isOrderingPaused ? 'Unavailable' : 'Add to Cart'}
             </Button>
           )}
         </div>

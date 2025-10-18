@@ -4,6 +4,7 @@ import { useStripe, useElements, Elements, PaymentElement } from '@stripe/react-
 import { loadStripe } from '@stripe/stripe-js';
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useCart } from "@/hooks/use-cart";
+import { useVacationMode } from "@/hooks/use-vacation-mode";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, X, Gift } from "lucide-react";
+import { Loader2, X, Gift, AlertCircle } from "lucide-react";
 import AddressForm from "@/components/ui/address-autocomplete";
 
 // Load Stripe outside of component to avoid recreating it on render
@@ -89,6 +90,7 @@ const CheckoutPage = () => {
   const { items, total, tax, clearCart, showLoginModal } = useCart();
   const [location, navigate] = useLocation();
   const { toast } = useToast();
+  const { isOrderingPaused, displayMessage } = useVacationMode();
 
   // Check for corrupted items and handle gracefully
   useEffect(() => {
@@ -752,6 +754,19 @@ const CheckoutPage = () => {
       </Helmet>
 
       <main className="bg-gray-50 py-12 md:pt-[72px] pt-[60px]">
+        {/* Vacation Mode Banner */}
+        {isOrderingPaused && (
+          <div className="bg-yellow-500 border-b-4 border-yellow-600 px-4 sm:px-6 lg:px-8 py-4 mb-6">
+            <div className="max-w-6xl mx-auto flex items-center gap-3 text-white">
+              <AlertCircle className="h-6 w-6 flex-shrink-0" />
+              <div>
+                <p className="font-bold text-lg">Ordering Temporarily Unavailable</p>
+                <p className="text-sm">{displayMessage}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="container mx-auto px-4">
           {/* Back Button */}
           <div className="mb-6">
@@ -763,7 +778,7 @@ const CheckoutPage = () => {
               ← Back to Menu
             </Button>
           </div>
-          
+
           <h1 className="text-3xl font-display font-bold text-center mb-8">Checkout</h1>
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
@@ -1211,10 +1226,12 @@ const CheckoutPage = () => {
                       
                       <Button
                         type="submit"
-                        className="w-full bg-[#d73a31] hover:bg-[#c73128]"
-                        disabled={createPaymentIntentMutation.isPending}
+                        className="w-full bg-[#d73a31] hover:bg-[#c73128] disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        disabled={createPaymentIntentMutation.isPending || isOrderingPaused}
                       >
-                        {createPaymentIntentMutation.isPending ? (
+                        {isOrderingPaused ? (
+                          "Ordering Temporarily Unavailable"
+                        ) : createPaymentIntentMutation.isPending ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
                             Processing...
