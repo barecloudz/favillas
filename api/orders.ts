@@ -461,7 +461,7 @@ export const handler: Handler = async (event, context) => {
       
       console.log('📋 Orders API: Found', allOrders.length, 'orders');
       
-      // Get order items for each order with menu item details
+      // Get order items for each order with menu item details AND user info
       const ordersWithItems = await Promise.all(
         allOrders.map(async (order) => {
           try {
@@ -477,7 +477,7 @@ export const handler: Handler = async (event, context) => {
               LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
               WHERE oi.order_id = ${order.id}
             `;
-            
+
             // Transform the data to match expected frontend structure
             const transformedItems = items.map(item => ({
               ...item,
@@ -490,7 +490,39 @@ export const handler: Handler = async (event, context) => {
                 category: item.menu_item_category
               } : null
             }));
-            
+
+            // Get user info for customer name
+            let customerName = 'Guest';
+            if (order.user_id || order.supabase_user_id) {
+              try {
+                const userQuery = order.user_id
+                  ? await sql`SELECT first_name, last_name FROM users WHERE id = ${order.user_id}`
+                  : await sql`SELECT first_name, last_name FROM users WHERE supabase_user_id = ${order.supabase_user_id}`;
+
+                if (userQuery.length > 0 && userQuery[0].first_name && userQuery[0].last_name) {
+                  customerName = `${userQuery[0].first_name} ${userQuery[0].last_name}`.trim();
+                }
+              } catch (userError) {
+                console.error('❌ Error fetching user for order', order.id, ':', userError);
+              }
+            }
+
+            // Get points earned for this order
+            let pointsEarned = 0;
+            if (order.user_id || order.supabase_user_id) {
+              try {
+                const pointsQuery = order.user_id
+                  ? await sql`SELECT points FROM points_transactions WHERE order_id = ${order.id} AND user_id = ${order.user_id} AND type = 'earned'`
+                  : await sql`SELECT points FROM points_transactions WHERE order_id = ${order.id} AND supabase_user_id = ${order.supabase_user_id} AND type = 'earned'`;
+
+                if (pointsQuery.length > 0) {
+                  pointsEarned = parseInt(pointsQuery[0].points);
+                }
+              } catch (pointsError) {
+                console.error('❌ Error fetching points for order', order.id, ':', pointsError);
+              }
+            }
+
             // Ensure numeric values are properly converted for frontend
             const transformedOrder = {
               ...order,
@@ -503,6 +535,9 @@ export const handler: Handler = async (event, context) => {
               delivery_fee: parseFloat(order.delivery_fee || '0'),
               tip: parseFloat(order.tip || '0'),
               shipday_status: order.shipday_status, // Include shipday status
+              customerName: customerName,
+              customer_name: customerName, // Also include snake_case for backward compat
+              pointsEarned: pointsEarned,
               items: transformedItems
             };
 
@@ -521,6 +556,9 @@ export const handler: Handler = async (event, context) => {
               delivery_fee: parseFloat(order.delivery_fee || '0'),
               tip: parseFloat(order.tip || '0'),
               shipday_status: order.shipday_status, // Include shipday status
+              customerName: 'Guest',
+              customer_name: 'Guest',
+              pointsEarned: 0,
               items: []
             };
           }
