@@ -289,17 +289,19 @@ const KitchenPage = () => {
       const result = await printToThermalPrinter(
         {
           id: order.id,
-          orderType: order.order_type,
-          customerName: order.customer_name,
+          orderType: order.order_type || order.orderType,
+          customerName: order.customerName || order.customer_name,
           phone: order.phone,
           address: order.address,
           items: order.items,
           total: parseFloat(order.total),
           tax: parseFloat(order.tax || 0),
-          deliveryFee: parseFloat(order.delivery_fee || 0),
+          deliveryFee: parseFloat(order.delivery_fee || order.deliveryFee || 0),
           tip: parseFloat(order.tip || 0),
-          specialInstructions: order.special_instructions,
-          createdAt: order.created_at
+          specialInstructions: order.special_instructions || order.specialInstructions,
+          createdAt: order.created_at || order.createdAt,
+          userId: order.user_id || order.userId,
+          pointsEarned: order.pointsEarned || order.points_earned || 0
         },
         {
           ipAddress: '192.168.1.18',

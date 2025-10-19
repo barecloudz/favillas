@@ -100,15 +100,16 @@ function formatCustomerReceipt(order: OrderPrintData): string {
   receipt += `${new Date(order.createdAt).toLocaleString()}\n`;
   receipt += `--------------------------------\n`;
 
-  // Customer info
-  if (order.orderType === 'delivery') {
-    receipt += `Customer: ${order.customerName || 'Guest'}\n`;
-    receipt += `Phone: ${order.phone || 'N/A'}\n`;
-    if (order.address) {
-      receipt += `Address: ${order.address}\n`;
-    }
-    receipt += `--------------------------------\n`;
+  // Customer info (show for all orders, not just delivery)
+  receipt += `Customer: ${order.customerName || 'Guest'}\n`;
+  receipt += `Phone: ${order.phone || 'N/A'}\n`;
+
+  // Address only for delivery
+  if (order.orderType === 'delivery' && order.address) {
+    receipt += `Address: ${order.address}\n`;
   }
+
+  receipt += `--------------------------------\n`;
 
   // Items
   receipt += `${ESC}E\x01`; // Bold on
