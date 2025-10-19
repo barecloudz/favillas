@@ -85,9 +85,17 @@ function formatCustomerReceipt(order: OrderPrintData): string {
   receipt += `${ESC}E\x00`; // Bold off
   receipt += `\n`;
 
-  // Order details
-  receipt += `${ESC}a\x00`; // Left align
+  // Order number - Center aligned, bold, larger text
+  receipt += `${ESC}a\x01`; // Center align
+  receipt += `${ESC}E\x01`; // Bold on
+  receipt += `${GS}!\x01`; // Double height
   receipt += `Order #${order.id}\n`;
+  receipt += `${GS}!\x00`; // Normal size
+  receipt += `${ESC}E\x00`; // Bold off
+  receipt += `\n`;
+
+  // Order details - Left aligned
+  receipt += `${ESC}a\x00`; // Left align
   receipt += `${order.orderType === 'delivery' ? 'DELIVERY' : 'PICKUP'}\n`;
   receipt += `${new Date(order.createdAt).toLocaleString()}\n`;
   receipt += `--------------------------------\n`;
