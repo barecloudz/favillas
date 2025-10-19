@@ -129,12 +129,13 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
     return sizeChoice?.name;
   };
 
-  // Progressive reveal: require size selection first for calzones/stromboli, then filter toppings by size
+  // Progressive reveal: require size selection first for calzones/stromboli/specialty pizzas, then filter toppings by size
   const getVisibleChoiceGroups = () => {
     // Check if there's a size group that requires selection first
     const sizeGroup = itemChoiceGroups.find(g =>
       g.name === 'Calzone Size' ||
-      g.name === 'Stromboli Size'
+      g.name === 'Stromboli Size' ||
+      g.name === 'Specialty Gourmet Pizza Size'
     );
 
     // If there's a size group and it hasn't been selected yet, only show the size group
@@ -162,9 +163,16 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
         // Check if this is a topping group
         if (groupName.includes('topping')) {
           // Match size in group name with selected size
+          // Calzone/Stromboli sizes
           if (sizeName.includes('small') && groupName.includes('small')) return true;
           if (sizeName.includes('medium') && groupName.includes('medium')) return true;
           if (sizeName.includes('large') && groupName.includes('large')) return true;
+
+          // Specialty Gourmet Pizza sizes
+          if (sizeName.includes('10') && groupName.includes('10')) return true;
+          if (sizeName.includes('14') && groupName.includes('14')) return true;
+          if (sizeName.includes('16') && groupName.includes('16')) return true;
+          if (sizeName.toLowerCase().includes('sicilian') && groupName.includes('sicilian')) return true;
 
           // Don't show toppings for other sizes
           return false;
