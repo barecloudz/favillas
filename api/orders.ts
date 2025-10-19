@@ -1184,11 +1184,9 @@ export const handler: Handler = async (event, context) => {
           willAwardPoints: !!(finalUserId || finalSupabaseUserId)
         });
 
-        // Only award points if payment is successful
-        const paymentStatus = orderData.paymentStatus || 'pending';
-        const isPaid = ['completed', 'succeeded', 'paid'].includes(paymentStatus);
-
-        if ((finalUserId || finalSupabaseUserId) && isPaid) {
+        // Award points for ALL orders (not just paid ones) - restaurant wants points for every order
+        // Payment will be collected at pickup/delivery, so we trust all orders are valid
+        if ((finalUserId || finalSupabaseUserId)) {
           try {
             const pointsToAward = Math.floor(parseFloat(newOrder.total));
             const userType = finalUserId ? 'legacy' : 'supabase';
@@ -1200,9 +1198,7 @@ export const handler: Handler = async (event, context) => {
               finalSupabaseUserId,
               pointsToAward,
               orderTotal: newOrder.total,
-              orderId: newOrder.id,
-              paymentStatus,
-              isPaid
+              orderId: newOrder.id
             });
 
             // VERIFICATION: Ensure order was created with correct user IDs
@@ -1252,14 +1248,12 @@ export const handler: Handler = async (event, context) => {
             // Don't fail the order if points fail, but log extensively
           }
         } else {
-          console.log('⚠️ Orders API: Points not awarded - reason below');
+          console.log('⚠️ Orders API: Points not awarded - No user authenticated');
           console.log('⚠️ Orders API: POINTS DEBUGGING INFO:', {
             hasUser: !!(finalUserId || finalSupabaseUserId),
             finalUserId: finalUserId,
             finalSupabaseUserId: finalSupabaseUserId,
-            paymentStatus,
-            isPaid,
-            reason: !(finalUserId || finalSupabaseUserId) ? 'No user identified' : !isPaid ? 'Payment not completed' : 'Unknown',
+            reason: 'Guest order - no user ID',
             authPayload: authPayload,
             orderUserInfo: {
               user_id: newOrder.user_id,
