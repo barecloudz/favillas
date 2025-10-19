@@ -406,9 +406,9 @@ async function getPrinterServerUrl(): Promise<string> {
     console.warn('Could not fetch printer server URL from settings, using default');
   }
 
-  // Default: Raspberry Pi printer server on store network (HTTPS with self-signed cert)
+  // Default: Raspberry Pi printer server on store network (HTTP)
   // This can be changed in Admin > System Settings > Printer Settings
-  return 'https://192.168.1.18:3001';
+  return 'http://192.168.1.18:3001';
 }
 
 /**
