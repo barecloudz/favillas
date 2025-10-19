@@ -32,6 +32,7 @@ const MenuPage = () => {
   const [selectedChoices, setSelectedChoices] = useState<{[key: number]: string[]}>({});
   const [quantity, setQuantity] = useState(1);
   const [animatingItem, setAnimatingItem] = useState<number | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const { addItem, items } = useCart();
   const { isOrderingPaused, displayMessage } = useVacationMode();
 
@@ -99,7 +100,16 @@ const MenuPage = () => {
       try {
         const response = await fetch('/api/categories');
         if (response.ok) {
-          return await response.json();
+          const data = await response.json();
+          // Transform to ensure consistent field names
+          const categories = Array.isArray(data) ? data : data.categories || [];
+          return {
+            categories: categories.map((cat: any) => ({
+              ...cat,
+              isActive: cat.isActive ?? cat.is_active ?? true,
+              imageUrl: cat.imageUrl ?? cat.image_url ?? null,
+            }))
+          };
         }
       } catch (error) {
         console.log('Categories API not available, using defaults');
@@ -107,15 +117,15 @@ const MenuPage = () => {
       // Return default categories if API is not available
       return {
         categories: [
-          { id: 1, name: "Traditional Pizza", order: 1, isActive: true },
-          { id: 2, name: "10\" Specialty Gourmet Pizzas", order: 2, isActive: true },
-          { id: 3, name: "14\" Specialty Gourmet Pizzas", order: 3, isActive: true },
-          { id: 4, name: "16\" Specialty Gourmet Pizzas", order: 4, isActive: true },
-          { id: 5, name: "Sicilian Pizzas", order: 5, isActive: true },
-          { id: 6, name: "Appetizers", order: 6, isActive: true },
-          { id: 7, name: "Sides", order: 7, isActive: true },
-          { id: 8, name: "Desserts", order: 8, isActive: true },
-          { id: 9, name: "Beverages", order: 9, isActive: true },
+          { id: 1, name: "Traditional Pizza", order: 1, isActive: true, imageUrl: null },
+          { id: 2, name: "10\" Specialty Gourmet Pizzas", order: 2, isActive: true, imageUrl: null },
+          { id: 3, name: "14\" Specialty Gourmet Pizzas", order: 3, isActive: true, imageUrl: null },
+          { id: 4, name: "16\" Specialty Gourmet Pizzas", order: 4, isActive: true, imageUrl: null },
+          { id: 5, name: "Sicilian Pizzas", order: 5, isActive: true, imageUrl: null },
+          { id: 6, name: "Appetizers", order: 6, isActive: true, imageUrl: null },
+          { id: 7, name: "Sides", order: 7, isActive: true, imageUrl: null },
+          { id: 8, name: "Desserts", order: 8, isActive: true, imageUrl: null },
+          { id: 9, name: "Beverages", order: 9, isActive: true, imageUrl: null },
         ]
       };
     },
@@ -434,37 +444,74 @@ const MenuPage = () => {
           </div>
         </div>
 
-        {/* Category Filter */}
-        <div className="px-4 sm:px-6 lg:px-8 pb-4">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center gap-3">
-              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Category:</label>
-              <Select 
-                value={selectedCategory || "all"} 
-                onValueChange={(value) => setSelectedCategory(value === "all" ? null : value)}
-              >
-                <SelectTrigger className="w-full max-w-xs bg-white">
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem 
-                      key={category.id || 'all'} 
-                      value={category.id || "all"}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span>{category.name}</span>
-                        <Badge variant="secondary" className="ml-2">
-                          {category.count}
-                        </Badge>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        {/* Category Cards - Only show when no search query */}
+        {!searchQuery && (
+          <div className="px-4 sm:px-6 lg:px-8 pb-6">
+            <div className="max-w-7xl mx-auto">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Browse by Category</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {categoriesData?.categories
+                  ?.filter((cat: any) => cat.isActive)
+                  .sort((a: any, b: any) => a.order - b.order)
+                  .map((category: any) => {
+                    const itemCount = (menuItems || []).filter((item: any) => item.category === category.name).length;
+                    const isExpanded = expandedCategories.has(category.name);
+
+                    if (itemCount === 0) return null;
+
+                    return (
+                      <Card
+                        key={category.id}
+                        className={`cursor-pointer transition-all duration-200 hover:shadow-lg border-2 ${
+                          isExpanded ? 'border-red-500 shadow-md' : 'border-transparent'
+                        }`}
+                        onClick={() => {
+                          const newExpanded = new Set(expandedCategories);
+                          if (isExpanded) {
+                            newExpanded.delete(category.name);
+                          } else {
+                            newExpanded.add(category.name);
+                          }
+                          setExpandedCategories(newExpanded);
+
+                          // Scroll to category section
+                          setTimeout(() => {
+                            const element = document.getElementById(`category-${category.name}`);
+                            if (element) {
+                              element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                          }, 100);
+                        }}
+                      >
+                        <CardContent className="p-4">
+                          {category.imageUrl || category.image_url ? (
+                            <div className="aspect-square rounded-lg overflow-hidden mb-3">
+                              <img
+                                src={category.imageUrl || category.image_url}
+                                alt={category.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="aspect-square rounded-lg bg-gradient-to-br from-red-100 to-red-200 flex items-center justify-center mb-3">
+                              <ChevronDown className={`h-12 w-12 text-red-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                            </div>
+                          )}
+                          <h3 className="font-semibold text-center text-sm mb-1">{category.name}</h3>
+                          <p className="text-xs text-gray-500 text-center">{itemCount} items</p>
+                          {isExpanded && (
+                            <Badge className="mt-2 w-full justify-center bg-red-600">
+                              Viewing
+                            </Badge>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Menu Items */}
         <div className="px-4 sm:px-6 lg:px-8 pb-8">
@@ -483,23 +530,51 @@ const MenuPage = () => {
                   const catB = categoriesData?.categories?.find((c: any) => c.name === categoryB);
                   return (catA?.order || 999) - (catB?.order || 999);
                 })
-                .map(([categoryName, items]: [string, any]) => (
-                <div key={categoryName}>
-                  <h2 className="text-xl font-bold text-gray-900 mb-4">{categoryName}</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
-                    {items.map((item: any) => (
-                      <MenuItemWithChoices
-                        key={item.id}
-                        item={item}
-                        choiceGroups={choiceGroups}
-                        choiceItems={choiceItems}
-                        menuItemChoiceGroups={menuItemChoiceGroups}
-                        isOrderingPaused={isOrderingPaused}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
+                .map(([categoryName, items]: [string, any]) => {
+                  // Only show categories that are expanded OR if search is active
+                  const isExpanded = expandedCategories.has(categoryName);
+                  if (!searchQuery && !isExpanded && expandedCategories.size > 0) {
+                    return null;
+                  }
+
+                  return (
+                    <div key={categoryName} id={`category-${categoryName}`} className="scroll-mt-24">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-bold text-gray-900">{categoryName}</h2>
+                        {!searchQuery && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const newExpanded = new Set(expandedCategories);
+                              if (isExpanded) {
+                                newExpanded.delete(categoryName);
+                              } else {
+                                newExpanded.add(categoryName);
+                              }
+                              setExpandedCategories(newExpanded);
+                            }}
+                          >
+                            {isExpanded ? 'Collapse' : 'Expand'}
+                            <ChevronDown className={`ml-2 h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
+                        {items.map((item: any) => (
+                          <MenuItemWithChoices
+                            key={item.id}
+                            item={item}
+                            choiceGroups={choiceGroups}
+                            choiceItems={choiceItems}
+                            menuItemChoiceGroups={menuItemChoiceGroups}
+                            isOrderingPaused={isOrderingPaused}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
             </div>
           )}
           </div>

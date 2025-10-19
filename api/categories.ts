@@ -76,8 +76,8 @@ export const handler: Handler = async (event, context) => {
       };
 
     } else if (event.httpMethod === 'POST') {
-      const { name, order, isActive } = JSON.parse(event.body || '{}');
-      
+      const { name, order, isActive, imageUrl } = JSON.parse(event.body || '{}');
+
       if (!name) {
         return {
           statusCode: 400,
@@ -85,13 +85,13 @@ export const handler: Handler = async (event, context) => {
           body: JSON.stringify({ message: 'Name is required' })
         };
       }
-      
+
       const result = await sql`
-        INSERT INTO categories (name, "order", is_active, created_at)
-        VALUES (${name}, ${order || 1}, ${isActive !== false}, NOW())
+        INSERT INTO categories (name, "order", is_active, image_url, created_at)
+        VALUES (${name}, ${order || 1}, ${isActive !== false}, ${imageUrl || null}, NOW())
         RETURNING *
       `;
-      
+
       return {
         statusCode: 201,
         headers,
@@ -112,7 +112,7 @@ export const handler: Handler = async (event, context) => {
       }
 
       const updateData = JSON.parse(event.body || '{}');
-      const { name, order, isActive } = updateData;
+      const { name, order, isActive, imageUrl } = updateData;
 
       // First, get the current category to check if name is changing
       const currentCategory = await sql`
@@ -184,6 +184,16 @@ export const handler: Handler = async (event, context) => {
           result = await sql`
             UPDATE categories
             SET is_active = ${isActive}
+            WHERE id = ${parseInt(categoryId)}
+            RETURNING *
+          `;
+        }
+
+        // Update image URL if provided (separate query)
+        if (imageUrl !== undefined && result.length > 0) {
+          result = await sql`
+            UPDATE categories
+            SET image_url = ${imageUrl || null}
             WHERE id = ${parseInt(categoryId)}
             RETURNING *
           `;

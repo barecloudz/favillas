@@ -10875,7 +10875,8 @@ const PrinterForm = ({ printer, onSave, onCancel }: { printer?: any, onSave: (da
 // Category Form Components
 const CreateCategoryForm = ({ onSubmit, onCancel }: { onSubmit: (data: any) => void; onCancel: () => void }) => {
   const [formData, setFormData] = useState({
-    name: ""
+    name: "",
+    imageUrl: ""
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -10895,7 +10896,17 @@ const CreateCategoryForm = ({ onSubmit, onCancel }: { onSubmit: (data: any) => v
           required
         />
       </div>
-      
+
+      <div>
+        <Label htmlFor="category-image">Category Image</Label>
+        <ImageUpload
+          value={formData.imageUrl}
+          onChange={(url) => setFormData({ ...formData, imageUrl: url })}
+          onRemove={() => setFormData({ ...formData, imageUrl: "" })}
+        />
+        <p className="text-sm text-gray-500 mt-1">Upload an image to display on the category card (optional)</p>
+      </div>
+
       <div className="flex justify-end space-x-2">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -10910,7 +10921,8 @@ const EditCategoryForm = ({ category, onSubmit, onCancel }: { category: any; onS
   const [formData, setFormData] = useState({
     name: category.name || "",
     order: category.order || 1,
-    isActive: category.isActive !== false
+    isActive: category.isActive !== false,
+    imageUrl: category.imageUrl || category.image_url || ""
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -10930,7 +10942,17 @@ const EditCategoryForm = ({ category, onSubmit, onCancel }: { category: any; onS
           required
         />
       </div>
-      
+
+      <div>
+        <Label htmlFor="edit-category-image">Category Image</Label>
+        <ImageUpload
+          value={formData.imageUrl}
+          onChange={(url) => setFormData({ ...formData, imageUrl: url })}
+          onRemove={() => setFormData({ ...formData, imageUrl: "" })}
+        />
+        <p className="text-sm text-gray-500 mt-1">Upload an image to display on the category card (optional)</p>
+      </div>
+
       <div className="flex justify-end space-x-2">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel

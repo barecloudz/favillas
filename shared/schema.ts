@@ -100,6 +100,7 @@ export const categories = pgTable("categories", {
   name: text("name").notNull().unique(),
   order: integer("order").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
+  imageUrl: text("image_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
