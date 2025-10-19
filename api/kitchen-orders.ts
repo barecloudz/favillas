@@ -93,16 +93,30 @@ export const handler: Handler = async (event, context) => {
         `;
 
         // Transform the data to match expected frontend structure
-        const transformedItems = items.map(item => ({
-          ...item,
-          menuItem: item.menu_item_name ? {
-            name: item.menu_item_name,
-            description: item.menu_item_description,
-            price: item.menu_item_price,
-            imageUrl: item.menu_item_image_url,
-            category: item.menu_item_category
-          } : null
-        }));
+        const transformedItems = items.map(item => {
+          // Parse options if they're a JSON string
+          let parsedOptions = item.options;
+          if (typeof item.options === 'string' && item.options) {
+            try {
+              parsedOptions = JSON.parse(item.options);
+            } catch (e) {
+              console.error(`Failed to parse options for item ${item.id}:`, e);
+              parsedOptions = null;
+            }
+          }
+
+          return {
+            ...item,
+            options: parsedOptions,
+            menuItem: item.menu_item_name ? {
+              name: item.menu_item_name,
+              description: item.menu_item_description,
+              price: item.menu_item_price,
+              imageUrl: item.menu_item_image_url,
+              category: item.menu_item_category
+            } : null
+          };
+        });
 
         // Get points earned for this order
         let pointsEarned = 0;
