@@ -4972,23 +4972,26 @@ const MenuEditor = ({ menuItems }: any) => {
                         onDrop={(e) => handleCategoryDrop(e, category.name)}
                       >
                         <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center">
-                            {categoryItems.length > 0 && categoryItems[0].image ? (
-                              <img 
-                                src={categoryItems[0].image} 
-                                alt={category.name} 
-                                className="w-8 h-8 object-cover rounded"
+                          {/* Category Image or Placeholder */}
+                          {category.imageUrl || category.image_url ? (
+                            <div className="w-10 h-10 rounded-lg overflow-hidden border-2 border-gray-300">
+                              <img
+                                src={category.imageUrl || category.image_url}
+                                alt={category.name}
+                                className="w-full h-full object-cover"
                               />
-                            ) : (
+                            </div>
+                          ) : (
+                            <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center border-2 border-gray-300">
                               <Pizza className="h-6 w-6 text-gray-400" />
-                            )}
-                          </div>
+                            </div>
+                          )}
                           <div className="flex-1">
                             <h3 className="font-semibold">{category.name}</h3>
                             {categoryItems.length > 0 && (
                               <p className="text-sm text-gray-500">{categoryItems.length} items</p>
                             )}
-                            <AssignedChoices 
+                            <AssignedChoices
                               choiceIds={categoryChoices[category.name] || []}
                               onRemove={(choiceId) => removeChoiceFromCategory(category.name, choiceId)}
                             />
@@ -5519,9 +5522,23 @@ const MenuEditor = ({ menuItems }: any) => {
                   {/* Category Content */}
                   <div className="flex items-center justify-between flex-1 p-4">
                     <div className="flex items-center space-x-4">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium text-blue-600">{category.order}</span>
-                      </div>
+                      {/* Category Image or Order Badge */}
+                      {category.imageUrl || category.image_url ? (
+                        <div className="relative">
+                          <img
+                            src={category.imageUrl || category.image_url}
+                            alt={category.name}
+                            className="w-12 h-12 rounded-lg object-cover border-2 border-gray-200"
+                          />
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
+                            <span className="text-xs font-medium text-white">{category.order}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center border-2 border-blue-300">
+                          <span className="text-sm font-medium text-blue-600">{category.order}</span>
+                        </div>
+                      )}
                       <div>
                         <h3 className="font-medium">{category.name}</h3>
                         <p className="text-sm text-gray-500">
