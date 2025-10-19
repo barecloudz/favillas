@@ -33,6 +33,7 @@ const KitchenPage = () => {
   const { isOrderingPaused, vacationMode } = useVacationMode();
   const [isTogglingPause, setIsTogglingPause] = useState(false);
   const [wakeLock, setWakeLock] = useState<any>(null);
+  const [printedOrders, setPrintedOrders] = useState<Set<number>>(new Set());
 
   // Load notification settings from system settings
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -107,10 +108,21 @@ const KitchenPage = () => {
     soundType: soundType,
     volume: soundVolume,
     onNewOrder: (order) => {
+      // Check if already printed (deduplication)
+      if (printedOrders.has(order.id)) {
+        console.log(`⏭️  Order #${order.id} already printed, skipping...`);
+        return;
+      }
+
       // Auto-print if enabled
       const autoPrintEnabled = localStorage.getItem('autoPrintOrders') !== 'false';
       if (autoPrintEnabled) {
         console.log('🖨️  Auto-printing new order #' + order.id);
+        console.log('📦 Order data:', JSON.stringify(order, null, 2));
+
+        // Mark as printed immediately to prevent duplicates
+        setPrintedOrders(prev => new Set(prev).add(order.id));
+
         printToThermalPrinter(
           {
             id: order.id,

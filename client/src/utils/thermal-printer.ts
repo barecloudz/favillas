@@ -122,11 +122,24 @@ function formatCustomerReceipt(order: OrderPrintData): string {
 
     receipt += `${qty}x ${itemName}\n`;
 
-    // Add customizations/options
-    if (item.options && Array.isArray(item.options)) {
-      item.options.forEach((opt: any) => {
-        receipt += `   + ${opt.itemName || opt.name}\n`;
-      });
+    // Add customizations/options - Handle multiple data structures
+    if (item.options) {
+      if (Array.isArray(item.options) && item.options.length > 0) {
+        item.options.forEach((opt: any) => {
+          const optionText = opt.itemName || opt.name || opt.groupName || JSON.stringify(opt);
+          const groupName = opt.groupName ? `${opt.groupName}: ` : '';
+          receipt += `   + ${groupName}${optionText}\n`;
+        });
+      } else if (typeof item.options === 'object') {
+        // Handle legacy/object-based options
+        Object.entries(item.options).forEach(([key, value]) => {
+          if (value && Array.isArray(value) && value.length > 0) {
+            receipt += `   + ${key}: ${value.join(', ')}\n`;
+          } else if (value && typeof value === 'string') {
+            receipt += `   + ${key}: ${value}\n`;
+          }
+        });
+      }
     }
 
     // Special instructions
@@ -240,17 +253,31 @@ function formatKitchenReceipt(order: OrderPrintData): string {
     receipt += `${qty}x ${itemName}\n`;
     receipt += `${GS}!\x00${ESC}E\x00`; // Normal size and weight
 
-    // Customizations/options - indented with checkmarks
-    if (item.options && Array.isArray(item.options)) {
-      item.options.forEach((opt: any) => {
-        const optionName = opt.itemName || opt.name || '';
-        const groupName = opt.groupName || '';
-        if (groupName && optionName) {
-          receipt += `  >> ${groupName}: ${optionName}\n`;
-        } else if (optionName) {
-          receipt += `  >> ${optionName}\n`;
-        }
-      });
+    // Customizations/options - indented with >> markers - Handle multiple data structures
+    if (item.options) {
+      if (Array.isArray(item.options) && item.options.length > 0) {
+        item.options.forEach((opt: any) => {
+          const optionName = opt.itemName || opt.name || '';
+          const groupName = opt.groupName || '';
+          if (groupName && optionName) {
+            receipt += `  >> ${groupName}: ${optionName}\n`;
+          } else if (optionName) {
+            receipt += `  >> ${optionName}\n`;
+          } else {
+            // Fallback: print the whole object if we can't parse it
+            receipt += `  >> ${JSON.stringify(opt)}\n`;
+          }
+        });
+      } else if (typeof item.options === 'object') {
+        // Handle legacy/object-based options
+        Object.entries(item.options).forEach(([key, value]) => {
+          if (value && Array.isArray(value) && value.length > 0) {
+            receipt += `  >> ${key}: ${value.join(', ')}\n`;
+          } else if (value && typeof value === 'string') {
+            receipt += `  >> ${key}: ${value}\n`;
+          }
+        });
+      }
     }
 
     // Special instructions - highlighted
