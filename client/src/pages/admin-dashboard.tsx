@@ -16854,8 +16854,8 @@ const RewardsManagement = () => {
       return response.json();
     },
     onSuccess: async () => {
-      // Invalidate and refetch the rewards query
-      await queryClient.invalidateQueries({ queryKey: [getRewardsEndpoint()] });
+      // Force immediate refetch of all rewards queries
+      await queryClient.refetchQueries({ queryKey: [getRewardsEndpoint()] });
       await refetch();
       setIsCreateDialogOpen(false);
       toast({
@@ -16883,8 +16883,8 @@ const RewardsManagement = () => {
       return response.json();
     },
     onSuccess: async () => {
-      // Force immediate refresh
-      await queryClient.invalidateQueries({ queryKey: [getRewardsEndpoint()] });
+      // Force immediate refetch of all rewards queries
+      await queryClient.refetchQueries({ queryKey: [getRewardsEndpoint()] });
       await refetch();
       setEditingReward(null);
       toast({
@@ -16911,8 +16911,10 @@ const RewardsManagement = () => {
       }
       return response.json();
     },
-    onSuccess: () => {
-      refetch();
+    onSuccess: async () => {
+      // Force immediate refetch of all rewards queries
+      await queryClient.refetchQueries({ queryKey: [getRewardsEndpoint()] });
+      await refetch();
       setIsDeleteDialogOpen(false);
       setRewardToDelete(null);
       toast({
