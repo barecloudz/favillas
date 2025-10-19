@@ -16,9 +16,9 @@ const CustomerDisplay = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Query for active orders
+  // Query for active orders (using public endpoint - no authentication required)
   const { data: orders, isLoading } = useQuery({
-    queryKey: ["/api/kitchen/orders"],
+    queryKey: ["/api/customer-display-orders"],
     refetchInterval: 1000, // Refetch every 1 second for immediate updates
   });
 
@@ -41,7 +41,7 @@ const CustomerDisplay = () => {
 
         if (data.type === 'newOrder' || data.type === 'orderStatusUpdate') {
           // Refresh orders list
-          queryClient.invalidateQueries({ queryKey: ["/api/kitchen/orders"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/customer-display-orders"] });
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
