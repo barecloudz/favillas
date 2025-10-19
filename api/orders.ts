@@ -1060,6 +1060,9 @@ export const handler: Handler = async (event, context) => {
           }
         }
 
+        // Track points awarded for this order
+        let pointsAwarded = 0;
+
         // Enhance order object with user contact information and transform field names
         const enhancedOrder = {
           ...newOrder,
@@ -1068,7 +1071,8 @@ export const handler: Handler = async (event, context) => {
           processedAt: newOrder.processed_at,
           completedAt: newOrder.completed_at,
           items: transformedItems,
-          userContactInfo: userContactInfo
+          userContactInfo: userContactInfo,
+          pointsEarned: 0 // Will be updated below if points are awarded
         };
 
         // Process voucher if provided - Fixed to use user_points_redemptions table
@@ -1234,6 +1238,8 @@ export const handler: Handler = async (event, context) => {
 
             if (pointsResult && pointsResult.success) {
               console.log('✅ Orders API: POINTS AWARDED SUCCESSFULLY:', pointsResult.pointsAwarded, 'points to', pointsResult.userType, 'user');
+              pointsAwarded = pointsResult.pointsAwarded;
+              enhancedOrder.pointsEarned = pointsAwarded; // Add points to order response
             } else {
               console.error('❌ Orders API: Points transaction failed:', pointsResult);
             }

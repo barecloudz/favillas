@@ -186,7 +186,8 @@ const KitchenPage = () => {
             tip: parseFloat(order.tip || 0),
             specialInstructions: order.special_instructions || order.specialInstructions,
             createdAt: order.created_at || order.createdAt || new Date().toISOString(),
-            userId: order.user_id || order.userId
+            userId: order.user_id || order.userId,
+            pointsEarned: order.pointsEarned || order.points_earned || 0
           },
           {
             ipAddress: '192.168.1.18',
