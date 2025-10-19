@@ -23,7 +23,7 @@ function getDB() {
 }
 
 // Format order for thermal printer (ESC/POS commands)
-function formatReceiptForThermalPrinter(order: any, items: any[]) {
+function formatReceiptForThermalPrinter(order: any, items: any[], customerName: string, pointsEarned: number) {
   const ESC = '\x1B';
   const GS = '\x1D';
   
@@ -50,8 +50,8 @@ function formatReceiptForThermalPrinter(order: any, items: any[]) {
   
   // Customer info
   if (order.order_type === 'delivery') {
-    receipt += `Customer: ${order.customer_name || 'Guest'}\n`;
-    receipt += `Phone: ${order.phone || 'N/A'}\n`;
+    receipt += `Customer: ${customerName}\n`;
+    receipt += `Phone: ${order.phone || order.user_phone || 'N/A'}\n`;
     if (order.address) {
       receipt += `Address: ${order.address}\n`;
     }
@@ -112,7 +112,20 @@ function formatReceiptForThermalPrinter(order: any, items: any[]) {
   receipt += `TOTAL:           $${parseFloat(order.total).toFixed(2)}\n`;
   receipt += `${ESC}E\x00`; // Bold off
   receipt += `--------------------------------\n`;
-  
+
+  // Points earned (if any)
+  if (pointsEarned && pointsEarned > 0) {
+    receipt += `\n`;
+    receipt += `${ESC}a\x01`; // Center align
+    receipt += `${ESC}E\x01`; // Bold on
+    receipt += `🎁 POINTS EARNED: ${pointsEarned} 🎁\n`;
+    receipt += `${ESC}E\x00`; // Bold off
+    receipt += `${ESC}a\x00`; // Left align
+    receipt += `You earned ${pointsEarned} reward points!\n`;
+    receipt += `Use your points for free food!\n`;
+    receipt += `--------------------------------\n`;
+  }
+
   // Special instructions
   if (order.special_instructions) {
     receipt += `\n${ESC}E\x01SPECIAL INSTRUCTIONS:${ESC}E\x00\n`;
@@ -164,23 +177,48 @@ export const handler: Handler = async (event, context) => {
       };
     }
 
-    // Get order details
+    // Get order details with customer name and points earned
     const orders = await sql`
-      SELECT * FROM orders WHERE id = ${orderId}
+      SELECT
+        o.*,
+        u.first_name,
+        u.last_name,
+        u.email,
+        u.phone as user_phone
+      FROM orders o
+      LEFT JOIN users u ON (o.user_id = u.id OR o.supabase_user_id = u.supabase_user_id)
+      WHERE o.id = ${orderId}
     `;
 
     if (orders.length === 0) {
       return {
         statusCode: 404,
         headers,
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           success: false,
-          message: 'Order not found' 
+          message: 'Order not found'
         })
       };
     }
 
     const order = orders[0];
+
+    // Get points earned for this order
+    let pointsEarned = 0;
+    if (order.user_id || order.supabase_user_id) {
+      const pointsQuery = order.user_id
+        ? await sql`SELECT points FROM points_transactions WHERE order_id = ${orderId} AND user_id = ${order.user_id} AND type = 'earned'`
+        : await sql`SELECT points FROM points_transactions WHERE order_id = ${orderId} AND supabase_user_id = ${order.supabase_user_id} AND type = 'earned'`;
+
+      if (pointsQuery.length > 0) {
+        pointsEarned = parseInt(pointsQuery[0].points);
+      }
+    }
+
+    // Format customer name
+    const customerName = order.first_name && order.last_name
+      ? `${order.first_name} ${order.last_name}`.trim()
+      : (order.email || 'Guest');
 
     // Get order items with menu item names
     const items = await sql`
@@ -218,7 +256,7 @@ export const handler: Handler = async (event, context) => {
     }
 
     // Format receipt
-    const receiptData = formatReceiptForThermalPrinter(order, items);
+    const receiptData = formatReceiptForThermalPrinter(order, items, customerName, pointsEarned);
 
     // Try to send directly to printer via HTTP POST (if printer supports it)
     // Many modern thermal printers like Epson TM-M30II support HTTP printing
