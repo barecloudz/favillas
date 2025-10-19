@@ -91,7 +91,7 @@ export const handler: Handler = async (event, context) => {
           LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
           WHERE oi.order_id = ${order.id}
         `;
-        
+
         // Transform the data to match expected frontend structure
         const transformedItems = items.map(item => ({
           ...item,
@@ -103,8 +103,27 @@ export const handler: Handler = async (event, context) => {
             category: item.menu_item_category
           } : null
         }));
-        
-        return { ...order, items: transformedItems };
+
+        // Get points earned for this order
+        let pointsEarned = 0;
+        if (order.user_id || order.supabase_user_id) {
+          const pointsQuery = order.user_id
+            ? await sql`SELECT points FROM points_transactions WHERE order_id = ${order.id} AND user_id = ${order.user_id} AND type = 'earned'`
+            : await sql`SELECT points FROM points_transactions WHERE order_id = ${order.id} AND supabase_user_id = ${order.supabase_user_id} AND type = 'earned'`;
+
+          if (pointsQuery.length > 0) {
+            pointsEarned = parseInt(pointsQuery[0].points);
+          }
+        }
+
+        return {
+          ...order,
+          items: transformedItems,
+          pointsEarned: pointsEarned,
+          customerName: order.first_name && order.last_name
+            ? `${order.first_name} ${order.last_name}`.trim()
+            : 'Guest'
+        };
       })
     );
 
