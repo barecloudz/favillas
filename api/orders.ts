@@ -1195,14 +1195,18 @@ export const handler: Handler = async (event, context) => {
             const pointsToAward = Math.floor(parseFloat(newOrder.total));
             const userType = finalUserId ? 'legacy' : 'supabase';
 
-            console.log('🎁 Orders API: ENHANCED POINTS AWARD PROCESS STARTING');
-            console.log('🎁 Orders API: Points award details:', {
+            console.log('========================================');
+            console.log('🎁 POINTS AWARD PROCESS STARTING');
+            console.log('========================================');
+            console.log('📊 Points award details:', {
               userType,
               finalUserId,
               finalSupabaseUserId,
               pointsToAward,
               orderTotal: newOrder.total,
-              orderId: newOrder.id
+              orderId: newOrder.id,
+              orderUserId: newOrder.user_id,
+              orderSupabaseUserId: newOrder.supabase_user_id
             });
 
             // VERIFICATION: Ensure order was created with correct user IDs
