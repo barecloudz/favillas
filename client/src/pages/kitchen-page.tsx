@@ -32,6 +32,7 @@ const KitchenPage = () => {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const { isOrderingPaused, vacationMode } = useVacationMode();
   const [isTogglingPause, setIsTogglingPause] = useState(false);
+  const [wakeLock, setWakeLock] = useState<any>(null);
 
   // Load notification settings from system settings
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -53,6 +54,51 @@ const KitchenPage = () => {
         if (volume) setSoundVolume(parseFloat(volume.setting_value));
       })
       .catch(err => console.warn('Failed to load notification settings:', err));
+  }, []);
+
+  // Request wake lock to keep screen on
+  useEffect(() => {
+    let lock: any = null;
+
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          lock = await (navigator as any).wakeLock.request('screen');
+          setWakeLock(lock);
+          console.log('✅ Screen wake lock activated - screen will stay on');
+
+          lock.addEventListener('release', () => {
+            console.log('⚠️ Wake lock released');
+          });
+        } else {
+          console.warn('⚠️ Wake Lock API not supported on this device');
+        }
+      } catch (err) {
+        console.error('❌ Failed to acquire wake lock:', err);
+      }
+    };
+
+    // Request wake lock on mount
+    requestWakeLock();
+
+    // Re-request wake lock when page becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && lock === null) {
+        requestWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Release wake lock on unmount
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (lock !== null) {
+        lock.release().then(() => {
+          console.log('🛑 Wake lock released on unmount');
+        });
+      }
+    };
   }, []);
 
   // Use admin websocket with notification sound settings
