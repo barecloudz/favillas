@@ -305,9 +305,9 @@ export async function printToThermalPrinter(
     console.log(`📄 Kitchen receipt: ${kitchenReceipt.length} bytes`);
 
     try {
-      // Send CUSTOMER receipt first via proxy to avoid mixed content errors
-      console.log('📨 Sending customer receipt via proxy...');
-      const customerResponse = await fetch('/api/printer/proxy', {
+      // Send CUSTOMER receipt first - Direct HTTPS to Raspberry Pi
+      console.log('📨 Sending customer receipt...');
+      const customerResponse = await fetch(`${printerServerUrl}/print`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -315,23 +315,21 @@ export async function printToThermalPrinter(
         body: JSON.stringify({
           receiptData: customerReceipt,
           orderId: order.id,
-          receiptType: 'customer',
-          printerUrl: `${printerServerUrl}/print`
+          receiptType: 'customer'
         })
       });
 
       if (!customerResponse.ok) {
-        const errorData = await customerResponse.json();
-        throw new Error(errorData.error || 'Customer receipt print failed');
+        throw new Error('Customer receipt print failed');
       }
       console.log('✅ Customer receipt printed');
 
       // Wait a moment between prints
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Send KITCHEN receipt second via proxy
-      console.log('📨 Sending kitchen receipt via proxy...');
-      const kitchenResponse = await fetch('/api/printer/proxy', {
+      // Send KITCHEN receipt second - Direct HTTPS to Raspberry Pi
+      console.log('📨 Sending kitchen receipt...');
+      const kitchenResponse = await fetch(`${printerServerUrl}/print`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -339,14 +337,12 @@ export async function printToThermalPrinter(
         body: JSON.stringify({
           receiptData: kitchenReceipt,
           orderId: order.id,
-          receiptType: 'kitchen',
-          printerUrl: `${printerServerUrl}/print`
+          receiptType: 'kitchen'
         })
       });
 
       if (!kitchenResponse.ok) {
-        const errorData = await kitchenResponse.json();
-        throw new Error(errorData.error || 'Kitchen receipt print failed');
+        throw new Error('Kitchen receipt print failed');
       }
       console.log('✅ Kitchen receipt printed');
 
@@ -410,9 +406,9 @@ async function getPrinterServerUrl(): Promise<string> {
     console.warn('Could not fetch printer server URL from settings, using default');
   }
 
-  // Default: Raspberry Pi printer server on store network (HTTP)
+  // Default: Raspberry Pi printer server on store network (HTTPS with self-signed cert)
   // This can be changed in Admin > System Settings > Printer Settings
-  return 'http://192.168.1.18:3001';
+  return 'https://192.168.1.18:3001';
 }
 
 /**

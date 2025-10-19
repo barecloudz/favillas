@@ -1,0 +1,19 @@
+[Unit]
+Description=Thermal Printer Server for Favilla's Pizza
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi
+ExecStart=/usr/bin/node /home/pi/printer-server.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Environment variables (if needed)
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
