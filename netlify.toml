@@ -519,6 +519,13 @@
   status = 200
   headers = {Cache-Control = "public, max-age=31536000, immutable"}
 
+# Careers page redirect to Indeed job posting
+[[redirects]]
+  from = "/careers"
+  to = "https://www.indeed.com/viewjob?jk=a445a51d70ab1f35"
+  status = 301
+  force = true
+
 # SPA fallback - must be last and only for HTML requests
 [[redirects]]
   from = "/*"

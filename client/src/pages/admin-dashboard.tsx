@@ -17135,7 +17135,7 @@ const RewardsManagement = () => {
                   <tr className="border-b">
                     <th className="text-left py-3 px-4 font-medium">Reward</th>
                     <th className="text-left py-3 px-4 font-medium">Points Required</th>
-                    <th className="text-left py-3 px-4 font-medium">Discount</th>
+                    <th className="text-left py-3 px-4 font-medium">Benefit</th>
                     <th className="text-left py-3 px-4 font-medium">Min Order</th>
                     <th className="text-left py-3 px-4 font-medium">Expires</th>
                     <th className="text-left py-3 px-4 font-medium">Actions</th>
@@ -17156,7 +17156,13 @@ const RewardsManagement = () => {
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        {reward.discount ? `${reward.discount}% off` : 'No discount'}
+                        {reward.reward_type === 'discount' && reward.discount
+                          ? `${reward.discount}% off`
+                          : reward.reward_type === 'free_item' && reward.free_item
+                          ? `Free ${reward.free_item}`
+                          : reward.reward_type === 'free_delivery'
+                          ? 'Free Delivery'
+                          : 'No discount'}
                       </td>
                       <td className="py-3 px-4">
                         {reward.min_order_amount ? `$${reward.min_order_amount}` : 'No minimum'}

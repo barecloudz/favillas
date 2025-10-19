@@ -164,6 +164,9 @@ export const handler: Handler = async (event, context) => {
           r.reward_type,
           r.discount,
           r.free_item,
+          r.free_item_menu_id,
+          r.free_item_category,
+          r.free_item_all_from_category,
           r.min_order_amount
         FROM user_points_redemptions upr
         LEFT JOIN rewards r ON upr.reward_id = r.id
@@ -183,6 +186,9 @@ export const handler: Handler = async (event, context) => {
           r.reward_type,
           r.discount,
           r.free_item,
+          r.free_item_menu_id,
+          r.free_item_category,
+          r.free_item_all_from_category,
           r.min_order_amount
         FROM user_points_redemptions upr
         LEFT JOIN rewards r ON upr.reward_id = r.id
@@ -202,6 +208,9 @@ export const handler: Handler = async (event, context) => {
           r.reward_type,
           r.discount,
           r.free_item,
+          r.free_item_menu_id,
+          r.free_item_category,
+          r.free_item_all_from_category,
           r.min_order_amount
         FROM user_points_redemptions upr
         LEFT JOIN rewards r ON upr.reward_id = r.id
@@ -229,7 +238,7 @@ export const handler: Handler = async (event, context) => {
       } else if (voucher.reward_type === 'free_delivery') {
         return 3.99; // Delivery fee amount
       } else if (voucher.reward_type === 'free_item') {
-        return 15; // Estimated value of free item
+        return 0; // Free items don't apply a discount - they add an item to the order
       } else {
         return 5; // Default value
       }
@@ -247,7 +256,8 @@ export const handler: Handler = async (event, context) => {
     // Format vouchers for frontend use
     const formattedVouchers = activeVouchers.map((voucher: any) => {
       const discountValue = calculateDiscount(voucher, orderTotal);
-      const isApplicable = discountValue > 0;
+      const minOrderAmount = parseFloat(voucher.min_order_amount || 0);
+      const isApplicable = orderTotal >= minOrderAmount; // Applicable if meets min order
       const voucherCode = generateVoucherCode(voucher);
 
       return {
@@ -257,12 +267,19 @@ export const handler: Handler = async (event, context) => {
         description: voucher.description,
         discount_amount: voucher.reward_type === 'discount' ? voucher.discount : discountValue,
         discount_type: voucher.reward_type === 'discount' ? 'percentage' :
-                      voucher.reward_type === 'free_delivery' ? 'delivery_fee' : 'fixed',
-        min_order_amount: parseFloat(voucher.min_order_amount || 0),
+                      voucher.reward_type === 'free_delivery' ? 'delivery_fee' :
+                      voucher.reward_type === 'free_item' ? 'free_item' : 'fixed',
+        min_order_amount: minOrderAmount,
         expires_at: voucher.expires_at,
         created_at: voucher.created_at,
         reward_id: voucher.reward_id,
+        reward_type: voucher.reward_type,
         points_spent: voucher.points_spent,
+        // Free item specific fields
+        free_item: voucher.free_item,
+        free_item_menu_id: voucher.free_item_menu_id,
+        free_item_category: voucher.free_item_category,
+        free_item_all_from_category: voucher.free_item_all_from_category,
         // Calculated fields for this order
         calculated_discount: discountValue,
         is_applicable: isApplicable,
@@ -276,10 +293,17 @@ export const handler: Handler = async (event, context) => {
       };
     });
 
-    // Sort by best discount first (most savings)
+    // Sort by best value first (free items, then delivery, then highest discount)
     const sortedVouchers = formattedVouchers.sort((a, b) => {
       if (a.is_applicable && !b.is_applicable) return -1;
       if (!a.is_applicable && b.is_applicable) return 1;
+
+      // Prioritize free items, then free delivery, then discounts
+      if (a.reward_type === 'free_item' && b.reward_type !== 'free_item') return -1;
+      if (a.reward_type !== 'free_item' && b.reward_type === 'free_item') return 1;
+      if (a.reward_type === 'free_delivery' && b.reward_type === 'discount') return -1;
+      if (a.reward_type === 'discount' && b.reward_type === 'free_delivery') return 1;
+
       return b.calculated_discount - a.calculated_discount;
     });
 

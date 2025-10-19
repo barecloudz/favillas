@@ -221,11 +221,6 @@ function formatCustomerReceipt(order: OrderPrintData): string {
   // Points earned (if any)
   if (order.pointsEarned && order.pointsEarned > 0) {
     receipt += `\n`;
-    receipt += `${ESC}a\x01`; // Center align
-    receipt += `${ESC}E\x01`; // Bold on
-    receipt += `🎁 POINTS EARNED: ${order.pointsEarned} 🎁\n`;
-    receipt += `${ESC}E\x00`; // Bold off
-    receipt += `${ESC}a\x00`; // Left align
     receipt += `You earned ${order.pointsEarned} reward points!\n`;
     receipt += `Use your points for free food!\n`;
     receipt += `--------------------------------\n`;

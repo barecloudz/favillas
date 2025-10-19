@@ -1163,7 +1163,8 @@ export const handler: Handler = async (event, context) => {
               // Use user_id for unified lookup (works for both legacy and unified Supabase users)
               voucherQuery = await sql`
                 SELECT upr.*, r.name as reward_name, r.description as reward_description,
-                       r.reward_type, r.discount, r.free_item, r.min_order_amount
+                       r.reward_type, r.discount, r.free_item, r.free_item_menu_id,
+                       r.free_item_category, r.free_item_all_from_category, r.min_order_amount
                 FROM user_points_redemptions upr
                 LEFT JOIN rewards r ON upr.reward_id = r.id
                 WHERE upr.id = ${redemptionId}
@@ -1175,7 +1176,8 @@ export const handler: Handler = async (event, context) => {
               // Fallback for pure Supabase users
               voucherQuery = await sql`
                 SELECT upr.*, r.name as reward_name, r.description as reward_description,
-                       r.reward_type, r.discount, r.free_item, r.min_order_amount
+                       r.reward_type, r.discount, r.free_item, r.free_item_menu_id,
+                       r.free_item_category, r.free_item_all_from_category, r.min_order_amount
                 FROM user_points_redemptions upr
                 LEFT JOIN rewards r ON upr.reward_id = r.id
                 WHERE upr.id = ${redemptionId}
@@ -1196,15 +1198,54 @@ export const handler: Handler = async (event, context) => {
                 WHERE id = ${voucher.id}
               `;
 
+              // If this is a free_item reward, add the free item to the order
+              if (voucher.reward_type === 'free_item' && voucher.free_item_menu_id) {
+                console.log('🎁 Orders API: Adding free item to order:', {
+                  menuItemId: voucher.free_item_menu_id,
+                  freeItem: voucher.free_item
+                });
+
+                try {
+                  // Get menu item details
+                  const freeMenuItem = await sql`
+                    SELECT * FROM menu_items WHERE id = ${voucher.free_item_menu_id}
+                  `;
+
+                  if (freeMenuItem.length > 0) {
+                    // Add the free item to order_items with quantity 1 and price 0
+                    await sql`
+                      INSERT INTO order_items (
+                        order_id, menu_item_id, quantity, price, options, special_instructions, created_at
+                      ) VALUES (
+                        ${newOrder.id},
+                        ${voucher.free_item_menu_id},
+                        1,
+                        '0.00',
+                        NULL,
+                        'Free item from reward: ${voucher.reward_name}',
+                        NOW()
+                      )
+                    `;
+                    console.log('✅ Orders API: Free item added to order successfully');
+                  } else {
+                    console.warn('⚠️ Orders API: Free item menu item not found:', voucher.free_item_menu_id);
+                  }
+                } catch (freeItemError) {
+                  console.error('❌ Orders API: Error adding free item to order:', freeItemError);
+                  // Don't fail the order, just log the error
+                }
+              }
+
               // Store voucher details in order for confirmation display
               enhancedOrder.voucherUsed = {
                 code: orderData.voucherCode,
-                discountAmount: discountAmount, // Use actual calculated discount
+                discountAmount: voucher.reward_type === 'free_item' ? 0 : discountAmount, // No discount for free items
                 originalDiscountAmount: voucher.discount || 0, // Original reward discount
                 discountType: voucher.reward_type || 'discount',
                 rewardName: voucher.reward_name || 'Reward',
                 redemptionId: voucher.id,
-                pointsSpent: voucher.points_spent
+                pointsSpent: voucher.points_spent,
+                freeItem: voucher.reward_type === 'free_item' ? voucher.free_item : null
               };
 
               console.log('✅ Orders API: Voucher marked as used in redemptions table:', {
