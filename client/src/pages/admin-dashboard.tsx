@@ -3655,8 +3655,9 @@ const MenuEditor = ({ menuItems }: any) => {
   const { data: categoriesData, isLoading: categoriesLoading, refetch: refetchCategories } = useQuery({
     queryKey: ["/api/categories"],
   });
-  
-  const categories = categoriesData?.categories || [];
+
+  // Handle both array and object responses
+  const categories = Array.isArray(categoriesData) ? categoriesData : (categoriesData?.categories || []);
 
   const createMenuItemMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/menu", data),
