@@ -85,10 +85,10 @@ function formatCustomerReceipt(order: OrderPrintData): string {
   receipt += `${ESC}E\x00`; // Bold off
   receipt += `\n`;
 
-  // Order number - Center aligned, bold, larger text
+  // Order number - Center aligned, bold, VERY large text
   receipt += `${ESC}a\x01`; // Center align
   receipt += `${ESC}E\x01`; // Bold on
-  receipt += `${GS}!\x01`; // Double height
+  receipt += `${GS}!\x22`; // Triple height and double width
   receipt += `Order #${order.id}\n`;
   receipt += `${GS}!\x00`; // Normal size
   receipt += `${ESC}E\x00`; // Bold off
@@ -134,41 +134,56 @@ function formatCustomerReceipt(order: OrderPrintData): string {
 
     // Calculate total price including options
     let optionsPrice = 0;
+    let size = '';
+    let addons: Array<{name: string, price: string}> = [];
+
     if (parsedOptions && Array.isArray(parsedOptions)) {
       parsedOptions.forEach((opt: any) => {
+        const groupName = (opt.groupName || '').toLowerCase();
+        const itemNameOpt = opt.itemName || opt.name || '';
+        const price = opt.price || '0';
+
         if (opt.price) {
           optionsPrice += parseFloat(opt.price);
         }
+
+        // Check if this is a size option
+        if (groupName.includes('size')) {
+          size = itemNameOpt;
+        } else if (itemNameOpt) {
+          // This is an add-on
+          addons.push({ name: itemNameOpt, price: price });
+        }
+      });
+    } else if (parsedOptions && typeof parsedOptions === 'object') {
+      // Handle legacy/object-based options
+      Object.entries(parsedOptions).forEach(([key, value]) => {
+        if (key.toLowerCase().includes('size') && typeof value === 'string') {
+          size = value;
+        } else if (value && Array.isArray(value)) {
+          value.forEach(v => addons.push({ name: v, price: '0' }));
+        } else if (value && typeof value === 'string') {
+          addons.push({ name: value, price: '0' });
+        }
       });
     }
+
     const totalItemPrice = basePrice + optionsPrice;
 
-    receipt += `${qty}x ${itemName}\n`;
-
-    // Add customizations/options - Handle multiple data structures
-    if (parsedOptions) {
-      if (Array.isArray(parsedOptions) && parsedOptions.length > 0) {
-        parsedOptions.forEach((opt: any) => {
-          const optionText = opt.itemName || opt.name || opt.groupName || JSON.stringify(opt);
-          const groupName = opt.groupName ? `${opt.groupName}: ` : '';
-          const optPrice = opt.price ? ` (+$${parseFloat(opt.price).toFixed(2)})` : '';
-          receipt += `   + ${groupName}${optionText}${optPrice}\n`;
-
-          // Debug logging
-          console.log(`[RECEIPT] Option found: ${groupName}${optionText} - Price: ${opt.price}`);
-        });
-      } else if (typeof parsedOptions === 'object') {
-        // Handle legacy/object-based options
-        Object.entries(parsedOptions).forEach(([key, value]) => {
-          if (value && Array.isArray(value) && value.length > 0) {
-            receipt += `   + ${key}: ${value.join(', ')}\n`;
-          } else if (value && typeof value === 'string') {
-            receipt += `   + ${key}: ${value}\n`;
-          }
-        });
-      }
+    // Item name with size
+    if (size) {
+      receipt += `${qty}x ${itemName} (${size})\n`;
     } else {
-      console.log(`[RECEIPT] Item "${itemName}" has NO options after parsing. Raw value:`, item.options);
+      receipt += `${qty}x ${itemName}\n`;
+    }
+
+    // Add-ons without group names
+    if (addons.length > 0) {
+      receipt += `   Add-ons:\n`;
+      addons.forEach((addon) => {
+        const priceText = addon.price !== '0' ? ` (+$${parseFloat(addon.price).toFixed(2)})` : '';
+        receipt += `   + ${addon.name}${priceText}\n`;
+      });
     }
 
     // Special instructions
@@ -256,13 +271,14 @@ function formatKitchenReceipt(order: OrderPrintData): string {
   receipt += `${ESC}E\x00`; // Bold off
   receipt += `================================\n`;
 
-  // Order info - Left align, large text
-  receipt += `${ESC}a\x00`; // Left align
+  // Order number - CENTER aligned, VERY large text
+  receipt += `${ESC}a\x01`; // Center align
   receipt += `${ESC}E\x01`; // Bold on
-  receipt += `${GS}!\x01`; // Double height
+  receipt += `${GS}!\x22`; // Triple height and double width
   receipt += `ORDER #${order.id}\n`;
   receipt += `${GS}!\x00`; // Normal size
   receipt += `${ESC}E\x00`; // Bold off
+  receipt += `${ESC}a\x00`; // Back to left align
 
   receipt += `Name: ${order.customerName || 'Guest'}\n`;
   receipt += `Time: ${new Date(order.createdAt).toLocaleTimeString()}\n`;
@@ -302,40 +318,54 @@ function formatKitchenReceipt(order: OrderPrintData): string {
       }
     }
 
-    // Item with quantity - Bold, larger text
+    // Extract size and add-ons from options
+    let size = '';
+    let addons: string[] = [];
+
+    if (parsedOptions && Array.isArray(parsedOptions)) {
+      parsedOptions.forEach((opt: any) => {
+        const groupName = (opt.groupName || '').toLowerCase();
+        const itemNameOpt = opt.itemName || opt.name || '';
+
+        // Check if this is a size option (group name contains "size")
+        if (groupName.includes('size')) {
+          size = itemNameOpt;
+        } else if (itemNameOpt) {
+          // This is an add-on/topping - just get the item name, no group name
+          addons.push(itemNameOpt);
+        }
+      });
+    } else if (parsedOptions && typeof parsedOptions === 'object') {
+      // Handle legacy/object-based options
+      console.log('[KITCHEN] Legacy object-based options:', parsedOptions);
+      Object.entries(parsedOptions).forEach(([key, value]) => {
+        if (key.toLowerCase().includes('size') && typeof value === 'string') {
+          size = value;
+        } else if (value && Array.isArray(value)) {
+          addons.push(...value);
+        } else if (value && typeof value === 'string') {
+          addons.push(value);
+        }
+      });
+    }
+
+    // Item with quantity and size - Bold, larger text
     receipt += `${ESC}E\x01${GS}!\x01`; // Bold and double height
-    receipt += `${qty}x ${itemName}\n`;
+    if (size) {
+      receipt += `${qty}x ${itemName} (${size})\n`;
+    } else {
+      receipt += `${qty}x ${itemName}\n`;
+    }
     receipt += `${GS}!\x00${ESC}E\x00`; // Normal size and weight
 
-    // Customizations/options - indented with >> markers - Handle multiple data structures
-    if (parsedOptions) {
-      if (Array.isArray(parsedOptions) && parsedOptions.length > 0) {
-        parsedOptions.forEach((opt: any) => {
-          const optionName = opt.itemName || opt.name || '';
-          const groupName = opt.groupName || '';
-          if (groupName && optionName) {
-            receipt += `  >> ${groupName}: ${optionName}\n`;
-          } else if (optionName) {
-            receipt += `  >> ${optionName}\n`;
-          } else {
-            // Fallback: print the whole object if we can't parse it
-            console.log('[KITCHEN] Unknown option format:', opt);
-            receipt += `  >> ${JSON.stringify(opt)}\n`;
-          }
-        });
-      } else if (typeof parsedOptions === 'object') {
-        // Handle legacy/object-based options
-        console.log('[KITCHEN] Legacy object-based options:', parsedOptions);
-        Object.entries(parsedOptions).forEach(([key, value]) => {
-          if (value && Array.isArray(value) && value.length > 0) {
-            receipt += `  >> ${key}: ${value.join(', ')}\n`;
-          } else if (value && typeof value === 'string') {
-            receipt += `  >> ${key}: ${value}\n`;
-          }
-        });
-      }
-    } else {
-      console.log(`[KITCHEN] Item "${itemName}" has NO options after parsing. Raw value:`, item.options);
+    // Add-ons/Toppings - Make them bigger and clearer
+    if (addons.length > 0) {
+      receipt += `  Add-ons:\n`;
+      receipt += `${GS}!\x11`; // Double height and width for add-ons
+      addons.forEach((addon) => {
+        receipt += `  ${addon}\n`;
+      });
+      receipt += `${GS}!\x00`; // Back to normal size
     }
 
     // Special instructions - highlighted
