@@ -417,6 +417,15 @@ export async function printToThermalPrinter(
 
   try {
     console.log(`🖨️  Preparing DUAL receipts (customer + kitchen) for order #${order.id}`);
+    console.log('📋 [THERMAL PRINTER] Received order data:', {
+      orderId: order.id,
+      customerName: order.customerName,
+      pointsEarned: order.pointsEarned,
+      userId: order.userId,
+      phone: order.phone,
+      orderType: order.orderType
+    });
+    console.log('📋 [THERMAL PRINTER] Full order object:', JSON.stringify(order, null, 2));
 
     const printerServerUrl = await getPrinterServerUrl();
     console.log(`📡 Sending to printer server: ${printerServerUrl}`);

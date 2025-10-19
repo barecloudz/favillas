@@ -290,6 +290,9 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
               console.log('🔔 NEW CONFIRMED ORDER DETECTED via polling!');
               console.log('📦 Order details:', latestOrder);
               console.log('💳 Payment status:', latestOrder.payment_status);
+              console.log('👤 CUSTOMER NAME:', latestOrder.customerName || latestOrder.customer_name || 'UNDEFINED');
+              console.log('🎁 POINTS EARNED:', latestOrder.pointsEarned || latestOrder.points_earned || 'UNDEFINED');
+              console.log('📄 Full order object for debugging:', JSON.stringify(latestOrder, null, 2));
 
               // Play notification sound
               playNotificationSound();
@@ -301,6 +304,11 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
 
               // Call callback if provided
               if (options.onNewOrder) {
+                console.log('🖨️ Calling onNewOrder callback with data:', {
+                  orderId: latestOrder.id,
+                  customerName: latestOrder.customerName || latestOrder.customer_name,
+                  pointsEarned: latestOrder.pointsEarned || latestOrder.points_earned
+                });
                 options.onNewOrder(latestOrder);
               }
 
