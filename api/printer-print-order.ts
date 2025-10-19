@@ -1,6 +1,7 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
 
+// Updated 2025-10-19: Fixed customer name and points display on receipts
 let dbConnection: any = null;
 
 function getDB() {
