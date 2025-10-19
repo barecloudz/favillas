@@ -47,16 +47,17 @@ function formatReceiptForThermalPrinter(order: any, items: any[], customerName: 
   receipt += `${order.order_type === 'delivery' ? 'DELIVERY' : 'PICKUP'}\n`;
   receipt += `${new Date(order.created_at).toLocaleString()}\n`;
   receipt += `--------------------------------\n`;
-  
-  // Customer info
-  if (order.order_type === 'delivery') {
-    receipt += `Customer: ${customerName}\n`;
-    receipt += `Phone: ${order.phone || order.user_phone || 'N/A'}\n`;
-    if (order.address) {
-      receipt += `Address: ${order.address}\n`;
-    }
-    receipt += `--------------------------------\n`;
+
+  // Customer info (show for all orders, not just delivery)
+  receipt += `Customer: ${customerName}\n`;
+  receipt += `Phone: ${order.phone || order.user_phone || 'N/A'}\n`;
+
+  // Address only for delivery
+  if (order.order_type === 'delivery' && order.address) {
+    receipt += `Address: ${order.address}\n`;
   }
+
+  receipt += `--------------------------------\n`;
   
   // Items
   receipt += `${ESC}E\x01`; // Bold on
