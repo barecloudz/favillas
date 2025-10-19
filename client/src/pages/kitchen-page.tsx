@@ -33,7 +33,43 @@ const KitchenPage = () => {
   const { isOrderingPaused, vacationMode } = useVacationMode();
   const [isTogglingPause, setIsTogglingPause] = useState(false);
   const [wakeLock, setWakeLock] = useState<any>(null);
-  const [printedOrders, setPrintedOrders] = useState<Set<number>>(new Set());
+  // Use localStorage to track printed orders across all browser tabs/devices
+  const [printedOrders, setPrintedOrders] = useState<Set<number>>(() => {
+    const stored = localStorage.getItem('printedOrders');
+    const orderIds = stored ? new Set(JSON.parse(stored)) : new Set();
+    console.log(`🔄 Loaded ${orderIds.size} printed orders from localStorage (synced across tabs)`);
+    return orderIds;
+  });
+
+  // Sync printed orders to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('printedOrders', JSON.stringify(Array.from(printedOrders)));
+    console.log(`💾 Saved ${printedOrders.size} printed orders to localStorage`);
+  }, [printedOrders]);
+
+  // Listen for changes from other tabs/devices
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'printedOrders' && e.newValue) {
+        const newPrinted = new Set(JSON.parse(e.newValue));
+        console.log(`🔁 Synced ${newPrinted.size} printed orders from another tab/device`);
+        setPrintedOrders(newPrinted);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Clear old printed orders after 1 hour to prevent localStorage from growing indefinitely
+  useEffect(() => {
+    const clearInterval = setInterval(() => {
+      console.log('🧹 Clearing printed orders older than 1 hour');
+      setPrintedOrders(new Set());
+      localStorage.removeItem('printedOrders');
+    }, 60 * 60 * 1000); // 1 hour
+
+    return () => clearInterval(clearInterval);
+  }, []);
 
   // Load notification settings from system settings
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -118,7 +154,20 @@ const KitchenPage = () => {
       const autoPrintEnabled = localStorage.getItem('autoPrintOrders') !== 'false';
       if (autoPrintEnabled) {
         console.log('🖨️  Auto-printing new order #' + order.id);
-        console.log('📦 Order data:', JSON.stringify(order, null, 2));
+        console.log('📦 Full order data:', JSON.stringify(order, null, 2));
+
+        // Detailed logging of each item's options
+        console.log('📋 Item details:');
+        order.items?.forEach((item: any, idx: number) => {
+          console.log(`  Item ${idx + 1}: ${item.menuItem?.name || item.name}`);
+          console.log(`    - Quantity: ${item.quantity}`);
+          console.log(`    - Base Price: $${item.price}`);
+          console.log(`    - Options:`, item.options);
+          if (item.options) {
+            console.log(`    - Options is Array: ${Array.isArray(item.options)}`);
+            console.log(`    - Options length: ${Array.isArray(item.options) ? item.options.length : 'N/A'}`);
+          }
+        });
 
         // Mark as printed immediately to prevent duplicates
         setPrintedOrders(prev => new Set(prev).add(order.id));

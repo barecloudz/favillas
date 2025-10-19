@@ -118,7 +118,18 @@ function formatCustomerReceipt(order: OrderPrintData): string {
   order.items.forEach((item: any) => {
     const itemName = item.menuItem?.name || item.name || 'Item';
     const qty = item.quantity;
-    const price = parseFloat(item.price || 0);
+    let basePrice = parseFloat(item.price || 0);
+
+    // Calculate total price including options
+    let optionsPrice = 0;
+    if (item.options && Array.isArray(item.options)) {
+      item.options.forEach((opt: any) => {
+        if (opt.price) {
+          optionsPrice += parseFloat(opt.price);
+        }
+      });
+    }
+    const totalItemPrice = basePrice + optionsPrice;
 
     receipt += `${qty}x ${itemName}\n`;
 
@@ -128,7 +139,11 @@ function formatCustomerReceipt(order: OrderPrintData): string {
         item.options.forEach((opt: any) => {
           const optionText = opt.itemName || opt.name || opt.groupName || JSON.stringify(opt);
           const groupName = opt.groupName ? `${opt.groupName}: ` : '';
-          receipt += `   + ${groupName}${optionText}\n`;
+          const optPrice = opt.price ? ` (+$${parseFloat(opt.price).toFixed(2)})` : '';
+          receipt += `   + ${groupName}${optionText}${optPrice}\n`;
+
+          // Debug logging
+          console.log(`[RECEIPT] Option found: ${groupName}${optionText} - Price: ${opt.price}`);
         });
       } else if (typeof item.options === 'object') {
         // Handle legacy/object-based options
@@ -140,6 +155,8 @@ function formatCustomerReceipt(order: OrderPrintData): string {
           }
         });
       }
+    } else {
+      console.log(`[RECEIPT] Item "${itemName}" has NO options:`, item.options);
     }
 
     // Special instructions
@@ -147,7 +164,7 @@ function formatCustomerReceipt(order: OrderPrintData): string {
       receipt += `   NOTE: ${item.specialInstructions}\n`;
     }
 
-    receipt += `   $${price.toFixed(2)}\n`;
+    receipt += `   $${totalItemPrice.toFixed(2)}\n`;
   });
 
   receipt += `--------------------------------\n`;
@@ -265,11 +282,13 @@ function formatKitchenReceipt(order: OrderPrintData): string {
             receipt += `  >> ${optionName}\n`;
           } else {
             // Fallback: print the whole object if we can't parse it
+            console.log('[KITCHEN] Unknown option format:', opt);
             receipt += `  >> ${JSON.stringify(opt)}\n`;
           }
         });
       } else if (typeof item.options === 'object') {
         // Handle legacy/object-based options
+        console.log('[KITCHEN] Legacy object-based options:', item.options);
         Object.entries(item.options).forEach(([key, value]) => {
           if (value && Array.isArray(value) && value.length > 0) {
             receipt += `  >> ${key}: ${value.join(', ')}\n`;
@@ -278,6 +297,8 @@ function formatKitchenReceipt(order: OrderPrintData): string {
           }
         });
       }
+    } else {
+      console.log(`[KITCHEN] Item "${itemName}" has NO options:`, item.options);
     }
 
     // Special instructions - highlighted
