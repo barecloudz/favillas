@@ -337,6 +337,12 @@
   to = "/.netlify/functions/printer-print-order"
   status = 200
 
+# Printer proxy endpoint (for mixed content workaround)
+[[redirects]]
+  from = "/api/printer/proxy"
+  to = "/.netlify/functions/printer-proxy"
+  status = 200
+
 # Send order confirmation email endpoint
 [[redirects]]
   from = "/api/send-order-confirmation"
