@@ -165,20 +165,6 @@ const KitchenPage = () => {
     try {
       console.log(`🖨️ Printing order #${orderId}`);
 
-      // Get active printer configuration
-      const printerResponse = await apiRequest("GET", "/api/printer/config");
-      const printers = await printerResponse.json();
-      const activePrinter = printers.find((p: any) => p.isActive);
-
-      if (!activePrinter) {
-        toast({
-          title: "No Printer Configured",
-          description: "Please configure a printer in Settings",
-          variant: "destructive",
-        });
-        return;
-      }
-
       // Find the order in our orders list
       const order = orders?.find((o: any) => o.id === orderId);
       if (!order) {
@@ -191,6 +177,7 @@ const KitchenPage = () => {
       }
 
       // Print directly from browser to thermal printer on local network
+      // Using same hardcoded config as auto-print
       const result = await printToThermalPrinter(
         {
           id: order.id,
@@ -207,9 +194,9 @@ const KitchenPage = () => {
           createdAt: order.created_at
         },
         {
-          ipAddress: activePrinter.ipAddress,
-          port: activePrinter.port,
-          name: activePrinter.name
+          ipAddress: '192.168.1.18',
+          port: 3001,
+          name: 'Kitchen Printer'
         }
       );
 
