@@ -1810,16 +1810,17 @@ export const handler: Handler = async (event, context) => {
               ...scheduledTimeFields // Add scheduled delivery time fields if present
             };
 
-            // Store debug data for response
+            // Store debug data for response (will be updated with ShipDay response)
             shipdayDebugData = {
               rawOrderData: debugInfo.rawOrderData,
               calculatedCosting: debugInfo.calculatedCosting,
               formattedItems: debugInfo.formattedItems,
-              shipdayPayload
+              shipdayPayload,
+              shipdayResponse: null // Will be filled after API call
             };
 
-            // Dispatch to ShipDay asynchronously (don't block the response)
-            setTimeout(async () => {
+            // Dispatch to ShipDay synchronously for debugging (normally async)
+            (async () => {
               try {
                 console.log('📦 ========================================');
                 console.log('📦 ShipDay: SENDING ORDER TO SHIPDAY');
@@ -1843,9 +1844,18 @@ export const handler: Handler = async (event, context) => {
                 console.log('📦 ShipDay: Response Status:', shipdayResponse.status);
                 console.log('📦 ShipDay: Response Body:', shipdayResult);
 
+                // Store response for debugging
+                const responseDebug = {
+                  status: shipdayResponse.status,
+                  statusText: shipdayResponse.statusText,
+                  body: shipdayResult,
+                  timestamp: new Date().toISOString()
+                };
+
                 if (shipdayResponse.ok) {
                   const parsedResult = JSON.parse(shipdayResult);
                   console.log('📦 ShipDay: Parsed Response:', JSON.stringify(parsedResult, null, 2));
+                  responseDebug.parsed = parsedResult;
 
                   if (parsedResult.success) {
                     await sql`
@@ -1855,18 +1865,32 @@ export const handler: Handler = async (event, context) => {
                     `;
                     console.log(`✅ Orders API: ShipDay order created successfully for order #${orderId}`);
                     console.log(`✅ ShipDay Order ID: ${parsedResult.orderId}`);
+                    responseDebug.success = true;
+                    responseDebug.shipdayOrderId = parsedResult.orderId;
                   } else {
                     console.error('❌ ShipDay API returned unsuccessful response:', parsedResult);
                     console.error('❌ Error details:', parsedResult.error || parsedResult.message || 'No error details provided');
+                    responseDebug.success = false;
+                    responseDebug.error = parsedResult.error || parsedResult.message || 'Unknown error';
                   }
                 } else {
                   console.error('❌ ShipDay API request failed with status:', shipdayResponse.status);
                   console.error('❌ Response body:', shipdayResult);
+                  responseDebug.success = false;
+                  responseDebug.error = `HTTP ${shipdayResponse.status}: ${shipdayResult}`;
                 }
+
+                // Log the response to file for later retrieval
+                console.log('📦 SHIPDAY_RESPONSE_DEBUG:', JSON.stringify(responseDebug));
               } catch (shipdayError) {
                 console.error('❌ ShipDay integration error:', shipdayError);
+                console.log('📦 SHIPDAY_ERROR_DEBUG:', JSON.stringify({
+                  error: shipdayError.message,
+                  stack: shipdayError.stack,
+                  timestamp: new Date().toISOString()
+                }));
               }
-            }, 100);
+            })();
           } else {
             console.warn('⚠️ No address data available for ShipDay dispatch');
           }
