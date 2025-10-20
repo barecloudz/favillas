@@ -663,6 +663,30 @@ const CheckoutPage = () => {
       });
       return;
     }
+
+    // Validate scheduled time is within store hours
+    if (fulfillmentTime === "scheduled" && scheduledTime) {
+      const selectedDate = new Date(scheduledTime);
+      const day = selectedDate.getDay();
+      const hour = selectedDate.getHours();
+      const minute = selectedDate.getMinutes();
+
+      let isValidTime = false;
+      if (day === 0) { // Sunday
+        isValidTime = (hour > 12 || (hour === 12 && minute >= 0)) && hour < 21;
+      } else if (day >= 1 && day <= 6) { // Monday-Saturday
+        isValidTime = (hour > 11 || (hour === 11 && minute >= 0)) && hour < 22;
+      }
+
+      if (!isValidTime) {
+        toast({
+          title: "Outside Store Hours",
+          description: "Please select a time when we're open. Mon-Sat: 11AM-10PM, Sun: 12PM-9PM",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     
     // Create order - filter out any corrupted items
     const orderItems = items
@@ -1158,21 +1182,58 @@ const CheckoutPage = () => {
                         </RadioGroup>
                         
                         {fulfillmentTime === "scheduled" && (
-                          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                            <Label htmlFor="scheduledTime" className="text-base font-semibold text-blue-900 mb-2 block">
+                          <div className="mt-4 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl shadow-sm">
+                            <Label htmlFor="scheduledTime" className="text-lg font-bold text-blue-900 mb-3 block flex items-center gap-2">
                               📅 Select Date & Time
                             </Label>
+
+                            {/* Store Hours Info */}
+                            <div className="mb-4 p-3 bg-white/80 rounded-lg border border-blue-200">
+                              <p className="text-sm font-semibold text-gray-700 mb-1">🕒 Store Hours:</p>
+                              <ul className="text-sm text-gray-600 space-y-0.5 ml-1">
+                                <li>• Monday - Saturday: 11:00 AM - 10:00 PM</li>
+                                <li>• Sunday: 12:00 PM - 9:00 PM</li>
+                              </ul>
+                              <p className="text-xs text-blue-600 mt-2 font-medium">
+                                💡 Please select a time during our operating hours
+                              </p>
+                            </div>
+
                             <Input
                               type="datetime-local"
                               id="scheduledTime"
                               value={scheduledTime}
-                              onChange={(e) => setScheduledTime(e.target.value)}
+                              onChange={(e) => {
+                                const selectedDate = new Date(e.target.value);
+                                const day = selectedDate.getDay();
+                                const hour = selectedDate.getHours();
+                                const minute = selectedDate.getMinutes();
+
+                                // Check if selected time is within store hours
+                                let isValidTime = false;
+                                if (day === 0) { // Sunday
+                                  isValidTime = (hour > 12 || (hour === 12 && minute >= 0)) && hour < 21;
+                                } else if (day >= 1 && day <= 6) { // Monday-Saturday
+                                  isValidTime = (hour > 11 || (hour === 11 && minute >= 0)) && hour < 22;
+                                }
+
+                                if (!isValidTime) {
+                                  toast({
+                                    title: "Outside Store Hours",
+                                    description: "Please select a time when we're open. Mon-Sat: 11AM-10PM, Sun: 12PM-9PM",
+                                    variant: "destructive"
+                                  });
+                                }
+
+                                setScheduledTime(e.target.value);
+                              }}
                               min={new Date().toISOString().slice(0, 16)}
                               required={fulfillmentTime === "scheduled"}
-                              className="text-base font-medium border-2 border-blue-300 focus:border-blue-500 focus:ring-blue-500 h-12"
+                              className="text-base font-medium border-2 border-blue-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 h-14 bg-white shadow-sm"
                             />
-                            <p className="text-sm text-blue-700 mt-2">
-                              💡 Your order will be prepared to be ready at this time
+                            <p className="text-sm text-blue-700 mt-3 flex items-center gap-1.5 bg-blue-100 p-2 rounded-md">
+                              <span className="text-lg">✨</span>
+                              <span className="font-medium">Your order will be prepared to be ready at this time</span>
                             </p>
                           </div>
                         )}

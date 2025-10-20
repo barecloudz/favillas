@@ -1645,8 +1645,21 @@ export const handler: Handler = async (event, context) => {
 
             console.log('📦 ShipDay: Fetched order items for order', orderId, ':', {
               itemCount: orderItems.length,
-              items: orderItems.map(i => ({ name: i.name, quantity: i.quantity, options: i.options }))
+              items: orderItems.map(i => ({
+                id: i.id,
+                name: i.name,
+                menu_item_name: i.menu_item_name,
+                quantity: i.quantity,
+                price: i.price,
+                options: i.options
+              }))
             });
+
+            // CRITICAL CHECK: If no items found, log error and skip ShipDay
+            if (orderItems.length === 0) {
+              console.error('❌ ShipDay: NO ORDER ITEMS FOUND FOR ORDER', orderId, '- CANNOT DISPATCH TO SHIPDAY');
+              console.error('❌ ShipDay: This order has no items in the order_items table!');
+            }
 
             // Get user contact info
             let userContactInfo;
@@ -1720,6 +1733,41 @@ export const handler: Handler = async (event, context) => {
 
             console.log('📦 ShipDay Debug Info:', debugInfo);
 
+            // Format scheduled delivery time if present
+            let scheduledTimeFields = {};
+            if (currentOrder[0].fulfillment_time === 'scheduled' && currentOrder[0].scheduled_time) {
+              try {
+                const scheduledDate = new Date(currentOrder[0].scheduled_time);
+
+                // Format expectedDeliveryDate as "yyyy-mm-dd"
+                const year = scheduledDate.getFullYear();
+                const month = String(scheduledDate.getMonth() + 1).padStart(2, '0');
+                const day = String(scheduledDate.getDate()).padStart(2, '0');
+                const expectedDeliveryDate = `${year}-${month}-${day}`;
+
+                // Format expectedDeliveryTime as "hh:mm"
+                const deliveryHours = String(scheduledDate.getHours()).padStart(2, '0');
+                const deliveryMinutes = String(scheduledDate.getMinutes()).padStart(2, '0');
+                const expectedDeliveryTime = `${deliveryHours}:${deliveryMinutes}`;
+
+                // Set pickup time to 15 minutes before delivery time
+                const pickupDate = new Date(scheduledDate.getTime() - 15 * 60 * 1000);
+                const pickupHours = String(pickupDate.getHours()).padStart(2, '0');
+                const pickupMinutes = String(pickupDate.getMinutes()).padStart(2, '0');
+                const expectedPickupTime = `${pickupHours}:${pickupMinutes}`;
+
+                scheduledTimeFields = {
+                  expectedDeliveryDate,
+                  expectedPickupTime,
+                  expectedDeliveryTime
+                };
+
+                console.log('📦 ShipDay: Scheduled delivery time fields:', scheduledTimeFields);
+              } catch (timeParseError) {
+                console.error('❌ ShipDay: Error parsing scheduled time:', timeParseError);
+              }
+            }
+
             const shipdayPayload = {
               orderItems: formattedItems,
               pickup: {
@@ -1758,7 +1806,8 @@ export const handler: Handler = async (event, context) => {
               customerName: customerName && customerName.trim() !== "" ? customerName.trim() : "Customer",
               customerPhoneNumber: customerPhone.replace(/[^\d]/g, ''),
               customerAddress: `${addressData.street || addressData.fullAddress}, ${addressData.city}, ${addressData.state} ${addressData.zipCode}`,
-              ...(customerEmail && { customerEmail: customerEmail })
+              ...(customerEmail && { customerEmail: customerEmail }),
+              ...scheduledTimeFields // Add scheduled delivery time fields if present
             };
 
             // Store debug data for response
@@ -1772,7 +1821,13 @@ export const handler: Handler = async (event, context) => {
             // Dispatch to ShipDay asynchronously (don't block the response)
             setTimeout(async () => {
               try {
-                console.log('📦 ShipDay: Sending payload to ShipDay API:', JSON.stringify(shipdayPayload, null, 2));
+                console.log('📦 ========================================');
+                console.log('📦 ShipDay: SENDING ORDER TO SHIPDAY');
+                console.log('📦 ========================================');
+                console.log('📦 ShipDay: Order ID:', orderId);
+                console.log('📦 ShipDay: Order Items Count:', shipdayPayload.orderItems?.length || 0);
+                console.log('📦 ShipDay: Order Items:', JSON.stringify(shipdayPayload.orderItems, null, 2));
+                console.log('📦 ShipDay: Full Payload:', JSON.stringify(shipdayPayload, null, 2));
 
                 const shipdayResponse = await fetch('https://api.shipday.com/orders', {
                   method: 'POST',
@@ -1785,20 +1840,28 @@ export const handler: Handler = async (event, context) => {
                 });
 
                 const shipdayResult = await shipdayResponse.text();
+                console.log('📦 ShipDay: Response Status:', shipdayResponse.status);
+                console.log('📦 ShipDay: Response Body:', shipdayResult);
+
                 if (shipdayResponse.ok) {
                   const parsedResult = JSON.parse(shipdayResult);
+                  console.log('📦 ShipDay: Parsed Response:', JSON.stringify(parsedResult, null, 2));
+
                   if (parsedResult.success) {
                     await sql`
                       UPDATE orders
                       SET shipday_order_id = ${parsedResult.orderId}, shipday_status = 'pending'
                       WHERE id = ${orderId}
                     `;
-                    console.log(`✅ Orders API: ShipDay order created for order #${orderId} when status changed to cooking`);
+                    console.log(`✅ Orders API: ShipDay order created successfully for order #${orderId}`);
+                    console.log(`✅ ShipDay Order ID: ${parsedResult.orderId}`);
                   } else {
                     console.error('❌ ShipDay API returned unsuccessful response:', parsedResult);
+                    console.error('❌ Error details:', parsedResult.error || parsedResult.message || 'No error details provided');
                   }
                 } else {
-                  console.error('❌ ShipDay API request failed:', shipdayResponse.status, shipdayResult);
+                  console.error('❌ ShipDay API request failed with status:', shipdayResponse.status);
+                  console.error('❌ Response body:', shipdayResult);
                 }
               } catch (shipdayError) {
                 console.error('❌ ShipDay integration error:', shipdayError);
