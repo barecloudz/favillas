@@ -17327,7 +17327,7 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{reward ? "Edit Reward" : "Create New Reward"}</DialogTitle>
           <DialogDescription>
