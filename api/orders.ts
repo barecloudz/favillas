@@ -1769,7 +1769,7 @@ export const handler: Handler = async (event, context) => {
             }
 
             const shipdayPayload = {
-              orderItems: formattedItems,
+              orderItem: formattedItems, // ShipDay expects "orderItem" (singular), not "orderItems"
               pickup: {
                 address: {
                   street: "123 Main St",
@@ -1826,8 +1826,8 @@ export const handler: Handler = async (event, context) => {
                 console.log('📦 ShipDay: SENDING ORDER TO SHIPDAY');
                 console.log('📦 ========================================');
                 console.log('📦 ShipDay: Order ID:', orderId);
-                console.log('📦 ShipDay: Order Items Count:', shipdayPayload.orderItems?.length || 0);
-                console.log('📦 ShipDay: Order Items:', JSON.stringify(shipdayPayload.orderItems, null, 2));
+                console.log('📦 ShipDay: Order Items Count:', shipdayPayload.orderItem?.length || 0);
+                console.log('📦 ShipDay: Order Items:', JSON.stringify(shipdayPayload.orderItem, null, 2));
                 console.log('📦 ShipDay: Full Payload:', JSON.stringify(shipdayPayload, null, 2));
 
                 const shipdayResponse = await fetch('https://api.shipday.com/orders', {
