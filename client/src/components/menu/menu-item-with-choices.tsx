@@ -105,7 +105,30 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
         isRequired: micg.is_required,
         displayOrder: micg.order || 0  // Use the order from menu_item_choice_groups
       };
-    }).filter(Boolean).sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));  // Sort by displayOrder instead of priority
+    }).filter(Boolean).sort((a, b) => {
+      // Special sorting for salad dressing groups
+      const aName = a.name.toLowerCase();
+      const bName = b.name.toLowerCase();
+
+      // If this is a salad item, ensure dressing order is: free dressing first, extra dressing last
+      if (item.category?.toLowerCase().includes('salad') || item.name.toLowerCase().includes('salad')) {
+        const aIsDressing = aName.includes('dressing') && !aName.includes('extra');
+        const bIsDressing = bName.includes('dressing') && !bName.includes('extra');
+        const aIsExtraDressing = aName.includes('extra') && aName.includes('dressing');
+        const bIsExtraDressing = bName.includes('extra') && bName.includes('dressing');
+
+        // Free dressing comes first
+        if (aIsDressing && !bIsDressing) return -1;
+        if (!aIsDressing && bIsDressing) return 1;
+
+        // Extra dressing comes last
+        if (aIsExtraDressing && !bIsExtraDressing) return 1;
+        if (!aIsExtraDressing && bIsExtraDressing) return -1;
+      }
+
+      // Default sort by displayOrder
+      return (a.displayOrder || 0) - (b.displayOrder || 0);
+    });
 
     console.log(`🔍 [MenuItemWithChoices] Final result for item "${item.name}":`, result);
     return result;
@@ -131,7 +154,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
     return sizeChoice?.name;
   };
 
-  // Progressive reveal: require size selection first for calzones/stromboli/specialty pizzas/traditional pizzas, then filter toppings by size
+  // Progressive reveal: require size selection first for calzones/stromboli/specialty pizzas/traditional pizzas/salads, then filter toppings by size
   const getVisibleChoiceGroups = () => {
     // Check for Wing Flavors group - it should ALWAYS appear first
     const wingFlavorGroup = itemChoiceGroups.find(g => g.name === 'Wing Flavors');
@@ -142,6 +165,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       g.name === 'Stromboli Size' ||
       g.name === 'Specialty Gourmet Pizza Size' ||
       g.name === 'Traditional Pizza Size' ||
+      g.name === 'Garden Salad Size' ||
       g.name === 'Size'  // Also handle generic "Size" group
     );
 
