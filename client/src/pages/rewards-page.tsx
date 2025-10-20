@@ -131,12 +131,19 @@ const RewardsPage = () => {
     },
     onSuccess: (data, rewardId) => {
       console.log('🎁 Reward redemption response:', data);
+      console.log('🔍 Reward data check:', {
+        free_item_all_from_category: data.reward?.free_item_all_from_category,
+        free_item_category: data.reward?.free_item_category,
+        free_item_menu_id: data.reward?.free_item_menu_id,
+        shouldShowModal: data.reward?.free_item_all_from_category && data.reward?.free_item_category
+      });
 
       // Find the reward that was redeemed
       const reward = rewards.find((r: any) => r.id === rewardId);
 
       // Check if this is a free item reward with category selection
       if (data.reward?.free_item_all_from_category && data.reward?.free_item_category) {
+        console.log('✅ Showing free item selection modal for category:', data.reward.free_item_category);
         // Show modal for free item selection
         setRedeemedReward(data.reward);
         setShowFreeItemModal(true);
@@ -147,6 +154,7 @@ const RewardsPage = () => {
           duration: 6000,
         });
       } else if (data.reward?.free_item_menu_id) {
+        console.log('🔔 Adding specific free item to cart, menu_id:', data.reward.free_item_menu_id);
         // Specific free item - add directly to cart
         const menuItem = menuItems.find((item: any) => item.id === data.reward.free_item_menu_id);
         if (menuItem) {
