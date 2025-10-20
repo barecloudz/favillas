@@ -17,7 +17,9 @@ const PRIMARY_GROUPS = [
   'Salad Dressing', 'Dressing Style',
   'Caesar Salad Dressing', 'Greek Salad Dressing',
   'Antipasto Salad Dressing', 'Chef Salad Dressing',
-  'Tuna Salad Dressing', 'Grilled Chicken Salad Dressing'
+  'Tuna Salad Dressing', 'Grilled Chicken Salad Dressing',
+  'Garlic Roll Size', 'Garlic Rolls',
+  'Sausage or Meatballs', 'Meat Size', 'Sausage Size', 'Meatball Size'
 ];
 
 const isPrimaryChoiceGroup = (groupName: string) => PRIMARY_GROUPS.includes(groupName);
@@ -129,21 +131,31 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
     return sizeChoice?.name;
   };
 
-  // Progressive reveal: require size selection first for calzones/stromboli/specialty pizzas, then filter toppings by size
+  // Progressive reveal: require size selection first for calzones/stromboli/specialty pizzas/traditional pizzas, then filter toppings by size
   const getVisibleChoiceGroups = () => {
+    // Check for Wing Flavors group - it should ALWAYS appear first
+    const wingFlavorGroup = itemChoiceGroups.find(g => g.name === 'Wing Flavors');
+
     // Check if there's a size group that requires selection first
     const sizeGroup = itemChoiceGroups.find(g =>
       g.name === 'Calzone Size' ||
       g.name === 'Stromboli Size' ||
-      g.name === 'Specialty Gourmet Pizza Size'
+      g.name === 'Specialty Gourmet Pizza Size' ||
+      g.name === 'Traditional Pizza Size' ||
+      g.name === 'Size'  // Also handle generic "Size" group
     );
+
+    // If there's a wing flavor group and it hasn't been selected yet, only show the wing flavor group
+    if (wingFlavorGroup && (!selectedChoices[wingFlavorGroup.id] || selectedChoices[wingFlavorGroup.id].length === 0)) {
+      return [wingFlavorGroup];
+    }
 
     // If there's a size group and it hasn't been selected yet, only show the size group
     if (sizeGroup && (!selectedChoices[sizeGroup.id] || selectedChoices[sizeGroup.id].length === 0)) {
       return [sizeGroup];
     }
 
-    // If size is selected for calzone/stromboli, filter topping groups by size
+    // If size is selected for calzone/stromboli/pizza, filter topping groups by size
     if (sizeGroup && selectedChoices[sizeGroup.id] && selectedChoices[sizeGroup.id].length > 0) {
       const selectedSizeId = selectedChoices[sizeGroup.id][0];
       const selectedSizeChoice = choiceItems.find(ci => ci.id === parseInt(selectedSizeId));
@@ -168,8 +180,10 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
           if (sizeName.includes('medium') && groupName.includes('medium')) return true;
           if (sizeName.includes('large') && groupName.includes('large')) return true;
 
-          // Specialty Gourmet Pizza sizes
+          // Traditional Pizza sizes
+          if (sizeName.includes('personal') && groupName.includes('personal')) return true;
           if (sizeName.includes('10') && groupName.includes('10')) return true;
+          if (sizeName.includes('12') && groupName.includes('12')) return true;
           if (sizeName.includes('14') && groupName.includes('14')) return true;
           if (sizeName.includes('16') && groupName.includes('16')) return true;
           if (sizeName.toLowerCase().includes('sicilian') && groupName.includes('sicilian')) return true;
@@ -195,16 +209,11 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
   // Calculate total price with selections and dynamic pricing
   const calculateTotalPrice = () => {
     let total = 0;
-    let hasSizeSelection = false;
+    let hasPrimarySelection = false;
 
     Object.entries(selectedChoices).forEach(([groupId, selections]) => {
       const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
-      const isSizeGroup = group?.name === 'Size' ||
-                          group?.name === 'Calzone Size' ||
-                          group?.name === 'Stromboli Size' ||
-                          group?.name === 'Traditional Pizza Size' ||
-                          group?.name === 'Specialty Gourmet Pizza Size' ||
-                          group?.name === 'Garden Salad Size';
+      const isPrimaryGroup = group?.name ? isPrimaryChoiceGroup(group.name) : false;
 
       selections.forEach(selectionId => {
         const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
@@ -213,20 +222,20 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
           const dynamicPrice = dynamicPrices[selectionId];
           const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
 
-          // For size selections, this IS the base price (don't add basePrice separately)
-          if (isSizeGroup) {
+          // For primary selections (size, flavors, etc.), this IS the base price (don't add basePrice separately)
+          if (isPrimaryGroup) {
             total += price;
-            hasSizeSelection = true;
+            hasPrimarySelection = true;
           } else {
-            // For toppings, add to price
+            // For toppings/add-ons, add to price
             total += price;
           }
         }
       });
     });
 
-    // If no size was selected, use the item's base price
-    if (!hasSizeSelection) {
+    // If no primary selection was made, use the item's base price
+    if (!hasPrimarySelection) {
       total += parseFloat(item.basePrice) || 0;
     }
 
@@ -454,22 +463,17 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
 
                 <div className="space-y-8 py-6">
                   {visibleChoiceGroups.map((group, index) => {
-                    const isPrimaryGroup = group.name === 'Size' ||
-                                           group.name === 'Calzone Size' ||
-                                           group.name === 'Stromboli Size' ||
-                                           group.name === 'Traditional Pizza Size' ||
-                                           group.name === 'Specialty Gourmet Pizza Size' ||
-                                           group.name === 'Wing Flavors' ||
-                                           group.name === 'Garden Salad Size' ||
-                                           group.name === 'Salad Dressing' ||
-                                           group.name === 'Dressing Style';
+                    const isPrimary = isPrimaryChoiceGroup(group.name);
                     const isSizeBasedGroup = group.name === 'Size' ||
                                             group.name === 'Calzone Size' ||
                                             group.name === 'Stromboli Size' ||
                                             group.name === 'Traditional Pizza Size' ||
                                             group.name === 'Specialty Gourmet Pizza Size' ||
                                             group.name === 'Wing Flavors' ||
-                                            group.name === 'Garden Salad Size';
+                                            group.name === 'Garden Salad Size' ||
+                                            group.name === 'Garlic Roll Size' ||
+                                            group.name === 'Garlic Rolls' ||
+                                            group.name === 'Sausage or Meatballs';
                     const isSelected = selectedChoices[group.id] && selectedChoices[group.id].length > 0;
 
                     return (
@@ -494,7 +498,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                       {group.maxSelections === 1 ? (
                         <>
                           {/* Show collapsed view if size is selected and collapsed */}
-                          {isPrimaryGroup && sizeCollapsed && selectedChoices[group.id] && selectedChoices[group.id].length > 0 ? (
+                          {isPrimary && sizeCollapsed && selectedChoices[group.id] && selectedChoices[group.id].length > 0 ? (
                             <div className="space-y-3">
                               {(() => {
                                 const selectedItemId = selectedChoices[group.id][0];
@@ -522,7 +526,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                     <div className="flex items-center space-x-2">
                                       {price > 0 && (
                                         <Badge className="bg-[#d73a31] text-white text-sm font-bold">
-                                          {isPrimaryGroup ? '$' : '+$'}{formatPrice(price)}
+                                          {isPrimary ? '$' : '+$'}{formatPrice(price)}
                                         </Badge>
                                       )}
                                       <Button
@@ -577,7 +581,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                         ? 'bg-[#d73a31] text-white'
                                         : 'bg-gray-100 text-gray-700'
                                     }`}>
-                                      {isPrimaryGroup ? '$' : '+$'}{formatPrice(price)}
+                                      {isPrimary ? '$' : '+$'}{formatPrice(price)}
                                     </Badge>
                                   )}
                                 </div>
@@ -625,7 +629,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                     ? 'bg-green-500 text-white'
                                     : 'bg-gray-100 text-gray-700'
                                 }`}>
-                                  {isPrimaryGroup ? '$' : '+$'}{formatPrice(price)}
+                                  {isPrimary ? '$' : '+$'}{formatPrice(price)}
                                 </Badge>
                               )}
                             </div>
