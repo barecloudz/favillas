@@ -644,16 +644,23 @@ export const handler: Handler = async (event, context) => {
         });
 
         if (isPaused || isVacation) {
-          console.log(`❌ Orders API: Service unavailable - ${isPaused ? 'PAUSED' : 'VACATION'}`);
-          return {
-            statusCode: 503,
-            headers,
-            body: JSON.stringify({
-              error: 'Service temporarily unavailable',
-              message: isPaused ? pauseMessage : vacationMessage,
-              reason: isPaused ? 'paused' : 'vacation'
-            })
-          };
+          // Allow scheduled orders to proceed during pause, but block ASAP orders
+          if (orderData.fulfillmentTime === 'scheduled' && orderData.scheduledTime) {
+            console.log(`✅ Orders API: Allowing scheduled order during ${isPaused ? 'PAUSE' : 'VACATION'} mode`);
+          } else {
+            // Block ASAP orders when paused
+            console.log(`❌ Orders API: Service unavailable for ASAP orders - ${isPaused ? 'PAUSED' : 'VACATION'}`);
+            return {
+              statusCode: 503,
+              headers,
+              body: JSON.stringify({
+                error: 'Service temporarily unavailable',
+                message: isPaused ? pauseMessage : vacationMessage,
+                reason: isPaused ? 'paused' : 'vacation',
+                scheduledOrdersAllowed: true // Inform frontend that scheduled orders are still allowed
+              })
+            };
+          }
         }
 
         console.log('✅ Orders API: Service available, proceeding with order creation');

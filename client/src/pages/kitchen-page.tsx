@@ -379,35 +379,27 @@ const KitchenPage = () => {
     setIsTogglingPause(true);
     try {
       const newPauseState = !isOrderingPaused;
-      const response = await fetch('/.netlify/functions/vacation-mode', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          isEnabled: newPauseState,
-          message: newPauseState
-            ? 'We are temporarily pausing orders due to high volume. Please check back shortly!'
-            : '',
-          startDate: '',
-          endDate: '',
-          reason: 'Emergency pause from kitchen'
-        })
+
+      // Use apiRequest to ensure proper authentication
+      await apiRequest('PUT', '/api/vacation-mode', {
+        isEnabled: newPauseState,
+        message: newPauseState
+          ? 'We are temporarily pausing orders due to high volume. Please check back shortly!'
+          : '',
+        startDate: '',
+        endDate: '',
+        reason: 'Emergency pause from kitchen'
       });
 
-      if (response.ok) {
-        queryClient.invalidateQueries({ queryKey: ['/api/vacation-mode'] });
-        toast({
-          title: newPauseState ? "Ordering Paused" : "Ordering Resumed",
-          description: newPauseState
-            ? "Customers will see a message that ordering is temporarily unavailable."
-            : "Customers can now place orders again.",
-        });
-      } else {
-        throw new Error('Failed to toggle pause state');
-      }
+      queryClient.invalidateQueries({ queryKey: ['/api/vacation-mode'] });
+      toast({
+        title: newPauseState ? "Ordering Paused" : "Ordering Resumed",
+        description: newPauseState
+          ? "Customers will see a message that ordering is temporarily unavailable."
+          : "Customers can now place orders again.",
+      });
     } catch (error: any) {
+      console.error('Toggle pause error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to toggle pause state",
@@ -543,6 +535,19 @@ const KitchenPage = () => {
             </div>
           </div>
         </header>
+
+        {/* Pause Status Banner */}
+        {isOrderingPaused && (
+          <div className="bg-yellow-500 border-b-4 border-yellow-600 p-3 md:p-4">
+            <div className="container mx-auto flex items-center gap-3 text-white">
+              <PauseCircle className="h-8 w-8 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-bold text-lg md:text-xl">⏸️ Orders Temporarily Paused</p>
+                <p className="text-sm md:text-base">ASAP orders are currently paused. Scheduled orders will still come through.</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <main className="container mx-auto p-2 md:p-4">
           {isColumnMode ? (

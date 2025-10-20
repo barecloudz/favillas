@@ -398,9 +398,12 @@ const MenuPage = () => {
           <div className="bg-yellow-500 border-b-4 border-yellow-600 px-4 sm:px-6 lg:px-8 py-4">
             <div className="max-w-7xl mx-auto flex items-center gap-3 text-white">
               <AlertCircle className="h-6 w-6 flex-shrink-0" />
-              <div>
-                <p className="font-bold text-lg">Ordering Temporarily Unavailable</p>
-                <p className="text-sm">{displayMessage}</p>
+              <div className="flex-1">
+                <p className="font-bold text-lg">ASAP Orders Temporarily Paused</p>
+                <p className="text-sm mb-1">{displayMessage}</p>
+                <p className="text-sm font-medium bg-yellow-600 bg-opacity-50 px-2 py-1 rounded inline-block">
+                  💡 Scheduled orders for later pickup/delivery are still available!
+                </p>
               </div>
             </div>
           </div>
