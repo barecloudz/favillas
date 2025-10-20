@@ -27,13 +27,27 @@ const EmployeeClockPage: React.FC = () => {
   const [breakDuration, setBreakDuration] = useState(0);
   const [clockOutNotes, setClockOutNotes] = useState("");
   const [showUnscheduledDialog, setShowUnscheduledDialog] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   // Get current clock status
   const { data: clockStatus, isLoading, refetch } = useQuery({
     queryKey: ["/api/time-clock/status"],
     enabled: !!user,
     refetchInterval: 30000, // Refresh every 30 seconds
+    staleTime: 10000, // Data is fresh for 10 seconds, avoids unnecessary refetches
+    placeholderData: (previousData) => previousData, // Show previous data while loading
   });
+
+  // Update clock display every minute when clocked in
+  useEffect(() => {
+    if (clockStatus?.isClocked) {
+      const interval = setInterval(() => {
+        setCurrentTime(new Date());
+      }, 60000); // Update every minute
+
+      return () => clearInterval(interval);
+    }
+  }, [clockStatus?.isClocked]);
 
   // Clock In mutation
   const clockInMutation = useMutation({
@@ -107,17 +121,55 @@ const EmployeeClockPage: React.FC = () => {
     return `${hours}h ${minutes}m`;
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#d73a31]"></div>
-      </div>
-    );
-  }
-
   const isClocked = clockStatus?.isClocked;
   const activeEntry = clockStatus?.activeEntry;
   const todaysSchedule = clockStatus?.todaysSchedule;
+
+  // Skeleton UI for initial load
+  if (isLoading && !clockStatus) {
+    return (
+      <>
+        <Helmet>
+          <title>Time Clock - Favilla's NY Pizza</title>
+        </Helmet>
+
+        <div className="min-h-screen bg-gray-50 py-8 overflow-y-auto">
+          <div className="max-w-2xl mx-auto px-4">
+            <div className="text-center mb-8">
+              <div className="h-9 w-64 bg-gray-200 rounded animate-pulse mx-auto mb-2"></div>
+              <div className="h-5 w-48 bg-gray-200 rounded animate-pulse mx-auto mb-1"></div>
+              <div className="h-4 w-56 bg-gray-200 rounded animate-pulse mx-auto"></div>
+            </div>
+
+            <div className="space-y-6">
+              {/* Skeleton for Schedule Card */}
+              <Card>
+                <CardHeader>
+                  <div className="h-6 w-40 bg-gray-200 rounded animate-pulse"></div>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-16 bg-gray-100 rounded animate-pulse"></div>
+                </CardContent>
+              </Card>
+
+              {/* Skeleton for Status Card */}
+              <Card className="border-2 border-[#d73a31]">
+                <CardHeader>
+                  <div className="h-6 w-32 bg-gray-200 rounded animate-pulse"></div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="h-32 bg-gray-100 rounded animate-pulse"></div>
+                    <div className="h-12 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
