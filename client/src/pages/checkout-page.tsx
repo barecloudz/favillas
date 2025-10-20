@@ -753,7 +753,7 @@ const CheckoutPage = () => {
         <meta name="description" content="Complete your order at Favilla's NY Pizza. Easy and secure checkout with multiple payment options." />
       </Helmet>
 
-      <main className="bg-gray-50 py-12 md:pt-[72px] pt-[60px]">
+      <main className="bg-gray-50 py-12 md:pt-[72px] pt-14">
         {/* Vacation Mode Banner */}
         {isOrderingPaused && (
           <div className="bg-yellow-500 border-b-4 border-yellow-600 px-4 sm:px-6 lg:px-8 py-4 mb-6">

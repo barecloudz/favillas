@@ -392,7 +392,7 @@ const MenuPage = () => {
         <meta name="description" content="Browse our delicious menu of authentic New York style pizzas, sides, drinks, and desserts." />
       </Helmet>
 
-      <div className="min-h-screen bg-gray-50 md:pt-[72px] pt-[60px]">
+      <div className="min-h-screen bg-gray-50 md:pt-[72px] pt-14">
         {/* Vacation Mode Banner */}
         {isOrderingPaused && (
           <div className="bg-yellow-500 border-b-4 border-yellow-600 px-4 sm:px-6 lg:px-8 py-4">

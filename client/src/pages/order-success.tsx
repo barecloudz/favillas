@@ -563,7 +563,7 @@ Thank you for choosing Favilla's NY Pizza!
         <title>Order Confirmation | Favilla's NY Pizza</title>
       </Helmet>
 
-      <main className="min-h-screen bg-gray-50 py-8 md:pt-[72px] pt-[60px]">
+      <main className="min-h-screen bg-gray-50 py-8 md:pt-[72px] pt-14">
         <div className="max-w-4xl mx-auto px-4">
           {/* Success Header */}
           <div className="text-center mb-8">
