@@ -751,14 +751,15 @@ export const handler: Handler = async (event, context) => {
         let formattedScheduledTime = null;
         if (orderData.fulfillmentTime === 'scheduled' && orderData.scheduledTime) {
           try {
-            // CRITICAL: datetime-local sends "2025-10-21T13:54" (1:54 PM local, no timezone)
-            // PostgreSQL timestamp column will store it as-is
-            // Just pass the string directly - PostgreSQL handles it correctly
-            formattedScheduledTime = orderData.scheduledTime;
+            // CRITICAL FIX: datetime-local sends "2025-10-21T14:05" (2:05 PM local, no timezone)
+            // Netlify servers run in UTC, but user is in ET (America/New_York)
+            // We need to append ET timezone so PostgreSQL stores it correctly
+            // ET is UTC-4 (EDT) or UTC-5 (EST)
+            formattedScheduledTime = orderData.scheduledTime + '-04:00'; // EDT (Eastern Daylight Time)
 
-            console.log('🛒 Orders API: Scheduled time (storing as-is):', {
+            console.log('🛒 Orders API: Scheduled time with timezone:', {
               originalInput: orderData.scheduledTime,
-              willStore: formattedScheduledTime
+              withTimezone: formattedScheduledTime
             });
           } catch (error) {
             console.error('❌ Orders API: Error formatting scheduled time:', error);
@@ -1439,10 +1440,9 @@ export const handler: Handler = async (event, context) => {
           } else {
             console.log('✅ SHIPDAY: API key found, starting dispatch process for order', newOrder.id);
 
-          // Dispatch to ShipDay asynchronously (don't block order response)
-          setTimeout(async () => {
-            try {
-              console.log('🚀 SHIPDAY: Inside setTimeout for order', newOrder.id);
+          // Dispatch to ShipDay SYNCHRONOUSLY so errors are visible (preview logs unavailable)
+          try {
+              console.log('🚀 SHIPDAY: Starting synchronous dispatch for order', newOrder.id);
 
               // Parse address data
               let addressData;
@@ -1624,8 +1624,10 @@ export const handler: Handler = async (event, context) => {
             } catch (shipdayError) {
               console.error('❌ SHIPDAY: Integration error for scheduled order:', shipdayError);
               console.error('❌ SHIPDAY: Error stack:', shipdayError.stack);
+              // Add error to enhanced order so it's visible in response
+              enhancedOrder.shipdayDebug.error = shipdayError.message;
+              enhancedOrder.shipdayDebug.errorStack = shipdayError.stack;
             }
-          }, 100); // 100ms delay to ensure order response is sent first
           }
         } else {
           console.log('ℹ️ SHIPDAY: Order is NOT a scheduled delivery, skipping immediate ShipDay dispatch', {
