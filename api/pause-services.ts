@@ -79,33 +79,33 @@ export const handler: Handler = async (event, context) => {
       
       await sql.begin(async (sql) => {
         await sql`
-          INSERT INTO system_settings (key, value) 
+          INSERT INTO system_settings (setting_key, setting_value)
           VALUES ('pause_enabled', ${data.isPaused ? 'true' : 'false'})
-          ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
         `;
-        
+
         await sql`
-          INSERT INTO system_settings (key, value) 
+          INSERT INTO system_settings (setting_key, setting_value)
           VALUES ('pause_message', ${data.pauseMessage || 'We are temporarily closed. Please check back later.'})
-          ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
         `;
-        
+
         await sql`
-          INSERT INTO system_settings (key, value) 
+          INSERT INTO system_settings (setting_key, setting_value)
           VALUES ('pause_start_time', ${data.pauseStartTime || ''})
-          ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
         `;
-        
+
         await sql`
-          INSERT INTO system_settings (key, value) 
+          INSERT INTO system_settings (setting_key, setting_value)
           VALUES ('pause_end_time', ${data.pauseEndTime || ''})
-          ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
         `;
-        
+
         await sql`
-          INSERT INTO system_settings (key, value) 
+          INSERT INTO system_settings (setting_key, setting_value)
           VALUES ('pause_reason', ${data.pauseReason || 'maintenance'})
-          ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+          ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
         `;
       });
 
