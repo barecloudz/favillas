@@ -164,11 +164,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('🔔 Auth state changed:', event, 'Session:', !!session);
         setSession(session);
 
         if (session) {
-          const mappedUser = mapSupabaseUser(session?.user || null);
-          setUser(mappedUser);
+          // FIXED: Fetch complete user profile from database instead of just using Supabase metadata
+          try {
+            const completeProfile = await fetchUserProfile();
+            if (completeProfile) {
+              setUser(completeProfile);
+              console.log('✅ Auth state change: Loaded complete profile from database');
+            } else {
+              // Fallback to basic mapping if profile fetch fails
+              const mappedUser = mapSupabaseUser(session?.user || null);
+              setUser(mappedUser);
+              console.log('⚠️ Auth state change: Using basic Supabase metadata mapping');
+            }
+          } catch (profileError) {
+            console.warn('⚠️ Auth state change: Profile fetch failed, using basic mapping');
+            const mappedUser = mapSupabaseUser(session?.user || null);
+            setUser(mappedUser);
+          }
         } else {
           setUser(null);
         }
@@ -186,15 +202,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     setLoading(true);
-
-    // Force sign out first to clear any stuck session
-    try {
-      await supabase.auth.signOut();
-      setUser(null);
-      setSession(null);
-    } catch (error) {
-      console.warn('Failed to clear session:', error);
-    }
 
     const redirectUrl = window.location.hostname === 'localhost'
       ? `${window.location.origin}/auth/callback`

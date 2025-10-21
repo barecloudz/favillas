@@ -120,6 +120,19 @@ async function validateSupabaseToken(token: string): Promise<AuthResult> {
       } : null
     });
 
+    // Parse name from Google OAuth metadata
+    const userMetadata = user.user_metadata || {};
+    let firstName = userMetadata.first_name;
+    let lastName = userMetadata.last_name;
+    const fullName = userMetadata.full_name || userMetadata.name;
+
+    // If firstName/lastName not provided but fullName is (Google OAuth case)
+    if (!firstName && fullName) {
+      const nameParts = fullName.split(' ');
+      firstName = nameParts[0];
+      lastName = nameParts.slice(1).join(' ');
+    }
+
     return {
       success: true,
       user: {
@@ -129,9 +142,9 @@ async function validateSupabaseToken(token: string): Promise<AuthResult> {
         username: dbUser?.username || user.email || undefined,
         role: dbUser?.role || 'customer',
         isAdmin: dbUser?.is_admin || false,
-        firstName: user.user_metadata?.first_name || undefined,
-        lastName: user.user_metadata?.last_name || undefined,
-        fullName: user.user_metadata?.full_name || undefined,
+        firstName: firstName || undefined,
+        lastName: lastName || undefined,
+        fullName: fullName || undefined,
         marketingOptIn: user.user_metadata?.marketing_opt_in !== false // Default to true if not explicitly false
       }
     };
