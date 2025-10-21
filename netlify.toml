@@ -537,6 +537,8 @@
   from = "/*"
   to = "/index.html"
   status = 200
+  # Don't cache the index.html - force browsers to check for updates
+  headers = {Cache-Control = "no-cache, no-store, must-revalidate", Pragma = "no-cache", Expires = "0"}
   # Don't force this redirect, allow other rules to match first
   force = false
 

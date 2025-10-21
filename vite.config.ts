@@ -54,6 +54,8 @@ export default defineConfig(({ mode }) => {
       reportCompressedSize: false,
       chunkSizeWarningLimit: 2000,
       sourcemap: false,
+      // Copy _headers file to output for Netlify cache control
+      copyPublicDir: true,
       rollupOptions: {
         external: isProd ? [] : [],
         output: {
