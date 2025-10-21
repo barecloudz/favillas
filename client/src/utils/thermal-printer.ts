@@ -138,6 +138,7 @@ function formatCustomerReceipt(order: OrderPrintData): string {
     }
 
     // Extract size and add-ons for display (NOT for price calculation)
+    // The item.price already includes all option prices
     let size = '';
     let addons: Array<{name: string, price: string, isSize?: boolean}> = [];
 
@@ -169,6 +170,7 @@ function formatCustomerReceipt(order: OrderPrintData): string {
     }
 
     // Use the item price as-is (it already includes all options)
+    // DO NOT add option prices again - that causes double-charging!
     const totalItemPrice = itemPrice;
 
     // Item name with size
