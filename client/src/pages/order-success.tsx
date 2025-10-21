@@ -198,13 +198,23 @@ const OrderSuccessPage = () => {
             }
           };
 
-          // Only create order if we haven't already started creating it
-          if (!isCreatingOrder.current && !sessionStorage.getItem(`processed_${paymentIntentParam}`)) {
+          // Only create order if we haven't already successfully created it
+          // Check for actual order ID or processed payment intent, not just the flag
+          if (!isCreatingOrder.current && !sessionStorage.getItem(`processed_${paymentIntentParam}`) && !orderId) {
             isCreatingOrder.current = true;
             createOrderAsync();
-          } else {
-            console.log('💡 Order creation already in progress or completed, skipping');
+          } else if (orderId || sessionStorage.getItem(`processed_${paymentIntentParam}`)) {
+            console.log('💡 Order already created (orderId exists or payment processed), skipping');
             setIsLoading(false);
+          } else if (isCreatingOrder.current && !orderId) {
+            console.log('⚠️ Order creation in progress but may have stalled, will retry...');
+            // Reset the flag and try again if we don't have an orderId after 2 seconds
+            setTimeout(() => {
+              if (!orderId && !sessionStorage.getItem(`processed_${paymentIntentParam}`)) {
+                console.log('🔄 Retrying order creation...');
+                isCreatingOrder.current = false;
+              }
+            }, 2000);
           }
         } catch (error) {
           console.error('❌ Error parsing pending order data:', error);
@@ -225,7 +235,7 @@ const OrderSuccessPage = () => {
       console.warn('⚠️ No order ID or payment intent found, redirecting to home');
       navigate("/");
     }
-  }, [navigate, user, cartCleared, clearCart, toast]);
+  }, [navigate, user, cartCleared, clearCart, toast, orderId]);
 
   // Add timeout to prevent infinite loading and handle guest users
   useEffect(() => {
