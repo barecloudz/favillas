@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useCart } from "@/hooks/use-cart";
@@ -39,6 +39,7 @@ const OrderSuccessPage = () => {
   const [order, setOrder] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [cartCleared, setCartCleared] = useState(false);
+  const isCreatingOrder = useRef(false);
   
   // Initialize WebSocket for real-time updates
   useWebSocket();
@@ -136,6 +137,8 @@ const OrderSuccessPage = () => {
 
               // Clear pending order data only after successful creation
               sessionStorage.removeItem('pendingOrderData');
+              // Mark payment intent as processed AFTER successful order creation
+              sessionStorage.setItem(`processed_${paymentIntentParam}`, 'true');
               console.log('✅ Order created and cleared pending data from sessionStorage');
 
               // Clear cart immediately after successful order creation
@@ -191,15 +194,16 @@ const OrderSuccessPage = () => {
               });
             } finally {
               setIsLoading(false);
+              isCreatingOrder.current = false;
             }
           };
 
-          // Only create order if we haven't already processed this payment intent
-          if (!sessionStorage.getItem(`processed_${paymentIntentParam}`)) {
-            sessionStorage.setItem(`processed_${paymentIntentParam}`, 'true');
+          // Only create order if we haven't already started creating it
+          if (!isCreatingOrder.current && !sessionStorage.getItem(`processed_${paymentIntentParam}`)) {
+            isCreatingOrder.current = true;
             createOrderAsync();
           } else {
-            console.log('💡 Payment intent already processed, skipping order creation');
+            console.log('💡 Order creation already in progress or completed, skipping');
             setIsLoading(false);
           }
         } catch (error) {
@@ -1096,9 +1100,24 @@ Thank you for choosing Favilla's NY Pizza!
                       <p className="text-3xl font-bold text-red-600">
                         {(() => {
                           // Calculate points from order total
-                          const orderTotal = orderId ? parseFloat(order?.total || '0') :
-                            (typeof URLSearchParams !== 'undefined' ?
-                              parseFloat(new URLSearchParams(window.location.search).get('total') || '0') : 0);
+                          let orderTotal = 0;
+
+                          if (order?.total) {
+                            // If we have the order object, use its total
+                            orderTotal = parseFloat(order.total);
+                          } else {
+                            // Try to get total from pending order data in sessionStorage
+                            try {
+                              const pendingOrderDataStr = sessionStorage.getItem('pendingOrderData');
+                              if (pendingOrderDataStr) {
+                                const pendingOrderData = JSON.parse(pendingOrderDataStr);
+                                orderTotal = parseFloat(pendingOrderData.total || '0');
+                              }
+                            } catch (e) {
+                              console.warn('Failed to parse pending order data for points calculation:', e);
+                            }
+                          }
+
                           return Math.floor(orderTotal || 0);
                         })()} Points
                       </p>
@@ -1148,7 +1167,7 @@ Thank you for choosing Favilla's NY Pizza!
                       If you have questions about your order, please call us:
                     </p>
                     <p className="text-lg font-semibold text-gray-900">
-                      (555) 123-PIZZA
+                      (828) 225-2885
                     </p>
                     <p className="text-xs text-gray-500 mt-2">
                       Order ID: {orderId}
