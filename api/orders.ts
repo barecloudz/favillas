@@ -1528,12 +1528,14 @@ export const handler: Handler = async (event, context) => {
 
                 const deliveryHours = String(scheduledDate.getHours()).padStart(2, '0');
                 const deliveryMinutes = String(scheduledDate.getMinutes()).padStart(2, '0');
-                const expectedDeliveryTime = `${deliveryHours}:${deliveryMinutes}`;
+                const deliverySeconds = String(scheduledDate.getSeconds()).padStart(2, '0');
+                const expectedDeliveryTime = `${deliveryHours}:${deliveryMinutes}:${deliverySeconds}`; // HH:mm:ss format
 
                 const pickupDate = new Date(scheduledDate.getTime() - 15 * 60 * 1000);
                 const pickupHours = String(pickupDate.getHours()).padStart(2, '0');
                 const pickupMinutes = String(pickupDate.getMinutes()).padStart(2, '0');
-                const expectedPickupTime = `${pickupHours}:${pickupMinutes}`;
+                const pickupSeconds = String(pickupDate.getSeconds()).padStart(2, '0');
+                const expectedPickupTime = `${pickupHours}:${pickupMinutes}:${pickupSeconds}`; // HH:mm:ss format
 
                 const shipdayPayload = {
                   orderItem: formattedItems,
