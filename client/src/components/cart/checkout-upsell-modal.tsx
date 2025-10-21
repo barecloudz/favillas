@@ -141,10 +141,19 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
       const response = await fetch('/api/menu');
       if (response.ok) {
         const data = await response.json();
+        console.log('[Upsell] Raw API response sample:', data.slice(0, 2));
         if (Array.isArray(data)) {
           // Transform API data to match component interface
           // Handle both camelCase and snake_case field names
           return data.map((item: any) => {
+            console.log('[Upsell] Raw item before transform:', {
+              name: item.name,
+              basePrice: item.basePrice,
+              base_price: item.base_price,
+              price: item.price,
+              allKeys: Object.keys(item)
+            });
+
             const price = parseFloat(item.basePrice || item.base_price || item.price || 0);
             const isAvailable = item.isAvailable !== false && item.is_available !== false;
 
