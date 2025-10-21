@@ -116,28 +116,35 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
   const { addItem, triggerPizzaAnimation } = useCart();
   const { toast } = useToast();
 
-  // Fetch categories (transform field names to match menu page)
-  const { data: categories = [], isLoading: categoriesLoading, error: categoriesError } = useQuery<Category[]>({
+  // Fetch categories (use same format as menu page)
+  const { data: categoriesData, isLoading: categoriesLoading, error: categoriesError } = useQuery({
     queryKey: ['/api/categories'],
     queryFn: async () => {
-      const response = await fetch('/api/categories');
-      if (response.ok) {
-        const data = await response.json();
-        if (Array.isArray(data)) {
+      try {
+        const response = await fetch('/api/categories');
+        if (response.ok) {
+          const data = await response.json();
           // Transform to ensure consistent field names (same as menu page)
-          return data.map((cat: any) => ({
-            ...cat,
-            imageUrl: cat.imageUrl ?? cat.image_url ?? null,
-            is_upsell_enabled: cat.is_upsell_enabled ?? cat.isUpsellEnabled ?? true,
-          }));
+          const categories = Array.isArray(data) ? data : data.categories || [];
+          return {
+            categories: categories.map((cat: any) => ({
+              ...cat,
+              imageUrl: cat.imageUrl ?? cat.image_url ?? null,
+              is_upsell_enabled: cat.is_upsell_enabled ?? cat.isUpsellEnabled ?? true,
+            }))
+          };
         }
+      } catch (error) {
+        console.log('Categories API not available');
       }
-      return [];
+      return { categories: [] };
     },
     enabled: isOpen,
     retry: 1,
     staleTime: 5 * 60 * 1000 // 5 minutes
   });
+
+  const categories = categoriesData?.categories || [];
 
   // Fetch menu items (use same query as menu page - no transformation needed)
   const { data: menuItems = [] } = useQuery({
