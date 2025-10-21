@@ -1027,7 +1027,7 @@ export const handler: Handler = async (event, context) => {
             INSERT INTO orders (
               user_id, supabase_user_id, status, total, tax, delivery_fee, tip, order_type, payment_status,
               special_instructions, address, address_data, fulfillment_time, scheduled_time,
-              phone, created_at
+              phone, customer_name, created_at
             ) VALUES (
               ${finalUserId},
               ${finalSupabaseUserId},
@@ -1044,6 +1044,7 @@ export const handler: Handler = async (event, context) => {
               ${orderData.fulfillmentTime || 'asap'},
               ${formattedScheduledTime},
               ${orderData.phone},
+              ${orderData.customerName || null},
               NOW()
             ) RETURNING *
           `;
@@ -1482,9 +1483,14 @@ export const handler: Handler = async (event, context) => {
                   console.log('👤 SHIPDAY: User info from DB (by supabaseUserId):', userContactInfo);
                 }
 
-                const customerName = userContactInfo?.first_name && userContactInfo?.last_name
-                  ? `${userContactInfo.first_name} ${userContactInfo.last_name}`.trim()
-                  : 'Customer';
+                // Get customer name from multiple sources with priority:
+                // 1. orderData.customerName (from Stripe billing for guests)
+                // 2. User database record (for authenticated users)
+                // 3. Default to 'Customer'
+                const customerName = orderData.customerName ||
+                  (userContactInfo?.first_name && userContactInfo?.last_name
+                    ? `${userContactInfo.first_name} ${userContactInfo.last_name}`.trim()
+                    : 'Customer');
                 const customerEmail = userContactInfo?.email || orderData.email || '';
                 const customerPhone = orderData.phone || userContactInfo?.phone || '';
 
@@ -1682,9 +1688,11 @@ export const handler: Handler = async (event, context) => {
 
             // Send order confirmation email
             const customerEmail = orderData.email || authPayload?.email;
-            const customerName = authPayload?.firstName ?
+            // Get customer name with priority: orderData (Stripe billing) > authPayload (user profile) > default
+            const customerName = orderData.customerName ||
+                               (authPayload?.firstName ?
                                `${authPayload.firstName} ${authPayload.lastName || ''}`.trim() :
-                               authPayload?.username || 'Valued Customer';
+                               authPayload?.username || 'Valued Customer');
 
             if (customerEmail) {
               try {
@@ -1940,9 +1948,11 @@ export const handler: Handler = async (event, context) => {
               userContactInfo = userResult[0];
             }
 
-            const customerName = userContactInfo?.first_name && userContactInfo?.last_name
+            // Get customer name with priority: order.customer_name (from Stripe) > user database > default
+            const customerName = currentOrder[0].customer_name ||
+              (userContactInfo?.first_name && userContactInfo?.last_name
               ? `${userContactInfo.first_name} ${userContactInfo.last_name}`.trim()
-              : (userContactInfo?.username || "Customer");
+              : (userContactInfo?.username || "Customer"));
 
             const customerEmail = userContactInfo?.email || currentOrder[0].email || "";
             const customerPhone = currentOrder[0].phone || userContactInfo?.phone || "";

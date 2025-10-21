@@ -385,6 +385,12 @@
   to = "/.netlify/functions/image-upload-test-no-auth"
   status = 200
 
+# Payment intent retrieval endpoint
+[[redirects]]
+  from = "/api/payment-intent/*"
+  to = "/.netlify/functions/payment-intent/[id]"
+  status = 200
+
 # Storage setup endpoint
 [[redirects]]
   from = "/api/setup-storage"

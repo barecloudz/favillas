@@ -67,7 +67,18 @@ const CheckoutForm = ({ orderId, clientSecret }: { orderId?: number | null, clie
 
   return (
     <form onSubmit={handleSubmit}>
-      <PaymentElement />
+      <PaymentElement
+        options={{
+          fields: {
+            billingDetails: {
+              name: 'auto',  // Always collect billing name for guest orders
+              email: 'auto',
+              phone: 'never',  // We already collect phone separately
+              address: 'never'  // We collect address separately for delivery
+            }
+          }
+        }}
+      />
       <div className="mt-6">
         <Button 
           type="submit" 
