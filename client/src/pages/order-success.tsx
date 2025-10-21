@@ -116,6 +116,8 @@ const OrderSuccessPage = () => {
 
               const response = await apiRequest('POST', '/api/orders', confirmedOrderData);
               const createdOrder = await response.json();
+              console.log('📦 ORDER CREATED - ShipDay Debug Info:', createdOrder.shipdayDebug);
+              console.log('📦 FULL ORDER OBJECT:', createdOrder);
               setOrderId(createdOrder.id);
               setOrder(createdOrder);
 
