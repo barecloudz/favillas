@@ -242,7 +242,7 @@ const AddressForm = ({
         autocompleteInstance.remove();
       }
     };
-  }, [streetInputRef.current]);
+  }, []); // Run only once on mount
 
   // Load Google Maps API script
   useEffect(() => {
@@ -411,13 +411,6 @@ const AddressForm = ({
 
       {error && (
         <p className="text-sm text-red-500">{error}</p>
-      )}
-
-      {/* Display full address for reference */}
-      {value && (
-        <div className="mt-2 p-2 bg-gray-50 rounded text-sm text-gray-600">
-          <strong>Full Address:</strong> {value}
-        </div>
       )}
     </div>
   );
