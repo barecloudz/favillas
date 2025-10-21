@@ -751,16 +751,35 @@ export const handler: Handler = async (event, context) => {
         let formattedScheduledTime = null;
         if (orderData.fulfillmentTime === 'scheduled' && orderData.scheduledTime) {
           try {
-            // Convert string to proper timestamp format
-            formattedScheduledTime = new Date(orderData.scheduledTime).toISOString();
-            console.log('🛒 Orders API: Formatted scheduled time:', formattedScheduledTime);
+            // CRITICAL FIX: datetime-local sends "2025-10-21T14:37" (local time, no timezone)
+            // When we do new Date("2025-10-21T14:37"), it interprets as LOCAL time
+            // Then .toISOString() converts to UTC, which shifts the time
+            // We need to keep the time as-is in the user's timezone
+
+            // Parse the datetime-local string manually to preserve the exact time
+            const dateTimeString = orderData.scheduledTime; // e.g., "2025-10-21T14:37"
+
+            // Add timezone offset to treat it as the literal time the user selected
+            // This ensures 2:37 PM stays 2:37 PM in their local timezone
+            const localDate = new Date(dateTimeString);
+            const tzOffset = localDate.getTimezoneOffset() * 60000; // offset in milliseconds
+            const adjustedDate = new Date(localDate.getTime() - tzOffset);
+            formattedScheduledTime = adjustedDate.toISOString();
+
+            console.log('🛒 Orders API: Scheduled time conversion:', {
+              originalInput: orderData.scheduledTime,
+              parsedAsLocal: localDate.toString(),
+              tzOffsetMinutes: localDate.getTimezoneOffset(),
+              adjustedUTC: formattedScheduledTime,
+              willDisplayAs: new Date(formattedScheduledTime).toLocaleString()
+            });
           } catch (error) {
             console.error('❌ Orders API: Error formatting scheduled time:', error);
             return {
               statusCode: 400,
               headers,
-              body: JSON.stringify({ 
-                error: 'Invalid scheduled time format' 
+              body: JSON.stringify({
+                error: 'Invalid scheduled time format'
               })
             };
           }
