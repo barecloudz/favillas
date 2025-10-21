@@ -488,12 +488,18 @@ const CartSidebar: React.FC = () => {
                           {/* Show addon options */}
                           {item?.options && item.options.length > 0 && (
                             <div className="mt-1 space-y-1">
-                              {item.options.map((option, index) => (
-                                <p key={index} className="text-sm text-gray-600">
-                                  {option.groupName}: {option.itemName}
-                                  {option.price > 0 && <span className="text-green-600"> (+${formatPrice(option.price)})</span>}
-                                </p>
-                              ))}
+                              {item.options.map((option, index) => {
+                                // Don't show price for size selections (it's the base price, not an add-on)
+                                const isSize = option.groupName?.toLowerCase().includes('size');
+                                const showPrice = option.price > 0 && !isSize;
+
+                                return (
+                                  <p key={index} className="text-sm text-gray-600">
+                                    {option.groupName}: {option.itemName}
+                                    {showPrice && <span className="text-green-600"> (+${formatPrice(option.price)})</span>}
+                                  </p>
+                                );
+                              })}
                             </div>
                           )}
                           
@@ -619,6 +625,10 @@ const CartSidebar: React.FC = () => {
                     >
                       {group.items.map((choiceItem: any) => {
                         const isSelected = selectedChoices[group.id]?.includes(choiceItem.id.toString());
+                        // Don't show price for size selections (it's the base price, not an add-on)
+                        const isSize = group.name?.toLowerCase().includes('size');
+                        const showPrice = parseFloat(choiceItem.price) > 0 && !isSize;
+
                         return (
                           <div
                             key={choiceItem.id}
@@ -631,7 +641,7 @@ const CartSidebar: React.FC = () => {
                               <RadioGroupItem value={choiceItem.id.toString()} className="pointer-events-none" />
                               <Label className="cursor-pointer">{choiceItem.name}</Label>
                             </div>
-                            {parseFloat(choiceItem.price) > 0 && (
+                            {showPrice && (
                               <span className={`text-sm font-medium ${isSelected ? 'text-[#d73a31]' : 'text-gray-600'}`}>
                                 +${formatPrice(parseFloat(choiceItem.price))}
                               </span>
@@ -645,6 +655,10 @@ const CartSidebar: React.FC = () => {
                     <div className="space-y-2">
                       {group.items.map((choiceItem: any) => {
                         const isSelected = selectedChoices[group.id]?.includes(choiceItem.id.toString());
+                        // Don't show price for size selections (it's the base price, not an add-on)
+                        const isSize = group.name?.toLowerCase().includes('size');
+                        const showPrice = parseFloat(choiceItem.price) > 0 && !isSize;
+
                         return (
                           <div
                             key={choiceItem.id}
@@ -660,7 +674,7 @@ const CartSidebar: React.FC = () => {
                               />
                               <Label className="cursor-pointer">{choiceItem.name}</Label>
                             </div>
-                            {parseFloat(choiceItem.price) > 0 && (
+                            {showPrice && (
                               <span className={`text-sm font-medium ${isSelected ? 'text-green-600' : 'text-gray-600'}`}>
                                 +${formatPrice(parseFloat(choiceItem.price))}
                               </span>
