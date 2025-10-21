@@ -1396,8 +1396,11 @@ export const handler: Handler = async (event, context) => {
 
         // SHIPDAY: For scheduled delivery orders, dispatch to ShipDay immediately (not when cooking starts)
         // so ShipDay knows about the scheduled delivery time in advance
-        if (newOrder.order_type === 'delivery' && newOrder.fulfillment_time === 'scheduled' && process.env.SHIPDAY_API_KEY) {
-          console.log('📦 Orders API: Scheduled delivery order created - dispatching to ShipDay immediately for order', newOrder.id);
+        if (newOrder.order_type === 'delivery' && newOrder.fulfillment_time === 'scheduled') {
+          if (!process.env.SHIPDAY_API_KEY) {
+            console.error('❌ Orders API: SHIPDAY_API_KEY not configured - cannot dispatch scheduled delivery order to ShipDay for order', newOrder.id);
+          } else {
+            console.log('📦 Orders API: Scheduled delivery order created - dispatching to ShipDay immediately for order', newOrder.id);
 
           // Dispatch to ShipDay asynchronously (don't block order response)
           setTimeout(async () => {
@@ -1551,6 +1554,7 @@ export const handler: Handler = async (event, context) => {
               console.error('❌ ShipDay integration error for scheduled order:', shipdayError);
             }
           }, 100); // 100ms delay to ensure order response is sent first
+          }
         }
 
         // ASYNC: Send email confirmation and print receipt (don't block order response)
@@ -1786,8 +1790,11 @@ export const handler: Handler = async (event, context) => {
 
         let shipdayDebugData = null;
 
-        if (requestData.status === 'cooking' && currentOrder[0].order_type === 'delivery' && process.env.SHIPDAY_API_KEY) {
-          console.log('📦 Orders API: Status changed to cooking - dispatching to ShipDay for order', orderId);
+        if (requestData.status === 'cooking' && currentOrder[0].order_type === 'delivery') {
+          if (!process.env.SHIPDAY_API_KEY) {
+            console.error('❌ Orders API: SHIPDAY_API_KEY not configured - cannot dispatch ASAP delivery order to ShipDay for order', orderId);
+          } else {
+            console.log('📦 Orders API: Status changed to cooking - dispatching to ShipDay for order', orderId);
 
           // Parse address data
           let addressData;
@@ -2061,6 +2068,7 @@ export const handler: Handler = async (event, context) => {
             })();
           } else {
             console.warn('⚠️ No address data available for ShipDay dispatch');
+          }
           }
         }
 
