@@ -102,7 +102,7 @@ const AddressForm = ({
 
       try {
         const autocompleteElement = new window.google.maps.places.PlaceAutocompleteElement({
-          locationRestriction: { country: 'us' },
+          componentRestrictions: { country: 'us' },
           requestedLanguage: 'en',
           requestedRegion: 'us'
         });
