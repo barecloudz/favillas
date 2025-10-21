@@ -120,34 +120,19 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
   const { data: categories = [], isLoading: categoriesLoading, error: categoriesError } = useQuery<Category[]>({
     queryKey: ['/api/categories'],
     queryFn: async () => {
-      console.log('🔍 [Categories API] Fetching categories...');
       const response = await fetch('/api/categories');
-      console.log('🔍 [Categories API] Response status:', response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('🔍 [Categories API] Raw data:', data);
-
         if (Array.isArray(data)) {
-          console.log('🔍 [Categories API] Valid array with', data.length, 'items');
           return data;
-        } else {
-          console.error('🔍 [Categories API] Data is not an array:', typeof data);
-          return [];
         }
-      } else {
-        console.error('🔍 [Categories API] Request failed:', response.statusText);
-        return [];
       }
+      return [];
     },
     enabled: isOpen,
     retry: 1,
     staleTime: 5 * 60 * 1000 // 5 minutes
   });
-
-  // Log categories loading state
-  React.useEffect(() => {
-  }, [categoriesLoading, categoriesError, categories]);
 
   // Fetch menu items
   const { data: menuItems = [] } = useQuery<MenuItem[]>({
@@ -239,47 +224,24 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 
   // Get category-specific menu items
   const getCategoryItems = (categoryName: string): MenuItem[] => {
-    console.log('🔍 [Upsell Modal] getCategoryItems called for category:', categoryName);
-    console.log('🔍 [Upsell Modal] Total menuItems available:', menuItems?.length || 0);
-    console.log('🔍 [Upsell Modal] MenuItems array check:', Array.isArray(menuItems));
-
     if (!Array.isArray(menuItems) || !categoryName) {
-      console.log('❌ [Upsell Modal] Returning empty - invalid menuItems or categoryName');
       return [];
     }
 
-    // Log all items to see what we have
-    console.log('🔍 [Upsell Modal] All menu items:', menuItems.map(item => ({
-      id: item?.id,
-      name: item?.name,
-      category: item?.category,
-      price: item?.price,
-      is_available: item?.is_available,
-      matchesCategory: item?.category === categoryName
-    })));
+    // Case-insensitive category matching
+    const categoryLower = categoryName.toLowerCase().trim();
 
     const filtered = menuItems.filter(item => {
-      const hasItem = !!item;
-      const hasId = !!item?.id;
-      const hasName = !!item?.name;
-      const matchesCategory = item?.category === categoryName;
-      const isAvailable = item?.is_available !== false;
-      const hasValidPrice = item?.price > 0;
+      if (!item || !item.id || !item.name) return false;
 
-      console.log(`🔍 [Upsell Modal] Filtering ${item?.name}:`, {
-        hasItem,
-        hasId,
-        hasName,
-        matchesCategory,
-        isAvailable,
-        hasValidPrice,
-        passes: hasItem && hasId && hasName && matchesCategory && isAvailable && hasValidPrice
-      });
+      const itemCategoryLower = (item.category || '').toLowerCase().trim();
+      const matchesCategory = itemCategoryLower === categoryLower;
+      const isAvailable = item.is_available !== false;
+      const hasValidPrice = item.price >= 0; // Allow $0 items
 
-      return hasItem && hasId && hasName && matchesCategory && isAvailable && hasValidPrice;
+      return matchesCategory && isAvailable && hasValidPrice;
     }).slice(0, 6); // Limit to 6 items for better UX
 
-    console.log('✅ [Upsell Modal] Filtered items for', categoryName, ':', filtered.length, 'items');
     return filtered;
   };
 
@@ -467,15 +429,6 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
                   const customImage = getCategoryImage(category.name);
                   const displayImage = customImage || category.image_url;
                   const colors = getCategoryColors(category.name);
-
-                  console.log('🔍 [Upsell Modal] Category card rendering:', {
-                    categoryName: category.name,
-                    categoryId: category.id,
-                    customImage,
-                    categoryImageUrl: category.image_url,
-                    displayImage,
-                    hasDisplayImage: !!displayImage
-                  });
 
                   return (
                     <Card

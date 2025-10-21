@@ -67,37 +67,17 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
 
   // Get choice groups for this menu item, sorted by order field
   const getItemChoiceGroups = () => {
-    console.log(`🔍 [MenuItemWithChoices] Processing item "${item.name}" (id: ${item.id})`);
-    console.log(`🔍 [MenuItemWithChoices] Available data:`, {
-      menuItemChoiceGroups: menuItemChoiceGroups.length,
-      choiceGroups: choiceGroups.length,
-      choiceItems: choiceItems.length
-    });
-
     const itemChoiceGroupIds = menuItemChoiceGroups
       .filter(micg => micg.menu_item_id === item.id);
 
-    console.log(`🔍 [MenuItemWithChoices] Found ${itemChoiceGroupIds.length} choice group assignments for this item:`, itemChoiceGroupIds);
-    console.log(`🔍 [MenuItemWithChoices] Full assignment details:`, itemChoiceGroupIds.map(micg => ({
-      id: micg.id,
-      menu_item_id: micg.menu_item_id,
-      choice_group_id: micg.choice_group_id,
-      choice_group_name: micg.choice_group_name,
-      order: micg.order,
-      is_required: micg.is_required
-    })));
-
     const result = itemChoiceGroupIds.map(micg => {
       const group = choiceGroups.find(cg => cg.id === micg.choice_group_id);
-      console.log(`🔍 [MenuItemWithChoices] Looking for choice group ${micg.choice_group_id}, found:`, group);
 
       if (!group) return null;
 
       const items = choiceItems
         .filter(ci => ci.choiceGroupId === group.id)
         .sort((a, b) => a.order - b.order);
-
-      console.log(`🔍 [MenuItemWithChoices] Found ${items.length} choice items for group "${group.name}":`, items);
 
       return {
         ...group,
@@ -130,7 +110,6 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       return (a.displayOrder || 0) - (b.displayOrder || 0);
     });
 
-    console.log(`🔍 [MenuItemWithChoices] Final result for item "${item.name}":`, result);
     return result;
   };
 
@@ -185,8 +164,6 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       const selectedSizeChoice = choiceItems.find(ci => ci.id === parseInt(selectedSizeId));
       const selectedSizeName = selectedSizeChoice?.name || '';
 
-      console.log('🔍 [Size Filter] Selected size:', selectedSizeName);
-
       // Filter groups to show only size group and toppings that match the selected size
       const filteredGroups = itemChoiceGroups.filter(g => {
         // Always show the size group
@@ -220,7 +197,6 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
         return true;
       });
 
-      console.log('🔍 [Size Filter] Filtered groups:', filteredGroups.map(g => g.name));
       return filteredGroups;
     }
 
@@ -319,17 +295,8 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                           group?.name === 'Traditional Pizza Size' ||
                           group?.name === 'Specialty Gourmet Pizza Size' ||
                           group?.name === 'Wing Flavors';
-      console.log('🔍 [Choice Selection] Group found for collapse check:', {
-        group,
-        groupId: parseInt(groupId),
-        priority: group?.priority,
-        isRadio,
-        isSizeGroup,
-        shouldCollapse: group && isSizeGroup && isRadio
-      });
 
       if (group && isSizeGroup && isRadio) {
-        console.log('🔍 [Choice Selection] Setting size collapsed to true');
         setSizeCollapsed(true);
       }
 
@@ -710,16 +677,6 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                       );
                       const hasSizeSelected = sizeGroup && selectedChoices[sizeGroup.id] && selectedChoices[sizeGroup.id].length > 0;
                       const canAddToCart = !sizeGroup || hasSizeSelected; // Can add if no size group OR size is selected
-
-                      console.log('🔍 [Add to Cart Button] Debug info:', {
-                        sizeGroup,
-                        selectedChoices,
-                        sizeGroupId: sizeGroup?.id,
-                        sizeGroupSelections: sizeGroup ? selectedChoices[sizeGroup.id] : 'no size group',
-                        hasSizeSelected,
-                        canAddToCart,
-                        sizeCollapsed
-                      });
 
                       return (
                         <Button
