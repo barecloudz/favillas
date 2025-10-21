@@ -99,14 +99,15 @@ const OrdersPage = () => {
   const getStatusColor = (status: string, shipdayStatus?: string, orderType?: string) => {
     // Check if order is actually completed via shipday or status
     if (status === 'picked_up' || shipdayStatus === 'delivered' || shipdayStatus === 'picked_up') {
-      return "bg-gray-100 text-gray-800";
+      return "bg-purple-100 text-purple-800";
     }
 
     switch (status) {
       case "pending": return "bg-yellow-100 text-yellow-800";
+      case "cooking": return "bg-orange-100 text-orange-800";
       case "processing": return "bg-blue-100 text-blue-800";
       case "ready": return "bg-green-100 text-green-800";
-      case "completed": return "bg-gray-100 text-gray-800";
+      case "completed": return "bg-green-100 text-green-800";
       case "cancelled": return "bg-red-100 text-red-800";
       default: return "bg-gray-100 text-gray-800";
     }
@@ -120,6 +121,7 @@ const OrdersPage = () => {
 
     switch (status) {
       case "pending": return <Clock className="h-4 w-4" />;
+      case "cooking": return <Pizza className="h-4 w-4" />;
       case "processing": return <Package className="h-4 w-4" />;
       case "ready": return <CheckCircle className="h-4 w-4" />;
       case "completed": return <CheckCircle className="h-4 w-4" />;
@@ -129,16 +131,23 @@ const OrdersPage = () => {
   };
 
   const getDisplayStatus = (status: string, shipdayStatus?: string, orderType?: string) => {
-    // Show "Picked Up" or "Delivered" based on status or shipday_status
+    // Show "We hope you enjoy!" for picked up orders
     if (status === 'picked_up' || shipdayStatus === 'picked_up') {
-      return 'Picked Up';
+      return 'We hope you enjoy!';
     }
+    // Show "Delivered!" for delivered orders
     if (shipdayStatus === 'delivered') {
-      return 'Delivered';
+      return 'Delivered!';
     }
 
-    // Otherwise show the main status
-    return status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown';
+    // Map statuses to customer-friendly messages
+    switch (status) {
+      case 'pending': return 'Preparing';
+      case 'cooking': return 'In the Oven';
+      case 'completed': return "It's Ready!";
+      case 'cancelled': return 'Cancelled';
+      default: return status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown';
+    }
   };
 
   const handleReorder = (order: any) => {

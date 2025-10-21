@@ -375,7 +375,7 @@ const CartSidebar: React.FC = () => {
 
   const handleContinueToCheckout = () => {
     setShowUpsellModal(false);
-    toggleCart();
+    closeCart(); // Close cart instead of toggle to avoid visual glitches
     navigate("/checkout");
   };
 

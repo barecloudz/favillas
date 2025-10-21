@@ -239,17 +239,48 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 
   // Get category-specific menu items
   const getCategoryItems = (categoryName: string): MenuItem[] => {
+    console.log('🔍 [Upsell Modal] getCategoryItems called for category:', categoryName);
+    console.log('🔍 [Upsell Modal] Total menuItems available:', menuItems?.length || 0);
+    console.log('🔍 [Upsell Modal] MenuItems array check:', Array.isArray(menuItems));
+
     if (!Array.isArray(menuItems) || !categoryName) {
+      console.log('❌ [Upsell Modal] Returning empty - invalid menuItems or categoryName');
       return [];
     }
-    return menuItems.filter(item =>
-      item &&
-      item.id &&
-      item.name &&
-      item.category === categoryName &&
-      item.is_available !== false && // Default to available if not set
-      item.price > 0 // Only show items with price > 0
-    ).slice(0, 6); // Limit to 6 items for better UX
+
+    // Log all items to see what we have
+    console.log('🔍 [Upsell Modal] All menu items:', menuItems.map(item => ({
+      id: item?.id,
+      name: item?.name,
+      category: item?.category,
+      price: item?.price,
+      is_available: item?.is_available,
+      matchesCategory: item?.category === categoryName
+    })));
+
+    const filtered = menuItems.filter(item => {
+      const hasItem = !!item;
+      const hasId = !!item?.id;
+      const hasName = !!item?.name;
+      const matchesCategory = item?.category === categoryName;
+      const isAvailable = item?.is_available !== false;
+      const hasValidPrice = item?.price > 0;
+
+      console.log(`🔍 [Upsell Modal] Filtering ${item?.name}:`, {
+        hasItem,
+        hasId,
+        hasName,
+        matchesCategory,
+        isAvailable,
+        hasValidPrice,
+        passes: hasItem && hasId && hasName && matchesCategory && isAvailable && hasValidPrice
+      });
+
+      return hasItem && hasId && hasName && matchesCategory && isAvailable && hasValidPrice;
+    }).slice(0, 6); // Limit to 6 items for better UX
+
+    console.log('✅ [Upsell Modal] Filtered items for', categoryName, ':', filtered.length, 'items');
+    return filtered;
   };
 
   // Get category icon
@@ -436,6 +467,15 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
                   const customImage = getCategoryImage(category.name);
                   const displayImage = customImage || category.image_url;
                   const colors = getCategoryColors(category.name);
+
+                  console.log('🔍 [Upsell Modal] Category card rendering:', {
+                    categoryName: category.name,
+                    categoryId: category.id,
+                    customImage,
+                    categoryImageUrl: category.image_url,
+                    displayImage,
+                    hasDisplayImage: !!displayImage
+                  });
 
                   return (
                     <Card

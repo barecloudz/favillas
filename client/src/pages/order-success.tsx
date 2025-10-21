@@ -412,10 +412,32 @@ const OrderSuccessPage = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending": return "bg-yellow-100 text-yellow-800";
+      case "cooking": return "bg-orange-100 text-orange-800";
       case "processing": return "bg-blue-100 text-blue-800";
       case "ready": return "bg-green-100 text-green-800";
-      case "completed": return "bg-gray-100 text-gray-800";
+      case "completed": return "bg-green-100 text-green-800";
+      case "picked_up": return "bg-purple-100 text-purple-800";
       default: return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getDisplayStatus = (status: string, shipdayStatus?: string) => {
+    // Show "We hope you enjoy!" for picked up orders
+    if (status === 'picked_up' || shipdayStatus === 'picked_up') {
+      return 'We hope you enjoy!';
+    }
+    // Show "Delivered!" for delivered orders
+    if (shipdayStatus === 'delivered') {
+      return 'Delivered!';
+    }
+
+    // Map statuses to customer-friendly messages
+    switch (status) {
+      case 'pending': return 'Preparing';
+      case 'cooking': return 'In the Oven';
+      case 'completed': return "It's Ready!";
+      case 'cancelled': return 'Cancelled';
+      default: return status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown';
     }
   };
 
@@ -584,7 +606,7 @@ Thank you for choosing Favilla's NY Pizza!
                     <span>Order #{orderId}</span>
                     {order && order.status && (
                       <Badge className={getStatusColor(order.status)}>
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        {getDisplayStatus(order.status, order.shipday_status)}
                       </Badge>
                     )}
                   </CardTitle>
