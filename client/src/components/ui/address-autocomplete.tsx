@@ -36,8 +36,6 @@ const AddressForm = ({
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [zipCode, setZipCode] = useState("");
-  const [autocompleteInstance, setAutocompleteInstance] = useState<any>(null);
-  const streetInputRef = useRef<HTMLInputElement>(null);
 
   // Parse incoming address value and populate individual fields - only on initial load
   const [hasInitialized, setHasInitialized] = useState(false);
@@ -91,191 +89,6 @@ const AddressForm = ({
       setHasInitialized(false);
     }
   }, [value, hasInitialized]);
-
-  // Initialize Google Places Autocomplete Element
-  useEffect(() => {
-    const initializeAutocomplete = () => {
-      if (!streetInputRef.current || !window.google?.maps?.places?.PlaceAutocompleteElement) {
-        console.log('Google Maps API not loaded yet');
-        return;
-      }
-
-      try {
-        const autocompleteElement = new window.google.maps.places.PlaceAutocompleteElement({
-          componentRestrictions: { country: 'us' },
-          requestedLanguage: 'en',
-          requestedRegion: 'us'
-        });
-
-        autocompleteElement.id = 'places-autocomplete';
-
-        // Style the autocomplete element to match our input
-        autocompleteElement.style.width = '100%';
-        autocompleteElement.style.height = '40px';
-        autocompleteElement.style.border = '1px solid #d1d5db';
-        autocompleteElement.style.borderRadius = '6px';
-        autocompleteElement.style.padding = '8px 12px';
-        autocompleteElement.style.fontSize = '14px';
-        autocompleteElement.style.outline = 'none';
-        autocompleteElement.placeholder = 'Start typing your address...';
-
-        // Replace the input with the autocomplete element
-        if (streetInputRef.current?.parentNode) {
-          streetInputRef.current.parentNode.insertBefore(autocompleteElement, streetInputRef.current);
-          streetInputRef.current.style.display = 'none';
-        }
-
-        autocompleteElement.addEventListener('gmp-placeselect', (event: any) => {
-          const place = event.place;
-
-          if (!place.addressComponents) {
-            console.warn('No address components found');
-            return;
-          }
-
-          // Parse Google Places response
-          let streetNumber = '';
-          let route = '';
-          let locality = '';
-          let administrativeAreaLevel1 = '';
-          let postalCode = '';
-          let coordinates = null;
-
-          place.addressComponents.forEach((component: any) => {
-            const componentType = component.types[0];
-
-            switch (componentType) {
-              case 'street_number':
-                streetNumber = component.longText;
-                break;
-              case 'route':
-                route = component.longText;
-                break;
-              case 'locality':
-                locality = component.longText;
-                break;
-              case 'administrative_area_level_1':
-                administrativeAreaLevel1 = component.shortText;
-                break;
-              case 'postal_code':
-                postalCode = component.longText;
-                break;
-            }
-          });
-
-          // Get coordinates if available
-          if (place.location) {
-            coordinates = {
-              lat: place.location.lat(),
-              lng: place.location.lng()
-            };
-          }
-
-          // Combine street number and route
-          const fullStreet = [streetNumber, route].filter(Boolean).join(' ');
-
-          // Update state
-          setStreet(fullStreet);
-          setCity(locality);
-          setState(administrativeAreaLevel1);
-          setZipCode(postalCode);
-
-          // Build full address
-          const fullAddress = [fullStreet, locality, administrativeAreaLevel1, postalCode]
-            .filter(Boolean)
-            .join(', ');
-
-          onChange(fullAddress);
-
-          // Call onAddressSelect with coordinates
-          if (onAddressSelect && fullStreet && locality && administrativeAreaLevel1 && postalCode) {
-            onAddressSelect({
-              fullAddress,
-              street: fullStreet,
-              city: locality,
-              state: administrativeAreaLevel1,
-              zipCode: postalCode,
-              latitude: coordinates?.lat,
-              longitude: coordinates?.lng
-            });
-          }
-
-          console.log('✅ Google Places address selected:', {
-            street: fullStreet,
-            city: locality,
-            state: administrativeAreaLevel1,
-            zipCode: postalCode,
-            coordinates
-          });
-        });
-
-        setAutocompleteInstance(autocompleteElement);
-        console.log('✅ Google Places PlaceAutocompleteElement initialized');
-      } catch (error) {
-        console.error('Failed to initialize Google Places PlaceAutocompleteElement:', error);
-        // Fallback to regular input if new API fails
-        if (streetInputRef.current) {
-          streetInputRef.current.style.display = 'block';
-        }
-      }
-    };
-
-    // Check if Google Maps is already loaded
-    if (window.google?.maps?.places?.PlaceAutocompleteElement) {
-      initializeAutocomplete();
-    } else {
-      // Wait for Google Maps to load
-      const checkGoogle = setInterval(() => {
-        if (window.google?.maps?.places?.PlaceAutocompleteElement) {
-          clearInterval(checkGoogle);
-          initializeAutocomplete();
-        }
-      }, 100);
-
-      // Clean up interval after 10 seconds
-      setTimeout(() => clearInterval(checkGoogle), 10000);
-    }
-
-    // Cleanup
-    return () => {
-      if (autocompleteInstance && autocompleteInstance.remove) {
-        autocompleteInstance.remove();
-      }
-    };
-  }, []); // Run only once on mount
-
-  // Load Google Maps API script
-  useEffect(() => {
-    const loadGoogleMapsScript = () => {
-      // Check if script is already loaded
-      if (window.google?.maps?.places) {
-        return;
-      }
-
-      const existingScript = document.querySelector('#google-maps-script');
-      if (existingScript) {
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.id = 'google-maps-script';
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
-      script.async = true;
-      script.defer = true;
-
-      script.onload = () => {
-        console.log('✅ Google Maps API loaded');
-      };
-
-      script.onerror = () => {
-        console.error('❌ Failed to load Google Maps API');
-      };
-
-      document.head.appendChild(script);
-    };
-
-    loadGoogleMapsScript();
-  }, []);
 
   const handleAddressChange = (field: string, newValue: string) => {
     let updatedStreet = street;
@@ -337,10 +150,9 @@ const AddressForm = ({
             Street Address *
           </Label>
           <Input
-            ref={streetInputRef}
             id="street-address"
             type="text"
-            placeholder="Start typing your address..."
+            placeholder="123 Main Street"
             value={street}
             onChange={(e) => handleAddressChange('street', e.target.value)}
             className={cn(
