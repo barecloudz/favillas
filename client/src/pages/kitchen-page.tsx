@@ -506,7 +506,10 @@ const KitchenPage = () => {
                     {user?.firstName} {user?.lastName}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setLocation('/')}>
+                  <DropdownMenuItem onClick={() => {
+                    // Use window.location for more reliable navigation
+                    window.location.href = '/';
+                  }}>
                     <Home className="mr-2 h-4 w-4" />
                     <span>Home</span>
                   </DropdownMenuItem>
