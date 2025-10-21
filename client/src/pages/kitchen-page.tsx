@@ -855,14 +855,20 @@ const KitchenPage = () => {
                               {/* Display detailed choices and addons */}
                               {item.options && Array.isArray(item.options) && item.options.length > 0 && (
                                 <div className="text-sm text-gray-600 space-y-1">
-                                  {item.options.map((option: any, idx: number) => (
-                                    <div key={idx} className="flex justify-between items-center">
-                                      <span>{option.groupName}: {option.itemName}</span>
-                                      {option.price && option.price > 0 && (
-                                        <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
-                                      )}
-                                    </div>
-                                  ))}
+                                  {item.options.map((option: any, idx: number) => {
+                                    // Don't show price for required size selections (it's the base price, not an add-on)
+                                    const isSize = option.groupName?.toLowerCase().includes('size');
+                                    const showPrice = option.price && option.price > 0 && !isSize;
+
+                                    return (
+                                      <div key={idx} className="flex justify-between items-center">
+                                        <span>{option.groupName}: {option.itemName}</span>
+                                        {showPrice && (
+                                          <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               )}
 
@@ -1058,14 +1064,20 @@ const KitchenPage = () => {
                         {/* Display detailed choices and addons */}
                         {item.options && Array.isArray(item.options) && item.options.length > 0 && (
                           <div className="text-sm text-gray-600 space-y-1 mt-1">
-                            {item.options.map((option: any, idx: number) => (
-                              <div key={idx} className="flex justify-between items-center">
-                                <span>{option.groupName}: {option.itemName}</span>
-                                {option.price && option.price > 0 && (
-                                  <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
-                                )}
-                              </div>
-                            ))}
+                            {item.options.map((option: any, idx: number) => {
+                              // Don't show price for required size selections (it's the base price, not an add-on)
+                              const isSize = option.groupName?.toLowerCase().includes('size');
+                              const showPrice = option.price && option.price > 0 && !isSize;
+
+                              return (
+                                <div key={idx} className="flex justify-between items-center">
+                                  <span>{option.groupName}: {option.itemName}</span>
+                                  {showPrice && (
+                                    <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                         {item.specialInstructions && (

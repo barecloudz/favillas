@@ -136,7 +136,7 @@ function formatCustomerReceipt(order: OrderPrintData): string {
     // Calculate total price including options
     let optionsPrice = 0;
     let size = '';
-    let addons: Array<{name: string, price: string}> = [];
+    let addons: Array<{name: string, price: string, isSize?: boolean}> = [];
 
     if (parsedOptions && Array.isArray(parsedOptions)) {
       parsedOptions.forEach((opt: any) => {
@@ -148,12 +148,12 @@ function formatCustomerReceipt(order: OrderPrintData): string {
           optionsPrice += parseFloat(opt.price);
         }
 
-        // Check if this is a size option
+        // Check if this is a size option (don't show price for sizes - it's the base price)
         if (groupName.includes('size')) {
           size = itemNameOpt;
         } else if (itemNameOpt) {
-          // This is an add-on
-          addons.push({ name: itemNameOpt, price: price });
+          // This is an add-on (but don't include price if it's a size-related option)
+          addons.push({ name: itemNameOpt, price: price, isSize: false });
         }
       });
     } else if (parsedOptions && typeof parsedOptions === 'object') {
@@ -162,9 +162,9 @@ function formatCustomerReceipt(order: OrderPrintData): string {
         if (key.toLowerCase().includes('size') && typeof value === 'string') {
           size = value;
         } else if (value && Array.isArray(value)) {
-          value.forEach(v => addons.push({ name: v, price: '0' }));
+          value.forEach(v => addons.push({ name: v, price: '0', isSize: false }));
         } else if (value && typeof value === 'string') {
-          addons.push({ name: value, price: '0' });
+          addons.push({ name: value, price: '0', isSize: false });
         }
       });
     }
@@ -182,7 +182,8 @@ function formatCustomerReceipt(order: OrderPrintData): string {
     if (addons.length > 0) {
       receipt += `   Add-ons:\n`;
       addons.forEach((addon) => {
-        const priceText = addon.price !== '0' ? ` (+$${parseFloat(addon.price).toFixed(2)})` : '';
+        // Only show price for true add-ons, not for required selections
+        const priceText = addon.price !== '0' && !addon.isSize ? ` (+$${parseFloat(addon.price).toFixed(2)})` : '';
         receipt += `   + ${addon.name}${priceText}\n`;
       });
     }
