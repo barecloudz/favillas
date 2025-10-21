@@ -1599,8 +1599,14 @@ export const handler: Handler = async (event, context) => {
                 console.log('📡 SHIPDAY: Response Body:', shipdayResult);
                 console.log('📡 SHIPDAY: Response OK?', shipdayResponse.ok);
 
+                // Add ShipDay response to debug object for visibility
+                enhancedOrder.shipdayDebug.apiResponseStatus = shipdayResponse.status;
+                enhancedOrder.shipdayDebug.apiResponseOk = shipdayResponse.ok;
+                enhancedOrder.shipdayDebug.apiResponseBody = shipdayResult;
+
                 if (shipdayResponse.ok) {
                   const parsedResult = JSON.parse(shipdayResult);
+                  enhancedOrder.shipdayDebug.parsedResponse = parsedResult;
                   if (parsedResult.success) {
                     await sql`
                       UPDATE orders
@@ -1609,12 +1615,18 @@ export const handler: Handler = async (event, context) => {
                     `;
                     console.log(`✅ Orders API: Scheduled ShipDay order created successfully for order #${newOrder.id}`);
                     console.log(`✅ ShipDay Order ID: ${parsedResult.orderId}`);
+                    enhancedOrder.shipdayDebug.success = true;
+                    enhancedOrder.shipdayDebug.shipdayOrderId = parsedResult.orderId;
                   } else {
                     console.error('❌ ShipDay API returned unsuccessful response:', parsedResult);
+                    enhancedOrder.shipdayDebug.success = false;
+                    enhancedOrder.shipdayDebug.failureReason = 'ShipDay API returned success: false';
                   }
                 } else {
                   console.error('❌ ShipDay API request failed with status:', shipdayResponse.status);
                   console.error('❌ Response body:', shipdayResult);
+                  enhancedOrder.shipdayDebug.success = false;
+                  enhancedOrder.shipdayDebug.failureReason = `HTTP ${shipdayResponse.status}`;
                 }
               } else {
                 console.error('❌ SHIPDAY: NO ADDRESS DATA - Cannot dispatch to ShipDay!');
