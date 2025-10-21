@@ -20,10 +20,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 // Auth helper functions
 export const signInWithGoogle = async () => {
-  const redirectUrl = window.location.hostname === 'localhost' 
-    ? `${window.location.origin}/auth/callback`
-    : 'https://favillasnypizza.netlify.app/auth/callback'
-    
+  const redirectUrl = `${window.location.origin}/auth/callback`
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {

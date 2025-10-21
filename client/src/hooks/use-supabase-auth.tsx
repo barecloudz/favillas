@@ -203,9 +203,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async () => {
     setLoading(true);
 
-    const redirectUrl = window.location.hostname === 'localhost'
-      ? `${window.location.origin}/auth/callback`
-      : 'https://favillasnypizza.netlify.app/auth/callback'
+    // Force sign out first to clear any stuck session
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+    } catch (error) {
+      console.warn('Failed to clear session:', error);
+    }
+
+    const redirectUrl = `${window.location.origin}/auth/callback`
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
