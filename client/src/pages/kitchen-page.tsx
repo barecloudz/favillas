@@ -855,14 +855,15 @@ const KitchenPage = () => {
                               {/* Display detailed choices and addons */}
                               {item.options && Array.isArray(item.options) && item.options.length > 0 && (
                                 <div className="text-sm text-gray-600 space-y-1">
-                                  {item.options.map((option: any, idx: number) => (
-                                    <div key={idx} className="flex justify-between items-center">
-                                      <span>{option.groupName}: {option.itemName}</span>
-                                      {option.price && option.price > 0 && (
-                                        <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
-                                      )}
-                                    </div>
-                                  ))}
+                                  {item.options.map((option: any, idx: number) => {
+                                    // Simplify group names for kitchen display
+                                    const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
+                                    return (
+                                      <div key={idx}>
+                                        <span>{groupName}: {option.itemName}</span>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               )}
 
@@ -1058,14 +1059,15 @@ const KitchenPage = () => {
                         {/* Display detailed choices and addons */}
                         {item.options && Array.isArray(item.options) && item.options.length > 0 && (
                           <div className="text-sm text-gray-600 space-y-1 mt-1">
-                            {item.options.map((option: any, idx: number) => (
-                              <div key={idx} className="flex justify-between items-center">
-                                <span>{option.groupName}: {option.itemName}</span>
-                                {option.price && option.price > 0 && (
-                                  <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
-                                )}
-                              </div>
-                            ))}
+                            {item.options.map((option: any, idx: number) => {
+                              // Simplify group names for kitchen display
+                              const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
+                              return (
+                                <div key={idx}>
+                                  <span>{groupName}: {option.itemName}</span>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                         {item.specialInstructions && (
