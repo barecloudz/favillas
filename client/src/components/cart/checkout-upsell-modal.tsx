@@ -250,6 +250,16 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
     console.log('[Upsell] Filtering for category:', categoryName);
     console.log('[Upsell] Available categories:', [...new Set(menuItems.map(i => i.category))]);
 
+    // Find drinks items for debugging
+    const drinksItems = menuItems.filter(i => (i.category || '').toLowerCase().includes('drink'));
+    console.log('[Upsell] Sample items for drinks:', drinksItems.slice(0, 2).map(i => ({
+      name: i.name,
+      category: i.category,
+      price: i.price,
+      priceType: typeof i.price,
+      is_available: i.is_available
+    })));
+
     const filtered = menuItems.filter(item => {
       if (!item || !item.id || !item.name) return false;
 
