@@ -1047,6 +1047,13 @@ export const handler: Handler = async (event, context) => {
           }
 
           console.log('✅ Orders API: Order created with ID:', newOrder.id);
+          console.log('🔍 DEBUG - Database returned order fields:', {
+            id: newOrder.id,
+            order_type: newOrder.order_type,
+            fulfillment_time: newOrder.fulfillment_time,
+            scheduled_time: newOrder.scheduled_time,
+            address_data: newOrder.address_data ? 'present' : 'missing'
+          });
 
           // Insert order items using validated items within the same transaction
           const orderItemsInserts = [];
@@ -1164,9 +1171,9 @@ export const handler: Handler = async (event, context) => {
             // The voucher code format is like "DISC0001" where the last 4 digits are the redemption ID
             const voucherCodeMatch = orderData.voucherCode.match(/([A-Z]+)(\d+)$/);
             if (!voucherCodeMatch) {
-              console.warn('⚠️ Orders API: Invalid voucher code format:', orderData.voucherCode);
-              return enhancedOrder;
-            }
+              console.warn('⚠️ Orders API: Invalid voucher code format - skipping voucher processing:', orderData.voucherCode);
+              // Don't return early - continue with order processing
+            } else {
 
             const redemptionId = parseInt(voucherCodeMatch[2]);
             console.log('🔍 Orders API: Extracted redemption ID:', redemptionId);
@@ -1277,6 +1284,7 @@ export const handler: Handler = async (event, context) => {
                 finalSupabaseUserId
               });
             }
+            } // Close else block for valid voucher code format
           } catch (voucherError) {
             console.error('❌ Orders API: Voucher processing failed:', voucherError);
             // Don't fail the order creation, just log the error
