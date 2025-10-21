@@ -119,7 +119,11 @@ function formatCustomerReceipt(order: OrderPrintData): string {
   order.items.forEach((item: any) => {
     const itemName = item.menuItem?.name || item.name || 'Item';
     const qty = item.quantity;
-    let basePrice = parseFloat(item.price || 0);
+
+    // IMPORTANT: item.price already includes ALL options (size, add-ons, etc.)
+    // The frontend calculates the total price and sends it to the backend
+    // We should NOT add option prices on top of item.price again
+    const itemPrice = parseFloat(item.price || 0);
 
     // Parse options if they're a JSON string
     let parsedOptions = item.options;
@@ -133,8 +137,7 @@ function formatCustomerReceipt(order: OrderPrintData): string {
       }
     }
 
-    // Calculate total price including options
-    let optionsPrice = 0;
+    // Extract size and add-ons for display (NOT for price calculation)
     let size = '';
     let addons: Array<{name: string, price: string}> = [];
 
@@ -143,10 +146,6 @@ function formatCustomerReceipt(order: OrderPrintData): string {
         const groupName = (opt.groupName || '').toLowerCase();
         const itemNameOpt = opt.itemName || opt.name || '';
         const price = opt.price || '0';
-
-        if (opt.price) {
-          optionsPrice += parseFloat(opt.price);
-        }
 
         // Check if this is a size option
         if (groupName.includes('size')) {
@@ -169,7 +168,8 @@ function formatCustomerReceipt(order: OrderPrintData): string {
       });
     }
 
-    const totalItemPrice = basePrice + optionsPrice;
+    // Use the item price as-is (it already includes all options)
+    const totalItemPrice = itemPrice;
 
     // Item name with size
     if (size) {
