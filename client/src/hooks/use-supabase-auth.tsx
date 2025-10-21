@@ -168,22 +168,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
 
         if (session) {
-          // FIXED: Fetch complete user profile from database instead of just using Supabase metadata
+          // Fetch complete user profile with timeout protection
+          let userProfile: MappedUser | null = null;
+
           try {
-            const completeProfile = await fetchUserProfile();
-            if (completeProfile) {
-              setUser(completeProfile);
-              console.log('✅ Auth state change: Loaded complete profile from database');
-            } else {
-              // Fallback to basic mapping if profile fetch fails
-              const mappedUser = mapSupabaseUser(session?.user || null);
-              setUser(mappedUser);
-              console.log('⚠️ Auth state change: Using basic Supabase metadata mapping');
-            }
-          } catch (profileError) {
-            console.warn('⚠️ Auth state change: Profile fetch failed, using basic mapping');
+            // Add 5 second timeout to prevent hanging
+            const profilePromise = fetchUserProfile();
+            const timeoutPromise = new Promise<null>((_, reject) =>
+              setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+            );
+
+            userProfile = await Promise.race([profilePromise, timeoutPromise]);
+          } catch (profileError: any) {
+            console.warn('⚠️ Auth state change: Profile fetch failed:', profileError.message);
+            userProfile = null;
+          }
+
+          // GUARANTEED fallback: Always set user, either from profile or Supabase metadata
+          if (userProfile) {
+            setUser(userProfile);
+            console.log('✅ Auth state change: Loaded complete profile from database');
+          } else {
             const mappedUser = mapSupabaseUser(session?.user || null);
             setUser(mappedUser);
+            console.log('⚠️ Auth state change: Using basic Supabase metadata mapping');
           }
         } else {
           setUser(null);
