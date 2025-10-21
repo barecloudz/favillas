@@ -75,6 +75,21 @@ const OrderSuccessPage = () => {
         });
       }
     } else if (paymentIntentParam) {
+      // CRITICAL: Check if this payment intent has already been processed FIRST
+      // This prevents duplicate orders even when useEffect re-runs due to auth state changes
+      const processedKey = `processed_${paymentIntentParam}`;
+      const alreadyProcessed = sessionStorage.getItem(processedKey);
+
+      if (alreadyProcessed) {
+        console.log('🛑 Payment intent already processed, skipping order creation:', paymentIntentParam);
+        setIsLoading(false);
+        return;
+      }
+
+      // Mark this payment intent as being processed immediately to prevent race conditions
+      sessionStorage.setItem(processedKey, 'processing');
+      console.log('🔒 Marked payment intent as processing:', paymentIntentParam);
+
       // New flow: payment succeeded, now create order from stored data
       console.log('💳 Payment intent detected, creating order from stored data');
 
@@ -137,8 +152,8 @@ const OrderSuccessPage = () => {
 
               // Clear pending order data only after successful creation
               sessionStorage.removeItem('pendingOrderData');
-              // Mark payment intent as processed AFTER successful order creation
-              sessionStorage.setItem(`processed_${paymentIntentParam}`, 'true');
+              // Mark payment intent as successfully processed (was marked as 'processing' earlier)
+              sessionStorage.setItem(processedKey, 'true');
               console.log('✅ Order created and cleared pending data from sessionStorage');
 
               // Clear cart immediately after successful order creation
@@ -187,6 +202,8 @@ const OrderSuccessPage = () => {
               }
             } catch (error) {
               console.error('💥 Error creating order:', error);
+              // Reset the processing flag on error so user can retry
+              sessionStorage.setItem(processedKey, 'error');
               toast({
                 title: "Payment Successful",
                 description: "Your payment was processed, but there was an issue creating your order. Please contact us.",
@@ -198,24 +215,8 @@ const OrderSuccessPage = () => {
             }
           };
 
-          // Only create order if we haven't already successfully created it
-          // Check for actual order ID or processed payment intent, not just the flag
-          if (!isCreatingOrder.current && !sessionStorage.getItem(`processed_${paymentIntentParam}`) && !orderId) {
-            isCreatingOrder.current = true;
-            createOrderAsync();
-          } else if (orderId || sessionStorage.getItem(`processed_${paymentIntentParam}`)) {
-            console.log('💡 Order already created (orderId exists or payment processed), skipping');
-            setIsLoading(false);
-          } else if (isCreatingOrder.current && !orderId) {
-            console.log('⚠️ Order creation in progress but may have stalled, will retry...');
-            // Reset the flag and try again if we don't have an orderId after 2 seconds
-            setTimeout(() => {
-              if (!orderId && !sessionStorage.getItem(`processed_${paymentIntentParam}`)) {
-                console.log('🔄 Retrying order creation...');
-                isCreatingOrder.current = false;
-              }
-            }, 2000);
-          }
+          // Create the order - the sessionStorage check at the top of this effect prevents duplicates
+          createOrderAsync();
         } catch (error) {
           console.error('❌ Error parsing pending order data:', error);
           setIsLoading(false);
