@@ -424,6 +424,8 @@ export const handler: Handler = async (event, context) => {
           createdAt: order.created_at, // Transform snake_case to camelCase
           processedAt: order.processed_at,
           completedAt: order.completed_at,
+          fulfillmentTime: order.fulfillment_time, // Transform snake_case to camelCase for kitchen display
+          scheduledTime: order.scheduled_time, // Transform snake_case to camelCase for kitchen display
           total: parseFloat(order.total || '0'),
           tax: parseFloat(order.tax || '0'),
           delivery_fee: parseFloat(order.delivery_fee || '0'),
@@ -558,6 +560,8 @@ export const handler: Handler = async (event, context) => {
               createdAt: order.created_at, // Transform snake_case to camelCase
               processedAt: order.processed_at,
               completedAt: order.completed_at,
+              fulfillmentTime: order.fulfillment_time, // Transform snake_case to camelCase for kitchen display
+              scheduledTime: order.scheduled_time, // Transform snake_case to camelCase for kitchen display
               total: parseFloat(order.total || '0'),
               tax: parseFloat(order.tax || '0'),
               delivery_fee: parseFloat(order.delivery_fee || '0'),
@@ -579,6 +583,8 @@ export const handler: Handler = async (event, context) => {
               createdAt: order.created_at, // Transform snake_case to camelCase
               processedAt: order.processed_at,
               completedAt: order.completed_at,
+              fulfillmentTime: order.fulfillment_time, // Transform snake_case to camelCase for kitchen display
+              scheduledTime: order.scheduled_time, // Transform snake_case to camelCase for kitchen display
               total: parseFloat(order.total || '0'),
               tax: parseFloat(order.tax || '0'),
               delivery_fee: parseFloat(order.delivery_fee || '0'),
@@ -1143,6 +1149,8 @@ export const handler: Handler = async (event, context) => {
           createdAt: newOrder.created_at, // Transform snake_case to camelCase
           processedAt: newOrder.processed_at,
           completedAt: newOrder.completed_at,
+          fulfillmentTime: newOrder.fulfillment_time, // Transform snake_case to camelCase for kitchen display
+          scheduledTime: newOrder.scheduled_time, // Transform snake_case to camelCase for kitchen display
           items: transformedItems,
           userContactInfo: userContactInfo,
           pointsEarned: 0 // Will be updated below if points are awarded
@@ -1386,8 +1394,168 @@ export const handler: Handler = async (event, context) => {
           });
         }
 
+        // SHIPDAY: For scheduled delivery orders, dispatch to ShipDay immediately (not when cooking starts)
+        // so ShipDay knows about the scheduled delivery time in advance
+        if (newOrder.order_type === 'delivery' && newOrder.fulfillment_time === 'scheduled' && process.env.SHIPDAY_API_KEY) {
+          console.log('📦 Orders API: Scheduled delivery order created - dispatching to ShipDay immediately for order', newOrder.id);
+
+          // Dispatch to ShipDay asynchronously (don't block order response)
+          setTimeout(async () => {
+            try {
+              // Parse address data
+              let addressData;
+              try {
+                addressData = typeof orderData.addressData === 'object' ? orderData.addressData : null;
+              } catch (e) {
+                console.error('❌ Failed to parse address_data:', e);
+                addressData = null;
+              }
+
+              if (addressData) {
+                // Get user contact info
+                let userContactInfo;
+                if (finalUserId) {
+                  const userResult = await sql`SELECT first_name, last_name, email, phone FROM users WHERE id = ${finalUserId}`;
+                  userContactInfo = userResult[0];
+                } else if (finalSupabaseUserId) {
+                  const userResult = await sql`SELECT first_name, last_name, email, phone FROM users WHERE supabase_user_id = ${finalSupabaseUserId}`;
+                  userContactInfo = userResult[0];
+                }
+
+                const customerName = userContactInfo?.first_name && userContactInfo?.last_name
+                  ? `${userContactInfo.first_name} ${userContactInfo.last_name}`.trim()
+                  : 'Customer';
+                const customerEmail = userContactInfo?.email || orderData.email || '';
+                const customerPhone = orderData.phone || userContactInfo?.phone || '';
+
+                // Format items for ShipDay
+                const formattedItems = transformedItems.map(item => {
+                  const itemName = item.name || 'Menu Item';
+                  const itemQuantity = parseInt(item.quantity || '1');
+                  const itemPrice = parseFloat(item.price || '0') / itemQuantity;
+
+                  let optionsText = '';
+                  try {
+                    const options = item.options;
+                    if (Array.isArray(options) && options.length > 0) {
+                      optionsText = ' (' + options.map(opt => opt.itemName || opt.name).join(', ') + ')';
+                    }
+                  } catch (e) {
+                    // Ignore parsing errors
+                  }
+
+                  return {
+                    name: itemName + optionsText,
+                    quantity: itemQuantity,
+                    unitPrice: itemPrice
+                  };
+                });
+
+                // Format scheduled delivery time
+                const scheduledDate = new Date(newOrder.scheduled_time);
+                const year = scheduledDate.getFullYear();
+                const month = String(scheduledDate.getMonth() + 1).padStart(2, '0');
+                const day = String(scheduledDate.getDate()).padStart(2, '0');
+                const expectedDeliveryDate = `${year}-${month}-${day}`;
+
+                const deliveryHours = String(scheduledDate.getHours()).padStart(2, '0');
+                const deliveryMinutes = String(scheduledDate.getMinutes()).padStart(2, '0');
+                const expectedDeliveryTime = `${deliveryHours}:${deliveryMinutes}`;
+
+                const pickupDate = new Date(scheduledDate.getTime() - 15 * 60 * 1000);
+                const pickupHours = String(pickupDate.getHours()).padStart(2, '0');
+                const pickupMinutes = String(pickupDate.getMinutes()).padStart(2, '0');
+                const expectedPickupTime = `${pickupHours}:${pickupMinutes}`;
+
+                const shipdayPayload = {
+                  orderItem: formattedItems,
+                  pickup: {
+                    address: {
+                      street: '123 Main St',
+                      city: 'Asheville',
+                      state: 'NC',
+                      zip: '28801',
+                      country: 'United States'
+                    },
+                    contactPerson: {
+                      name: 'Favillas NY Pizza',
+                      phone: '5551234567'
+                    }
+                  },
+                  dropoff: {
+                    address: {
+                      street: addressData.street || addressData.fullAddress,
+                      city: addressData.city,
+                      state: addressData.state,
+                      zip: addressData.zipCode,
+                      country: 'United States'
+                    },
+                    contactPerson: {
+                      name: customerName && customerName.trim() !== '' ? customerName.trim() : 'Customer',
+                      phone: customerPhone.replace(/[^\d]/g, ''),
+                      ...(customerEmail && { email: customerEmail })
+                    }
+                  },
+                  orderNumber: `FAV-${newOrder.id}`,
+                  totalOrderCost: parseFloat(newOrder.total),
+                  deliveryFee: deliveryFee,
+                  tip: tip,
+                  tax: parseFloat(newOrder.tax || 0),
+                  paymentMethod: 'credit_card',
+                  customerName: customerName && customerName.trim() !== '' ? customerName.trim() : 'Customer',
+                  customerPhoneNumber: customerPhone.replace(/[^\d]/g, ''),
+                  customerAddress: `${addressData.street || addressData.fullAddress}, ${addressData.city}, ${addressData.state} ${addressData.zipCode}`,
+                  ...(customerEmail && { customerEmail: customerEmail }),
+                  expectedDeliveryDate,
+                  expectedPickupTime,
+                  expectedDeliveryTime
+                };
+
+                console.log('📦 ShipDay: Sending scheduled order to ShipDay:', JSON.stringify(shipdayPayload, null, 2));
+
+                const shipdayResponse = await fetch('https://api.shipday.com/orders', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Basic ${process.env.SHIPDAY_API_KEY}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(shipdayPayload)
+                });
+
+                const shipdayResult = await shipdayResponse.text();
+                console.log('📦 ShipDay: Response Status:', shipdayResponse.status);
+                console.log('📦 ShipDay: Response Body:', shipdayResult);
+
+                if (shipdayResponse.ok) {
+                  const parsedResult = JSON.parse(shipdayResult);
+                  if (parsedResult.success) {
+                    await sql`
+                      UPDATE orders
+                      SET shipday_order_id = ${parsedResult.orderId}, shipday_status = 'scheduled'
+                      WHERE id = ${newOrder.id}
+                    `;
+                    console.log(`✅ Orders API: Scheduled ShipDay order created successfully for order #${newOrder.id}`);
+                    console.log(`✅ ShipDay Order ID: ${parsedResult.orderId}`);
+                  } else {
+                    console.error('❌ ShipDay API returned unsuccessful response:', parsedResult);
+                  }
+                } else {
+                  console.error('❌ ShipDay API request failed with status:', shipdayResponse.status);
+                  console.error('❌ Response body:', shipdayResult);
+                }
+              } else {
+                console.warn('⚠️ No address data available for scheduled ShipDay dispatch');
+              }
+            } catch (shipdayError) {
+              console.error('❌ ShipDay integration error for scheduled order:', shipdayError);
+            }
+          }, 100); // 100ms delay to ensure order response is sent first
+        }
+
         // ASYNC: Send email confirmation and print receipt (don't block order response)
-        // NOTE: ShipDay integration moved to status update (when kitchen clicks "Start Cooking")
+        // NOTE: ASAP delivery orders' ShipDay integration moved to status update (when kitchen clicks "Start Cooking")
+        // Scheduled delivery orders are sent to ShipDay immediately above
         setTimeout(async () => {
           try {
             // Auto-print order receipt to thermal printer
