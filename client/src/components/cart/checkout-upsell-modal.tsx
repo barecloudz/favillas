@@ -134,44 +134,9 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
     staleTime: 5 * 60 * 1000 // 5 minutes
   });
 
-  // Fetch menu items
-  const { data: menuItems = [] } = useQuery<MenuItem[]>({
+  // Fetch menu items (use same query as menu page - no transformation needed)
+  const { data: menuItems = [] } = useQuery({
     queryKey: ['/api/menu'],
-    queryFn: async () => {
-      const response = await fetch('/api/menu');
-      if (response.ok) {
-        const data = await response.json();
-        console.log('[Upsell] Raw API response sample:', data.slice(0, 2));
-        if (Array.isArray(data)) {
-          // Transform API data to match component interface
-          // Handle both camelCase and snake_case field names
-          return data.map((item: any) => {
-            console.log('[Upsell] Raw item before transform:', {
-              name: item.name,
-              basePrice: item.basePrice,
-              base_price: item.base_price,
-              price: item.price,
-              allKeys: Object.keys(item)
-            });
-
-            const price = parseFloat(item.basePrice || item.base_price || item.price || 0);
-            const isAvailable = item.isAvailable !== false && item.is_available !== false;
-
-            return {
-              id: item.id,
-              name: item.name,
-              description: item.description || '',
-              price: price,
-              category: item.category,
-              image_url: item.imageUrl || item.image_url,
-              is_available: isAvailable
-            };
-          });
-        }
-        return [];
-      }
-      return [];
-    },
     enabled: isOpen
   });
 
@@ -252,41 +217,25 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
   };
 
   // Get category-specific menu items
-  const getCategoryItems = (categoryName: string): MenuItem[] => {
+  const getCategoryItems = (categoryName: string): any[] => {
     if (!Array.isArray(menuItems) || !categoryName) {
-      console.log('[Upsell] No items or category:', { hasItems: Array.isArray(menuItems), itemCount: menuItems?.length, categoryName });
       return [];
     }
 
     // Case-insensitive category matching
     const categoryLower = categoryName.toLowerCase().trim();
 
-    // Log what we're working with
-    console.log('[Upsell] Filtering for category:', categoryName);
-    console.log('[Upsell] Available categories:', [...new Set(menuItems.map(i => i.category))]);
-
-    // Find drinks items for debugging
-    const drinksItems = menuItems.filter(i => (i.category || '').toLowerCase().includes('drink'));
-    console.log('[Upsell] Sample items for drinks:', drinksItems.slice(0, 2).map(i => ({
-      name: i.name,
-      category: i.category,
-      price: i.price,
-      priceType: typeof i.price,
-      is_available: i.is_available
-    })));
-
-    const filtered = menuItems.filter(item => {
+    const filtered = menuItems.filter((item: any) => {
       if (!item || !item.id || !item.name) return false;
 
       const itemCategoryLower = (item.category || '').toLowerCase().trim();
       const matchesCategory = itemCategoryLower === categoryLower;
-      const isAvailable = item.is_available !== false;
-      const hasValidPrice = typeof item.price === 'number' && item.price >= 0;
+      const isAvailable = item.isAvailable !== false; // Use isAvailable (camelCase)
+      const hasValidPrice = item.basePrice && parseFloat(item.basePrice) >= 0; // Use basePrice
 
       return matchesCategory && isAvailable && hasValidPrice;
     }).slice(0, 6); // Limit to 6 items for better UX
 
-    console.log('[Upsell] Found items:', filtered.length);
     return filtered;
   };
 
@@ -324,7 +273,7 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
   };
 
   // Handle adding item to cart
-  const handleAddItem = async (item: MenuItem, event: React.MouseEvent) => {
+  const handleAddItem = async (item: any, event: React.MouseEvent) => {
     try {
       setIsAddingItem(true);
 
@@ -339,10 +288,20 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
         return;
       }
 
+      // Parse price from basePrice (same as menu page does)
+      let price = 0;
+      if (item.basePrice) {
+        if (typeof item.basePrice === 'string') {
+          price = parseFloat(item.basePrice) || 0;
+        } else if (typeof item.basePrice === 'number') {
+          price = item.basePrice;
+        }
+      }
+
       const cartItem: CartItem = {
         id: item.id,
         name: item.name,
-        price: item.price || 0, // Default to 0 if price is undefined
+        price: price,
         quantity: 1,
         selectedOptions: {},
       };
@@ -555,9 +514,9 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
                       <div className="relative">
                         {/* Item image or placeholder */}
                         <div className="relative h-32 bg-gradient-to-br from-gray-100 to-gray-200">
-                          {item.image_url ? (
+                          {item.imageUrl ? (
                             <img
-                              src={item.image_url}
+                              src={item.imageUrl}
                               alt={item.name}
                               className="w-full h-32 object-cover"
                             />
@@ -572,12 +531,12 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
                           {/* Price badge */}
                           <div className="absolute top-3 right-3">
                             <Badge className="bg-green-500 hover:bg-green-500 text-white font-bold text-sm shadow-lg">
-                              ${item.price ? Number(item.price).toFixed(2) : '0.00'}
+                              ${item.basePrice ? Number(item.basePrice).toFixed(2) : '0.00'}
                             </Badge>
                           </div>
 
                           {/* Popular badge for some items */}
-                          {item.price && Number(item.price) < 5 && (
+                          {item.basePrice && Number(item.basePrice) < 5 && (
                             <div className="absolute top-3 left-3">
                               <Badge className="bg-orange-500 hover:bg-orange-500 text-white font-bold text-xs">
                                 POPULAR
