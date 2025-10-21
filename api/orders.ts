@@ -1179,7 +1179,18 @@ export const handler: Handler = async (event, context) => {
           scheduledTime: newOrder.scheduled_time, // Transform snake_case to camelCase for kitchen display
           items: transformedItems,
           userContactInfo: userContactInfo,
-          pointsEarned: 0 // Will be updated below if points are awarded
+          pointsEarned: 0, // Will be updated below if points are awarded
+          // DEBUG: Add ShipDay dispatch check info (visible in browser console)
+          shipdayDebug: {
+            checkPassed: newOrder.order_type === 'delivery' && newOrder.fulfillment_time === 'scheduled',
+            orderType: newOrder.order_type,
+            fulfillmentTime: newOrder.fulfillment_time,
+            scheduledTime: newOrder.scheduled_time,
+            hasAddressData: !!newOrder.address_data,
+            addressDataType: typeof newOrder.address_data,
+            hasApiKey: !!process.env.SHIPDAY_API_KEY,
+            willDispatch: (newOrder.order_type === 'delivery' && newOrder.fulfillment_time === 'scheduled' && !!process.env.SHIPDAY_API_KEY)
+          }
         };
 
         // Process voucher if provided - Fixed to use user_points_redemptions table
