@@ -23,6 +23,18 @@ export const FreeItemSelectionModal: React.FC<FreeItemSelectionModalProps> = ({
 }) => {
   const [selectedItem, setSelectedItem] = useState<any>(null);
 
+  const handleClose = () => {
+    if (!selectedItem) {
+      // Warn user if they haven't selected an item
+      const confirmClose = window.confirm(
+        "You haven't selected a free item yet!\n\nYour reward voucher is still active - you can select your free item anytime from the 'My Vouchers' tab on the Rewards page.\n\nAre you sure you want to close?"
+      );
+      if (!confirmClose) return;
+    }
+    setSelectedItem(null);
+    onClose();
+  };
+
   // Filter menu items by category
   const filteredItems = menuItems.filter(item => item.category === category);
 
@@ -41,7 +53,7 @@ export const FreeItemSelectionModal: React.FC<FreeItemSelectionModalProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl">
@@ -130,7 +142,7 @@ export const FreeItemSelectionModal: React.FC<FreeItemSelectionModalProps> = ({
 
         {/* Action Buttons */}
         <div className="flex justify-end space-x-2 pt-4 border-t">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={handleClose}>
             <X className="h-4 w-4 mr-2" />
             Cancel
           </Button>
