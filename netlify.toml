@@ -391,6 +391,12 @@
   to = "/.netlify/functions/payment-intent/[id]"
   status = 200
 
+# Promo codes validation endpoint
+[[redirects]]
+  from = "/api/promo-codes/validate"
+  to = "/.netlify/functions/promo-codes/validate"
+  status = 200
+
 # Storage setup endpoint
 [[redirects]]
   from = "/api/setup-storage"

@@ -746,6 +746,10 @@ const CheckoutPage = () => {
       scheduledTime: fulfillmentTime === "scheduled" ? scheduledTime : null,
       voucherCode: appliedVoucher?.voucher_code || null,
       voucherDiscount: totals.voucherDiscount || 0,
+      // Promo code data (different from vouchers - these are admin-created discount codes)
+      promoCode: appliedPromoCode?.code || null,
+      promoCodeId: appliedPromoCode?.id || null,
+      promoCodeDiscount: totals.discount || 0,
       orderMetadata: {
         subtotal: total,
         discount: totals.discount,

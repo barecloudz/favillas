@@ -1027,7 +1027,7 @@ export const handler: Handler = async (event, context) => {
             INSERT INTO orders (
               user_id, supabase_user_id, status, total, tax, delivery_fee, tip, order_type, payment_status,
               special_instructions, address, address_data, fulfillment_time, scheduled_time,
-              phone, customer_name, created_at
+              phone, customer_name, promo_code_id, promo_code_discount, created_at
             ) VALUES (
               ${finalUserId},
               ${finalSupabaseUserId},
@@ -1045,6 +1045,8 @@ export const handler: Handler = async (event, context) => {
               ${formattedScheduledTime},
               ${orderData.phone},
               ${orderData.customerName || null},
+              ${orderData.promoCodeId || null},
+              ${orderData.promoCodeDiscount || 0},
               NOW()
             ) RETURNING *
           `;
@@ -1091,6 +1093,22 @@ export const handler: Handler = async (event, context) => {
 
         const { newOrder, orderItemsInserts } = transactionResult;
         console.log('✅ Orders API: Atomic transaction completed successfully');
+
+        // Increment promo code usage if a promo code was used
+        if (orderData.promoCodeId) {
+          console.log('🎟️ Orders API: Incrementing promo code usage for ID:', orderData.promoCodeId);
+          try {
+            await sql`
+              UPDATE promo_codes
+              SET current_uses = current_uses + 1
+              WHERE id = ${orderData.promoCodeId}
+            `;
+            console.log('✅ Orders API: Promo code usage incremented successfully');
+          } catch (promoError) {
+            console.error('⚠️ Orders API: Failed to increment promo code usage:', promoError);
+            // Don't fail the order if promo code increment fails
+          }
+        }
 
         // Fetch the complete order with items and menu item details
         const orderItems = await sql`
