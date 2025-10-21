@@ -746,13 +746,37 @@ const RewardsPage = () => {
 
                             <Separator />
 
-                            <Button
-                              className="w-full h-12 text-lg font-bold bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
-                              onClick={() => navigate("/menu")}
-                            >
-                              <ShoppingCart className="h-5 w-5 mr-2 animate-bounce" />
-                              🛒 Use at Checkout
-                            </Button>
+                            {/* Check if this is a free item voucher that needs item selection */}
+                            {voucher.reward?.free_item_all_from_category && voucher.reward?.free_item_category ? (
+                              <div className="space-y-2">
+                                <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
+                                  <p className="text-sm font-medium text-blue-800 text-center">
+                                    ⚠️ Select your free item to use this voucher
+                                  </p>
+                                </div>
+                                <Button
+                                  className="w-full h-12 text-lg font-bold bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                                  onClick={() => {
+                                    setRedeemedReward(voucher.reward);
+                                    setShowFreeItemModal(true);
+                                  }}
+                                >
+                                  <Pizza className="h-5 w-5 mr-2 animate-bounce" />
+                                  🎁 Select Free Item
+                                </Button>
+                                <p className="text-xs text-gray-500 text-center">
+                                  Choose from: {voucher.reward.free_item_category}
+                                </p>
+                              </div>
+                            ) : (
+                              <Button
+                                className="w-full h-12 text-lg font-bold bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                                onClick={() => navigate("/menu")}
+                              >
+                                <ShoppingCart className="h-5 w-5 mr-2 animate-bounce" />
+                                🛒 Use at Checkout
+                              </Button>
+                            )}
                           </div>
                         </CardContent>
                       </Card>

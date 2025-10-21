@@ -2860,7 +2860,7 @@ const OrdersManagement = ({ orders, cateringData, onUpdateStatus }: any) => {
                         {item.notes && <p className="text-sm text-gray-600">{item.notes}</p>}
                       </div>
                       <div className="text-right">
-                        <p className="font-medium">{formatCurrency(item.basePrice)}</p>
+                        <p className="font-medium">{formatCurrency(parseFloat(item.price || 0))}</p>
                         <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
                       </div>
                     </div>

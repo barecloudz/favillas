@@ -858,9 +858,16 @@ const KitchenPage = () => {
                                   {item.options.map((option: any, idx: number) => {
                                     // Simplify group names for kitchen display
                                     const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
+                                    // Don't show price for required size selections (it's the base price, not an add-on)
+                                    const isSize = option.groupName?.toLowerCase().includes('size');
+                                    const showPrice = option.price && option.price > 0 && !isSize;
+
                                     return (
-                                      <div key={idx}>
+                                      <div key={idx} className="flex justify-between items-center">
                                         <span>{groupName}: {option.itemName}</span>
+                                        {showPrice && (
+                                          <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
+                                        )}
                                       </div>
                                     );
                                   })}
@@ -1062,9 +1069,16 @@ const KitchenPage = () => {
                             {item.options.map((option: any, idx: number) => {
                               // Simplify group names for kitchen display
                               const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
+                              // Don't show price for required size selections (it's the base price, not an add-on)
+                              const isSize = option.groupName?.toLowerCase().includes('size');
+                              const showPrice = option.price && option.price > 0 && !isSize;
+
                               return (
-                                <div key={idx}>
+                                <div key={idx} className="flex justify-between items-center">
                                   <span>{groupName}: {option.itemName}</span>
+                                  {showPrice && (
+                                    <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
+                                  )}
                                 </div>
                               );
                             })}

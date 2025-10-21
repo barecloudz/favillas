@@ -217,10 +217,11 @@ export const handler: Handler = async (event, context) => {
       }
     }
 
-    // Format customer name
-    const customerName = order.first_name && order.last_name
+    // Format customer name with priority: customer_name (from order) > user profile > email > Guest
+    const customerName = order.customer_name ||
+      (order.first_name && order.last_name
       ? `${order.first_name} ${order.last_name}`.trim()
-      : (order.email || 'Guest');
+      : (order.email || 'Guest'));
 
     // Get order items with menu item names
     const items = await sql`

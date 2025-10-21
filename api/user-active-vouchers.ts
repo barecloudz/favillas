@@ -280,6 +280,19 @@ export const handler: Handler = async (event, context) => {
         free_item_menu_id: voucher.free_item_menu_id,
         free_item_category: voucher.free_item_category,
         free_item_all_from_category: voucher.free_item_all_from_category,
+        // Include full reward object for re-opening item selection modal
+        reward: {
+          id: voucher.reward_id,
+          name: voucher.reward_name,
+          description: voucher.reward_description,
+          reward_type: voucher.reward_type,
+          discount: voucher.discount,
+          free_item: voucher.free_item,
+          free_item_menu_id: voucher.free_item_menu_id,
+          free_item_category: voucher.free_item_category,
+          free_item_all_from_category: voucher.free_item_all_from_category,
+          min_order_amount: voucher.min_order_amount
+        },
         // Calculated fields for this order
         calculated_discount: discountValue,
         is_applicable: isApplicable,
