@@ -133,8 +133,8 @@ function formatCustomerReceipt(order: OrderPrintData): string {
       }
     }
 
-    // Calculate total price including options
-    let optionsPrice = 0;
+    // Extract size and add-ons for display (NOT for price calculation)
+    // The item.price already includes all option prices
     let size = '';
     let addons: Array<{name: string, price: string, isSize?: boolean}> = [];
 
@@ -143,10 +143,6 @@ function formatCustomerReceipt(order: OrderPrintData): string {
         const groupName = (opt.groupName || '').toLowerCase();
         const itemNameOpt = opt.itemName || opt.name || '';
         const price = opt.price || '0';
-
-        if (opt.price) {
-          optionsPrice += parseFloat(opt.price);
-        }
 
         // Check if this is a size option (don't show price for sizes - it's the base price)
         if (groupName.includes('size')) {
@@ -169,7 +165,8 @@ function formatCustomerReceipt(order: OrderPrintData): string {
       });
     }
 
-    const totalItemPrice = basePrice + optionsPrice;
+    // Use the item price as-is (it already includes all options)
+    const totalItemPrice = basePrice;
 
     // Item name with size
     if (size) {

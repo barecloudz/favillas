@@ -827,8 +827,18 @@ const CheckoutPage = () => {
                               {/* Show add-ons */}
                               {item.options && item.options.length > 0 && (
                                 <span className="block">
-                                  Add-ons: {item.options.map(opt => opt.name).join(', ')}
-                                  {` (+$${item.options.reduce((sum, opt) => sum + opt.price, 0).toFixed(2)})`}
+                                  {item.options.map((opt, idx) => {
+                                    // Don't show sizes in add-ons list or price calculation
+                                    const isSize = opt.groupName?.toLowerCase().includes('size');
+                                    return isSize ? null : `${opt.itemName || opt.name}`;
+                                  }).filter(Boolean).join(', ') || 'No add-ons'}
+                                  {(() => {
+                                    // Calculate add-on price excluding sizes
+                                    const addOnPrice = item.options
+                                      .filter(opt => !opt.groupName?.toLowerCase().includes('size'))
+                                      .reduce((sum, opt) => sum + (opt.price || 0), 0);
+                                    return addOnPrice > 0 ? ` (+$${addOnPrice.toFixed(2)})` : '';
+                                  })()}
                                 </span>
                               )}
                               {item.specialInstructions && (
