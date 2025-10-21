@@ -235,7 +235,7 @@ const OrderSuccessPage = () => {
       console.warn('⚠️ No order ID or payment intent found, redirecting to home');
       navigate("/");
     }
-  }, [navigate, user, cartCleared, clearCart, toast, orderId]);
+  }, [navigate, user, cartCleared, clearCart, toast]);
 
   // Add timeout to prevent infinite loading and handle guest users
   useEffect(() => {
