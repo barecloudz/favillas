@@ -79,32 +79,32 @@ export const handler: Handler = async (event, context) => {
       
       await sql.begin(async (sql) => {
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('pause_enabled', ${data.isPaused ? 'true' : 'false'})
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('pause_enabled', ${data.isPaused ? 'true' : 'false'}, 'Pause Services Enabled')
           ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('pause_message', ${data.pauseMessage || 'We are temporarily closed. Please check back later.'})
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('pause_message', ${data.pauseMessage || 'We are temporarily closed. Please check back later.'}, 'Pause Message')
           ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('pause_start_time', ${data.pauseStartTime || ''})
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('pause_start_time', ${data.pauseStartTime || ''}, 'Pause Start Time')
           ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('pause_end_time', ${data.pauseEndTime || ''})
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('pause_end_time', ${data.pauseEndTime || ''}, 'Pause End Time')
           ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('pause_reason', ${data.pauseReason || 'maintenance'})
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('pause_reason', ${data.pauseReason || 'maintenance'}, 'Pause Reason')
           ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
         `;
       });

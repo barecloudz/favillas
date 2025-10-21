@@ -109,32 +109,32 @@ export const handler: Handler = async (event, context) => {
       await sql.begin(async (sql) => {
         // Update vacation mode settings
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('vacation_enabled', ${data.isEnabled ? 'true' : 'false'})
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('vacation_enabled', ${data.isEnabled ? 'true' : 'false'}, 'Vacation Mode Enabled')
           ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('vacation_start_date', ${data.startDate || ''})
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('vacation_start_date', ${data.startDate || ''}, 'Vacation Start Date')
           ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('vacation_end_date', ${data.endDate || ''})
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('vacation_end_date', ${data.endDate || ''}, 'Vacation End Date')
           ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('vacation_message', ${data.message || 'We are currently on vacation and will be back soon. Thank you for your patience!'})
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('vacation_message', ${data.message || 'We are currently on vacation and will be back soon. Thank you for your patience!'}, 'Vacation Message')
           ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
         `;
 
         await sql`
-          INSERT INTO system_settings (setting_key, setting_value)
-          VALUES ('vacation_reason', ${data.reason || ''})
+          INSERT INTO system_settings (setting_key, setting_value, display_name)
+          VALUES ('vacation_reason', ${data.reason || ''}, 'Vacation Reason')
           ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
         `;
       });
