@@ -143,15 +143,21 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
         const data = await response.json();
         if (Array.isArray(data)) {
           // Transform API data to match component interface
-          return data.map((item: any) => ({
-            id: item.id,
-            name: item.name,
-            description: item.description || '',
-            price: parseFloat(item.basePrice) || 0,
-            category: item.category,
-            image_url: item.imageUrl || item.image_url,
-            is_available: item.isAvailable !== false
-          }));
+          // Handle both camelCase and snake_case field names
+          return data.map((item: any) => {
+            const price = parseFloat(item.basePrice || item.base_price || item.price || 0);
+            const isAvailable = item.isAvailable !== false && item.is_available !== false;
+
+            return {
+              id: item.id,
+              name: item.name,
+              description: item.description || '',
+              price: price,
+              category: item.category,
+              image_url: item.imageUrl || item.image_url,
+              is_available: isAvailable
+            };
+          });
         }
         return [];
       }
