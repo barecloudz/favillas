@@ -1396,36 +1396,65 @@ export const handler: Handler = async (event, context) => {
 
         // SHIPDAY: For scheduled delivery orders, dispatch to ShipDay immediately (not when cooking starts)
         // so ShipDay knows about the scheduled delivery time in advance
+        console.log('🔍 SHIPDAY CHECK - Order details:', {
+          orderId: newOrder.id,
+          orderType: newOrder.order_type,
+          fulfillmentTime: newOrder.fulfillment_time,
+          scheduledTime: newOrder.scheduled_time,
+          hasAddressData: !!newOrder.address_data,
+          addressDataType: typeof newOrder.address_data,
+          addressDataRaw: newOrder.address_data
+        });
+
         if (newOrder.order_type === 'delivery' && newOrder.fulfillment_time === 'scheduled') {
+          console.log('✅ SHIPDAY: Scheduled delivery order detected! Order #', newOrder.id);
+
           if (!process.env.SHIPDAY_API_KEY) {
-            console.error('❌ Orders API: SHIPDAY_API_KEY not configured - cannot dispatch scheduled delivery order to ShipDay for order', newOrder.id);
+            console.error('❌ SHIPDAY: SHIPDAY_API_KEY not configured - cannot dispatch scheduled delivery order to ShipDay for order', newOrder.id);
           } else {
-            console.log('📦 Orders API: Scheduled delivery order created - dispatching to ShipDay immediately for order', newOrder.id);
+            console.log('✅ SHIPDAY: API key found, starting dispatch process for order', newOrder.id);
 
           // Dispatch to ShipDay asynchronously (don't block order response)
           setTimeout(async () => {
             try {
+              console.log('🚀 SHIPDAY: Inside setTimeout for order', newOrder.id);
+
               // Parse address data
               let addressData;
               try {
+                console.log('📍 SHIPDAY: Parsing address_data...', {
+                  type: typeof newOrder.address_data,
+                  raw: newOrder.address_data
+                });
+
                 // newOrder.address_data is a JSON string, parse it
                 addressData = typeof newOrder.address_data === 'string'
                   ? JSON.parse(newOrder.address_data)
                   : newOrder.address_data;
+
+                console.log('✅ SHIPDAY: Address data parsed successfully:', addressData);
               } catch (e) {
-                console.error('❌ Failed to parse address_data:', e);
+                console.error('❌ SHIPDAY: Failed to parse address_data:', e);
+                console.error('❌ SHIPDAY: Raw address_data was:', newOrder.address_data);
                 addressData = null;
               }
 
+              console.log('🔍 SHIPDAY: Address data check - addressData is', addressData ? 'VALID' : 'NULL/UNDEFINED');
+
               if (addressData) {
+                console.log('✅ SHIPDAY: Address data exists, proceeding with ShipDay dispatch...');
+
                 // Get user contact info
+                console.log('👤 SHIPDAY: Fetching customer contact info...', { finalUserId, finalSupabaseUserId });
                 let userContactInfo;
                 if (finalUserId) {
                   const userResult = await sql`SELECT first_name, last_name, email, phone FROM users WHERE id = ${finalUserId}`;
                   userContactInfo = userResult[0];
+                  console.log('👤 SHIPDAY: User info from DB (by userId):', userContactInfo);
                 } else if (finalSupabaseUserId) {
                   const userResult = await sql`SELECT first_name, last_name, email, phone FROM users WHERE supabase_user_id = ${finalSupabaseUserId}`;
                   userContactInfo = userResult[0];
+                  console.log('👤 SHIPDAY: User info from DB (by supabaseUserId):', userContactInfo);
                 }
 
                 const customerName = userContactInfo?.first_name && userContactInfo?.last_name
@@ -1433,6 +1462,14 @@ export const handler: Handler = async (event, context) => {
                   : 'Customer';
                 const customerEmail = userContactInfo?.email || orderData.email || '';
                 const customerPhone = orderData.phone || userContactInfo?.phone || '';
+
+                console.log('👤 SHIPDAY: Customer details compiled:', {
+                  customerName,
+                  customerEmail,
+                  customerPhone,
+                  phoneFromOrderData: orderData.phone,
+                  phoneFromUser: userContactInfo?.phone
+                });
 
                 // Format items for ShipDay
                 const formattedItems = transformedItems.map(item => {
@@ -1517,8 +1554,10 @@ export const handler: Handler = async (event, context) => {
                   expectedDeliveryTime
                 };
 
-                console.log('📦 ShipDay: Sending scheduled order to ShipDay:', JSON.stringify(shipdayPayload, null, 2));
+                console.log('📦 SHIPDAY: Final payload being sent to ShipDay API:');
+                console.log(JSON.stringify(shipdayPayload, null, 2));
 
+                console.log('🌐 SHIPDAY: Making POST request to https://api.shipday.com/orders...');
                 const shipdayResponse = await fetch('https://api.shipday.com/orders', {
                   method: 'POST',
                   headers: {
@@ -1529,9 +1568,11 @@ export const handler: Handler = async (event, context) => {
                   body: JSON.stringify(shipdayPayload)
                 });
 
+                console.log('📡 SHIPDAY: Received response from ShipDay API');
                 const shipdayResult = await shipdayResponse.text();
-                console.log('📦 ShipDay: Response Status:', shipdayResponse.status);
-                console.log('📦 ShipDay: Response Body:', shipdayResult);
+                console.log('📡 SHIPDAY: Response Status:', shipdayResponse.status);
+                console.log('📡 SHIPDAY: Response Body:', shipdayResult);
+                console.log('📡 SHIPDAY: Response OK?', shipdayResponse.ok);
 
                 if (shipdayResponse.ok) {
                   const parsedResult = JSON.parse(shipdayResult);
@@ -1551,13 +1592,22 @@ export const handler: Handler = async (event, context) => {
                   console.error('❌ Response body:', shipdayResult);
                 }
               } else {
-                console.warn('⚠️ No address data available for scheduled ShipDay dispatch');
+                console.error('❌ SHIPDAY: NO ADDRESS DATA - Cannot dispatch to ShipDay!');
+                console.error('❌ SHIPDAY: Order #', newOrder.id, 'will NOT be sent to ShipDay');
+                console.error('❌ SHIPDAY: address_data was:', newOrder.address_data);
               }
             } catch (shipdayError) {
-              console.error('❌ ShipDay integration error for scheduled order:', shipdayError);
+              console.error('❌ SHIPDAY: Integration error for scheduled order:', shipdayError);
+              console.error('❌ SHIPDAY: Error stack:', shipdayError.stack);
             }
           }, 100); // 100ms delay to ensure order response is sent first
           }
+        } else {
+          console.log('ℹ️ SHIPDAY: Order is NOT a scheduled delivery, skipping immediate ShipDay dispatch', {
+            orderId: newOrder.id,
+            orderType: newOrder.order_type,
+            fulfillmentTime: newOrder.fulfillment_time
+          });
         }
 
         // ASYNC: Send email confirmation and print receipt (don't block order response)
