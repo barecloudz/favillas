@@ -163,16 +163,30 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
   // Detect missing categories based on cart contents
   const getMissingCategories = (): Category[] => {
 
-    // Create fallback categories if API fails
-    const fallbackCategories: Category[] = [
-      { id: 1, name: 'Drinks', is_upsell_enabled: true },
-      { id: 2, name: 'Desserts', is_upsell_enabled: true },
-      { id: 3, name: 'Sides', is_upsell_enabled: true },
-      { id: 4, name: 'Appetizers', is_upsell_enabled: true },
-    ];
+    // If we have menu items but no categories from API, build categories from menu items
+    let workingCategories: Category[] = [];
 
-    // Use API categories or fallback
-    const workingCategories = Array.isArray(categories) && categories.length > 0 ? categories : fallbackCategories;
+    if (Array.isArray(categories) && categories.length > 0) {
+      // Use API categories
+      workingCategories = categories;
+    } else if (Array.isArray(menuItems) && menuItems.length > 0) {
+      // Build categories from menu items
+      const uniqueCategories = [...new Set(menuItems.map(item => item.category).filter(Boolean))];
+      workingCategories = uniqueCategories.map((cat, index) => ({
+        id: index + 1,
+        name: cat,
+        is_upsell_enabled: true
+      }));
+      console.log('[Upsell] Built categories from menu items:', workingCategories);
+    } else {
+      // Fallback categories
+      workingCategories = [
+        { id: 1, name: 'Drinks', is_upsell_enabled: true },
+        { id: 2, name: 'Desserts', is_upsell_enabled: true },
+        { id: 3, name: 'Sides', is_upsell_enabled: true },
+        { id: 4, name: 'Appetizers', is_upsell_enabled: true },
+      ];
+    }
 
     // Ensure we have arrays to work with
     if (!Array.isArray(workingCategories) || !Array.isArray(menuItems) || !Array.isArray(cartItems)) {
@@ -225,11 +239,16 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
   // Get category-specific menu items
   const getCategoryItems = (categoryName: string): MenuItem[] => {
     if (!Array.isArray(menuItems) || !categoryName) {
+      console.log('[Upsell] No items or category:', { hasItems: Array.isArray(menuItems), itemCount: menuItems?.length, categoryName });
       return [];
     }
 
     // Case-insensitive category matching
     const categoryLower = categoryName.toLowerCase().trim();
+
+    // Log what we're working with
+    console.log('[Upsell] Filtering for category:', categoryName);
+    console.log('[Upsell] Available categories:', [...new Set(menuItems.map(i => i.category))]);
 
     const filtered = menuItems.filter(item => {
       if (!item || !item.id || !item.name) return false;
@@ -237,11 +256,12 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
       const itemCategoryLower = (item.category || '').toLowerCase().trim();
       const matchesCategory = itemCategoryLower === categoryLower;
       const isAvailable = item.is_available !== false;
-      const hasValidPrice = item.price >= 0; // Allow $0 items
+      const hasValidPrice = typeof item.price === 'number' && item.price >= 0;
 
       return matchesCategory && isAvailable && hasValidPrice;
     }).slice(0, 6); // Limit to 6 items for better UX
 
+    console.log('[Upsell] Found items:', filtered.length);
     return filtered;
   };
 
