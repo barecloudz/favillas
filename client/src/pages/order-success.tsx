@@ -51,11 +51,6 @@ const OrderSuccessPage = () => {
     const paymentIntentParam = params.get('payment_intent');
     const paymentIntentClientSecretParam = params.get('payment_intent_client_secret');
 
-    console.log('🔍 Order Success Page params:', {
-      orderId: orderIdParam,
-      paymentIntent: paymentIntentParam,
-      paymentIntentClientSecret: !!paymentIntentClientSecretParam
-    });
 
     if (orderIdParam) {
       // Old flow: direct order ID
@@ -63,7 +58,6 @@ const OrderSuccessPage = () => {
 
       // Clear pending order data from sessionStorage since payment was successful
       sessionStorage.removeItem('pendingOrderData');
-      console.log('✅ Cleared pending order data from sessionStorage');
 
       // Clear cart immediately for guest users when we have an order ID
       if (!user && !cartCleared) {
@@ -81,31 +75,22 @@ const OrderSuccessPage = () => {
       const alreadyProcessed = sessionStorage.getItem(processedKey);
 
       if (alreadyProcessed) {
-        console.log('🛑 Payment intent already processed, skipping order creation:', paymentIntentParam);
         setIsLoading(false);
         return;
       }
 
       // Mark this payment intent as being processed immediately to prevent race conditions
       sessionStorage.setItem(processedKey, 'processing');
-      console.log('🔒 Marked payment intent as processing:', paymentIntentParam);
-
-      // New flow: payment succeeded, now create order from stored data
-      console.log('💳 Payment intent detected, creating order from stored data');
 
       // Get the pending order data from sessionStorage
       const pendingOrderDataStr = sessionStorage.getItem('pendingOrderData');
       if (pendingOrderDataStr) {
         try {
           const pendingOrderData = JSON.parse(pendingOrderDataStr);
-          console.log('📦 Creating order from stored data:', pendingOrderData);
 
           // Create the order now that payment has succeeded (only once)
           const createOrderAsync = async () => {
             try {
-              // Aggressively wait for authentication to be ready
-              console.log('🔑 Order creation: Waiting for authentication to be fully ready...');
-
               // SIMPLIFIED: Quick auth check without blocking
               let fetchedUserData = user || null;
 
@@ -116,14 +101,11 @@ const OrderSuccessPage = () => {
                   const userData = await userResponse.json();
                   if (userData && userData.email) {
                     fetchedUserData = userData;
-                    console.log('✅ User data fetched quickly:', userData.email);
                   }
                 } catch (userError) {
-                  console.log('⚠️ Quick auth check failed, proceeding anyway:', userError);
+                  console.warn('Quick auth check failed, proceeding anyway:', userError);
                 }
               }
-
-              console.log('🔑 Order creation: Final auth check before creating order');
 
               // Update order data to reflect successful payment (keep status as pending for kitchen display)
               const confirmedOrderData = {
@@ -132,15 +114,8 @@ const OrderSuccessPage = () => {
                 paymentStatus: "succeeded"
               };
 
-              console.log('🛒 Creating order with confirmed data:', {
-                hasUser: !!fetchedUserData,
-                userEmail: fetchedUserData?.email,
-                orderData: confirmedOrderData
-              });
-
               const response = await apiRequest('POST', '/api/orders', confirmedOrderData);
               const createdOrder = await response.json();
-              console.log('✅ Order created successfully:', createdOrder);
               setOrderId(createdOrder.id);
               setOrder(createdOrder);
 
@@ -154,7 +129,6 @@ const OrderSuccessPage = () => {
               sessionStorage.removeItem('pendingOrderData');
               // Mark payment intent as successfully processed (was marked as 'processing' earlier)
               sessionStorage.setItem(processedKey, 'true');
-              console.log('✅ Order created and cleared pending data from sessionStorage');
 
               // Clear cart immediately after successful order creation
               if (!cartCleared) {
@@ -175,28 +149,20 @@ const OrderSuccessPage = () => {
               if (user && createdOrder?.id) {
                 setTimeout(async () => {
                   try {
-                    console.log('🎯 Order Success: Ensuring points are awarded for Order', createdOrder.id);
                     const pointsResponse = await apiRequest('POST', '/api/award-points-for-order', {
                       orderId: createdOrder.id
                     });
                     const pointsResult = await pointsResponse.json();
 
-                    if (pointsResult.success) {
-                      if (pointsResult.alreadyAwarded) {
-                        console.log('✅ Order Success: Points already awarded for this order');
-                      } else {
-                        console.log('✅ Order Success: Points awarded:', pointsResult.pointsAwarded);
-                        // Show success message
-                        toast({
-                          title: "Points Earned!",
-                          description: `You earned ${pointsResult.pointsAwarded} points for this order!`,
-                        });
-                      }
-                      // Always refresh points display
+                    if (pointsResult.success && !pointsResult.alreadyAwarded) {
+                      toast({
+                        title: "Points Earned!",
+                        description: `You earned ${pointsResult.pointsAwarded} points for this order!`,
+                      });
                       queryClient.invalidateQueries({ queryKey: ['/api/user-rewards'] });
                     }
                   } catch (pointsError) {
-                    console.warn('⚠️ Order Success: Points award failed:', pointsError);
+                    console.warn('Points award failed:', pointsError);
                   }
                 }, 3000); // Wait 3 seconds after order creation to ensure it's fully processed
               }
@@ -278,7 +244,6 @@ const OrderSuccessPage = () => {
       if (storedOrder) {
         try {
           const parsedOrder = JSON.parse(storedOrder);
-          console.log('📝 Retrieved guest order from localStorage:', parsedOrder);
           setOrder(parsedOrder);
           setIsLoading(false);
 
@@ -302,14 +267,6 @@ const OrderSuccessPage = () => {
     if (orderData) {
       setOrder(orderData);
       setIsLoading(false);
-      console.log('📝 Order data received:', orderData);
-      console.log('🔍 Order debug info:', {
-        orderType: orderData.orderType,
-        order_type: orderData.order_type,
-        addressData: orderData.addressData,
-        address_data: orderData.address_data,
-        total: orderData.total
-      });
 
       // Only clear cart if the order is confirmed and we have order data and haven't cleared it yet
       // This ensures the cart is only cleared once after a successful order
@@ -322,28 +279,20 @@ const OrderSuccessPage = () => {
       if (user && orderData?.id) {
         setTimeout(async () => {
           try {
-            console.log('🎯 Order Success: Ensuring points are awarded for Order', orderData.id);
             const pointsResponse = await apiRequest('POST', '/api/award-points-for-order', {
               orderId: orderData.id
             });
             const pointsResult = await pointsResponse.json();
 
-            if (pointsResult.success) {
-              if (pointsResult.alreadyAwarded) {
-                console.log('✅ Order Success: Points already awarded for this order');
-              } else {
-                console.log('✅ Order Success: Points awarded:', pointsResult.pointsAwarded);
-                // Show success message
-                toast({
-                  title: "Points Earned!",
-                  description: `You earned ${pointsResult.pointsAwarded} points for this order!`,
-                });
-              }
-              // Refresh user rewards to show updated points
+            if (pointsResult.success && !pointsResult.alreadyAwarded) {
+              toast({
+                title: "Points Earned!",
+                description: `You earned ${pointsResult.pointsAwarded} points for this order!`,
+              });
               queryClient.invalidateQueries({ queryKey: ['/api/user-rewards'] });
             }
           } catch (pointsError) {
-            console.warn('⚠️ Order Success: Points award failed:', pointsError);
+            console.warn('Points award failed:', pointsError);
           }
         }, 3000); // 3 second delay to ensure order is fully processed
       }
@@ -652,14 +601,6 @@ Thank you for choosing Favilla's NY Pizza!
                                   {(() => {
                                     let options = item.options;
 
-                                    console.log('🔍 DEBUG: Processing item options:', {
-                                      itemName: item.name,
-                                      rawOptions: options,
-                                      optionsType: typeof options,
-                                      isArray: Array.isArray(options),
-                                      stringLength: typeof options === 'string' ? options.length : 'N/A'
-                                    });
-
                                     // If options is a string, try to parse it as JSON
                                     if (typeof options === 'string') {
                                       try {
@@ -667,15 +608,10 @@ Thank you for choosing Favilla's NY Pizza!
                                         if (options.startsWith('[') || options.startsWith('{')) {
                                           options = JSON.parse(options);
                                         } else {
-                                          // This might be corrupted data - log it and skip
-                                          console.warn('🚨 Corrupted options string detected:', options.substring(0, 50) + '...');
                                           return null; // Don't display corrupted options
                                         }
                                       } catch (e) {
-                                        console.warn('❌ Failed to parse options as JSON:', {
-                                          error: e.message,
-                                          optionsPreview: options.substring(0, 100)
-                                        });
+                                        console.warn('Failed to parse item options:', e.message);
                                         return null; // Don't display unparseable options
                                       }
                                     }
@@ -703,7 +639,6 @@ Thank you for choosing Favilla's NY Pizza!
                                     }
 
                                     // If we get here, options is not in a recognizable format
-                                    console.warn('🚨 Unrecognized options format:', options);
                                     return null;
                                   })()}
                                 </p>
@@ -728,21 +663,16 @@ Thank you for choosing Favilla's NY Pizza!
                         try {
                           if (order.addressData && typeof order.addressData === 'object') {
                             orderBreakdown = order.addressData.orderBreakdown;
-                            console.log('📊 Found orderBreakdown in addressData:', orderBreakdown);
                           } else if (order.address_data) {
                             // Handle both object and string formats
                             let addressDataObj = order.address_data;
                             if (typeof order.address_data === 'string') {
                               addressDataObj = JSON.parse(order.address_data);
-                              console.log('📊 Parsed address_data from JSON string:', addressDataObj);
                             }
                             orderBreakdown = addressDataObj.orderBreakdown;
-                            console.log('📊 Found orderBreakdown in address_data:', orderBreakdown);
-                          } else {
-                            console.log('⚠️ No address data found for order breakdown', { addressData: order.addressData, address_data: order.address_data });
                           }
                         } catch (e) {
-                          console.log('❌ Could not parse order breakdown:', e);
+                          console.warn('Could not parse order breakdown:', e);
                         }
 
                         const subtotal = orderBreakdown?.subtotal || parseFloat(order.total || 0) - parseFloat(order.tax || 0) - parseFloat(order.tip || 0) - parseFloat(order.deliveryFee || 0);

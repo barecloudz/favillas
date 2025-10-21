@@ -43,7 +43,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userData = await response.json();
 
       if (userData && (userData.id || userData.supabase_user_id)) {
-        console.log('📞 Fetched complete user profile:', userData);
         const mappedUser: MappedUser = {
           id: userData.id?.toString() || userData.supabase_user_id || '',
           email: userData.email || userData.username || '',
@@ -58,12 +57,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           isAdmin: userData.role === 'admin' || userData.role === 'super_admin' || userData.is_admin === true,
           isGoogleUser: !!userData.supabase_user_id
         };
-        console.log('🔍 Mapped user object:', {
-          role: mappedUser.role,
-          isAdmin: mappedUser.isAdmin,
-          rawRole: userData.role,
-          rawIsAdmin: userData.is_admin
-        });
         return mappedUser;
       }
     } catch (error) {
@@ -79,7 +72,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const updatedProfile = await fetchUserProfile();
       if (updatedProfile) {
         setUser(updatedProfile);
-        console.log('✅ User profile refreshed with contact info');
       }
     }
   };
@@ -120,12 +112,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setUser(completeProfile);
             } else {
               // No profile found - this might be a new user, try to create database record
-              console.log('🔍 No user profile found, attempting to create database record for new user');
 
               try {
                 const createResponse = await apiRequest('POST', '/api/create-current-user');
-                const createResult = await createResponse.json();
-                console.log('✅ Created new user record:', createResult);
+                await createResponse.json();
 
                 // Now try to fetch the profile again
                 const newProfile = await fetchUserProfile();
@@ -135,24 +125,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   // Still couldn't fetch, use basic mapping
                   const mappedUser = mapSupabaseUser(session?.user || null);
                   setUser(mappedUser);
-                  console.log('⚠️ Created user but still using basic mapping');
                 }
               } catch (createError) {
-                console.warn('⚠️ Failed to create user record:', createError);
+                console.warn('Failed to create user record:', createError);
                 // Fallback to basic mapping if user creation fails
                 const mappedUser = mapSupabaseUser(session?.user || null);
                 setUser(mappedUser);
-                console.log('⚠️ Fallback to basic Supabase user mapping');
               }
             }
           } catch (profileError) {
-            console.warn('⚠️ Failed to fetch complete profile, using basic mapping:', profileError);
+            console.warn('Failed to fetch complete profile, using basic mapping:', profileError);
             const mappedUser = mapSupabaseUser(session?.user || null);
             setUser(mappedUser);
           }
-        } else {
-          // No Supabase session found
-          console.log('ℹ️ No Supabase session found - user needs to log in');
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
@@ -164,7 +149,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('🔔 Auth state changed:', event, 'Session:', !!session);
         setSession(session);
 
         if (session) {
@@ -180,18 +164,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             userProfile = await Promise.race([profilePromise, timeoutPromise]);
           } catch (profileError: any) {
-            console.warn('⚠️ Auth state change: Profile fetch failed:', profileError.message);
             userProfile = null;
           }
 
           // GUARANTEED fallback: Always set user, either from profile or Supabase metadata
           if (userProfile) {
             setUser(userProfile);
-            console.log('✅ Auth state change: Loaded complete profile from database');
           } else {
             const mappedUser = mapSupabaseUser(session?.user || null);
             setUser(mappedUser);
-            console.log('⚠️ Auth state change: Using basic Supabase metadata mapping');
           }
         } else {
           setUser(null);
@@ -284,8 +265,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data.user) {
-        console.log('✅ Supabase authentication successful');
-
         // Note: Don't manually set session here - the auth state change listener will handle it
         // This prevents duplicate auth state changes
 
@@ -293,16 +272,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const completeProfile = await fetchUserProfile();
           if (completeProfile) {
-            console.log('✅ Complete user profile loaded from database');
             return completeProfile;
           }
         } catch (profileError) {
-          console.warn('⚠️ Failed to fetch complete profile during login:', profileError);
+          console.warn('Failed to fetch complete profile during login:', profileError);
         }
 
         // Fallback to basic user data from Supabase metadata
         const userMetadata = data.user.user_metadata || {};
-        console.log('⚠️ Using fallback user data from Supabase metadata');
 
         // Return user data in the expected format
         return {
@@ -347,7 +324,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: user.role === 'super_admin' ? 'admin' : user.role,
           isAdmin: true
         }));
-        console.log('💾 Saved admin session to localStorage');
       }
 
       toast({
@@ -368,8 +344,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const registerMutation = useMutation({
     mutationFn: async (credentials: any) => {
       // All registration now goes through Supabase
-      console.log('📧 Using Supabase registration...', credentials);
-
       if (!credentials.email) {
         throw new Error('Email is required for registration');
       }
@@ -385,8 +359,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: 'customer',
         marketingOptIn: credentials.marketingOptIn !== false
       };
-
-      console.log('📋 Registration data:', registrationData);
 
       const { data, error } = await supabase.auth.signUp({
         email: registrationData.email,
@@ -409,11 +381,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data.user) {
-        console.log('✅ Supabase registration successful');
-
         // If we have an immediate session (no email confirmation required)
         if (data.session) {
-          console.log('🔗 User has immediate session, creating database record');
 
           try {
             // Create the database user record immediately
@@ -427,15 +396,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               state: '',
               zip_code: ''
             });
-            console.log('✅ Database user record created successfully');
           } catch (apiError) {
-            console.log('⚠️ Database user creation failed, will be created on first login:', apiError);
+            console.warn('Database user creation failed, will be created on first login:', apiError);
           }
         }
 
         // Check if email confirmation is required
         if (!data.session && data.user && !data.user.email_confirmed_at) {
-          console.log('📧 Email confirmation required - database record will be created after confirmation');
           // Return a special indicator that email confirmation is needed
           return {
             id: data.user.id,
@@ -474,8 +441,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('Registration failed');
     },
     onSuccess: (user: SelectUser) => {
-      console.log('🔑 Legacy registration successful, updating auth state:', user);
-
       // Update query cache
       queryClient.setQueryData(["/api/user"], user);
 
@@ -536,19 +501,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Email confirmation function
   const confirmEmail = async (token: string): Promise<{ error?: any; data?: any }> => {
     try {
-      console.log('🔐 Attempting email confirmation with token:', token?.substring(0, 10) + '...');
-
       const { data, error } = await supabase.auth.verifyOtp({
         token_hash: token,
         type: 'signup'
       });
 
       if (error) {
-        console.error('❌ Email confirmation error:', error);
+        console.error('Email confirmation error:', error);
         return { error };
       }
-
-      console.log('✅ Email confirmation successful:', data);
 
       // Refresh user profile after successful confirmation
       await refreshUserProfile();
