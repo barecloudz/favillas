@@ -278,8 +278,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.user) {
         console.log('✅ Supabase authentication successful');
 
-        // Set the session first
-        setSession(data.session);
+        // Note: Don't manually set session here - the auth state change listener will handle it
+        // This prevents duplicate auth state changes
 
         // Fetch complete user profile which will create database record if needed
         try {

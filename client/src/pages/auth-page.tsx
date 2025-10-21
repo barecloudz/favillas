@@ -145,12 +145,12 @@ const AuthPage = () => {
     registerMutation.mutate(completeRegisterData);
   };
 
-  // Redirect if already logged in
+  // Redirect if already logged in (but not while mutations are pending)
   useEffect(() => {
-    if (user) {
+    if (user && !loginMutation.isPending && !registerMutation.isPending) {
       navigate("/");
     }
-  }, [user, navigate]);
+  }, [user, loginMutation.isPending, registerMutation.isPending, navigate]);
 
   return (
     <>
