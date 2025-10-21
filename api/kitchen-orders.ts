@@ -136,7 +136,10 @@ export const handler: Handler = async (event, context) => {
           pointsEarned: pointsEarned,
           customerName: order.first_name && order.last_name
             ? `${order.first_name} ${order.last_name}`.trim()
-            : 'Guest'
+            : 'Guest',
+          // Transform snake_case to camelCase for frontend
+          fulfillmentTime: order.fulfillment_time,
+          scheduledTime: order.scheduled_time
         };
       })
     );
