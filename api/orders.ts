@@ -1408,7 +1408,10 @@ export const handler: Handler = async (event, context) => {
               // Parse address data
               let addressData;
               try {
-                addressData = typeof orderData.addressData === 'object' ? orderData.addressData : null;
+                // newOrder.address_data is a JSON string, parse it
+                addressData = typeof newOrder.address_data === 'string'
+                  ? JSON.parse(newOrder.address_data)
+                  : newOrder.address_data;
               } catch (e) {
                 console.error('❌ Failed to parse address_data:', e);
                 addressData = null;
