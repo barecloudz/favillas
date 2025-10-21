@@ -714,20 +714,8 @@ const CheckoutPage = () => {
         };
       });
     
-    // Parse address for ShipDay if delivery order
-    let parsedAddressData = null;
-    if (orderType === "delivery" && address) {
-      const addressParts = address.split(',').map(part => part.trim());
-      if (addressParts.length >= 3) {
-        parsedAddressData = {
-          fullAddress: address,
-          street: addressParts[0] || '',
-          city: addressParts[1] || '',
-          state: addressParts[2] || '',
-          zipCode: addressParts[3] || ''
-        };
-      }
-    }
+    // Use structured address data from AddressForm component
+    // addressData state is already being set by handleAddressSelect
 
     // Store order data for after payment confirmation (don't create order yet)
     const pendingOrderData = {
@@ -740,7 +728,7 @@ const CheckoutPage = () => {
       paymentStatus: "pending", // Will be set to succeeded after payment confirmation
       specialInstructions,
       address: orderType === "delivery" ? address : "",
-      addressData: orderType === "delivery" ? parsedAddressData : null,
+      addressData: orderType === "delivery" ? addressData : null,
       phone,
       items: orderItems,
       fulfillmentTime,
