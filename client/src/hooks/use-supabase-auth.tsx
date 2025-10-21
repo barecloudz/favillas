@@ -105,43 +105,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session) {
           setSession(session);
 
-          // For Supabase users, fetch complete profile from database instead of just mapping metadata
-          try {
-            const completeProfile = await fetchUserProfile();
-            if (completeProfile) {
-              setUser(completeProfile);
-            } else {
-              // No profile found - this might be a new user, try to create database record
+          // IMMEDIATE: Set user from session metadata (no blocking)
+          const mappedUser = mapSupabaseUser(session?.user || null);
+          setUser(mappedUser);
+          setLoading(false); // User can interact immediately
 
+          // BACKGROUND: Fetch complete profile asynchronously
+          fetchUserProfile()
+            .then(completeProfile => {
+              if (completeProfile) {
+                // Update with enriched profile data
+                setUser(completeProfile);
+              }
+            })
+            .catch(async (profileError) => {
+              console.warn('Failed to fetch complete profile:', profileError);
+              // Try to create user record if profile doesn't exist
               try {
-                const createResponse = await apiRequest('POST', '/api/create-current-user');
-                await createResponse.json();
-
-                // Now try to fetch the profile again
+                await apiRequest('POST', '/api/create-current-user');
                 const newProfile = await fetchUserProfile();
                 if (newProfile) {
                   setUser(newProfile);
-                } else {
-                  // Still couldn't fetch, use basic mapping
-                  const mappedUser = mapSupabaseUser(session?.user || null);
-                  setUser(mappedUser);
                 }
               } catch (createError) {
                 console.warn('Failed to create user record:', createError);
-                // Fallback to basic mapping if user creation fails
-                const mappedUser = mapSupabaseUser(session?.user || null);
-                setUser(mappedUser);
+                // Keep using the mapped user from session metadata
               }
-            }
-          } catch (profileError) {
-            console.warn('Failed to fetch complete profile, using basic mapping:', profileError);
-            const mappedUser = mapSupabaseUser(session?.user || null);
-            setUser(mappedUser);
-          }
+            });
+        } else {
+          setLoading(false);
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
-      } finally {
         setLoading(false);
       }
     };
@@ -152,32 +147,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
 
         if (session) {
-          // Fetch complete user profile with timeout protection
-          let userProfile: MappedUser | null = null;
+          // IMMEDIATE: Set user from session metadata (no blocking)
+          const mappedUser = mapSupabaseUser(session?.user || null);
+          setUser(mappedUser);
+          setLoading(false); // User can interact immediately
 
-          try {
-            // Add 5 second timeout to prevent hanging
-            const profilePromise = fetchUserProfile();
-            const timeoutPromise = new Promise<null>((_, reject) =>
-              setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
-            );
-
-            userProfile = await Promise.race([profilePromise, timeoutPromise]);
-          } catch (profileError: any) {
-            userProfile = null;
-          }
-
-          // GUARANTEED fallback: Always set user, either from profile or Supabase metadata
-          if (userProfile) {
-            setUser(userProfile);
-          } else {
-            const mappedUser = mapSupabaseUser(session?.user || null);
-            setUser(mappedUser);
-          }
+          // BACKGROUND: Fetch complete profile asynchronously (no blocking, no timeout)
+          fetchUserProfile()
+            .then(completeProfile => {
+              if (completeProfile) {
+                // Update with enriched profile data
+                setUser(completeProfile);
+              }
+            })
+            .catch((profileError) => {
+              console.warn('Failed to fetch complete profile in auth listener:', profileError);
+              // Keep using the mapped user from session metadata
+            });
         } else {
           setUser(null);
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
