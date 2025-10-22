@@ -13,7 +13,7 @@ import { ShoppingCart, Plus, Minus } from "lucide-react";
 const PRIMARY_GROUPS = [
   'Size', 'Calzone Size', 'Stromboli Size',
   'Traditional Pizza Size', 'Specialty Gourmet Pizza Size',
-  'Wing Flavors', 'Garden Salad Size',
+  'Garden Salad Size',
   'Salad Dressing', 'Dressing Style',
   'Caesar Salad Dressing', 'Greek Salad Dressing',
   'Antipasto Salad Dressing', 'Chef Salad Dressing',
@@ -123,8 +123,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       g.name === 'Calzone Size' ||
       g.name === 'Stromboli Size' ||
       g.name === 'Traditional Pizza Size' ||
-      g.name === 'Specialty Gourmet Pizza Size' ||
-      g.name === 'Wing Flavors'
+      g.name === 'Specialty Gourmet Pizza Size'
     );
     if (!sizeGroup || !selectedChoices[sizeGroup.id]) return null;
 
@@ -335,17 +334,16 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       return;
     }
 
-    // Special validation for primary group selection (size/flavor)
+    // Special validation for primary group selection (size)
     const primaryGroup = itemChoiceGroups.find(group =>
       group.name === 'Size' ||
       group.name === 'Calzone Size' ||
       group.name === 'Stromboli Size' ||
       group.name === 'Traditional Pizza Size' ||
-      group.name === 'Specialty Gourmet Pizza Size' ||
-      group.name === 'Wing Flavors'
+      group.name === 'Specialty Gourmet Pizza Size'
     );
     if (primaryGroup && (!selectedChoices[primaryGroup.id] || selectedChoices[primaryGroup.id].length === 0)) {
-      alert('Please select a size/flavor before adding to cart.');
+      alert('Please select a size before adding to cart.');
       return;
     }
 
