@@ -23,8 +23,10 @@ import AddressForm from "@/components/ui/address-autocomplete";
 
 // Load Stripe outside of component to avoid recreating it on render
 if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
+  console.error('❌ VITE_STRIPE_PUBLIC_KEY is missing!');
   throw new Error("VITE_STRIPE_PUBLIC_KEY environment variable is required");
 }
+console.log('🔑 Initializing Stripe with public key:', import.meta.env.VITE_STRIPE_PUBLIC_KEY?.substring(0, 20) + '...');
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 // CheckoutForm with Stripe integration
@@ -38,27 +40,51 @@ const CheckoutForm = ({ orderId, clientSecret }: { orderId?: number | null, clie
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    console.log('💳 Payment form submitted');
+    console.log('Stripe loaded:', !!stripe);
+    console.log('Elements loaded:', !!elements);
+
     if (!stripe || !elements) {
+      console.error('❌ Stripe or Elements not loaded');
+      toast({
+        title: "Payment System Not Ready",
+        description: "Please wait a moment and try again. If the problem persists, refresh the page.",
+        variant: "destructive",
+      });
       return;
     }
 
     setIsLoading(true);
 
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/order-success`,
-      },
-      redirect: "always",
-    });
+    try {
+      console.log('🔄 Confirming payment...');
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/order-success`,
+        },
+        redirect: "always",
+      });
 
-    // Note: When using redirect: "always", the else block below will typically not execute
-    // because Stripe will redirect the user to the return_url on success.
-    // This error handling is for cases where redirect fails or payment fails.
-    if (error) {
+      // Note: When using redirect: "always", the else block below will typically not execute
+      // because Stripe will redirect the user to the return_url on success.
+      // This error handling is for cases where redirect fails or payment fails.
+      if (error) {
+        console.error('❌ Payment confirmation error:', error);
+        toast({
+          title: "Payment Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+      } else {
+        console.log('✅ Payment confirmed, waiting for redirect...');
+      }
+    } catch (err) {
+      console.error('❌ Unexpected error during payment:', err);
       toast({
-        title: "Payment Failed",
-        description: error.message,
+        title: "Payment Error",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
       setIsLoading(false);
@@ -407,8 +433,10 @@ const CheckoutPage = () => {
       return await res.json();
     },
     onSuccess: (data) => {
+      console.log('✅ Payment intent created successfully');
+      console.log('Client secret received:', data.clientSecret ? '(present)' : '(missing)');
       setClientSecret(data.clientSecret);
-      
+
       // Scroll to payment section when it loads
       setTimeout(() => {
         const paymentSection = document.getElementById('payment-section');
