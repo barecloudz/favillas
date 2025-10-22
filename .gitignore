@@ -21,6 +21,9 @@ nul
 *.tmp
 *.temp
 
+# Build artifacts
+client/public/version.json
+
 # Environment variables
 .env
 .env.local
