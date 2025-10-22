@@ -82,7 +82,10 @@ const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, cust
             billing_details: {
               phone: customerPhone || undefined,
               name: customerName || undefined,
-              address: customerAddress || { country: 'US' }, // Default to US if no address
+              address: customerAddress || {
+                country: 'US',
+                postal_code: '00000' // Default postal code for pickup orders
+              }
             }
           }
         },
