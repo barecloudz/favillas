@@ -30,7 +30,12 @@ console.log('🔑 Initializing Stripe with public key:', import.meta.env.VITE_ST
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 // CheckoutForm with Stripe integration
-const CheckoutForm = ({ orderId, clientSecret }: { orderId?: number | null, clientSecret: string }) => {
+const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName }: {
+  orderId?: number | null,
+  clientSecret: string,
+  customerPhone?: string,
+  customerName?: string
+}) => {
   const stripe = useStripe();
   const elements = useElements();
   const [isLoading, setIsLoading] = useState(false);
@@ -43,6 +48,8 @@ const CheckoutForm = ({ orderId, clientSecret }: { orderId?: number | null, clie
     console.log('💳 Payment form submitted');
     console.log('Stripe loaded:', !!stripe);
     console.log('Elements loaded:', !!elements);
+    console.log('Customer phone:', customerPhone);
+    console.log('Customer name:', customerName);
 
     if (!stripe || !elements) {
       console.error('❌ Stripe or Elements not loaded');
@@ -62,6 +69,12 @@ const CheckoutForm = ({ orderId, clientSecret }: { orderId?: number | null, clie
         elements,
         confirmParams: {
           return_url: `${window.location.origin}/order-success`,
+          payment_method_data: {
+            billing_details: {
+              phone: customerPhone || undefined,
+              name: customerName || undefined,
+            }
+          }
         },
         redirect: "always",
       });
@@ -1370,6 +1383,8 @@ const CheckoutPage = () => {
                       <CheckoutForm
                         orderId={orderId}
                         clientSecret={clientSecret}
+                        customerPhone={phone}
+                        customerName={user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || undefined : undefined}
                       />
                     </Elements>
                   ) : (
