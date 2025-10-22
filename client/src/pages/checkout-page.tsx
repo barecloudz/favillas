@@ -114,19 +114,7 @@ const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, cust
       <PaymentElement
         options={{
           fields: {
-            billingDetails: {
-              name: 'auto',
-              email: 'auto',
-              phone: 'auto',  // Let Stripe collect it
-              address: {
-                country: 'never',
-                line1: 'never',
-                line2: 'never',
-                city: 'never',
-                state: 'never',
-                postalCode: 'auto'  // Just collect postal code
-              }
-            }
+            billingDetails: 'auto'  // Let Stripe collect everything it needs
           }
         }}
       />
