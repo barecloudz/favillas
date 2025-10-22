@@ -74,20 +74,12 @@ const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, cust
 
     try {
       console.log('🔄 Confirming payment...');
+      // Let Stripe collect all billing details through the PaymentElement form
+      // This avoids integration errors from missing fields
       const { error } = await stripe.confirmPayment({
         elements,
         confirmParams: {
           return_url: `${window.location.origin}/order-success`,
-          payment_method_data: {
-            billing_details: {
-              phone: customerPhone || undefined,
-              name: customerName || undefined,
-              address: customerAddress || {
-                country: 'US',
-                postal_code: '00000' // Default postal code for pickup orders
-              }
-            }
-          }
         },
         redirect: "always",
       });
