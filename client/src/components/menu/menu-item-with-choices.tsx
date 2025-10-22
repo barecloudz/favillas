@@ -10,15 +10,12 @@ import { Label } from "@/components/ui/label";
 import { ShoppingCart, Plus, Minus } from "lucide-react";
 
 // Primary choice groups that set the base price or are required selections
+// NOTE: Only include groups where the selection REPLACES the base price (like sizes)
+// Do NOT include free required selections like flavors, dressings, etc.
 const PRIMARY_GROUPS = [
   'Size', 'Calzone Size', 'Stromboli Size',
   'Traditional Pizza Size', 'Specialty Gourmet Pizza Size',
   'Garden Salad Size',
-  'Salad Dressing', 'Dressing Style',
-  'Caesar Salad Dressing', 'Greek Salad Dressing',
-  'Antipasto Salad Dressing', 'Chef Salad Dressing',
-  'Tuna Salad Dressing', 'Grilled Chicken Salad Dressing',
-  'Garlic Roll Size', 'Garlic Rolls',
   'Sausage or Meatballs', 'Meat Size', 'Sausage Size', 'Meatball Size'
 ];
 
