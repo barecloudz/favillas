@@ -30,11 +30,19 @@ console.log('🔑 Initializing Stripe with public key:', import.meta.env.VITE_ST
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 // CheckoutForm with Stripe integration
-const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName }: {
+const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, customerAddress }: {
   orderId?: number | null,
   clientSecret: string,
   customerPhone?: string,
-  customerName?: string
+  customerName?: string,
+  customerAddress?: {
+    line1?: string,
+    line2?: string,
+    city?: string,
+    state?: string,
+    postal_code?: string,
+    country?: string
+  }
 }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -50,6 +58,7 @@ const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName }: {
     console.log('Elements loaded:', !!elements);
     console.log('Customer phone:', customerPhone);
     console.log('Customer name:', customerName);
+    console.log('Customer address:', customerAddress);
 
     if (!stripe || !elements) {
       console.error('❌ Stripe or Elements not loaded');
@@ -73,6 +82,7 @@ const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName }: {
             billing_details: {
               phone: customerPhone || undefined,
               name: customerName || undefined,
+              address: customerAddress || { country: 'US' }, // Default to US if no address
             }
           }
         },
@@ -1385,6 +1395,13 @@ const CheckoutPage = () => {
                         clientSecret={clientSecret}
                         customerPhone={phone}
                         customerName={user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || undefined : undefined}
+                        customerAddress={addressData ? {
+                          line1: addressData.street || undefined,
+                          city: addressData.city || undefined,
+                          state: addressData.state || undefined,
+                          postal_code: addressData.zipCode || undefined,
+                          country: 'US'
+                        } : undefined}
                       />
                     </Elements>
                   ) : (
