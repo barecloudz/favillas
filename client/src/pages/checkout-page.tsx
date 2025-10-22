@@ -641,7 +641,7 @@ const CheckoutPage = () => {
   const handleSubmitOrder = (e: React.FormEvent) => {
     e.preventDefault();
 
-    console.log('🚀🚀🚀 DEPLOYMENT UPDATE:', new Date().toISOString(), 'Version 2.0');
+    console.log('🚀🚀🚀 DEPLOYMENT UPDATE:', new Date().toISOString(), 'Version 2.1 - CRITICAL PAYMENT FIX');
     console.log('🔄 NEW CHECKOUT FLOW - This should NOT create orders immediately!');
     console.log('🔄 If you see POST /api/orders after this, there is a caching issue!');
 
