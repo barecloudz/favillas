@@ -32,6 +32,7 @@ import { CartProvider } from "@/hooks/use-cart";
 import CartSidebar from "@/components/cart/cart-sidebar";
 import Header from "@/components/layout/header";
 import LoginModalWrapper from "@/components/auth/login-modal-wrapper";
+import { UpdateBanner } from "@/components/update-banner";
 
 // Pages that should NOT show the main header (standalone full-screen pages)
 const STANDALONE_PAGES = ['/kitchen', '/display'];
@@ -86,6 +87,7 @@ function App() {
         <CartProvider>
           <TooltipProvider>
             <Toaster />
+            <UpdateBanner />
             {!isStandalonePage && <Header />}
             {!isStandalonePage && <CartSidebar />}
             <LoginModalWrapper />
