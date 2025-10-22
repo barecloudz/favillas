@@ -123,10 +123,17 @@ const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, cust
         options={{
           fields: {
             billingDetails: {
-              name: 'auto',  // Always collect billing name for guest orders
+              name: 'auto',
               email: 'auto',
-              phone: 'never',  // We already collect phone separately
-              address: 'never'  // We collect address separately for delivery
+              phone: 'auto',  // Let Stripe collect it
+              address: {
+                country: 'never',
+                line1: 'never',
+                line2: 'never',
+                city: 'never',
+                state: 'never',
+                postalCode: 'auto'  // Just collect postal code
+              }
             }
           }
         }}
