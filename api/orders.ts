@@ -671,48 +671,55 @@ export const handler: Handler = async (event, context) => {
         }
 
         // Check store hours and cutoff time for ASAP orders
-        console.log('🕐 Orders API: Checking store hours and cutoff time...');
-        const storeHoursData = await sql`
-          SELECT * FROM store_hours ORDER BY day_of_week
-        `;
+        // Wrapped in try-catch in case store_hours table doesn't exist yet
+        try {
+          console.log('🕐 Orders API: Checking store hours and cutoff time...');
+          const storeHoursData = await sql`
+            SELECT * FROM store_hours ORDER BY day_of_week
+          `;
 
-        if (storeHoursData.length > 0) {
-          const storeStatus = checkStoreStatus(storeHoursData.map((h: any) => ({
-            dayOfWeek: h.day_of_week,
-            dayName: h.day_name,
-            isOpen: h.is_open,
-            openTime: h.open_time,
-            closeTime: h.close_time,
-            isBreakTime: h.is_break_time,
-            breakStartTime: h.break_start_time,
-            breakEndTime: h.break_end_time,
-          })));
+          if (storeHoursData.length > 0) {
+            const storeStatus = checkStoreStatus(storeHoursData.map((h: any) => ({
+              dayOfWeek: h.day_of_week,
+              dayName: h.day_name,
+              isOpen: h.is_open,
+              openTime: h.open_time,
+              closeTime: h.close_time,
+              isBreakTime: h.is_break_time,
+              breakStartTime: h.break_start_time,
+              breakEndTime: h.break_end_time,
+            })));
 
-          // Only validate for ASAP orders, allow scheduled orders to proceed
-          if (orderData.fulfillmentTime !== 'scheduled') {
-            if (!storeStatus.isOpen || storeStatus.isPastCutoff) {
-              console.log(`❌ Orders API: ASAP orders not available - ${storeStatus.message}`);
-              return {
-                statusCode: 503,
-                headers,
-                body: JSON.stringify({
-                  error: 'ASAP orders not available',
-                  message: storeStatus.message,
-                  reason: 'outside_hours',
-                  isPastCutoff: storeStatus.isPastCutoff,
-                  isOpen: storeStatus.isOpen,
-                  scheduledOrdersAllowed: true,
-                  currentTime: storeStatus.currentTime,
-                  storeHours: storeStatus.storeHours
-                })
-              };
+            // Only validate for ASAP orders, allow scheduled orders to proceed
+            if (orderData.fulfillmentTime !== 'scheduled') {
+              if (!storeStatus.isOpen || storeStatus.isPastCutoff) {
+                console.log(`❌ Orders API: ASAP orders not available - ${storeStatus.message}`);
+                return {
+                  statusCode: 503,
+                  headers,
+                  body: JSON.stringify({
+                    error: 'ASAP orders not available',
+                    message: storeStatus.message,
+                    reason: 'outside_hours',
+                    isPastCutoff: storeStatus.isPastCutoff,
+                    isOpen: storeStatus.isOpen,
+                    scheduledOrdersAllowed: true,
+                    currentTime: storeStatus.currentTime,
+                    storeHours: storeStatus.storeHours
+                  })
+                };
+              }
+              console.log(`✅ Orders API: Store is open and within cutoff time`);
+            } else {
+              console.log(`✅ Orders API: Allowing scheduled order (bypassing store hours check)`);
             }
-            console.log(`✅ Orders API: Store is open and within cutoff time`);
           } else {
-            console.log(`✅ Orders API: Allowing scheduled order (bypassing store hours check)`);
+            console.log('⚠️ Orders API: No store hours configured, allowing order to proceed');
           }
-        } else {
-          console.log('⚠️ Orders API: No store hours configured, allowing order to proceed');
+        } catch (storeHoursError) {
+          console.log('⚠️ Orders API: Store hours check failed (table may not exist), allowing order to proceed');
+          console.log('Store hours error:', storeHoursError);
+          // Continue with order creation - don't block orders if store hours feature isn't set up yet
         }
 
         console.log('✅ Orders API: Service available, proceeding with order creation');
