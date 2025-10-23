@@ -569,7 +569,11 @@ const CheckoutPage = () => {
     // Use dynamic delivery fee (calculated based on distance)
     const currentDeliveryFee = orderType === "delivery" ? deliveryFee : 0;
 
-    const finalTotal = finalSubtotal + taxAmount + tipAmount + currentDeliveryFee;
+    // Calculate service fee (3.5% of subtotal after discounts)
+    const SERVICE_FEE_PERCENTAGE = 3.5;
+    const serviceFeeAmount = (finalSubtotal * SERVICE_FEE_PERCENTAGE) / 100;
+
+    const finalTotal = finalSubtotal + taxAmount + tipAmount + currentDeliveryFee + serviceFeeAmount;
 
     return {
       subtotal,
@@ -579,6 +583,7 @@ const CheckoutPage = () => {
       totalDiscount: totalDiscountAmount,
       tip: tipAmount,
       deliveryFee: currentDeliveryFee,
+      serviceFee: serviceFeeAmount,
       finalSubtotal,
       finalTotal
     };
@@ -779,6 +784,7 @@ const CheckoutPage = () => {
       tax: tax.toString(),
       tip: totals.tip.toString(),
       deliveryFee: orderType === "delivery" ? deliveryFee.toString() : "0",
+      serviceFee: totals.serviceFee.toString(),
       orderType,
       paymentStatus: "pending", // Will be set to succeeded after payment confirmation
       specialInstructions,
@@ -1105,6 +1111,13 @@ const CheckoutPage = () => {
                         <span>${formatPrice(totals.tip)}</span>
                       </div>
                     )}
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span className="flex items-center gap-1">
+                        Service Fee
+                        <span className="text-xs">(3.5%)</span>
+                      </span>
+                      <span>${formatPrice(totals.serviceFee)}</span>
+                    </div>
                     <Separator className="my-2" />
                     <div className="flex justify-between font-bold text-lg">
                       <span>Total</span>
