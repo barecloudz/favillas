@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { useCart } from "@/hooks/use-cart";
 import { useVacationMode } from "@/hooks/use-vacation-mode";
+import { useStoreStatus } from "@/hooks/use-store-status";
 import MenuItemSimple from "@/components/menu/menu-item-simple";
 import MenuItemWithChoices from "@/components/menu/menu-item-with-choices";
 
@@ -35,6 +36,7 @@ const MenuPage = () => {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const { addItem, items } = useCart();
   const { isOrderingPaused, displayMessage } = useVacationMode();
+  const { isPastCutoff, canPlaceAsapOrders, cutoffMessage } = useStoreStatus();
 
   const formatPrice = (price: string | number) => {
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
@@ -409,6 +411,22 @@ const MenuPage = () => {
           </div>
         )}
 
+        {/* Store Hours Cutoff Banner */}
+        {!isOrderingPaused && isPastCutoff && (
+          <div className="bg-yellow-500 border-b-4 border-yellow-600 px-4 sm:px-6 lg:px-8 py-4">
+            <div className="max-w-7xl mx-auto flex items-center gap-3 text-white">
+              <AlertCircle className="h-6 w-6 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-bold text-lg">ASAP Orders Closed</p>
+                <p className="text-sm mb-1">{cutoffMessage}</p>
+                <p className="text-sm font-medium bg-yellow-600 bg-opacity-50 px-2 py-1 rounded inline-block">
+                  💡 You can still schedule an order for tomorrow!
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -420,7 +438,7 @@ const MenuPage = () => {
               className="relative"
               data-cart-button="true"
               data-desktop-cart="true"
-              disabled={isOrderingPaused}
+              disabled={isOrderingPaused || isPastCutoff}
             >
               <ShoppingCart className="h-4 w-4 mr-2" />
               Cart

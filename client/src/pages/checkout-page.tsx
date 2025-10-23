@@ -5,6 +5,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useCart } from "@/hooks/use-cart";
 import { useVacationMode } from "@/hooks/use-vacation-mode";
+import { useStoreStatus } from "@/hooks/use-store-status";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -141,6 +142,7 @@ const CheckoutPage = () => {
   const [location, navigate] = useLocation();
   const { toast } = useToast();
   const { isOrderingPaused, displayMessage } = useVacationMode();
+  const { isPastCutoff, canPlaceAsapOrders, cutoffMessage } = useStoreStatus();
 
   // Check for corrupted items and handle gracefully
   useEffect(() => {
@@ -228,6 +230,7 @@ const CheckoutPage = () => {
   const [orderType, setOrderType] = useState("pickup");
   const [fulfillmentTime, setFulfillmentTime] = useState("asap");
   const [scheduledTime, setScheduledTime] = useState("");
+  const [guestName, setGuestName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [addressData, setAddressData] = useState<{
@@ -838,6 +841,22 @@ const CheckoutPage = () => {
           </div>
         )}
 
+        {/* Store Hours Cutoff Banner */}
+        {!isOrderingPaused && isPastCutoff && (
+          <div className="bg-yellow-500 border-b-4 border-yellow-600 px-4 sm:px-6 lg:px-8 py-4 mb-6">
+            <div className="max-w-6xl mx-auto flex items-center gap-3 text-white">
+              <AlertCircle className="h-6 w-6 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-bold text-lg">ASAP Orders Closed</p>
+                <p className="text-sm mb-1">{cutoffMessage}</p>
+                <p className="text-sm font-medium bg-yellow-600 bg-opacity-50 px-2 py-1 rounded inline-block">
+                  💡 You can still schedule an order for tomorrow!
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="container mx-auto px-4">
           {/* Back Button */}
           <div className="mb-6">
@@ -1102,6 +1121,27 @@ const CheckoutPage = () => {
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleSubmitOrder} className="space-y-6">
+                      {/* Guest Name Field - Only shown for non-logged-in users */}
+                      {!user && (
+                        <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                          <Label htmlFor="guestName" className="text-blue-700 font-semibold flex items-center gap-2">
+                            👤 Your Name <span className="text-blue-600 text-sm">(Required)</span>
+                          </Label>
+                          <Input
+                            id="guestName"
+                            type="text"
+                            placeholder="Enter your name"
+                            value={guestName}
+                            onChange={(e) => setGuestName(e.target.value)}
+                            required
+                            className="mt-2 border-2 border-blue-300 focus:border-blue-500 focus:ring-blue-500 bg-white"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            📝 This will appear on your order and receipt
+                          </p>
+                        </div>
+                      )}
+
                       <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
                         <Label htmlFor="phone" className="text-red-700 font-semibold flex items-center gap-2">
                           📞 Phone Number <span className="text-red-600 text-sm">(Required)</span>
@@ -1345,10 +1385,10 @@ const CheckoutPage = () => {
                       <Button
                         type="submit"
                         className="w-full bg-[#d73a31] hover:bg-[#c73128] disabled:bg-gray-400 disabled:cursor-not-allowed"
-                        disabled={createPaymentIntentMutation.isPending || isOrderingPaused}
+                        disabled={createPaymentIntentMutation.isPending || isOrderingPaused || isPastCutoff}
                       >
-                        {isOrderingPaused ? (
-                          "Ordering Temporarily Unavailable"
+                        {isOrderingPaused || isPastCutoff ? (
+                          "ASAP Orders Not Available"
                         ) : createPaymentIntentMutation.isPending ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -1384,7 +1424,7 @@ const CheckoutPage = () => {
                         orderId={orderId}
                         clientSecret={clientSecret}
                         customerPhone={phone}
-                        customerName={user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || undefined : undefined}
+                        customerName={user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || undefined : guestName || undefined}
                         customerAddress={addressData ? {
                           line1: addressData.street || undefined,
                           city: addressData.city || undefined,

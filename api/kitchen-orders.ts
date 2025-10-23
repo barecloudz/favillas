@@ -130,13 +130,21 @@ export const handler: Handler = async (event, context) => {
           }
         }
 
+        // Extract first name from customer_name field or use first_name from user profile
+        let displayName = 'Guest';
+        if (order.customer_name) {
+          // Extract first word/name from customer_name (handles both "John Doe" and "John")
+          displayName = order.customer_name.trim().split(/\s+/)[0];
+        } else if (order.first_name) {
+          // Fallback to first_name from user profile
+          displayName = order.first_name;
+        }
+
         return {
           ...order,
           items: transformedItems,
           pointsEarned: pointsEarned,
-          customerName: order.first_name && order.last_name
-            ? `${order.first_name} ${order.last_name}`.trim()
-            : 'Guest',
+          customerName: displayName,
           // Transform snake_case to camelCase for frontend
           fulfillmentTime: order.fulfillment_time,
           scheduledTime: order.scheduled_time
