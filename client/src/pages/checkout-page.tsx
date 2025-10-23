@@ -785,6 +785,7 @@ const CheckoutPage = () => {
       address: orderType === "delivery" ? address : "",
       addressData: orderType === "delivery" ? addressData : null,
       phone,
+      customerName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : guestName || 'Guest',
       items: orderItems,
       fulfillmentTime,
       scheduledTime: fulfillmentTime === "scheduled" ? scheduledTime : null,
