@@ -107,31 +107,17 @@ const OrderSuccessPage = () => {
                 }
               }
 
-              // Fetch payment intent to get customer name from billing details
-              let customerName = fetchedUserData?.firstName || 'Guest';
-              try {
-                const piResponse = await apiRequest('GET', `/api/payment-intent/${paymentIntentParam}`);
-                const piData = await piResponse.json();
-
-                // Extract name from Stripe payment intent billing details
-                if (piData.billing_details?.name) {
-                  customerName = piData.billing_details.name;
-                  console.log('📝 Got customer name from Stripe billing details:', customerName);
-                } else if (piData.payment_method?.billing_details?.name) {
-                  customerName = piData.payment_method.billing_details.name;
-                  console.log('📝 Got customer name from Stripe payment method billing details:', customerName);
-                }
-              } catch (piError) {
-                console.warn('Could not fetch payment intent for customer name:', piError);
-                // Continue with default name
-              }
+              // Use customer name from pendingOrderData (already includes guest name or user name)
+              // No need to fetch payment intent - speeds up page load significantly!
+              const customerName = pendingOrderData.customerName || fetchedUserData?.firstName || 'Guest';
+              console.log('📝 Using customer name from order data:', customerName);
 
               // Update order data to reflect successful payment (keep status as pending for kitchen display)
               const confirmedOrderData = {
                 ...pendingOrderData,
                 status: "pending",
                 paymentStatus: "succeeded",
-                customerName: customerName  // Add customer name to order data
+                customerName: customerName  // Already set from checkout form
               };
 
               const response = await apiRequest('POST', '/api/orders', confirmedOrderData);
