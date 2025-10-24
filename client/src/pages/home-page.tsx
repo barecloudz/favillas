@@ -6,6 +6,7 @@ import FeaturedSection from "@/components/home/featured-section";
 import RewardsSection from "@/components/home/rewards-section";
 import LocationSection from "@/components/home/location-section";
 import SeoContentSection from "@/components/home/seo-content-section";
+import FAQSection from "@/components/home/faq-section";
 import Footer from "@/components/layout/footer";
 
 const HomePage = () => {
@@ -37,6 +38,9 @@ const HomePage = () => {
 
         {/* Location Section */}
         <LocationSection />
+
+        {/* FAQ Section - Optimized for voice search */}
+        <FAQSection />
 
         {/* Footer */}
         <Footer />
