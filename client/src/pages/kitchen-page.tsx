@@ -16,6 +16,7 @@ import { Loader2, Printer, Volume2, Columns3, LayoutGrid, User, Home, Settings, 
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { printToThermalPrinter, printDailySummary } from "@/utils/thermal-printer";
 import { useLocation } from "wouter";
 import { useVacationMode } from "@/hooks/use-vacation-mode";
@@ -39,6 +40,7 @@ const KitchenPage = () => {
   const [showPauseReasonDialog, setShowPauseReasonDialog] = useState(false);
   const [pauseReason, setPauseReason] = useState<string>('high_volume');
   const [customPauseMessage, setCustomPauseMessage] = useState('');
+  const [isRestOfDay, setIsRestOfDay] = useState(false);
 
   // Daily Summary Modal State
   const [showDailySummaryModal, setShowDailySummaryModal] = useState(false);
@@ -617,9 +619,20 @@ const KitchenPage = () => {
   };
 
   // Helper function to generate customer message based on reason
-  const getCustomerMessageForReason = (reason: string, customMessage?: string): string => {
+  const getCustomerMessageForReason = (reason: string, customMessage?: string, restOfDay?: boolean): string => {
     if (reason === 'custom' && customMessage) {
       return customMessage;
+    }
+
+    if (restOfDay) {
+      const restOfDayMessages: Record<string, string> = {
+        high_volume: 'We are closed for the rest of the day due to high volume. Thank you for your understanding!',
+        staff_shortage: 'We are closed for the rest of the day due to staffing. We apologize for the inconvenience!',
+        equipment_issue: 'We are closed for the rest of the day due to equipment issues. We apologize for the inconvenience!',
+        break_time: 'We are closed for the rest of the day. Thank you for your understanding!',
+        other: 'We are closed for the rest of the day. Thank you for your understanding!'
+      };
+      return restOfDayMessages[reason] || restOfDayMessages.other;
     }
 
     const messages: Record<string, string> = {
@@ -648,7 +661,7 @@ const KitchenPage = () => {
   };
 
   // Toggle pause ordering (emergency pause)
-  const togglePauseOrdering = async (reason?: string, customMessage?: string) => {
+  const togglePauseOrdering = async (reason?: string, customMessage?: string, restOfDay?: boolean) => {
     setIsTogglingPause(true);
     try {
       const newPauseState = !isOrderingPaused;
@@ -656,9 +669,11 @@ const KitchenPage = () => {
       // If pausing, use provided reason, otherwise default
       const pauseReasonToUse = newPauseState ? (reason || 'high_volume') : '';
       const customerMessage = newPauseState
-        ? getCustomerMessageForReason(pauseReasonToUse, customMessage)
+        ? getCustomerMessageForReason(pauseReasonToUse, customMessage, restOfDay)
         : '';
-      const reasonDisplay = newPauseState ? getReasonDisplayName(pauseReasonToUse) : '';
+      const reasonDisplay = newPauseState
+        ? `${getReasonDisplayName(pauseReasonToUse)}${restOfDay ? ' (Rest of Day)' : ''}`
+        : '';
 
       // Use apiRequest to ensure proper authentication
       await apiRequest('PUT', '/api/vacation-mode', {
@@ -702,7 +717,7 @@ const KitchenPage = () => {
 
   // Handle pause with reason from dialog
   const handlePauseWithReason = () => {
-    togglePauseOrdering(pauseReason, customPauseMessage);
+    togglePauseOrdering(pauseReason, customPauseMessage, isRestOfDay);
   };
 
   if (isLoading) {
@@ -1588,6 +1603,24 @@ const KitchenPage = () => {
                 </div>
               </RadioGroup>
 
+              {/* Duration Toggle */}
+              <div className="flex items-start space-x-3 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                <Checkbox
+                  id="restOfDay"
+                  checked={isRestOfDay}
+                  onCheckedChange={(checked) => setIsRestOfDay(checked as boolean)}
+                  className="mt-1"
+                />
+                <div className="flex-1">
+                  <Label htmlFor="restOfDay" className="cursor-pointer font-medium text-gray-900">
+                    Close for rest of day
+                  </Label>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Check this if you're closing permanently for today (not just a temporary pause)
+                  </p>
+                </div>
+              </div>
+
               {pauseReason === 'custom' && (
                 <div className="space-y-2">
                   <Label htmlFor="customMessage">Custom Message for Customers</Label>
@@ -1606,7 +1639,7 @@ const KitchenPage = () => {
                 <div className="bg-blue-50 p-3 rounded-md">
                   <p className="text-sm font-medium text-blue-900 mb-1">Customer will see:</p>
                   <p className="text-sm text-blue-800 italic">
-                    "{getCustomerMessageForReason(pauseReason)}"
+                    "{getCustomerMessageForReason(pauseReason, undefined, isRestOfDay)}"
                   </p>
                 </div>
               )}
