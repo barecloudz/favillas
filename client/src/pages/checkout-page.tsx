@@ -259,6 +259,10 @@ const CheckoutPage = () => {
   const [deliveryError, setDeliveryError] = useState("");
   const [deliveryZoneInfo, setDeliveryZoneInfo] = useState<any>(null);
 
+  // Card processing fee state
+  const [cardFeeSettings, setCardFeeSettings] = useState<any>(null);
+  const [cardFeeLoading, setCardFeeLoading] = useState(true);
+
   // Auto-populate contact information when user data is available
   useEffect(() => {
     if (user && !contactInfoLoaded) {
@@ -336,6 +340,28 @@ const CheckoutPage = () => {
   useEffect(() => {
     setContactInfoLoaded(false);
   }, [user?.id]);
+
+  // Fetch card processing fee settings from backend
+  useEffect(() => {
+    const fetchCardFeeSettings = async () => {
+      try {
+        const response = await fetch('/api/admin-service-fees');
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📊 Card fee settings loaded:', data);
+          setCardFeeSettings(data);
+        } else {
+          console.warn('Failed to load card fee settings');
+        }
+      } catch (error) {
+        console.error('Error fetching card fee settings:', error);
+      } finally {
+        setCardFeeLoading(false);
+      }
+    };
+
+    fetchCardFeeSettings();
+  }, []);
 
   // Calculate delivery fee when address changes
   useEffect(() => {
@@ -554,7 +580,7 @@ const CheckoutPage = () => {
 
     const totalDiscountAmount = discountAmount + voucherDiscountAmount;
     const finalSubtotal = Math.max(0, subtotal - totalDiscountAmount);
-    
+
     // Calculate tip
     let tipAmount = 0;
     if (tipType === "percentage" && tip > 0) {
@@ -562,11 +588,25 @@ const CheckoutPage = () => {
     } else if (tipType === "amount") {
       tipAmount = parseFloat(customTip) || 0;
     }
-    
+
     // Use dynamic delivery fee (calculated based on distance)
     const currentDeliveryFee = orderType === "delivery" ? deliveryFee : 0;
 
-    const finalTotal = finalSubtotal + taxAmount + tipAmount + currentDeliveryFee;
+    // Calculate card processing fee if enabled
+    let cardProcessingFee = 0;
+    if (cardFeeSettings && cardFeeSettings.cardFeesEnabled) {
+      // Calculate based on subtotal + tax + delivery + tip (before card fee)
+      const baseForCardFee = finalSubtotal + taxAmount + currentDeliveryFee + tipAmount;
+
+      if (cardFeeSettings.cardFeeType === 'percentage') {
+        cardProcessingFee = (baseForCardFee * cardFeeSettings.cardFeeAmount) / 100;
+      } else {
+        // Fixed amount
+        cardProcessingFee = cardFeeSettings.cardFeeAmount;
+      }
+    }
+
+    const finalTotal = finalSubtotal + taxAmount + tipAmount + currentDeliveryFee + cardProcessingFee;
 
     return {
       subtotal,
@@ -576,6 +616,7 @@ const CheckoutPage = () => {
       totalDiscount: totalDiscountAmount,
       tip: tipAmount,
       deliveryFee: currentDeliveryFee,
+      cardProcessingFee,
       finalSubtotal,
       finalTotal
     };
@@ -776,6 +817,7 @@ const CheckoutPage = () => {
       tax: tax.toString(),
       tip: totals.tip.toString(),
       deliveryFee: orderType === "delivery" ? deliveryFee.toString() : "0",
+      cardProcessingFee: totals.cardProcessingFee ? totals.cardProcessingFee.toString() : "0",
       orderType,
       paymentStatus: "pending", // Will be set to succeeded after payment confirmation
       specialInstructions,
@@ -795,6 +837,7 @@ const CheckoutPage = () => {
         subtotal: total,
         discount: totals.discount,
         voucherDiscount: totals.voucherDiscount,
+        cardProcessingFee: totals.cardProcessingFee || 0,
         finalSubtotal: totals.finalSubtotal
       }
     };
@@ -1083,6 +1126,17 @@ const CheckoutPage = () => {
                       <div className="flex justify-between">
                         <span>Tip</span>
                         <span>${formatPrice(totals.tip)}</span>
+                      </div>
+                    )}
+                    {totals.cardProcessingFee > 0 && cardFeeSettings && (
+                      <div className="flex justify-between text-gray-600">
+                        <span className="flex items-center gap-1">
+                          {cardFeeSettings.cardFeeLabel || 'Card Processing Fee'}
+                          {cardFeeSettings.cardFeeType === 'percentage' && (
+                            <span className="text-xs">({cardFeeSettings.cardFeeAmount}%)</span>
+                          )}
+                        </span>
+                        <span>${formatPrice(totals.cardProcessingFee)}</span>
                       </div>
                     )}
                     <Separator className="my-2" />
