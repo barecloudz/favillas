@@ -10,10 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Loader2, Printer, Volume2, Columns3, LayoutGrid, User, Home, Settings, LogOut, PauseCircle, PlayCircle } from "lucide-react";
-import { printToThermalPrinter } from "@/utils/thermal-printer";
+import { printToThermalPrinter, printDailySummary } from "@/utils/thermal-printer";
 import { useLocation } from "wouter";
 import { useVacationMode } from "@/hooks/use-vacation-mode";
 
@@ -33,6 +33,11 @@ const KitchenPage = () => {
   const { isOrderingPaused, vacationMode } = useVacationMode();
   const [isTogglingPause, setIsTogglingPause] = useState(false);
   const [wakeLock, setWakeLock] = useState<any>(null);
+
+  // Daily Summary Modal State
+  const [showDailySummaryModal, setShowDailySummaryModal] = useState(false);
+  const [storeHours, setStoreHours] = useState<any[]>([]);
+  const [closingTime, setClosingTime] = useState<string | null>(null);
   // Use localStorage to track printed orders across all browser tabs/devices
   const [printedOrders, setPrintedOrders] = useState<Set<number>>(() => {
     const stored = localStorage.getItem('printedOrders');
@@ -91,6 +96,114 @@ const KitchenPage = () => {
         if (volume) setSoundVolume(parseFloat(volume.setting_value));
       })
       .catch(err => console.warn('Failed to load notification settings:', err));
+  }, []);
+
+  // Fetch store hours on mount
+  useEffect(() => {
+    const fetchStoreHours = async () => {
+      try {
+        const response = await fetch('/api/store-hours', { credentials: 'include' });
+        if (response.ok) {
+          const data = await response.json();
+          setStoreHours(data);
+
+          // Get today's day of week (0 = Sunday, 6 = Saturday)
+          const today = new Date().getDay();
+          const todayHours = data.find((h: any) => h.dayOfWeek === today);
+
+          if (todayHours && todayHours.isOpen && todayHours.closeTime) {
+            setClosingTime(todayHours.closeTime);
+            console.log(`Store closes today at: ${todayHours.closeTime}`);
+          } else if (todayHours && !todayHours.isOpen) {
+            console.log('Store is closed today');
+            setClosingTime(null);
+          } else {
+            // Default to 22:00 if no hours found
+            setClosingTime('22:00');
+            console.log('Using default closing time: 22:00');
+          }
+        } else {
+          // Default to 22:00 if API fails
+          setClosingTime('22:00');
+          console.log('Failed to fetch store hours, using default: 22:00');
+        }
+      } catch (error) {
+        console.error('Error fetching store hours:', error);
+        setClosingTime('22:00');
+      }
+    };
+
+    fetchStoreHours();
+  }, []);
+
+  // Timer to check for daily summary prompt
+  useEffect(() => {
+    if (!closingTime) return;
+
+    const checkForDailySummary = () => {
+      const now = new Date();
+      const todayDateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+      const storageKey = `dailySummaryPromptShown_${todayDateStr}`;
+
+      // Check if we've already shown the prompt today
+      if (localStorage.getItem(storageKey) === 'true') {
+        return;
+      }
+
+      // Parse closing time (format: "HH:MM")
+      const [closeHour, closeMinute] = closingTime.split(':').map(Number);
+      const closingDate = new Date(now);
+      closingDate.setHours(closeHour, closeMinute, 0, 0);
+
+      // Calculate 30 minutes before closing
+      const promptTime = new Date(closingDate);
+      promptTime.setMinutes(promptTime.getMinutes() - 30);
+
+      // Check if current time is within the window (30 minutes before closing to closing time)
+      if (now >= promptTime && now < closingDate) {
+        console.log('Time to show daily summary prompt!');
+        setShowDailySummaryModal(true);
+        localStorage.setItem(storageKey, 'true');
+      }
+    };
+
+    // Check immediately on mount
+    checkForDailySummary();
+
+    // Then check every minute
+    const interval = setInterval(checkForDailySummary, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [closingTime]);
+
+  // Clear the daily summary flag at midnight
+  useEffect(() => {
+    const clearAtMidnight = () => {
+      const now = new Date();
+      const midnight = new Date(now);
+      midnight.setDate(midnight.getDate() + 1);
+      midnight.setHours(0, 0, 0, 0);
+
+      const timeUntilMidnight = midnight.getTime() - now.getTime();
+
+      setTimeout(() => {
+        // Clear all daily summary flags from localStorage
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('dailySummaryPromptShown_')) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        console.log('Cleared daily summary flags at midnight');
+
+        // Set up the next midnight clear
+        clearAtMidnight();
+      }, timeUntilMidnight);
+    };
+
+    clearAtMidnight();
   }, []);
 
   // Request wake lock to keep screen on
@@ -369,6 +482,119 @@ const KitchenPage = () => {
       toast({
         title: "Update Failed",
         description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle daily summary print
+  const handlePrintDailySummary = async () => {
+    try {
+      console.log('Fetching today\'s orders for daily summary...');
+
+      // Get today's date range
+      const now = new Date();
+      const startOfDay = new Date(now);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(now);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // Fetch ALL orders for today (not just active ones)
+      const queryParams = new URLSearchParams({
+        startDate: startOfDay.toISOString(),
+        endDate: endOfDay.toISOString()
+      });
+      const response = await fetch(`/api/orders?${queryParams}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch orders');
+      }
+
+      const allOrdersToday = await response.json();
+
+      // Filter test orders if the setting is enabled
+      const excludeTestOrders = localStorage.getItem('excludeTestOrders') !== 'false';
+      let filteredOrders = allOrdersToday;
+
+      if (excludeTestOrders) {
+        // Exclude orders before #52 and specific test orders #55, #56
+        filteredOrders = allOrdersToday.filter((order: any) => {
+          const orderId = order.id;
+          return orderId >= 52 && orderId !== 55 && orderId !== 56;
+        });
+        console.log(`Filtered ${allOrdersToday.length} orders to ${filteredOrders.length} (excluding test orders)`);
+      }
+
+      if (filteredOrders.length === 0) {
+        toast({
+          title: "No Orders Today",
+          description: "There are no orders to include in the daily summary.",
+        });
+        setShowDailySummaryModal(false);
+        return;
+      }
+
+      // Format orders for the print function
+      const formattedOrders = filteredOrders.map((order: any) => ({
+        id: order.id,
+        orderType: order.order_type || order.orderType || 'pickup',
+        customerName: order.customer_name || order.customerName || 'Guest',
+        phone: order.phone,
+        address: order.address,
+        items: order.items || [],
+        total: parseFloat(order.total || 0),
+        tax: parseFloat(order.tax || 0),
+        deliveryFee: parseFloat(order.delivery_fee || order.deliveryFee || 0),
+        tip: parseFloat(order.tip || 0),
+        specialInstructions: order.special_instructions || order.specialInstructions,
+        createdAt: order.created_at || order.createdAt || new Date().toISOString(),
+        userId: order.user_id || order.userId,
+        pointsEarned: order.points_earned || order.pointsEarned || 0,
+        paymentStatus: order.payment_status || order.paymentStatus,
+        payment_status: order.payment_status
+      }));
+
+      // Generate the daily summary receipt
+      const summaryReceipt = printDailySummary(formattedOrders);
+
+      // Send to printer
+      const printerServerUrl = localStorage.getItem('printerServerUrl') || 'https://192.168.1.18:3001';
+      console.log(`Sending daily summary to printer server: ${printerServerUrl}`);
+
+      const printResponse = await fetch(`${printerServerUrl}/print`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          receiptData: summaryReceipt,
+          orderId: 'daily-summary',
+          receiptType: 'daily-summary'
+        })
+      });
+
+      if (!printResponse.ok) {
+        throw new Error('Print request failed');
+      }
+
+      toast({
+        title: "Daily Summary Printed",
+        description: `Successfully printed summary for ${filteredOrders.length} orders today.`,
+      });
+
+      setShowDailySummaryModal(false);
+
+    } catch (error: any) {
+      console.error('Failed to print daily summary:', error);
+      toast({
+        title: "Print Failed",
+        description: error.message || "Could not print daily summary. Make sure the printer is connected.",
         variant: "destructive",
       });
     }
@@ -1180,6 +1406,36 @@ const KitchenPage = () => {
                 </div>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Daily Summary Modal */}
+        <Dialog open={showDailySummaryModal} onOpenChange={setShowDailySummaryModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl">End of Day Summary</DialogTitle>
+              <DialogDescription className="pt-2">
+                It's 30 minutes before closing time. Would you like to print the daily summary report?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="sm:justify-start gap-2 flex-col sm:flex-row">
+              <Button
+                type="button"
+                variant="default"
+                className="w-full sm:w-auto"
+                onClick={handlePrintDailySummary}
+              >
+                Yes, Print Summary
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => setShowDailySummaryModal(false)}
+              >
+                No, Maybe Later
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
