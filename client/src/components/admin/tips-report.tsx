@@ -6,14 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Calendar, DollarSign, TrendingUp } from "lucide-react";
 
-interface TipsReportProps {
-  orders: any[];
-}
-
-export const TipsReport: React.FC<TipsReportProps> = ({ orders }) => {
+export const TipsReport = ({ orders }: any) => {
   const [dateRange, setDateRange] = useState<'today' | 'week' | 'custom'>('today');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  // Safety check - ensure orders is an array
+  const safeOrders = Array.isArray(orders) ? orders : [];
 
   // Get today's date in YYYY-MM-DD format
   const getTodayString = () => {
@@ -35,7 +34,7 @@ export const TipsReport: React.FC<TipsReportProps> = ({ orders }) => {
 
   // Filter orders based on selected date range
   const getFilteredOrders = () => {
-    if (!orders || orders.length === 0) return [];
+    if (safeOrders.length === 0) return [];
 
     let start: Date, end: Date;
 
@@ -55,7 +54,7 @@ export const TipsReport: React.FC<TipsReportProps> = ({ orders }) => {
       end = new Date(endDate + 'T23:59:59');
     }
 
-    return orders.filter(order => {
+    return safeOrders.filter((order: any) => {
       const orderDate = new Date(order.created_at || order.createdAt);
       return orderDate >= start && orderDate <= end && order.status === 'picked_up';
     });
@@ -71,16 +70,18 @@ export const TipsReport: React.FC<TipsReportProps> = ({ orders }) => {
     let pickupCount = 0;
     let deliveryCount = 0;
 
-    filtered.forEach(order => {
-      const tip = parseFloat(order.tip || 0);
-      totalTips += tip;
+    filtered.forEach((order: any) => {
+      const tip = parseFloat(String(order.tip || '0'));
+      if (!isNaN(tip)) {
+        totalTips += tip;
 
-      if (order.order_type === 'pickup') {
-        pickupTips += tip;
-        pickupCount++;
-      } else if (order.order_type === 'delivery') {
-        deliveryTips += tip;
-        deliveryCount++;
+        if (order.order_type === 'pickup' || order.orderType === 'pickup') {
+          pickupTips += tip;
+          pickupCount++;
+        } else if (order.order_type === 'delivery' || order.orderType === 'delivery') {
+          deliveryTips += tip;
+          deliveryCount++;
+        }
       }
     });
 
@@ -104,20 +105,22 @@ export const TipsReport: React.FC<TipsReportProps> = ({ orders }) => {
     const filtered = getFilteredOrders();
     const dailyMap: { [key: string]: { pickupTips: number; deliveryTips: number; total: number } } = {};
 
-    filtered.forEach(order => {
+    filtered.forEach((order: any) => {
       const date = new Date(order.created_at || order.createdAt).toISOString().split('T')[0];
-      const tip = parseFloat(order.tip || 0);
+      const tip = parseFloat(String(order.tip || '0'));
 
-      if (!dailyMap[date]) {
-        dailyMap[date] = { pickupTips: 0, deliveryTips: 0, total: 0 };
-      }
+      if (!isNaN(tip)) {
+        if (!dailyMap[date]) {
+          dailyMap[date] = { pickupTips: 0, deliveryTips: 0, total: 0 };
+        }
 
-      dailyMap[date].total += tip;
+        dailyMap[date].total += tip;
 
-      if (order.order_type === 'pickup') {
-        dailyMap[date].pickupTips += tip;
-      } else if (order.order_type === 'delivery') {
-        dailyMap[date].deliveryTips += tip;
+        if (order.order_type === 'pickup' || order.orderType === 'pickup') {
+          dailyMap[date].pickupTips += tip;
+        } else if (order.order_type === 'delivery' || order.orderType === 'delivery') {
+          dailyMap[date].deliveryTips += tip;
+        }
       }
     });
 
