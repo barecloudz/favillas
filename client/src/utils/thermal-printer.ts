@@ -102,7 +102,11 @@ function formatCustomerReceipt(order: OrderPrintData): string {
   receipt += `--------------------------------\n`;
 
   // Customer info (show for all orders, not just delivery)
+  receipt += `${ESC}E\x01`; // Bold on
+  receipt += `${GS}!\x11`; // Double height and width
   receipt += `Customer: ${order.customerName || 'Guest'}\n`;
+  receipt += `${GS}!\x00`; // Normal size
+  receipt += `${ESC}E\x00`; // Bold off
   receipt += `Phone: ${order.phone || 'N/A'}\n`;
 
   // Address only for delivery
@@ -284,7 +288,12 @@ function formatKitchenReceipt(order: OrderPrintData): string {
   receipt += `${ESC}E\x00`; // Bold off
   receipt += `${ESC}a\x00`; // Back to left align
 
+  // Customer name - Bold and double-sized
+  receipt += `${ESC}E\x01`; // Bold on
+  receipt += `${GS}!\x11`; // Double height and width
   receipt += `Name: ${order.customerName || 'Guest'}\n`;
+  receipt += `${GS}!\x00`; // Normal size
+  receipt += `${ESC}E\x00`; // Bold off
   receipt += `Time: ${new Date(order.createdAt).toLocaleTimeString()}\n`;
   receipt += `\n`;
 
