@@ -1113,7 +1113,7 @@ const CheckoutPage = () => {
                     )}
                     <div className="flex justify-between text-sm text-gray-600">
                       <span className="flex items-center gap-1">
-                        Service Fee
+                        Processing Fee
                         <span className="text-xs">(3.5%)</span>
                       </span>
                       <span>${formatPrice(totals.serviceFee)}</span>

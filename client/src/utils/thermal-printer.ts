@@ -57,6 +57,7 @@ export interface OrderPrintData {
   total: number;
   tax: number;
   deliveryFee?: number;
+  serviceFee?: number;
   tip?: number;
   specialInstructions?: string;
   createdAt: string;
@@ -120,10 +121,9 @@ function formatCustomerReceipt(order: OrderPrintData): string {
     const itemName = item.menuItem?.name || item.name || 'Item';
     const qty = item.quantity;
 
-    // IMPORTANT: item.price already includes ALL options (size, add-ons, etc.)
-    // The frontend calculates the total price and sends it to the backend
-    // We should NOT add option prices on top of item.price again
-    const itemPrice = parseFloat(item.price || 0);
+    // Calculate actual price including all option prices
+    // Base price from item
+    let itemPrice = parseFloat(item.price || 0);
 
     // Parse options if they're a JSON string
     let parsedOptions = item.options;
@@ -147,12 +147,16 @@ function formatCustomerReceipt(order: OrderPrintData): string {
         const groupName = (opt.groupName || '').toLowerCase();
         const itemNameOpt = opt.itemName || opt.name || '';
         const price = opt.price || '0';
+        const priceNum = parseFloat(price);
 
         // Check if this is a size option (don't show price for sizes - it's the base price)
         if (groupName.includes('size')) {
           size = itemNameOpt;
         } else if (itemNameOpt) {
-          // This is an add-on (but don't include price if it's a size-related option)
+          // This is an add-on - add its price to the total
+          if (priceNum > 0) {
+            itemPrice += priceNum;
+          }
           addons.push({ name: itemNameOpt, price: price, isSize: false });
         }
       });
@@ -169,8 +173,7 @@ function formatCustomerReceipt(order: OrderPrintData): string {
       });
     }
 
-    // Use the item price as-is (it already includes all options)
-    // DO NOT add option prices again - that causes double-charging!
+    // Total item price now includes base price + all add-on prices
     const totalItemPrice = itemPrice;
 
     // Item name with size
@@ -201,11 +204,15 @@ function formatCustomerReceipt(order: OrderPrintData): string {
   receipt += `--------------------------------\n`;
 
   // Totals
-  const subtotal = order.total - (order.tax || 0) - (order.deliveryFee || 0);
+  const subtotal = order.total - (order.tax || 0) - (order.deliveryFee || 0) - (order.serviceFee || 0) - (order.tip || 0);
   receipt += `Subtotal:        $${subtotal.toFixed(2)}\n`;
 
   if (order.deliveryFee && order.deliveryFee > 0) {
     receipt += `Delivery Fee:    $${order.deliveryFee.toFixed(2)}\n`;
+  }
+
+  if (order.serviceFee && order.serviceFee > 0) {
+    receipt += `Processing Fee:  $${order.serviceFee.toFixed(2)}\n`;
   }
 
   if (order.tax && order.tax > 0) {

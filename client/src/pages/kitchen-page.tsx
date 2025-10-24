@@ -176,13 +176,14 @@ const KitchenPage = () => {
           {
             id: order.id,
             orderType: order.order_type || order.orderType,
-            customerName: order.customer_name || order.customerName,
+            customerName: order.customerName || order.customer_name,
             phone: order.phone,
             address: order.address,
             items: order.items || [],
             total: parseFloat(order.total || 0),
             tax: parseFloat(order.tax || 0),
             deliveryFee: parseFloat(order.delivery_fee || order.deliveryFee || 0),
+            serviceFee: parseFloat(order.service_fee || order.serviceFee || 0),
             tip: parseFloat(order.tip || 0),
             specialInstructions: order.special_instructions || order.specialInstructions,
             createdAt: order.created_at || order.createdAt || new Date().toISOString(),
@@ -211,6 +212,33 @@ const KitchenPage = () => {
       return "0.00";
     }
     return numPrice.toFixed(2);
+  };
+
+  // Calculate actual item price including all options
+  const calculateItemPrice = (item: any) => {
+    let basePrice = parseFloat(item.price || 0);
+
+    // Parse options if they're a JSON string
+    let parsedOptions = item.options;
+    if (typeof item.options === 'string') {
+      try {
+        parsedOptions = JSON.parse(item.options);
+      } catch (e) {
+        return basePrice;
+      }
+    }
+
+    // If options is an array, sum up all option prices
+    if (parsedOptions && Array.isArray(parsedOptions)) {
+      parsedOptions.forEach((option: any) => {
+        const optionPrice = parseFloat(option.price || 0);
+        if (optionPrice > 0) {
+          basePrice += optionPrice;
+        }
+      });
+    }
+
+    return basePrice;
   };
   
   // Query for active orders
@@ -252,6 +280,13 @@ const KitchenPage = () => {
              !isOrderReadyToStart(order);
     }
     return true;
+  }).sort((a: any, b: any) => {
+    // Sort picked_up orders newest first
+    if (activeTab === "picked_up") {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    }
+    // Default order for other tabs
+    return 0;
   }) : [];
 
   // Separate pending orders into ready-to-start and scheduled-for-later
@@ -297,6 +332,7 @@ const KitchenPage = () => {
           total: parseFloat(order.total),
           tax: parseFloat(order.tax || 0),
           deliveryFee: parseFloat(order.delivery_fee || order.deliveryFee || 0),
+          serviceFee: parseFloat(order.service_fee || order.serviceFee || 0),
           tip: parseFloat(order.tip || 0),
           specialInstructions: order.special_instructions || order.specialInstructions,
           createdAt: order.created_at || order.createdAt,
@@ -818,8 +854,13 @@ const KitchenPage = () => {
                         ${order.status === 'completed' ? 'bg-green-100' : ''}
                         ${order.status === 'picked_up' ? 'bg-gray-100' : ''}
                       `}>
-                        <div className="flex justify-between items-center">
-                          <CardTitle>Order #{order.id}</CardTitle>
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="text-xl font-bold text-gray-900">
+                              {order.customer_name || 'Guest'}
+                            </p>
+                            <CardTitle className="text-base">Order #{order.id}</CardTitle>
+                          </div>
                           <Badge className={`
                             ${order.status === 'pending' ? 'bg-red-500' : ''}
                             ${order.status === 'cooking' ? 'bg-yellow-500' : ''}
@@ -850,7 +891,7 @@ const KitchenPage = () => {
                             <div key={item.id} className="border-b pb-2">
                               <div className="flex justify-between font-medium">
                                 <span>{item.quantity}x {item.menuItem?.name || 'Unknown Item'}</span>
-                                <span>${formatPrice(item.price)}</span>
+                                <span>${formatPrice(calculateItemPrice(item))}</span>
                               </div>
                               {/* Display detailed choices and addons */}
                               {item.options && Array.isArray(item.options) && item.options.length > 0 && (
@@ -1061,7 +1102,7 @@ const KitchenPage = () => {
                       <div key={item.id} className="border-b pb-3 last:border-b-0">
                         <div className="flex justify-between font-medium">
                           <span>{item.quantity}x {item.menuItem?.name || 'Unknown Item'}</span>
-                          <span>${formatPrice(item.price)}</span>
+                          <span>${formatPrice(calculateItemPrice(item))}</span>
                         </div>
                         {/* Display detailed choices and addons */}
                         {item.options && Array.isArray(item.options) && item.options.length > 0 && (
