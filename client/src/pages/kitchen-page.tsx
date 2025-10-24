@@ -214,32 +214,6 @@ const KitchenPage = () => {
     return numPrice.toFixed(2);
   };
 
-  // Calculate actual item price including all options
-  const calculateItemPrice = (item: any) => {
-    let basePrice = parseFloat(item.price || 0);
-
-    // Parse options if they're a JSON string
-    let parsedOptions = item.options;
-    if (typeof item.options === 'string') {
-      try {
-        parsedOptions = JSON.parse(item.options);
-      } catch (e) {
-        return basePrice;
-      }
-    }
-
-    // If options is an array, sum up all option prices
-    if (parsedOptions && Array.isArray(parsedOptions)) {
-      parsedOptions.forEach((option: any) => {
-        const optionPrice = parseFloat(option.price || 0);
-        if (optionPrice > 0) {
-          basePrice += optionPrice;
-        }
-      });
-    }
-
-    return basePrice;
-  };
   
   // Query for active orders
   const { data: orders, isLoading, error } = useQuery({
@@ -891,7 +865,7 @@ const KitchenPage = () => {
                             <div key={item.id} className="border-b pb-2">
                               <div className="flex justify-between font-medium">
                                 <span>{item.quantity}x {item.menuItem?.name || 'Unknown Item'}</span>
-                                <span>${formatPrice(calculateItemPrice(item))}</span>
+                                <span>${formatPrice(item.price)}</span>
                               </div>
                               {/* Display detailed choices and addons */}
                               {item.options && Array.isArray(item.options) && item.options.length > 0 && (
@@ -1102,7 +1076,7 @@ const KitchenPage = () => {
                       <div key={item.id} className="border-b pb-3 last:border-b-0">
                         <div className="flex justify-between font-medium">
                           <span>{item.quantity}x {item.menuItem?.name || 'Unknown Item'}</span>
-                          <span>${formatPrice(calculateItemPrice(item))}</span>
+                          <span>${formatPrice(item.price)}</span>
                         </div>
                         {/* Display detailed choices and addons */}
                         {item.options && Array.isArray(item.options) && item.options.length > 0 && (
