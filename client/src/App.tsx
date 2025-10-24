@@ -19,6 +19,7 @@ import RewardsPage from "@/pages/rewards-page";
 import ProfilePage from "@/pages/profile-page";
 import KitchenPage from "@/pages/kitchen-page";
 import AdminDashboard from "@/pages/admin-dashboard";
+import AdminFAQsPage from "@/pages/admin-faqs-page";
 import TestPage from "@/pages/test-page";
 import FixOrderPage from "@/pages/fix-order";
 import Fix169Page from "@/pages/fix-169";
@@ -69,6 +70,7 @@ function Router() {
         <Route path="/profile" component={ProfilePage} />
         <ProtectedRoute path="/kitchen" component={KitchenPage} />
         <AdminProtectedRoute path="/admin/dashboard" component={AdminDashboard} />
+        <AdminProtectedRoute path="/admin/faqs" component={AdminFAQsPage} />
         <ProtectedRoute path="/employee/clock" component={EmployeeClockPage} />
         <AdminProtectedRoute path="/admin/fix-points" component={FixPointsPage} />
         <Route component={NotFound} />

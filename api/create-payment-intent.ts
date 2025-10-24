@@ -164,14 +164,18 @@ export const handler: Handler = async (event, context) => {
       const voucherDiscount = orderData.voucherDiscount ? parseFloat(orderData.voucherDiscount) : 0;
       const totalDiscount = discount + voucherDiscount;
 
+      // Add card processing fee if provided
+      const cardProcessingFee = orderData.cardProcessingFee ? parseFloat(orderData.cardProcessingFee) : 0;
+
       // Calculate final total
-      const calculatedTotal = calculatedSubtotal + calculatedTax + deliveryFee + tip - totalDiscount;
+      const calculatedTotal = calculatedSubtotal + calculatedTax + deliveryFee + tip + cardProcessingFee - totalDiscount;
 
       console.log('💰 Server-side calculation:', {
         subtotal: calculatedSubtotal,
         tax: calculatedTax,
         deliveryFee,
         tip,
+        cardProcessingFee,
         discount: totalDiscount,
         calculatedTotal,
         clientAmount: amount

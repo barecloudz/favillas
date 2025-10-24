@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense } from "react";
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useAdminWebSocket } from "@/hooks/use-admin-websocket";
@@ -115,6 +115,7 @@ import ScheduleCreator from "@/components/admin/schedule-creator";
 import { TemplateEditor } from "@/components/admin/template-editor";
 import { RestaurantSettings } from "@/components/admin/restaurant-settings";
 import FrontendCustomization from "@/components/admin/frontend-customization";
+import { TipsReport } from "@/components/admin/tips-report";
 
 const AdminDashboard = () => {
   const { user, logoutMutation, isLoading } = useAuth();
@@ -145,14 +146,24 @@ const AdminDashboard = () => {
     return 0.3;
   });
 
-  // Save sound preferences to localStorage
+  // Test order filter - exclude orders before #52 and #55, #56
+  const [excludeTestOrders, setExcludeTestOrders] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('excludeTestOrders');
+      return saved !== null ? JSON.parse(saved) : true;
+    }
+    return true;
+  });
+
+  // Save sound preferences and filter to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('adminSoundNotifications', JSON.stringify(soundNotificationsEnabled));
       localStorage.setItem('adminSoundType', JSON.stringify(soundType));
       localStorage.setItem('adminSoundVolume', JSON.stringify(soundVolume));
+      localStorage.setItem('excludeTestOrders', JSON.stringify(excludeTestOrders));
     }
-  }, [soundNotificationsEnabled, soundType, soundVolume]);
+  }, [soundNotificationsEnabled, soundType, soundVolume, excludeTestOrders]);
 
   // Get custom sound settings from localStorage for main component
   const [mainCustomSoundUrl, setMainCustomSoundUrl] = useState(() => {
@@ -499,7 +510,7 @@ const AdminDashboard = () => {
                   className="text-green-600 border-green-600 hover:bg-green-50"
                   onClick={() => {
                     // TODO: Implement add tax category modal
-                    console.log('Add new tax category');
+                    // console.log('Add new tax category');
                   }}
                 >
                   Add new tax category
@@ -859,11 +870,23 @@ const AdminDashboard = () => {
 
   
   // Queries for different data
-  const { data: orders, isLoading: ordersLoading } = useQuery({
+  const { data: ordersRaw, isLoading: ordersLoading } = useQuery({
     queryKey: ["/api/orders"],
     refetchInterval: false, // Disabled auto-refresh for menu editing
     enabled: true, // Enable orders query for admin dashboard
   });
+
+  // Filter out test orders if enabled
+  const orders = useMemo(() => {
+    if (!ordersRaw) return ordersRaw;
+    if (!excludeTestOrders) return ordersRaw;
+
+    // Filter out orders before #52 (fake) and #55, #56 (test)
+    return (ordersRaw as any[]).filter((order: any) => {
+      const orderId = order.id;
+      return orderId >= 52 && orderId !== 55 && orderId !== 56;
+    });
+  }, [ordersRaw, excludeTestOrders]);
 
   const { data: menuItems, isLoading: menuLoading } = useQuery({
     queryKey: ["/api/menu"],
@@ -912,7 +935,7 @@ const AdminDashboard = () => {
     // Define tabs inline to avoid dependency issues
     const primaryTabsHrefs = ["dashboard", "orders", "catering"];
     const categoryTabsHrefs = [
-      "analytics", "reports", 
+      "analytics", "reports", "tips-report",
       "menu-editor", "pricing", "out-of-stock", "multi-location", "experimental",
       "frontend", "qr-codes", "widget", "smart-links", "printer", "receipt-templates", "scheduling", "reservations", 
       "vacation-mode", "delivery", "taxation",
@@ -1034,23 +1057,23 @@ const AdminDashboard = () => {
     isNaN: isNaN(parseFloat(order.total || order.totalAmount || 0))
   })) : [];
 
-  console.log('💰 Revenue debug:', {
-    analyticsRevenue: (analytics as any)?.totalRevenue,
-    calculatedRevenue,
-    finalRevenue: totalRevenue,
-    analyticsAvgOrder: (analytics as any)?.averageOrderValue,
-    calculatedAvgOrder: calculatedAvgOrderValue,
-    finalAvgOrder: averageOrderValue,
-    ordersCount: orders ? orders.length : 0,
-    sampleOrderTotals
-  });
+  // console.log('💰 Revenue debug:', {
+  //   analyticsRevenue: (analytics as any)?.totalRevenue,
+  //   calculatedRevenue,
+  //   finalRevenue: totalRevenue,
+  //   analyticsAvgOrder: (analytics as any)?.averageOrderValue,
+  //   calculatedAvgOrder: calculatedAvgOrderValue,
+  //   finalAvgOrder: averageOrderValue,
+  //   ordersCount: orders ? orders.length : 0,
+  //   sampleOrderTotals
+  // });
   // Calculate unique customers from orders instead of users query
   const totalCustomers = orders ? new Set((orders as any[]).map((order: any) => {
     const customerId = order.userId || order.user_id || order.customerEmail || order.customer_email;
     return customerId;
   }).filter(Boolean)).size : 0;
 
-  console.log('👥 Total unique customers calculated:', totalCustomers);
+  // console.log('👥 Total unique customers calculated:', totalCustomers);
   const totalEmployees = (users as any[])?.filter((u: any) => u.role === "employee").length || 0;
 
   // Primary tabs always visible
@@ -1068,6 +1091,7 @@ const AdminDashboard = () => {
       items: [
         { name: "Analytics", icon: BarChart3, href: "analytics" },
         { name: "Reports", icon: FileText, href: "reports" },
+        { name: "Tips Report", icon: DollarSign, href: "tips-report" },
       ]
     },
     {
@@ -1397,7 +1421,11 @@ const AdminDashboard = () => {
             {activeTab === "reports" && (
               <ReportsSection analytics={analytics} orders={orders} />
             )}
-            
+
+            {activeTab === "tips-report" && (
+              <TipsReport orders={orders} />
+            )}
+
             {activeTab === "menu-editor" && (
               <MenuEditor menuItems={menuItems} />
             )}
@@ -2005,18 +2033,18 @@ const DashboardOverview = ({
 }: any) => {
   // Use real analytics data or calculate from orders
   const analyticsData = React.useMemo(() => {
-    console.log('📊 DashboardOverview - Analytics Data Debug:', {
-      hasAnalytics: !!analytics,
-      hasOrders: !!orders,
-      analyticsKeys: analytics ? Object.keys(analytics) : [],
-      ordersLength: orders ? orders.length : 0,
-      totalCustomers,
-      totalRevenue,
-      averageOrderValue
-    });
+    // console.log('📊 DashboardOverview - Analytics Data Debug:', {
+    //   hasAnalytics: !!analytics,
+    //   hasOrders: !!orders,
+    //   analyticsKeys: analytics ? Object.keys(analytics) : [],
+    //   ordersLength: orders ? orders.length : 0,
+    //   totalCustomers,
+    //   totalRevenue,
+    //   averageOrderValue
+    // });
 
     if (!orders || orders.length === 0) {
-      console.log('❌ No orders data available for charts');
+      // console.log('❌ No orders data available for charts');
       return {
         revenue: { total: 0, change: 0, trend: "up", daily: [0,0,0,0,0,0,0] },
         orders: { total: 0, change: 0, trend: "up", daily: [0,0,0,0,0,0,0] },
@@ -2033,7 +2061,7 @@ const DashboardOverview = ({
       userId: order.userId || order.user_id,
       total: order.total || order.totalAmount
     }));
-    console.log('📅 Sample order dates and data:', sampleOrderDates);
+    // console.log('📅 Sample order dates and data:', sampleOrderDates);
 
     // Get all unique dates from orders and use the most recent 7 days that have data
     const allOrderDates = orders.map((order: any) =>
@@ -2041,7 +2069,7 @@ const DashboardOverview = ({
     );
     const uniqueDates = [...new Set(allOrderDates)].sort().slice(-7); // Last 7 unique dates with orders
 
-    console.log('📅 Using actual order dates for charts:', uniqueDates);
+    // console.log('📅 Using actual order dates for charts:', uniqueDates);
 
     const dailyData = uniqueDates.map(date => {
       const dayOrders = orders.filter((order: any) => {
@@ -2049,7 +2077,7 @@ const DashboardOverview = ({
         return orderDate === date;
       });
 
-      console.log(`📅 ${date}: ${dayOrders.length} orders`);
+      // console.log(`📅 ${date}: ${dayOrders.length} orders`);
 
       const dayRevenue = dayOrders.reduce((sum: number, order: any) => {
         const total = parseFloat(order.total || order.totalAmount || 0);
@@ -2067,7 +2095,7 @@ const DashboardOverview = ({
       };
     });
 
-    console.log('📈 Calculated daily data:', dailyData);
+    // console.log('📈 Calculated daily data:', dailyData);
 
     const totalOrdersCount = orders.length;
     const totalRevenueAmount = parseFloat(totalRevenue) || 0;
@@ -2105,7 +2133,7 @@ const DashboardOverview = ({
       }
     };
 
-    console.log('✅ Final analytics data:', result);
+    // console.log('✅ Final analytics data:', result);
     return result;
   }, [analytics, orders, totalCustomers, totalRevenue, averageOrderValue]);
 
@@ -3020,16 +3048,16 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
 
   // Use real analytics data or fallback to default
   const analyticsData = React.useMemo(() => {
-    console.log('📊 AnalyticsDashboard - Data Debug:', {
-      hasAnalytics: !!analytics,
-      hasOrders: !!orders,
-      ordersLength: orders ? orders.length : 0,
-      timeRange,
-      selectedMetric
-    });
+    // console.log('📊 AnalyticsDashboard - Data Debug:', {
+    //   hasAnalytics: !!analytics,
+    //   hasOrders: !!orders,
+    //   ordersLength: orders ? orders.length : 0,
+    //   timeRange,
+    //   selectedMetric
+    // });
 
     if (!orders || orders.length === 0) {
-      console.log('❌ No orders data for AnalyticsDashboard');
+      // console.log('❌ No orders data for AnalyticsDashboard');
       return {
         revenue: { total: 0, change: 0, trend: "up", daily: [0,0,0,0,0,0,0], maxValue: 0 },
         orders: { total: 0, change: 0, trend: "up", daily: [0,0,0,0,0,0,0], maxValue: 0 },
@@ -3048,7 +3076,7 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
     const now = new Date();
     const daysToShow = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : timeRange === "90d" ? 90 : 7;
 
-    console.log('📅 AnalyticsDashboard filtering for:', timeRange, 'showing', daysToShow, 'days');
+    // console.log('📅 AnalyticsDashboard filtering for:', timeRange, 'showing', daysToShow, 'days');
 
     const dailyData = Array.from({ length: daysToShow }, (_, i) => {
       const date = new Date(now);
@@ -3084,17 +3112,17 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
       return orderDate >= cutoffDate;
     });
 
-    console.log('📊 Filtered orders:', {
-      totalOrders: orders.length,
-      filteredOrders: filteredOrders.length,
-      timeRange,
-      daysToShow,
-      cutoffDate: cutoffDate.toISOString().split('T')[0],
-      sampleOrderDates: orders.slice(0, 3).map((order: any) => ({
-        id: order.id,
-        date: new Date(order.createdAt || order.created_at).toISOString().split('T')[0]
-      }))
-    });
+    // console.log('📊 Filtered orders:', {
+    //   totalOrders: orders.length,
+    //   filteredOrders: filteredOrders.length,
+    //   timeRange,
+    //   daysToShow,
+    //   cutoffDate: cutoffDate.toISOString().split('T')[0],
+    //   sampleOrderDates: orders.slice(0, 3).map((order: any) => ({
+    //     id: order.id,
+    //     date: new Date(order.createdAt || order.created_at).toISOString().split('T')[0]
+    //   }))
+    // });
 
     // If no orders in selected range but we have orders, expand to show all orders for now
     const ordersToUse = filteredOrders.length > 0 ? filteredOrders : orders;
@@ -3174,14 +3202,14 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
     const maxCustomers = Math.max(...customersDaily, 1);
     const maxAvgOrder = Math.max(...avgOrderDaily, 1);
 
-    console.log('📊 AnalyticsDashboard calculated totals:', {
-      totalRevenue,
-      totalOrders,
-      avgOrderValue,
-      uniqueCustomers,
-      topSellingItemsCount: topSellingItems.length,
-      customerInsights
-    });
+    // console.log('📊 AnalyticsDashboard calculated totals:', {
+    //   totalRevenue,
+    //   totalOrders,
+    //   avgOrderValue,
+    //   uniqueCustomers,
+    //   topSellingItemsCount: topSellingItems.length,
+    //   customerInsights
+    // });
 
     return {
       revenue: {
@@ -3274,7 +3302,7 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
       link.click();
       document.body.removeChild(link);
 
-      console.log('📁 Analytics exported successfully');
+      // console.log('📁 Analytics exported successfully');
     } catch (error) {
       console.error('❌ Export failed:', error);
     }
@@ -3720,7 +3748,7 @@ const MenuEditor = ({ menuItems }: any) => {
   const createCategoryMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/categories", data),
     onSuccess: (result) => {
-      console.log("Category created:", result);
+      // console.log("Category created:", result);
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
       refetchCategories(); // Explicit refetch
       toast({ title: "Success", description: "Category created successfully!" });
@@ -3735,7 +3763,7 @@ const MenuEditor = ({ menuItems }: any) => {
   const updateCategoryMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) => apiRequest("PUT", `/api/categories/${id}`, data),
     onSuccess: (result) => {
-      console.log("Category update result:", result);
+      // console.log("Category update result:", result);
 
       const updatedItems = result?.updatedMenuItems || 0;
       const message = updatedItems > 0
@@ -3979,7 +4007,7 @@ const MenuEditor = ({ menuItems }: any) => {
   const { data: choiceGroups = [], refetch: refetchChoiceGroups } = useQuery({
     queryKey: ['choice-groups'],
     queryFn: async () => {
-      console.log('🔍 Fetching choice groups...');
+      // console.log('🔍 Fetching choice groups...');
       try {
         const response = await apiRequest('GET', '/api/choice-groups');
         if (!response.ok) {
@@ -3987,7 +4015,7 @@ const MenuEditor = ({ menuItems }: any) => {
           return [];
         }
         const data = await response.json();
-        console.log('📦 Choice groups response:', data, 'Length:', data?.length || 0);
+        // console.log('📦 Choice groups response:', data, 'Length:', data?.length || 0);
         return data || [];
       } catch (error) {
         console.error('💥 Choice groups fetch error:', error);
@@ -3999,7 +4027,7 @@ const MenuEditor = ({ menuItems }: any) => {
   const { data: choiceItems = [], refetch: refetchChoiceItems } = useQuery({
     queryKey: ['choice-items'],
     queryFn: async () => {
-      console.log('🔍 Fetching choice items...');
+      // console.log('🔍 Fetching choice items...');
       try {
         const response = await apiRequest('GET', '/api/choice-items');
         if (!response.ok) {
@@ -4007,7 +4035,7 @@ const MenuEditor = ({ menuItems }: any) => {
           return [];
         }
         const data = await response.json();
-        console.log('📦 Choice items response:', data, 'Length:', data?.length || 0);
+        // console.log('📦 Choice items response:', data, 'Length:', data?.length || 0);
         return data || [];
       } catch (error) {
         console.error('💥 Choice items fetch error:', error);
@@ -4035,7 +4063,7 @@ const MenuEditor = ({ menuItems }: any) => {
           return [];
         }
         const data = await response.json();
-        console.log('Fetched menu item choice groups:', data);
+        // console.log('Fetched menu item choice groups:', data);
         return data || [];
       } catch (error) {
         console.error('Error fetching menu item choice groups:', error);
@@ -4384,7 +4412,7 @@ const MenuEditor = ({ menuItems }: any) => {
     if (choice) {
       // Since isActive field is missing from API response, default to true and toggle to false
       const currentStatus = choice.isActive !== false; // true if undefined or true
-      console.log('🔄 Toggling choice status:', { id, currentStatus, newStatus: !currentStatus });
+      // console.log('🔄 Toggling choice status:', { id, currentStatus, newStatus: !currentStatus });
       updateChoiceGroupMutation.mutate({
         id,
         data: {
@@ -4412,7 +4440,7 @@ const MenuEditor = ({ menuItems }: any) => {
   };
 
   const handleUpdateChoiceItem = async (id: number, data: any) => {
-    console.log('💾 Saving choice item:', id, data);
+    // console.log('💾 Saving choice item:', id, data);
     setIsSavingPricing(true);
     try {
       // Handle size-based pricing first (before closing dialog)
@@ -4434,20 +4462,20 @@ const MenuEditor = ({ menuItems }: any) => {
               console.error('❌ Failed to save pricing rule:', response.status, response.statusText);
               const errorText = await response.text();
               console.error('Error details:', errorText);
-            } else {
-              console.log('✅ Pricing rule saved successfully');
-            }
+            } // else {
+              // console.log('✅ Pricing rule saved successfully');
+            // }
           }
         }
       } else if (!data.enableSizePricing) {
-        console.log('🗑️ Size pricing disabled, removing existing rules');
+        // console.log('🗑️ Size pricing disabled, removing existing rules');
         // If size pricing is disabled, remove all existing pricing rules for this item
         try {
           const pricingResponse = await fetch('/.netlify/functions/choice-pricing');
           if (pricingResponse.ok) {
             const pricingData = await pricingResponse.json();
             const itemRules = pricingData.pricingRules?.filter((rule: any) => rule.choice_item_id === id) || [];
-            console.log('🔍 Found', itemRules.length, 'existing rules to delete');
+            // console.log('🔍 Found', itemRules.length, 'existing rules to delete');
 
             // Delete each existing rule
             for (const rule of itemRules) {
@@ -4467,7 +4495,7 @@ const MenuEditor = ({ menuItems }: any) => {
         price: data.price,
         isDefault: data.isDefault
       };
-      console.log('📝 Basic data to save:', basicData);
+      // console.log('📝 Basic data to save:', basicData);
       updateChoiceItemMutation.mutate({ id, data: basicData });
 
       // Wait a moment for mutation to complete before closing dialog
@@ -4475,7 +4503,7 @@ const MenuEditor = ({ menuItems }: any) => {
 
       setEditingChoiceItem(null);
       setEditingChoiceItemData({ name: '', description: '', price: '0.00', isDefault: false, sizePricing: {}, pricingCategory: 'pizza', enableSizePricing: false });
-      console.log('✅ Choice item update completed');
+      // console.log('✅ Choice item update completed');
     } catch (error) {
       console.error('💥 Error updating choice item with size pricing:', error);
     } finally {
@@ -4484,7 +4512,7 @@ const MenuEditor = ({ menuItems }: any) => {
   };
 
   const handleEditChoiceItem = async (item: any) => {
-    console.log('✏️ Editing choice item:', item);
+    // console.log('✏️ Editing choice item:', item);
     setEditingChoiceItem(item);
 
     // Load existing size pricing data
@@ -4493,22 +4521,22 @@ const MenuEditor = ({ menuItems }: any) => {
     let pricingCategory = 'pizza';
 
     try {
-      console.log('🔍 Loading existing pricing rules for item:', item.id);
+      // console.log('🔍 Loading existing pricing rules for item:', item.id);
       const pricingResponse = await fetch('/.netlify/functions/choice-pricing');
       if (pricingResponse.ok) {
         const data = await pricingResponse.json();
-        console.log('📊 All pricing rules:', data);
+        // console.log('📊 All pricing rules:', data);
         const itemPricingRules = data.pricingRules?.filter((rule: any) => rule.choice_item_id === item.id) || [];
-        console.log('🎯 Pricing rules for this item:', itemPricingRules);
+        // console.log('🎯 Pricing rules for this item:', itemPricingRules);
 
         if (itemPricingRules.length > 0) {
           enableSizePricing = true;
-          console.log('✅ Size pricing enabled - found', itemPricingRules.length, 'rules');
+          // console.log('✅ Size pricing enabled - found', itemPricingRules.length, 'rules');
 
           // Determine category based on the first pricing rule
           const firstRule = itemPricingRules[0];
           const conditionName = firstRule.condition_choice_name?.toLowerCase() || '';
-          console.log('🔍 Analyzing condition name:', conditionName);
+          // console.log('🔍 Analyzing condition name:', conditionName);
 
           if (conditionName.includes('10') || conditionName.includes('14') || conditionName.includes('16') || conditionName.includes('sicilian')) {
             pricingCategory = 'pizza';
@@ -4516,7 +4544,7 @@ const MenuEditor = ({ menuItems }: any) => {
             // Check if it's calzone or stromboli based on context (this could be enhanced)
             pricingCategory = 'calzone'; // Default to calzone, user can change if needed
           }
-          console.log('📂 Determined category:', pricingCategory);
+          // console.log('📂 Determined category:', pricingCategory);
 
           // Build sizePricing object using actual choice item IDs
           itemPricingRules.forEach((rule: any) => {
@@ -4530,12 +4558,12 @@ const MenuEditor = ({ menuItems }: any) => {
       console.error('💥 Error loading size pricing:', error);
     }
 
-    console.log('🏗️ Setting edit data:', {
-      name: item.name,
-      enableSizePricing,
-      pricingCategory,
-      sizePricing
-    });
+    // console.log('🏗️ Setting edit data:', {
+    //   name: item.name,
+    //   enableSizePricing,
+    //   pricingCategory,
+    //   sizePricing
+    // });
 
     setEditingChoiceItemData({
       name: item.name,
@@ -4549,7 +4577,7 @@ const MenuEditor = ({ menuItems }: any) => {
 
     // If size pricing is enabled, fetch the available sizes
     if (enableSizePricing) {
-      console.log('📐 Fetching sizes for category:', pricingCategory);
+      // console.log('📐 Fetching sizes for category:', pricingCategory);
       await fetchSizesForCategory(pricingCategory);
     }
   };
@@ -7530,14 +7558,14 @@ const PrinterManagement = ({
   };
 
   const handleSavePrinter = (printerData: any) => {
-    console.log('💾 handleSavePrinter called with:', printerData);
-    console.log('📝 editingPrinter:', editingPrinter);
-    
+    // console.log('💾 handleSavePrinter called with:', printerData);
+    // console.log('📝 editingPrinter:', editingPrinter);
+
     if (editingPrinter) {
-      console.log('✏️ Updating existing printer');
+      // console.log('✏️ Updating existing printer');
       updatePrinterMutation.mutate({ id: editingPrinter.id, data: printerData });
     } else {
-      console.log('➕ Creating new printer');
+      // console.log('➕ Creating new printer');
       createPrinterMutation.mutate(printerData);
     }
   };
@@ -7777,7 +7805,16 @@ const SettingsPanel = () => {
     return 0.3;
   });
 
-  // Save sound preferences to localStorage AND system settings
+  // Test order filter - exclude orders before #52 and #55, #56
+  const [excludeTestOrders, setExcludeTestOrders] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('excludeTestOrders');
+      return saved !== null ? JSON.parse(saved) : true;
+    }
+    return true;
+  });
+
+  // Save sound preferences and test order filter to localStorage AND system settings
   useEffect(() => {
     if (typeof window !== 'undefined') {
       // Save to localStorage for immediate access
@@ -7786,6 +7823,7 @@ const SettingsPanel = () => {
       localStorage.setItem('adminSoundVolume', JSON.stringify(soundVolume));
       localStorage.setItem('adminCustomSoundUrl', customSoundUrl);
       localStorage.setItem('adminCustomSoundName', customSoundName);
+      localStorage.setItem('excludeTestOrders', JSON.stringify(excludeTestOrders));
 
       // Save to system settings (debounced to avoid excessive API calls)
       const timeoutId = setTimeout(async () => {
@@ -7814,7 +7852,7 @@ const SettingsPanel = () => {
 
       return () => clearTimeout(timeoutId);
     }
-  }, [soundNotificationsEnabled, soundType, soundVolume, customSoundUrl, customSoundName]);
+  }, [soundNotificationsEnabled, soundType, soundVolume, customSoundUrl, customSoundName, excludeTestOrders]);
 
   // Fetch notification settings from system settings on mount
   useEffect(() => {
@@ -7962,11 +8000,11 @@ const SettingsPanel = () => {
       return;
     }
 
-    console.log('Playing test sound:', soundType, 'Volume:', soundVolume);
+    // console.log('Playing test sound:', soundType, 'Volume:', soundVolume);
 
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      console.log('AudioContext state:', audioContext.state);
+      // console.log('AudioContext state:', audioContext.state);
 
       if (audioContext.state === 'suspended') {
         await audioContext.resume();
@@ -8311,6 +8349,31 @@ const SettingsPanel = () => {
                           <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                  </div>
+
+                  <Separator className="my-4" />
+
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-md font-semibold mb-3">Analytics & Reporting</h4>
+                      <div className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg">
+                        <input
+                          type="checkbox"
+                          id="excludeTestOrders"
+                          checked={excludeTestOrders}
+                          onChange={(e) => setExcludeTestOrders(e.target.checked)}
+                          className="h-4 w-4 mt-0.5 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                        />
+                        <div className="flex-1">
+                          <Label htmlFor="excludeTestOrders" className="text-sm font-medium cursor-pointer">
+                            Exclude test orders from analytics
+                          </Label>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Filters out orders before #52 (fake orders) and orders #55, #56 (test orders) from all analytics, reports, and tips calculations systemwide.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -9203,19 +9266,19 @@ const PrinterManagementSection = () => {
   const { data: printers = [], isLoading, refetch } = useQuery({
     queryKey: ['/api/printer/config'],
     queryFn: async () => {
-      console.log('🔄 Fetching printers from API...');
+      // console.log('🔄 Fetching printers from API...');
       try {
         const response = await apiRequest('GET', '/api/printer/config');
-        console.log('📨 Fetch response status:', response.status, response.ok);
-        
+        // console.log('📨 Fetch response status:', response.status, response.ok);
+
         if (!response.ok) {
           const errorText = await response.text();
           console.error('❌ Fetch error response:', errorText);
           throw new Error(`Failed to fetch printers: ${response.status} ${errorText}`);
         }
-        
+
         const result = await response.json();
-        console.log('✅ Fetch success, got printers:', result.length);
+        // console.log('✅ Fetch success, got printers:', result.length);
         return result;
       } catch (error) {
         console.error('❌ Fetch error:', error);
@@ -9229,7 +9292,7 @@ const PrinterManagementSection = () => {
   // Create printer mutation
   const createPrinterMutation = useMutation({
     mutationFn: async (printerData: any) => {
-      console.log('🔧 Creating printer with data:', printerData);
+      // console.log('🔧 Creating printer with data:', printerData);
       const payload = {
         name: printerData.name,
         ipAddress: printerData.ip,
@@ -9238,25 +9301,25 @@ const PrinterManagementSection = () => {
         isActive: printerData.isActive,
         isPrimary: printerData.isPrimary || false
       };
-      console.log('📤 API payload:', payload);
-      
+      // console.log('📤 API payload:', payload);
+
       const response = await apiRequest('POST', '/api/printer/config', payload);
-      console.log('📨 API response status:', response.status, response.ok);
-      
+      // console.log('📨 API response status:', response.status, response.ok);
+
       if (!response.ok) {
         const error = await response.json();
         console.error('❌ API error response:', error);
         throw new Error(error.message || 'Failed to create printer');
       }
       const result = await response.json();
-      console.log('✅ API success response:', result);
+      // console.log('✅ API success response:', result);
       return result;
     },
     onSuccess: (data) => {
-      console.log('🎉 Mutation onSuccess called with:', data);
+      // console.log('🎉 Mutation onSuccess called with:', data);
       // Use setTimeout to avoid race conditions
       setTimeout(() => {
-        console.log('🔄 Invalidating and refetching after delay...');
+        // console.log('🔄 Invalidating and refetching after delay...');
         queryClient.invalidateQueries({ queryKey: ['/api/printer/config'] });
         refetch();
       }, 100);
@@ -9438,14 +9501,14 @@ const PrinterManagementSection = () => {
   };
 
   const handleSavePrinter = (printerData: any) => {
-    console.log('💾 handleSavePrinter called with:', printerData);
-    console.log('📝 editingPrinter:', editingPrinter);
-    
+    // console.log('💾 handleSavePrinter called with:', printerData);
+    // console.log('📝 editingPrinter:', editingPrinter);
+
     if (editingPrinter) {
-      console.log('✏️ Updating existing printer');
+      // console.log('✏️ Updating existing printer');
       updatePrinterMutation.mutate({ id: editingPrinter.id, data: printerData });
     } else {
-      console.log('➕ Creating new printer');
+      // console.log('➕ Creating new printer');
       createPrinterMutation.mutate(printerData);
     }
   };
@@ -10523,7 +10586,7 @@ const CreatePromotionForm = ({ onSubmit, onCancel }: { onSubmit: (data: any) => 
       isActive: true,
       description: "" // Add empty description since it's optional
     };
-    console.log("Submitting promotion data:", submissionData);
+    // console.log("Submitting promotion data:", submissionData);
     onSubmit(submissionData);
   };
 
@@ -12668,24 +12731,24 @@ const ReportsSection = ({ analytics, orders }: any) => {
     total: order.total || order.totalAmount
   }));
 
-  console.log('📊 Reports filtering debug:', {
-    totalOrders: orders.length,
-    filteredOrders: filteredOrders.length,
-    dateRange,
-    daysToShow,
-    cutoffDate: cutoffDate.toISOString().split('T')[0],
-    today: now.toISOString().split('T')[0],
-    sampleOrderDates: orderDates,
-    usingFiltered: filteredOrders.length > 0,
-    filteredRevenue: filteredOrders.reduce((sum: number, order: any) => {
-      const orderTotal = parseFloat(order.total || order.totalAmount || 0);
-      return sum + (isNaN(orderTotal) ? 0 : orderTotal);
-    }, 0),
-    allOrdersRevenue: orders.reduce((sum: number, order: any) => {
-      const orderTotal = parseFloat(order.total || order.totalAmount || 0);
-      return sum + (isNaN(orderTotal) ? 0 : orderTotal);
-    }, 0)
-  });
+  // console.log('📊 Reports filtering debug:', {
+  //   totalOrders: orders.length,
+  //   filteredOrders: filteredOrders.length,
+  //   dateRange,
+  //   daysToShow,
+  //   cutoffDate: cutoffDate.toISOString().split('T')[0],
+  //   today: now.toISOString().split('T')[0],
+  //   sampleOrderDates: orderDates,
+  //   usingFiltered: filteredOrders.length > 0,
+  //   filteredRevenue: filteredOrders.reduce((sum: number, order: any) => {
+  //     const orderTotal = parseFloat(order.total || order.totalAmount || 0);
+  //     return sum + (isNaN(orderTotal) ? 0 : orderTotal);
+  //   }, 0),
+  //   allOrdersRevenue: orders.reduce((sum: number, order: any) => {
+  //     const orderTotal = parseFloat(order.total || order.totalAmount || 0);
+  //     return sum + (isNaN(orderTotal) ? 0 : orderTotal);
+  //   }, 0)
+  // });
 
   // Calculate real totals from filtered orders
   const calculatedRevenue = ordersToUse.reduce((sum: number, order: any) => {
@@ -12715,13 +12778,13 @@ const ReportsSection = ({ analytics, orders }: any) => {
     allKeys: Object.keys(order).filter(key => key.toLowerCase().includes('type') || key.toLowerCase().includes('delivery'))
   }));
 
-  console.log('🚚 Order Type Debug:', {
-    sampleOrderTypes: orderTypeDebug,
-    uniqueOrderTypes: [...new Set(ordersToUse.map(o => o.orderType))],
-    uniqueTypes: [...new Set(ordersToUse.map(o => o.type))],
-    uniqueDeliveryMethods: [...new Set(ordersToUse.map(o => o.delivery_method))],
-    uniqueOrderTypeFields: [...new Set(ordersToUse.map(o => o.order_type))]
-  });
+  // console.log('🚚 Order Type Debug:', {
+  //   sampleOrderTypes: orderTypeDebug,
+  //   uniqueOrderTypes: [...new Set(ordersToUse.map(o => o.orderType))],
+  //   uniqueTypes: [...new Set(ordersToUse.map(o => o.type))],
+  //   uniqueDeliveryMethods: [...new Set(ordersToUse.map(o => o.delivery_method))],
+  //   uniqueOrderTypeFields: [...new Set(ordersToUse.map(o => o.order_type))]
+  // });
 
   // Calculate order type breakdown from filtered orders
   const typeBreakdown = ordersToUse.reduce((acc: any, order: any) => {
@@ -12805,7 +12868,7 @@ const ReportsSection = ({ analytics, orders }: any) => {
       link.click();
       document.body.removeChild(link);
 
-      console.log('📁 Business report exported successfully');
+      // console.log('📁 Business report exported successfully');
     } catch (error) {
       console.error('❌ Report export failed:', error);
     }

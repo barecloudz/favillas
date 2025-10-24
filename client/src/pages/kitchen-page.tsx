@@ -10,10 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Loader2, Printer, Volume2, Columns3, LayoutGrid, User, Home, Settings, LogOut, PauseCircle, PlayCircle } from "lucide-react";
-import { printToThermalPrinter } from "@/utils/thermal-printer";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { printToThermalPrinter, printDailySummary } from "@/utils/thermal-printer";
 import { useLocation } from "wouter";
 import { useVacationMode } from "@/hooks/use-vacation-mode";
 
@@ -33,6 +36,14 @@ const KitchenPage = () => {
   const { isOrderingPaused, vacationMode } = useVacationMode();
   const [isTogglingPause, setIsTogglingPause] = useState(false);
   const [wakeLock, setWakeLock] = useState<any>(null);
+  const [showPauseReasonDialog, setShowPauseReasonDialog] = useState(false);
+  const [pauseReason, setPauseReason] = useState<string>('high_volume');
+  const [customPauseMessage, setCustomPauseMessage] = useState('');
+
+  // Daily Summary Modal State
+  const [showDailySummaryModal, setShowDailySummaryModal] = useState(false);
+  const [storeHours, setStoreHours] = useState<any[]>([]);
+  const [closingTime, setClosingTime] = useState<string | null>(null);
   // Use localStorage to track printed orders across all browser tabs/devices
   const [printedOrders, setPrintedOrders] = useState<Set<number>>(() => {
     const stored = localStorage.getItem('printedOrders');
@@ -91,6 +102,114 @@ const KitchenPage = () => {
         if (volume) setSoundVolume(parseFloat(volume.setting_value));
       })
       .catch(err => console.warn('Failed to load notification settings:', err));
+  }, []);
+
+  // Fetch store hours on mount
+  useEffect(() => {
+    const fetchStoreHours = async () => {
+      try {
+        const response = await fetch('/api/store-hours', { credentials: 'include' });
+        if (response.ok) {
+          const data = await response.json();
+          setStoreHours(data);
+
+          // Get today's day of week (0 = Sunday, 6 = Saturday)
+          const today = new Date().getDay();
+          const todayHours = data.find((h: any) => h.dayOfWeek === today);
+
+          if (todayHours && todayHours.isOpen && todayHours.closeTime) {
+            setClosingTime(todayHours.closeTime);
+            console.log(`Store closes today at: ${todayHours.closeTime}`);
+          } else if (todayHours && !todayHours.isOpen) {
+            console.log('Store is closed today');
+            setClosingTime(null);
+          } else {
+            // Default to 22:00 if no hours found
+            setClosingTime('22:00');
+            console.log('Using default closing time: 22:00');
+          }
+        } else {
+          // Default to 22:00 if API fails
+          setClosingTime('22:00');
+          console.log('Failed to fetch store hours, using default: 22:00');
+        }
+      } catch (error) {
+        console.error('Error fetching store hours:', error);
+        setClosingTime('22:00');
+      }
+    };
+
+    fetchStoreHours();
+  }, []);
+
+  // Timer to check for daily summary prompt
+  useEffect(() => {
+    if (!closingTime) return;
+
+    const checkForDailySummary = () => {
+      const now = new Date();
+      const todayDateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+      const storageKey = `dailySummaryPromptShown_${todayDateStr}`;
+
+      // Check if we've already shown the prompt today
+      if (localStorage.getItem(storageKey) === 'true') {
+        return;
+      }
+
+      // Parse closing time (format: "HH:MM")
+      const [closeHour, closeMinute] = closingTime.split(':').map(Number);
+      const closingDate = new Date(now);
+      closingDate.setHours(closeHour, closeMinute, 0, 0);
+
+      // Calculate 30 minutes before closing
+      const promptTime = new Date(closingDate);
+      promptTime.setMinutes(promptTime.getMinutes() - 30);
+
+      // Check if current time is within the window (30 minutes before closing to closing time)
+      if (now >= promptTime && now < closingDate) {
+        console.log('Time to show daily summary prompt!');
+        setShowDailySummaryModal(true);
+        localStorage.setItem(storageKey, 'true');
+      }
+    };
+
+    // Check immediately on mount
+    checkForDailySummary();
+
+    // Then check every minute
+    const interval = setInterval(checkForDailySummary, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [closingTime]);
+
+  // Clear the daily summary flag at midnight
+  useEffect(() => {
+    const clearAtMidnight = () => {
+      const now = new Date();
+      const midnight = new Date(now);
+      midnight.setDate(midnight.getDate() + 1);
+      midnight.setHours(0, 0, 0, 0);
+
+      const timeUntilMidnight = midnight.getTime() - now.getTime();
+
+      setTimeout(() => {
+        // Clear all daily summary flags from localStorage
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('dailySummaryPromptShown_')) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        console.log('Cleared daily summary flags at midnight');
+
+        // Set up the next midnight clear
+        clearAtMidnight();
+      }, timeUntilMidnight);
+    };
+
+    clearAtMidnight();
   }, []);
 
   // Request wake lock to keep screen on
@@ -384,28 +503,177 @@ const KitchenPage = () => {
     }
   };
 
+  // Handle daily summary print
+  const handlePrintDailySummary = async () => {
+    try {
+      console.log('Fetching today\'s orders for daily summary...');
+
+      // Get today's date range
+      const now = new Date();
+      const startOfDay = new Date(now);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(now);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // Fetch ALL orders for today (not just active ones)
+      const queryParams = new URLSearchParams({
+        startDate: startOfDay.toISOString(),
+        endDate: endOfDay.toISOString()
+      });
+      const response = await fetch(`/api/orders?${queryParams}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch orders');
+      }
+
+      const allOrdersToday = await response.json();
+
+      // Filter test orders if the setting is enabled
+      const excludeTestOrders = localStorage.getItem('excludeTestOrders') !== 'false';
+      let filteredOrders = allOrdersToday;
+
+      if (excludeTestOrders) {
+        // Exclude orders before #52 and specific test orders #55, #56
+        filteredOrders = allOrdersToday.filter((order: any) => {
+          const orderId = order.id;
+          return orderId >= 52 && orderId !== 55 && orderId !== 56;
+        });
+        console.log(`Filtered ${allOrdersToday.length} orders to ${filteredOrders.length} (excluding test orders)`);
+      }
+
+      if (filteredOrders.length === 0) {
+        toast({
+          title: "No Orders Today",
+          description: "There are no orders to include in the daily summary.",
+        });
+        setShowDailySummaryModal(false);
+        return;
+      }
+
+      // Format orders for the print function
+      const formattedOrders = filteredOrders.map((order: any) => ({
+        id: order.id,
+        orderType: order.order_type || order.orderType || 'pickup',
+        customerName: order.customer_name || order.customerName || 'Guest',
+        phone: order.phone,
+        address: order.address,
+        items: order.items || [],
+        total: parseFloat(order.total || 0),
+        tax: parseFloat(order.tax || 0),
+        deliveryFee: parseFloat(order.delivery_fee || order.deliveryFee || 0),
+        tip: parseFloat(order.tip || 0),
+        specialInstructions: order.special_instructions || order.specialInstructions,
+        createdAt: order.created_at || order.createdAt || new Date().toISOString(),
+        userId: order.user_id || order.userId,
+        pointsEarned: order.points_earned || order.pointsEarned || 0,
+        paymentStatus: order.payment_status || order.paymentStatus,
+        payment_status: order.payment_status
+      }));
+
+      // Generate the daily summary receipt
+      const summaryReceipt = printDailySummary(formattedOrders);
+
+      // Send to printer
+      const printerServerUrl = localStorage.getItem('printerServerUrl') || 'https://192.168.1.18:3001';
+      console.log(`Sending daily summary to printer server: ${printerServerUrl}`);
+
+      const printResponse = await fetch(`${printerServerUrl}/print`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          receiptData: summaryReceipt,
+          orderId: 'daily-summary',
+          receiptType: 'daily-summary'
+        })
+      });
+
+      if (!printResponse.ok) {
+        throw new Error('Print request failed');
+      }
+
+      toast({
+        title: "Daily Summary Printed",
+        description: `Successfully printed summary for ${filteredOrders.length} orders today.`,
+      });
+
+      setShowDailySummaryModal(false);
+
+    } catch (error: any) {
+      console.error('Failed to print daily summary:', error);
+      toast({
+        title: "Print Failed",
+        description: error.message || "Could not print daily summary. Make sure the printer is connected.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Helper function to generate customer message based on reason
+  const getCustomerMessageForReason = (reason: string, customMessage?: string): string => {
+    if (reason === 'custom' && customMessage) {
+      return customMessage;
+    }
+
+    const messages: Record<string, string> = {
+      high_volume: 'We are temporarily pausing orders due to high volume. Please check back shortly!',
+      staff_shortage: 'We are temporarily pausing orders due to limited staff availability. We appreciate your patience!',
+      equipment_issue: 'We are temporarily pausing orders due to equipment maintenance. Please check back soon!',
+      break_time: 'We are taking a brief break. Orders will resume shortly. Thank you for your patience!',
+      other: 'We are temporarily pausing orders. Please check back shortly!'
+    };
+
+    return messages[reason] || messages.other;
+  };
+
+  // Helper function to get reason display name
+  const getReasonDisplayName = (reason: string): string => {
+    const names: Record<string, string> = {
+      high_volume: 'High Volume',
+      staff_shortage: 'Staff Shortage',
+      equipment_issue: 'Equipment Issue',
+      break_time: 'Break Time',
+      custom: 'Custom Reason',
+      other: 'Other'
+    };
+
+    return names[reason] || 'Emergency Pause';
+  };
+
   // Toggle pause ordering (emergency pause)
-  const togglePauseOrdering = async () => {
+  const togglePauseOrdering = async (reason?: string, customMessage?: string) => {
     setIsTogglingPause(true);
     try {
       const newPauseState = !isOrderingPaused;
 
+      // If pausing, use provided reason, otherwise default
+      const pauseReasonToUse = newPauseState ? (reason || 'high_volume') : '';
+      const customerMessage = newPauseState
+        ? getCustomerMessageForReason(pauseReasonToUse, customMessage)
+        : '';
+      const reasonDisplay = newPauseState ? getReasonDisplayName(pauseReasonToUse) : '';
+
       // Use apiRequest to ensure proper authentication
       await apiRequest('PUT', '/api/vacation-mode', {
         isEnabled: newPauseState,
-        message: newPauseState
-          ? 'We are temporarily pausing orders due to high volume. Please check back shortly!'
-          : '',
+        message: customerMessage,
         startDate: '',
         endDate: '',
-        reason: 'Emergency pause from kitchen'
+        reason: newPauseState ? reasonDisplay : ''
       });
 
       queryClient.invalidateQueries({ queryKey: ['/api/vacation-mode'] });
       toast({
         title: newPauseState ? "Ordering Paused" : "Ordering Resumed",
         description: newPauseState
-          ? "Customers will see a message that ordering is temporarily unavailable."
+          ? `Orders paused: ${reasonDisplay}. Customers will see a message that ordering is temporarily unavailable.`
           : "Customers can now place orders again.",
       });
     } catch (error: any) {
@@ -417,7 +685,24 @@ const KitchenPage = () => {
       });
     } finally {
       setIsTogglingPause(false);
+      setShowPauseReasonDialog(false);
     }
+  };
+
+  // Handle pause button click
+  const handlePauseButtonClick = () => {
+    if (isOrderingPaused) {
+      // If currently paused, resume immediately
+      togglePauseOrdering();
+    } else {
+      // If not paused, show dialog to select reason
+      setShowPauseReasonDialog(true);
+    }
+  };
+
+  // Handle pause with reason from dialog
+  const handlePauseWithReason = () => {
+    togglePauseOrdering(pauseReason, customPauseMessage);
   };
 
   if (isLoading) {
@@ -486,7 +771,7 @@ const KitchenPage = () => {
                     ? 'bg-yellow-500 text-white hover:bg-yellow-600'
                     : 'bg-white text-[#d73a31]'
                 }`}
-                onClick={togglePauseOrdering}
+                onClick={handlePauseButtonClick}
                 disabled={isTogglingPause}
               >
                 {isTogglingPause ? (
@@ -552,8 +837,20 @@ const KitchenPage = () => {
             <div className="container mx-auto flex items-center gap-3 text-white">
               <PauseCircle className="h-8 w-8 flex-shrink-0" />
               <div className="flex-1">
-                <p className="font-bold text-lg md:text-xl">⏸️ Orders Temporarily Paused</p>
+                <p className="font-bold text-lg md:text-xl">
+                  ⏸️ Orders Temporarily Paused
+                  {vacationMode?.reason && (
+                    <span className="font-normal text-base md:text-lg ml-2">
+                      - {vacationMode.reason}
+                    </span>
+                  )}
+                </p>
                 <p className="text-sm md:text-base">ASAP orders are currently paused. Scheduled orders will still come through.</p>
+                {vacationMode?.message && (
+                  <p className="text-sm md:text-base mt-1 italic">
+                    Customer message: "{vacationMode.message}"
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -1195,6 +1492,156 @@ const KitchenPage = () => {
                 </div>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Daily Summary Modal */}
+        <Dialog open={showDailySummaryModal} onOpenChange={setShowDailySummaryModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl">End of Day Summary</DialogTitle>
+              <DialogDescription className="pt-2">
+                It's 30 minutes before closing time. Would you like to print the daily summary report?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="sm:justify-start gap-2 flex-col sm:flex-row">
+              <Button
+                type="button"
+                variant="default"
+                className="w-full sm:w-auto"
+                onClick={handlePrintDailySummary}
+              >
+                Yes, Print Summary
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => setShowDailySummaryModal(false)}
+              >
+                No, Maybe Later
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Pause Reason Dialog */}
+        <Dialog open={showPauseReasonDialog} onOpenChange={setShowPauseReasonDialog}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-xl">Pause Orders - Select Reason</DialogTitle>
+              <DialogDescription className="pt-2">
+                Choose why you're pausing orders. This helps track operations and informs customers appropriately.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <RadioGroup value={pauseReason} onValueChange={setPauseReason}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="high_volume" id="high_volume" />
+                  <Label htmlFor="high_volume" className="cursor-pointer">
+                    <div>
+                      <div className="font-medium">High Volume / Too Busy</div>
+                      <div className="text-sm text-gray-500">Temporarily overwhelmed with orders</div>
+                    </div>
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="staff_shortage" id="staff_shortage" />
+                  <Label htmlFor="staff_shortage" className="cursor-pointer">
+                    <div>
+                      <div className="font-medium">Staff Shortage</div>
+                      <div className="text-sm text-gray-500">Limited staff available</div>
+                    </div>
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="equipment_issue" id="equipment_issue" />
+                  <Label htmlFor="equipment_issue" className="cursor-pointer">
+                    <div>
+                      <div className="font-medium">Equipment Issue</div>
+                      <div className="text-sm text-gray-500">Equipment maintenance or malfunction</div>
+                    </div>
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="break_time" id="break_time" />
+                  <Label htmlFor="break_time" className="cursor-pointer">
+                    <div>
+                      <div className="font-medium">Taking a Break</div>
+                      <div className="text-sm text-gray-500">Brief staff break</div>
+                    </div>
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="custom" id="custom" />
+                  <Label htmlFor="custom" className="cursor-pointer">
+                    <div>
+                      <div className="font-medium">Custom Reason</div>
+                      <div className="text-sm text-gray-500">Write your own message</div>
+                    </div>
+                  </Label>
+                </div>
+              </RadioGroup>
+
+              {pauseReason === 'custom' && (
+                <div className="space-y-2">
+                  <Label htmlFor="customMessage">Custom Message for Customers</Label>
+                  <Textarea
+                    id="customMessage"
+                    placeholder="Enter a custom message that customers will see..."
+                    value={customPauseMessage}
+                    onChange={(e) => setCustomPauseMessage(e.target.value)}
+                    rows={3}
+                    className="resize-none"
+                  />
+                </div>
+              )}
+
+              {pauseReason !== 'custom' && (
+                <div className="bg-blue-50 p-3 rounded-md">
+                  <p className="text-sm font-medium text-blue-900 mb-1">Customer will see:</p>
+                  <p className="text-sm text-blue-800 italic">
+                    "{getCustomerMessageForReason(pauseReason)}"
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="gap-2 flex-col sm:flex-row">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => setShowPauseReasonDialog(false)}
+                disabled={isTogglingPause}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                className="w-full sm:w-auto bg-yellow-500 hover:bg-yellow-600"
+                onClick={handlePauseWithReason}
+                disabled={isTogglingPause || (pauseReason === 'custom' && !customPauseMessage.trim())}
+              >
+                {isTogglingPause ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Pausing...
+                  </>
+                ) : (
+                  <>
+                    <PauseCircle className="mr-2 h-4 w-4" />
+                    Pause Orders
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

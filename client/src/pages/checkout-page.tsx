@@ -5,7 +5,6 @@ import { loadStripe } from '@stripe/stripe-js';
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useCart } from "@/hooks/use-cart";
 import { useVacationMode } from "@/hooks/use-vacation-mode";
-import { useStoreStatus } from "@/hooks/use-store-status";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -142,7 +141,6 @@ const CheckoutPage = () => {
   const [location, navigate] = useLocation();
   const { toast } = useToast();
   const { isOrderingPaused, displayMessage } = useVacationMode();
-  const { isPastCutoff, canPlaceAsapOrders, cutoffMessage } = useStoreStatus();
 
   // Check for corrupted items and handle gracefully
   useEffect(() => {
@@ -230,7 +228,6 @@ const CheckoutPage = () => {
   const [orderType, setOrderType] = useState("pickup");
   const [fulfillmentTime, setFulfillmentTime] = useState("asap");
   const [scheduledTime, setScheduledTime] = useState("");
-  const [guestName, setGuestName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [addressData, setAddressData] = useState<{
@@ -261,6 +258,10 @@ const CheckoutPage = () => {
   const [deliveryCalculating, setDeliveryCalculating] = useState(false);
   const [deliveryError, setDeliveryError] = useState("");
   const [deliveryZoneInfo, setDeliveryZoneInfo] = useState<any>(null);
+
+  // Card processing fee state
+  const [cardFeeSettings, setCardFeeSettings] = useState<any>(null);
+  const [cardFeeLoading, setCardFeeLoading] = useState(true);
 
   // Auto-populate contact information when user data is available
   useEffect(() => {
@@ -339,6 +340,28 @@ const CheckoutPage = () => {
   useEffect(() => {
     setContactInfoLoaded(false);
   }, [user?.id]);
+
+  // Fetch card processing fee settings from backend
+  useEffect(() => {
+    const fetchCardFeeSettings = async () => {
+      try {
+        const response = await fetch('/api/admin-service-fees');
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📊 Card fee settings loaded:', data);
+          setCardFeeSettings(data);
+        } else {
+          console.warn('Failed to load card fee settings');
+        }
+      } catch (error) {
+        console.error('Error fetching card fee settings:', error);
+      } finally {
+        setCardFeeLoading(false);
+      }
+    };
+
+    fetchCardFeeSettings();
+  }, []);
 
   // Calculate delivery fee when address changes
   useEffect(() => {
@@ -557,7 +580,7 @@ const CheckoutPage = () => {
 
     const totalDiscountAmount = discountAmount + voucherDiscountAmount;
     const finalSubtotal = Math.max(0, subtotal - totalDiscountAmount);
-    
+
     // Calculate tip
     let tipAmount = 0;
     if (tipType === "percentage" && tip > 0) {
@@ -565,15 +588,25 @@ const CheckoutPage = () => {
     } else if (tipType === "amount") {
       tipAmount = parseFloat(customTip) || 0;
     }
-    
+
     // Use dynamic delivery fee (calculated based on distance)
     const currentDeliveryFee = orderType === "delivery" ? deliveryFee : 0;
 
-    // Calculate service fee (3.5% of subtotal after discounts)
-    const SERVICE_FEE_PERCENTAGE = 3.5;
-    const serviceFeeAmount = (finalSubtotal * SERVICE_FEE_PERCENTAGE) / 100;
+    // Calculate card processing fee if enabled
+    let cardProcessingFee = 0;
+    if (cardFeeSettings && cardFeeSettings.cardFeesEnabled) {
+      // Calculate based on subtotal + tax + delivery + tip (before card fee)
+      const baseForCardFee = finalSubtotal + taxAmount + currentDeliveryFee + tipAmount;
 
-    const finalTotal = finalSubtotal + taxAmount + tipAmount + currentDeliveryFee + serviceFeeAmount;
+      if (cardFeeSettings.cardFeeType === 'percentage') {
+        cardProcessingFee = (baseForCardFee * cardFeeSettings.cardFeeAmount) / 100;
+      } else {
+        // Fixed amount
+        cardProcessingFee = cardFeeSettings.cardFeeAmount;
+      }
+    }
+
+    const finalTotal = finalSubtotal + taxAmount + tipAmount + currentDeliveryFee + cardProcessingFee;
 
     return {
       subtotal,
@@ -583,7 +616,7 @@ const CheckoutPage = () => {
       totalDiscount: totalDiscountAmount,
       tip: tipAmount,
       deliveryFee: currentDeliveryFee,
-      serviceFee: serviceFeeAmount,
+      cardProcessingFee,
       finalSubtotal,
       finalTotal
     };
@@ -784,14 +817,13 @@ const CheckoutPage = () => {
       tax: tax.toString(),
       tip: totals.tip.toString(),
       deliveryFee: orderType === "delivery" ? deliveryFee.toString() : "0",
-      serviceFee: totals.serviceFee.toString(),
+      cardProcessingFee: totals.cardProcessingFee ? totals.cardProcessingFee.toString() : "0",
       orderType,
       paymentStatus: "pending", // Will be set to succeeded after payment confirmation
       specialInstructions,
       address: orderType === "delivery" ? address : "",
       addressData: orderType === "delivery" ? addressData : null,
       phone,
-      customerName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : guestName || 'Guest',
       items: orderItems,
       fulfillmentTime,
       scheduledTime: fulfillmentTime === "scheduled" ? scheduledTime : null,
@@ -805,6 +837,7 @@ const CheckoutPage = () => {
         subtotal: total,
         discount: totals.discount,
         voucherDiscount: totals.voucherDiscount,
+        cardProcessingFee: totals.cardProcessingFee || 0,
         finalSubtotal: totals.finalSubtotal
       }
     };
@@ -842,22 +875,6 @@ const CheckoutPage = () => {
                 <p className="text-sm mb-1">{displayMessage}</p>
                 <p className="text-sm font-medium bg-yellow-600 bg-opacity-50 px-2 py-1 rounded inline-block">
                   💡 Scheduled orders for later pickup/delivery are still available!
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Store Hours Cutoff Banner */}
-        {!isOrderingPaused && isPastCutoff && (
-          <div className="bg-yellow-500 border-b-4 border-yellow-600 px-4 sm:px-6 lg:px-8 py-4 mb-6">
-            <div className="max-w-6xl mx-auto flex items-center gap-3 text-white">
-              <AlertCircle className="h-6 w-6 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="font-bold text-lg">ASAP Orders Closed</p>
-                <p className="text-sm mb-1">{cutoffMessage}</p>
-                <p className="text-sm font-medium bg-yellow-600 bg-opacity-50 px-2 py-1 rounded inline-block">
-                  💡 You can still schedule an order for tomorrow!
                 </p>
               </div>
             </div>
@@ -1111,13 +1128,17 @@ const CheckoutPage = () => {
                         <span>${formatPrice(totals.tip)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-sm text-gray-600">
-                      <span className="flex items-center gap-1">
-                        Processing Fee
-                        <span className="text-xs">(3.5%)</span>
-                      </span>
-                      <span>${formatPrice(totals.serviceFee)}</span>
-                    </div>
+                    {totals.cardProcessingFee > 0 && cardFeeSettings && (
+                      <div className="flex justify-between text-gray-600">
+                        <span className="flex items-center gap-1">
+                          {cardFeeSettings.cardFeeLabel || 'Card Processing Fee'}
+                          {cardFeeSettings.cardFeeType === 'percentage' && (
+                            <span className="text-xs">({cardFeeSettings.cardFeeAmount}%)</span>
+                          )}
+                        </span>
+                        <span>${formatPrice(totals.cardProcessingFee)}</span>
+                      </div>
+                    )}
                     <Separator className="my-2" />
                     <div className="flex justify-between font-bold text-lg">
                       <span>Total</span>
@@ -1135,27 +1156,6 @@ const CheckoutPage = () => {
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleSubmitOrder} className="space-y-6">
-                      {/* Guest Name Field - Only shown for non-logged-in users */}
-                      {!user && (
-                        <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
-                          <Label htmlFor="guestName" className="text-blue-700 font-semibold flex items-center gap-2">
-                            👤 Your Name <span className="text-blue-600 text-sm">(Required)</span>
-                          </Label>
-                          <Input
-                            id="guestName"
-                            type="text"
-                            placeholder="Enter your name"
-                            value={guestName}
-                            onChange={(e) => setGuestName(e.target.value)}
-                            required
-                            className="mt-2 border-2 border-blue-300 focus:border-blue-500 focus:ring-blue-500 bg-white"
-                          />
-                          <p className="text-xs text-gray-500 mt-1">
-                            📝 This will appear on your order and receipt
-                          </p>
-                        </div>
-                      )}
-
                       <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
                         <Label htmlFor="phone" className="text-red-700 font-semibold flex items-center gap-2">
                           📞 Phone Number <span className="text-red-600 text-sm">(Required)</span>
@@ -1399,10 +1399,10 @@ const CheckoutPage = () => {
                       <Button
                         type="submit"
                         className="w-full bg-[#d73a31] hover:bg-[#c73128] disabled:bg-gray-400 disabled:cursor-not-allowed"
-                        disabled={createPaymentIntentMutation.isPending || isOrderingPaused || isPastCutoff}
+                        disabled={createPaymentIntentMutation.isPending || isOrderingPaused}
                       >
-                        {isOrderingPaused || isPastCutoff ? (
-                          "ASAP Orders Not Available"
+                        {isOrderingPaused ? (
+                          "Ordering Temporarily Unavailable"
                         ) : createPaymentIntentMutation.isPending ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -1438,7 +1438,7 @@ const CheckoutPage = () => {
                         orderId={orderId}
                         clientSecret={clientSecret}
                         customerPhone={phone}
-                        customerName={user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || undefined : guestName || undefined}
+                        customerName={user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || undefined : undefined}
                         customerAddress={addressData ? {
                           line1: addressData.street || undefined,
                           city: addressData.city || undefined,

@@ -717,6 +717,164 @@ function buildEposReceipt(builder: ePOSBuilder, order: OrderPrintData): string {
 }
 
 /**
+ * Format daily summary for thermal printer (ESC/POS commands)
+ * Shows today's orders, revenue breakdown, tips, and popular items
+ */
+export function printDailySummary(orders: OrderPrintData[]): string {
+  const ESC = '\x1B';
+  const GS = '\x1D';
+
+  let receipt = '';
+
+  // Initialize printer
+  receipt += `${ESC}@`; // Initialize
+
+  // Header - Center aligned, bold, double height
+  receipt += `${ESC}a\x01`; // Center align
+  receipt += `${ESC}E\x01`; // Bold on
+  receipt += `${GS}!\x11`; // Double height and width
+  receipt += `FAVILLA'S NY PIZZA\n`;
+  receipt += `${GS}!\x00`; // Normal size
+  receipt += `DAILY SUMMARY\n`;
+  receipt += `${ESC}E\x00`; // Bold off
+  receipt += `\n`;
+
+  // Date and time
+  receipt += `${ESC}a\x00`; // Left align
+  const now = new Date();
+  receipt += `Date: ${now.toLocaleDateString()}\n`;
+  receipt += `Time: ${now.toLocaleTimeString()}\n`;
+  receipt += `================================\n`;
+  receipt += `\n`;
+
+  // Calculate statistics
+  const totalOrders = orders.length;
+  const pickupOrders = orders.filter(o => o.orderType === 'pickup');
+  const deliveryOrders = orders.filter(o => o.orderType === 'delivery');
+
+  // Revenue calculations
+  const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0);
+  const pickupRevenue = pickupOrders.reduce((sum, o) => sum + o.total, 0);
+  const deliveryRevenue = deliveryOrders.reduce((sum, o) => sum + o.total, 0);
+
+  // Tips calculations
+  const totalTips = orders.reduce((sum, o) => sum + (o.tip || 0), 0);
+  const pickupTips = pickupOrders.reduce((sum, o) => sum + (o.tip || 0), 0);
+  const deliveryTips = deliveryOrders.reduce((sum, o) => sum + (o.tip || 0), 0);
+
+  // Tax calculations
+  const totalTax = orders.reduce((sum, o) => sum + (o.tax || 0), 0);
+
+  // Delivery fee calculations
+  const totalDeliveryFees = deliveryOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+
+  // Order Summary
+  receipt += `${ESC}E\x01`; // Bold on
+  receipt += `ORDER SUMMARY\n`;
+  receipt += `${ESC}E\x00`; // Bold off
+  receipt += `--------------------------------\n`;
+  receipt += `Total Orders:        ${totalOrders}\n`;
+  receipt += `  Pickup Orders:     ${pickupOrders.length}\n`;
+  receipt += `  Delivery Orders:   ${deliveryOrders.length}\n`;
+  receipt += `\n`;
+
+  // Revenue Breakdown
+  receipt += `${ESC}E\x01`; // Bold on
+  receipt += `REVENUE BREAKDOWN\n`;
+  receipt += `${ESC}E\x00`; // Bold off
+  receipt += `--------------------------------\n`;
+  receipt += `Total Revenue:       $${totalRevenue.toFixed(2)}\n`;
+  receipt += `  Pickup Revenue:    $${pickupRevenue.toFixed(2)}\n`;
+  receipt += `  Delivery Revenue:  $${deliveryRevenue.toFixed(2)}\n`;
+  receipt += `\n`;
+  receipt += `Total Tax:           $${totalTax.toFixed(2)}\n`;
+  receipt += `Delivery Fees:       $${totalDeliveryFees.toFixed(2)}\n`;
+  receipt += `\n`;
+
+  // Tips Summary
+  receipt += `${ESC}E\x01`; // Bold on
+  receipt += `TIPS SUMMARY\n`;
+  receipt += `${ESC}E\x00`; // Bold off
+  receipt += `--------------------------------\n`;
+  receipt += `Total Tips:          $${totalTips.toFixed(2)}\n`;
+  receipt += `  Pickup Tips:       $${pickupTips.toFixed(2)}\n`;
+  receipt += `  Delivery Tips:     $${deliveryTips.toFixed(2)}\n`;
+  if (totalOrders > 0) {
+    receipt += `Average Tip:         $${(totalTips / totalOrders).toFixed(2)}\n`;
+  }
+  receipt += `\n`;
+
+  // Popular Items
+  receipt += `${ESC}E\x01`; // Bold on
+  receipt += `MOST POPULAR ITEMS\n`;
+  receipt += `${ESC}E\x00`; // Bold off
+  receipt += `--------------------------------\n`;
+
+  // Count item occurrences
+  const itemCounts: Map<string, number> = new Map();
+  orders.forEach(order => {
+    order.items?.forEach((item: any) => {
+      const itemName = item.menuItem?.name || item.name || 'Unknown Item';
+      itemCounts.set(itemName, (itemCounts.get(itemName) || 0) + item.quantity);
+    });
+  });
+
+  // Sort by count and get top 10
+  const sortedItems = Array.from(itemCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+
+  sortedItems.forEach(([itemName, count], index) => {
+    receipt += `${index + 1}. ${itemName}: ${count}\n`;
+  });
+
+  if (sortedItems.length === 0) {
+    receipt += `No items recorded today\n`;
+  }
+  receipt += `\n`;
+
+  // Order Status Summary
+  receipt += `${ESC}E\x01`; // Bold on
+  receipt += `ORDER STATUS SUMMARY\n`;
+  receipt += `${ESC}E\x00`; // Bold off
+  receipt += `--------------------------------\n`;
+
+  // Count by payment status
+  const paidOrders = orders.filter((o: any) => o.paymentStatus === 'paid' || o.payment_status === 'paid');
+  const unpaidOrders = orders.filter((o: any) => o.paymentStatus !== 'paid' && o.payment_status !== 'paid');
+
+  receipt += `Paid Orders:         ${paidOrders.length}\n`;
+  receipt += `Unpaid Orders:       ${unpaidOrders.length}\n`;
+  receipt += `\n`;
+
+  // Points Summary (if applicable)
+  const totalPointsEarned = orders.reduce((sum, o) => sum + (o.pointsEarned || 0), 0);
+  if (totalPointsEarned > 0) {
+    receipt += `${ESC}E\x01`; // Bold on
+    receipt += `REWARDS POINTS\n`;
+    receipt += `${ESC}E\x00`; // Bold off
+    receipt += `--------------------------------\n`;
+    receipt += `Total Points Given:  ${totalPointsEarned}\n`;
+    receipt += `\n`;
+  }
+
+  // Footer
+  receipt += `================================\n`;
+  receipt += `\n`;
+  receipt += `${ESC}a\x01`; // Center align
+  receipt += `${ESC}E\x01`; // Bold on
+  receipt += `END OF DAY SUMMARY\n`;
+  receipt += `${ESC}E\x00`; // Bold off
+  receipt += `${now.toLocaleDateString()} ${now.toLocaleTimeString()}\n`;
+  receipt += `\n\n\n`;
+
+  // Cut paper
+  receipt += `${GS}V\x41\x03`; // Partial cut
+
+  return receipt;
+}
+
+/**
  * Fallback: Open browser print dialog with formatted receipt
  */
 function openPrintDialog(order: OrderPrintData, receiptData: string): { success: boolean; message: string } {

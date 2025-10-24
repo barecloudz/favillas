@@ -390,8 +390,9 @@ const MenuPage = () => {
   return (
     <>
       <Helmet>
-        <title>Menu | Favilla's NY Pizza</title>
-        <meta name="description" content="Browse our delicious menu of authentic New York style pizzas, sides, drinks, and desserts." />
+        <title>Menu - Order Pizza Online in Asheville NC | Favilla's NY Pizza</title>
+        <meta name="description" content="Order authentic NY style pizza online in Asheville, NC. Browse our menu of pizzas, calzones, stromboli & more. Fast delivery & pickup available. Order now!" />
+        <meta name="keywords" content="pizza menu asheville, order pizza online asheville, ny pizza delivery asheville, pizza pickup asheville nc, italian food menu asheville" />
       </Helmet>
 
       <div className="min-h-screen bg-gray-50 md:pt-[72px] pt-14">
