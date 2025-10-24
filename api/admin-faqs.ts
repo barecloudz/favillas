@@ -1,6 +1,6 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
-import { verifyAdminAuth } from './utils/auth';
+import { authenticateToken, isStaff } from './_shared/auth';
 
 let dbConnection: any = null;
 
@@ -54,12 +54,12 @@ export const handler: Handler = async (event, context) => {
     }
 
     // All other methods require admin authentication
-    const authResult = await verifyAdminAuth(event);
-    if (!authResult.isValid) {
+    const authPayload = await authenticateToken(event);
+    if (!authPayload || !isStaff(authPayload)) {
       return {
         statusCode: 401,
         headers,
-        body: JSON.stringify({ message: authResult.error || 'Unauthorized' })
+        body: JSON.stringify({ message: 'Unauthorized - Admin access required' })
       };
     }
 
