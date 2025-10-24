@@ -41,7 +41,7 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
           if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
             try {
               await audioContextRef.current.resume();
-              console.log('🔊 Audio context enabled for notifications');
+              // console.log('🔊 Audio context enabled for notifications');
             } catch (error) {
               console.warn('Failed to resume audio context:', error);
             }
@@ -63,7 +63,7 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
       dingbellAudioRef.current = new Audio(dingBellUrl);
       dingbellAudioRef.current.preload = 'auto';
       dingbellAudioRef.current.load();
-      console.log('🔔 Preloaded dingbell audio');
+      // console.log('🔔 Preloaded dingbell audio');
     }
   }, []);
 
@@ -170,7 +170,7 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
 
       } else if (soundType === 'dingbell') {
         // Use preloaded bell sound from Supabase
-        console.log('🔔 Attempting to play dingbell sound');
+        // console.log('🔔 Attempting to play dingbell sound');
         try {
           if (!dingbellAudioRef.current) {
             // If not preloaded, create new instance
@@ -185,7 +185,7 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
           const playPromise = dingbellAudioRef.current.play();
           if (playPromise !== undefined) {
             await playPromise;
-            console.log('✅ Dingbell sound played successfully');
+            // console.log('✅ Dingbell sound played successfully');
           }
         } catch (error: any) {
           console.error('❌ Failed to play ding bell sound:', error);
@@ -242,12 +242,12 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
   const startPollingNotifications = useCallback(() => {
     const checkForNewOrders = async () => {
       try {
-        console.log('🔍 Polling for new orders...');
+        // console.log('🔍 Polling for new orders...');
 
         // Get the current auth session (same method as other API calls)
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
-        console.log('🔑 Auth token available:', !!token);
+        // console.log('🔑 Auth token available:', !!token);
 
         if (!token) {
           console.warn('⚠️ No auth token available - skipping polling');
@@ -263,36 +263,36 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
 
         if (response.ok) {
           const orders = await response.json();
-          console.log('📊 Polling response:', { ordersCount: orders.length, orders: orders.map(o => ({ id: o.id, created_at: o.created_at, status: o.status, payment_status: o.payment_status })) });
+          // console.log('📊 Polling response:', { ordersCount: orders.length, orders: orders.map(o => ({ id: o.id, created_at: o.created_at, status: o.status, payment_status: o.payment_status })) });
 
           // Filter for confirmed orders only (exclude pending orders that haven't been paid)
           const confirmedOrders = orders.filter((order: any) =>
             order.status !== 'pending' || order.payment_status === 'succeeded'
           );
 
-          console.log('✅ Confirmed orders:', confirmedOrders.length, 'of', orders.length, 'total orders');
+          // console.log('✅ Confirmed orders:', confirmedOrders.length, 'of', orders.length, 'total orders');
 
           if (confirmedOrders.length > 0) {
             const latestOrder = confirmedOrders[0];
             const latestOrderId = latestOrder.id;
 
-            console.log('🆔 Latest confirmed order ID:', latestOrderId, 'Last checked:', lastCheckedOrderRef.current);
+            // console.log('🆔 Latest confirmed order ID:', latestOrderId, 'Last checked:', lastCheckedOrderRef.current);
 
             // On first run, just store the latest confirmed order ID without notification
             if (lastCheckedOrderRef.current === null) {
               lastCheckedOrderRef.current = latestOrderId;
-              console.log('📝 Initial setup - storing latest confirmed order ID:', latestOrderId);
+              // console.log('📝 Initial setup - storing latest confirmed order ID:', latestOrderId);
               return;
             }
 
             // Check if this is a new confirmed order
             if (lastCheckedOrderRef.current !== latestOrderId) {
-              console.log('🔔 NEW CONFIRMED ORDER DETECTED via polling!');
-              console.log('📦 Order details:', latestOrder);
-              console.log('💳 Payment status:', latestOrder.payment_status);
-              console.log('👤 CUSTOMER NAME:', latestOrder.customerName || latestOrder.customer_name || 'UNDEFINED');
-              console.log('🎁 POINTS EARNED:', latestOrder.pointsEarned || latestOrder.points_earned || 'UNDEFINED');
-              console.log('📄 Full order object for debugging:', JSON.stringify(latestOrder, null, 2));
+              // console.log('🔔 NEW CONFIRMED ORDER DETECTED via polling!');
+              // console.log('📦 Order details:', latestOrder);
+              // console.log('💳 Payment status:', latestOrder.payment_status);
+              // console.log('👤 CUSTOMER NAME:', latestOrder.customerName || latestOrder.customer_name || 'UNDEFINED');
+              // console.log('🎁 POINTS EARNED:', latestOrder.pointsEarned || latestOrder.points_earned || 'UNDEFINED');
+              // console.log('📄 Full order object for debugging:', JSON.stringify(latestOrder, null, 2));
 
               // Play notification sound
               playNotificationSound();
@@ -300,25 +300,25 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
               // Invalidate all order-related queries to refresh the UI
               queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
               queryClient.invalidateQueries({ queryKey: ['/api/kitchen/orders'] });
-              console.log('🔄 Invalidated order queries to refresh UI');
+              // console.log('🔄 Invalidated order queries to refresh UI');
 
               // Call callback if provided
               if (options.onNewOrder) {
-                console.log('🖨️ Calling onNewOrder callback with data:', {
-                  orderId: latestOrder.id,
-                  customerName: latestOrder.customerName || latestOrder.customer_name,
-                  pointsEarned: latestOrder.pointsEarned || latestOrder.points_earned
-                });
+                // console.log('🖨️ Calling onNewOrder callback with data:', {
+                //   orderId: latestOrder.id,
+                //   customerName: latestOrder.customerName || latestOrder.customer_name,
+                //   pointsEarned: latestOrder.pointsEarned || latestOrder.points_earned
+                // });
                 options.onNewOrder(latestOrder);
               }
 
               // Update the last checked order
               lastCheckedOrderRef.current = latestOrderId;
             } else {
-              console.log('✅ No new confirmed orders since last check');
+              // console.log('✅ No new confirmed orders since last check');
             }
           } else {
-            console.log('📭 No orders found');
+            // console.log('📭 No orders found');
           }
         } else {
           console.error('❌ Failed to fetch orders:', response.status, response.statusText);
@@ -359,14 +359,14 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
        process.env.NODE_ENV === 'production');
 
     if (isNetlifyProduction) {
-      console.log('Admin WebSocket disabled in production (Netlify deployment)');
+      // console.log('Admin WebSocket disabled in production (Netlify deployment)');
 
       // Only start polling if notifications are enabled
       if (options.enableSounds) {
-        console.log('🔄 Starting polling-based notifications for production...');
+        // console.log('🔄 Starting polling-based notifications for production...');
         startPollingNotifications();
       } else {
-        console.log('🔇 Notifications disabled - skipping polling');
+        // console.log('🔇 Notifications disabled - skipping polling');
       }
       return;
     }
@@ -383,7 +383,7 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
       const port = window.location.port === '5173' ? '5000' : window.location.port;
       const wsUrl = `${protocol}//${window.location.hostname}:${port}/ws`;
 
-      console.log('Admin WebSocket connecting to:', wsUrl);
+      // console.log('Admin WebSocket connecting to:', wsUrl);
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
@@ -402,10 +402,10 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
       ws.onmessage = (event) => {
         try {
           const message: AdminWebSocketMessage = JSON.parse(event.data);
-          console.log('Admin WebSocket message received:', message);
+          // console.log('Admin WebSocket message received:', message);
 
           if (message.type === 'newOrder') {
-            console.log('New order received:', message.order);
+            // console.log('New order received:', message.order);
             // Play notification sound
             playNotificationSound();
             // Call callback if provided
@@ -413,7 +413,7 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
               options.onNewOrder(message.order);
             }
           } else if (message.type === 'orderStatusUpdate' || message.type === 'orderStatusChanged') {
-            console.log('Order status updated:', message.order);
+            // console.log('Order status updated:', message.order);
             // Call callback if provided
             if (options.onOrderUpdate) {
               options.onOrderUpdate(message.order);
@@ -491,7 +491,7 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
   const sendMessage = useCallback((message: any) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(message));
-      console.log('WebSocket message sent:', message);
+      // console.log('WebSocket message sent:', message);
     } else {
       console.warn('WebSocket not connected, cannot send message:', message);
     }

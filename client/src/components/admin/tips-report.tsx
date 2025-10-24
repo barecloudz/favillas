@@ -40,14 +40,15 @@ export const TipsReport = ({ orders }: any) => {
     let start: Date, end: Date;
 
     if (dateRange === 'today') {
-      const today = new Date();
-      start = new Date(today.setHours(0, 0, 0, 0));
-      end = new Date(today.setHours(23, 59, 59, 999));
-    } else if (dateRange === 'week') {
+      start = new Date();
+      start.setHours(0, 0, 0, 0);
       end = new Date();
+      end.setHours(23, 59, 59, 999);
+    } else if (dateRange === 'week') {
       start = new Date();
       start.setDate(start.getDate() - 7);
       start.setHours(0, 0, 0, 0);
+      end = new Date();
       end.setHours(23, 59, 59, 999);
     } else {
       if (!startDate || !endDate) return [];
@@ -56,7 +57,10 @@ export const TipsReport = ({ orders }: any) => {
     }
 
     return safeOrders.filter((order: any) => {
-      const orderDate = new Date(order.created_at || order.createdAt);
+      const dateValue = order.created_at || order.createdAt;
+      if (!dateValue) return false;
+      const orderDate = new Date(dateValue);
+      if (isNaN(orderDate.getTime())) return false;
       return orderDate >= start && orderDate <= end && order.status === 'picked_up';
     });
   };
@@ -107,7 +111,11 @@ export const TipsReport = ({ orders }: any) => {
     const dailyMap: { [key: string]: { pickupTips: number; deliveryTips: number; total: number } } = {};
 
     filtered.forEach((order: any) => {
-      const date = new Date(order.created_at || order.createdAt).toISOString().split('T')[0];
+      const dateValue = order.created_at || order.createdAt;
+      if (!dateValue) return;
+      const orderDate = new Date(dateValue);
+      if (isNaN(orderDate.getTime())) return;
+      const date = orderDate.toISOString().split('T')[0];
       const tip = parseFloat(String(order.tip || '0'));
 
       if (!isNaN(tip)) {
