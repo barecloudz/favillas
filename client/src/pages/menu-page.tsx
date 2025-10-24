@@ -389,7 +389,7 @@ const MenuPage = () => {
     <>
       <Helmet>
         <title>Menu - Order Pizza Online in Asheville NC | Favilla's NY Pizza</title>
-        <meta name="description" content="Order authentic NY style pizza online in Asheville, NC. Browse our menu of pizzas, calzones, stromboli, pasta & more. Fast delivery & pickup available. Order now!" />
+        <meta name="description" content="Order authentic NY style pizza online in Asheville, NC. Browse our menu of pizzas, calzones, stromboli & more. Fast delivery & pickup available. Order now!" />
         <meta name="keywords" content="pizza menu asheville, order pizza online asheville, ny pizza delivery asheville, pizza pickup asheville nc, italian food menu asheville" />
       </Helmet>
 

@@ -21,7 +21,7 @@ const faqData: FAQItem[] = [
   },
   {
     question: "What's the best pizza in Asheville?",
-    answer: "Favilla's NY Pizza has been voted Best Pizza in Asheville! We're a family-owned Italian restaurant serving authentic NY style pizza, calzones, stromboli, and pasta since 1969. Our secret? Fresh ingredients, family recipes, and over 50 years of pizza-making tradition."
+    answer: "Favilla's NY Pizza has been voted Best Pizza in Asheville! We're a family-owned Italian restaurant serving authentic NY style pizza, calzones, and stromboli since 1969. Our secret? Fresh ingredients, family recipes, and over 50 years of pizza-making tradition."
   },
   {
     question: "Do you have a rewards program?",
@@ -33,7 +33,7 @@ const faqData: FAQItem[] = [
   },
   {
     question: "What Italian food do you serve besides pizza?",
-    answer: "We offer a full menu of authentic Italian cuisine including hand-folded calzones, stromboli, traditional pasta dishes (spaghetti, lasagna, chicken parmesan), fresh salads, Italian subs, and appetizers. All made with family recipes passed down through generations."
+    answer: "We offer a full menu of authentic Italian cuisine including hand-folded calzones, stromboli, fresh salads, appetizers, and desserts. All made with family recipes passed down through generations and the freshest ingredients."
   },
   {
     question: "Where is Favilla's Pizza located in Asheville?",
