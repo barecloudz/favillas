@@ -115,6 +115,7 @@ import ScheduleCreator from "@/components/admin/schedule-creator";
 import { TemplateEditor } from "@/components/admin/template-editor";
 import { RestaurantSettings } from "@/components/admin/restaurant-settings";
 import FrontendCustomization from "@/components/admin/frontend-customization";
+import { TipsReport } from "@/components/admin/tips-report";
 
 const AdminDashboard = () => {
   const { user, logoutMutation, isLoading } = useAuth();
@@ -1068,6 +1069,7 @@ const AdminDashboard = () => {
       items: [
         { name: "Analytics", icon: BarChart3, href: "analytics" },
         { name: "Reports", icon: FileText, href: "reports" },
+        { name: "Tips Report", icon: DollarSign, href: "tips-report" },
       ]
     },
     {
@@ -1397,7 +1399,11 @@ const AdminDashboard = () => {
             {activeTab === "reports" && (
               <ReportsSection analytics={analytics} orders={orders} />
             )}
-            
+
+            {activeTab === "tips-report" && (
+              <TipsReport orders={orders} />
+            )}
+
             {activeTab === "menu-editor" && (
               <MenuEditor menuItems={menuItems} />
             )}
