@@ -398,6 +398,10 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
         <img
           src={item.imageUrl || '/images/placeholder-pizza.jpg'}
           alt={item.name}
+          loading="lazy"
+          decoding="async"
+          width="300"
+          height="192"
           className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
         />
       </div>

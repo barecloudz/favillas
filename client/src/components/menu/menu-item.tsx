@@ -191,9 +191,13 @@ const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
   return (
     <Card className="overflow-hidden shadow-md hover:shadow-lg transition-shadow">
       <div className="h-48 overflow-hidden">
-        <img 
-          src={item.imageUrl} 
-          alt={item.name} 
+        <img
+          src={item.imageUrl}
+          alt={item.name}
+          loading="lazy"
+          decoding="async"
+          width="300"
+          height="192"
           className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
         />
       </div>
