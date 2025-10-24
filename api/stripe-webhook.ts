@@ -124,7 +124,7 @@ export const handler: Handler = async (event, context) => {
 
           // Set payment status to completed/succeeded since payment just succeeded
           orderData.paymentStatus = 'succeeded';
-          orderData.status = 'confirmed';
+          orderData.status = 'pending'; // Set to 'pending' so it shows up in kitchen display
 
           // Create the order by calling the orders API internally
           const orderCreationResult = await fetch(`${process.env.SITE_URL || 'http://localhost:8888'}/api/orders`, {
