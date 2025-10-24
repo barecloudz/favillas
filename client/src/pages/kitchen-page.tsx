@@ -13,6 +13,9 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Loader2, Printer, Volume2, Columns3, LayoutGrid, User, Home, Settings, LogOut, PauseCircle, PlayCircle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { printToThermalPrinter, printDailySummary } from "@/utils/thermal-printer";
 import { useLocation } from "wouter";
 import { useVacationMode } from "@/hooks/use-vacation-mode";
@@ -33,6 +36,9 @@ const KitchenPage = () => {
   const { isOrderingPaused, vacationMode } = useVacationMode();
   const [isTogglingPause, setIsTogglingPause] = useState(false);
   const [wakeLock, setWakeLock] = useState<any>(null);
+  const [showPauseReasonDialog, setShowPauseReasonDialog] = useState(false);
+  const [pauseReason, setPauseReason] = useState<string>('high_volume');
+  const [customPauseMessage, setCustomPauseMessage] = useState('');
 
   // Daily Summary Modal State
   const [showDailySummaryModal, setShowDailySummaryModal] = useState(false);
@@ -600,28 +606,64 @@ const KitchenPage = () => {
     }
   };
 
+  // Helper function to generate customer message based on reason
+  const getCustomerMessageForReason = (reason: string, customMessage?: string): string => {
+    if (reason === 'custom' && customMessage) {
+      return customMessage;
+    }
+
+    const messages: Record<string, string> = {
+      high_volume: 'We are temporarily pausing orders due to high volume. Please check back shortly!',
+      staff_shortage: 'We are temporarily pausing orders due to limited staff availability. We appreciate your patience!',
+      equipment_issue: 'We are temporarily pausing orders due to equipment maintenance. Please check back soon!',
+      break_time: 'We are taking a brief break. Orders will resume shortly. Thank you for your patience!',
+      other: 'We are temporarily pausing orders. Please check back shortly!'
+    };
+
+    return messages[reason] || messages.other;
+  };
+
+  // Helper function to get reason display name
+  const getReasonDisplayName = (reason: string): string => {
+    const names: Record<string, string> = {
+      high_volume: 'High Volume',
+      staff_shortage: 'Staff Shortage',
+      equipment_issue: 'Equipment Issue',
+      break_time: 'Break Time',
+      custom: 'Custom Reason',
+      other: 'Other'
+    };
+
+    return names[reason] || 'Emergency Pause';
+  };
+
   // Toggle pause ordering (emergency pause)
-  const togglePauseOrdering = async () => {
+  const togglePauseOrdering = async (reason?: string, customMessage?: string) => {
     setIsTogglingPause(true);
     try {
       const newPauseState = !isOrderingPaused;
 
+      // If pausing, use provided reason, otherwise default
+      const pauseReasonToUse = newPauseState ? (reason || 'high_volume') : '';
+      const customerMessage = newPauseState
+        ? getCustomerMessageForReason(pauseReasonToUse, customMessage)
+        : '';
+      const reasonDisplay = newPauseState ? getReasonDisplayName(pauseReasonToUse) : '';
+
       // Use apiRequest to ensure proper authentication
       await apiRequest('PUT', '/api/vacation-mode', {
         isEnabled: newPauseState,
-        message: newPauseState
-          ? 'We are temporarily pausing orders due to high volume. Please check back shortly!'
-          : '',
+        message: customerMessage,
         startDate: '',
         endDate: '',
-        reason: 'Emergency pause from kitchen'
+        reason: newPauseState ? reasonDisplay : ''
       });
 
       queryClient.invalidateQueries({ queryKey: ['/api/vacation-mode'] });
       toast({
         title: newPauseState ? "Ordering Paused" : "Ordering Resumed",
         description: newPauseState
-          ? "Customers will see a message that ordering is temporarily unavailable."
+          ? `Orders paused: ${reasonDisplay}. Customers will see a message that ordering is temporarily unavailable.`
           : "Customers can now place orders again.",
       });
     } catch (error: any) {
@@ -633,7 +675,24 @@ const KitchenPage = () => {
       });
     } finally {
       setIsTogglingPause(false);
+      setShowPauseReasonDialog(false);
     }
+  };
+
+  // Handle pause button click
+  const handlePauseButtonClick = () => {
+    if (isOrderingPaused) {
+      // If currently paused, resume immediately
+      togglePauseOrdering();
+    } else {
+      // If not paused, show dialog to select reason
+      setShowPauseReasonDialog(true);
+    }
+  };
+
+  // Handle pause with reason from dialog
+  const handlePauseWithReason = () => {
+    togglePauseOrdering(pauseReason, customPauseMessage);
   };
 
   if (isLoading) {
@@ -702,7 +761,7 @@ const KitchenPage = () => {
                     ? 'bg-yellow-500 text-white hover:bg-yellow-600'
                     : 'bg-white text-[#d73a31]'
                 }`}
-                onClick={togglePauseOrdering}
+                onClick={handlePauseButtonClick}
                 disabled={isTogglingPause}
               >
                 {isTogglingPause ? (
@@ -768,8 +827,20 @@ const KitchenPage = () => {
             <div className="container mx-auto flex items-center gap-3 text-white">
               <PauseCircle className="h-8 w-8 flex-shrink-0" />
               <div className="flex-1">
-                <p className="font-bold text-lg md:text-xl">⏸️ Orders Temporarily Paused</p>
+                <p className="font-bold text-lg md:text-xl">
+                  ⏸️ Orders Temporarily Paused
+                  {vacationMode?.reason && (
+                    <span className="font-normal text-base md:text-lg ml-2">
+                      - {vacationMode.reason}
+                    </span>
+                  )}
+                </p>
                 <p className="text-sm md:text-base">ASAP orders are currently paused. Scheduled orders will still come through.</p>
+                {vacationMode?.message && (
+                  <p className="text-sm md:text-base mt-1 italic">
+                    Customer message: "{vacationMode.message}"
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -1434,6 +1505,126 @@ const KitchenPage = () => {
                 onClick={() => setShowDailySummaryModal(false)}
               >
                 No, Maybe Later
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Pause Reason Dialog */}
+        <Dialog open={showPauseReasonDialog} onOpenChange={setShowPauseReasonDialog}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-xl">Pause Orders - Select Reason</DialogTitle>
+              <DialogDescription className="pt-2">
+                Choose why you're pausing orders. This helps track operations and informs customers appropriately.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <RadioGroup value={pauseReason} onValueChange={setPauseReason}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="high_volume" id="high_volume" />
+                  <Label htmlFor="high_volume" className="cursor-pointer">
+                    <div>
+                      <div className="font-medium">High Volume / Too Busy</div>
+                      <div className="text-sm text-gray-500">Temporarily overwhelmed with orders</div>
+                    </div>
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="staff_shortage" id="staff_shortage" />
+                  <Label htmlFor="staff_shortage" className="cursor-pointer">
+                    <div>
+                      <div className="font-medium">Staff Shortage</div>
+                      <div className="text-sm text-gray-500">Limited staff available</div>
+                    </div>
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="equipment_issue" id="equipment_issue" />
+                  <Label htmlFor="equipment_issue" className="cursor-pointer">
+                    <div>
+                      <div className="font-medium">Equipment Issue</div>
+                      <div className="text-sm text-gray-500">Equipment maintenance or malfunction</div>
+                    </div>
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="break_time" id="break_time" />
+                  <Label htmlFor="break_time" className="cursor-pointer">
+                    <div>
+                      <div className="font-medium">Taking a Break</div>
+                      <div className="text-sm text-gray-500">Brief staff break</div>
+                    </div>
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="custom" id="custom" />
+                  <Label htmlFor="custom" className="cursor-pointer">
+                    <div>
+                      <div className="font-medium">Custom Reason</div>
+                      <div className="text-sm text-gray-500">Write your own message</div>
+                    </div>
+                  </Label>
+                </div>
+              </RadioGroup>
+
+              {pauseReason === 'custom' && (
+                <div className="space-y-2">
+                  <Label htmlFor="customMessage">Custom Message for Customers</Label>
+                  <Textarea
+                    id="customMessage"
+                    placeholder="Enter a custom message that customers will see..."
+                    value={customPauseMessage}
+                    onChange={(e) => setCustomPauseMessage(e.target.value)}
+                    rows={3}
+                    className="resize-none"
+                  />
+                </div>
+              )}
+
+              {pauseReason !== 'custom' && (
+                <div className="bg-blue-50 p-3 rounded-md">
+                  <p className="text-sm font-medium text-blue-900 mb-1">Customer will see:</p>
+                  <p className="text-sm text-blue-800 italic">
+                    "{getCustomerMessageForReason(pauseReason)}"
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="gap-2 flex-col sm:flex-row">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => setShowPauseReasonDialog(false)}
+                disabled={isTogglingPause}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                className="w-full sm:w-auto bg-yellow-500 hover:bg-yellow-600"
+                onClick={handlePauseWithReason}
+                disabled={isTogglingPause || (pauseReason === 'custom' && !customPauseMessage.trim())}
+              >
+                {isTogglingPause ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Pausing...
+                  </>
+                ) : (
+                  <>
+                    <PauseCircle className="mr-2 h-4 w-4" />
+                    Pause Orders
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
