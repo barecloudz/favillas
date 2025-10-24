@@ -10,19 +10,10 @@ export const TipsReport = ({ orders }: any) => {
   const [dateRange, setDateRange] = useState<'today' | 'week' | 'custom'>('today');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [excludeTestOrders, setExcludeTestOrders] = useState(true);
 
   // Safety check - ensure orders is an array
-  let safeOrders = Array.isArray(orders) ? orders : [];
-
-  // Filter out test orders if enabled
-  if (excludeTestOrders) {
-    safeOrders = safeOrders.filter((order: any) => {
-      const orderId = order.id;
-      // Exclude orders before #52 (fake orders) and orders #55, #56 (test orders)
-      return orderId >= 52 && orderId !== 55 && orderId !== 56;
-    });
-  }
+  // Note: Test order filtering is now applied system-wide in the parent component
+  const safeOrders = Array.isArray(orders) ? orders : [];
 
   // Get today's date in YYYY-MM-DD format
   const getTodayString = () => {
@@ -189,17 +180,10 @@ export const TipsReport = ({ orders }: any) => {
             </TabsContent>
           </Tabs>
 
-          <div className="flex items-center space-x-2 mt-4 pt-4 border-t">
-            <input
-              type="checkbox"
-              id="excludeTest"
-              checked={excludeTestOrders}
-              onChange={(e) => setExcludeTestOrders(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
-            />
-            <Label htmlFor="excludeTest" className="text-sm font-medium cursor-pointer">
-              Exclude test orders (Orders before #52, and #55, #56)
-            </Label>
+          <div className="mt-4 pt-4 border-t">
+            <p className="text-sm text-gray-600">
+              Note: Test order filtering (orders before #52, and #55, #56) is controlled system-wide in Settings → General → Analytics & Reporting
+            </p>
           </div>
         </CardContent>
       </Card>

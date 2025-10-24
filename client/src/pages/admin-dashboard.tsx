@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense } from "react";
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useAdminWebSocket } from "@/hooks/use-admin-websocket";
@@ -146,14 +146,24 @@ const AdminDashboard = () => {
     return 0.3;
   });
 
-  // Save sound preferences to localStorage
+  // Test order filter - exclude orders before #52 and #55, #56
+  const [excludeTestOrders, setExcludeTestOrders] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('excludeTestOrders');
+      return saved !== null ? JSON.parse(saved) : true;
+    }
+    return true;
+  });
+
+  // Save sound preferences and filter to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('adminSoundNotifications', JSON.stringify(soundNotificationsEnabled));
       localStorage.setItem('adminSoundType', JSON.stringify(soundType));
       localStorage.setItem('adminSoundVolume', JSON.stringify(soundVolume));
+      localStorage.setItem('excludeTestOrders', JSON.stringify(excludeTestOrders));
     }
-  }, [soundNotificationsEnabled, soundType, soundVolume]);
+  }, [soundNotificationsEnabled, soundType, soundVolume, excludeTestOrders]);
 
   // Get custom sound settings from localStorage for main component
   const [mainCustomSoundUrl, setMainCustomSoundUrl] = useState(() => {
@@ -860,11 +870,23 @@ const AdminDashboard = () => {
 
   
   // Queries for different data
-  const { data: orders, isLoading: ordersLoading } = useQuery({
+  const { data: ordersRaw, isLoading: ordersLoading } = useQuery({
     queryKey: ["/api/orders"],
     refetchInterval: false, // Disabled auto-refresh for menu editing
     enabled: true, // Enable orders query for admin dashboard
   });
+
+  // Filter out test orders if enabled
+  const orders = useMemo(() => {
+    if (!ordersRaw) return ordersRaw;
+    if (!excludeTestOrders) return ordersRaw;
+
+    // Filter out orders before #52 (fake) and #55, #56 (test)
+    return (ordersRaw as any[]).filter((order: any) => {
+      const orderId = order.id;
+      return orderId >= 52 && orderId !== 55 && orderId !== 56;
+    });
+  }, [ordersRaw, excludeTestOrders]);
 
   const { data: menuItems, isLoading: menuLoading } = useQuery({
     queryKey: ["/api/menu"],
@@ -7783,7 +7805,16 @@ const SettingsPanel = () => {
     return 0.3;
   });
 
-  // Save sound preferences to localStorage AND system settings
+  // Test order filter - exclude orders before #52 and #55, #56
+  const [excludeTestOrders, setExcludeTestOrders] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('excludeTestOrders');
+      return saved !== null ? JSON.parse(saved) : true;
+    }
+    return true;
+  });
+
+  // Save sound preferences and test order filter to localStorage AND system settings
   useEffect(() => {
     if (typeof window !== 'undefined') {
       // Save to localStorage for immediate access
@@ -7792,6 +7823,7 @@ const SettingsPanel = () => {
       localStorage.setItem('adminSoundVolume', JSON.stringify(soundVolume));
       localStorage.setItem('adminCustomSoundUrl', customSoundUrl);
       localStorage.setItem('adminCustomSoundName', customSoundName);
+      localStorage.setItem('excludeTestOrders', JSON.stringify(excludeTestOrders));
 
       // Save to system settings (debounced to avoid excessive API calls)
       const timeoutId = setTimeout(async () => {
@@ -7820,7 +7852,7 @@ const SettingsPanel = () => {
 
       return () => clearTimeout(timeoutId);
     }
-  }, [soundNotificationsEnabled, soundType, soundVolume, customSoundUrl, customSoundName]);
+  }, [soundNotificationsEnabled, soundType, soundVolume, customSoundUrl, customSoundName, excludeTestOrders]);
 
   // Fetch notification settings from system settings on mount
   useEffect(() => {
@@ -8317,6 +8349,31 @@ const SettingsPanel = () => {
                           <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                  </div>
+
+                  <Separator className="my-4" />
+
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-md font-semibold mb-3">Analytics & Reporting</h4>
+                      <div className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg">
+                        <input
+                          type="checkbox"
+                          id="excludeTestOrders"
+                          checked={excludeTestOrders}
+                          onChange={(e) => setExcludeTestOrders(e.target.checked)}
+                          className="h-4 w-4 mt-0.5 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                        />
+                        <div className="flex-1">
+                          <Label htmlFor="excludeTestOrders" className="text-sm font-medium cursor-pointer">
+                            Exclude test orders from analytics
+                          </Label>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Filters out orders before #52 (fake orders) and orders #55, #56 (test orders) from all analytics, reports, and tips calculations systemwide.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
