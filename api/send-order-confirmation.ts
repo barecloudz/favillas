@@ -480,7 +480,7 @@ export const handler: Handler = async (event, context) => {
     const htmlContent = generateOrderConfirmationHTML(orderData);
 
     // Send email via Resend
-    const emailResult = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || 'noreply@favillaspizza.com',
       to: [orderData.customerEmail],
       subject: `Order Confirmation #${orderData.orderId} - Favilla's NY Pizza`,
@@ -491,7 +491,19 @@ export const handler: Handler = async (event, context) => {
       ]
     });
 
-    console.log('✅ Order confirmation email sent successfully:', emailResult);
+    if (error) {
+      console.error('❌ Resend API error:', error);
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({
+          error: 'Failed to send email via Resend',
+          details: error
+        })
+      };
+    }
+
+    console.log('✅ Order confirmation email sent successfully:', data);
 
     // Log email send to database for tracking
     try {
@@ -509,7 +521,7 @@ export const handler: Handler = async (event, context) => {
           ${orderData.customerEmail},
           'order_confirmation',
           'sent',
-          ${emailResult.data?.id || null},
+          ${data?.id || null},
           NOW()
         )
       `;
@@ -524,7 +536,7 @@ export const handler: Handler = async (event, context) => {
       headers,
       body: JSON.stringify({
         success: true,
-        emailId: emailResult.data?.id,
+        emailId: data?.id,
         message: 'Order confirmation email sent successfully'
       })
     };
