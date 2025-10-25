@@ -20,9 +20,12 @@ export interface StoreStatusResult {
   currentTime: string;
   storeHours: StoreHoursData | null;
   minutesUntilClose?: number;
+  nextOpenTime?: string; // Next time store will be open for scheduling
+  schedulingWindowEnd?: string; // When scheduling window ends (30 min after open)
 }
 
 const CUTOFF_MINUTES_BEFORE_CLOSE = 30;
+const SCHEDULING_WINDOW_AFTER_OPEN = 30; // Allow scheduling until 30 min after opening
 
 /**
  * Converts a time string (e.g., "20:00") to minutes since midnight
@@ -30,6 +33,43 @@ const CUTOFF_MINUTES_BEFORE_CLOSE = 30;
 function timeToMinutes(timeStr: string): number {
   const [hours, minutes] = timeStr.split(':').map(Number);
   return hours * 60 + minutes;
+}
+
+/**
+ * Finds the next time the store will be open
+ * Returns both the opening time and the scheduling window end time
+ */
+function findNextOpenTime(storeHours: StoreHoursData[], currentDay: number, currentMinutes: number): { nextOpenTime: string; schedulingWindowEnd: string } | null {
+  const daysToCheck = 7; // Check up to a week ahead
+
+  for (let i = 0; i < daysToCheck; i++) {
+    const checkDay = (currentDay + i) % 7;
+    const dayHours = storeHours.find(h => h.dayOfWeek === checkDay);
+
+    if (!dayHours || !dayHours.isOpen || !dayHours.openTime) {
+      continue;
+    }
+
+    const openMinutes = timeToMinutes(dayHours.openTime);
+
+    // If checking today, only consider times after current time
+    if (i === 0 && openMinutes <= currentMinutes) {
+      continue;
+    }
+
+    // Found next opening time
+    const schedulingWindowEndMinutes = openMinutes + SCHEDULING_WINDOW_AFTER_OPEN;
+    const schedulingHours = Math.floor(schedulingWindowEndMinutes / 60);
+    const schedulingMins = schedulingWindowEndMinutes % 60;
+    const schedulingWindowEnd = `${schedulingHours.toString().padStart(2, '0')}:${schedulingMins.toString().padStart(2, '0')}`;
+
+    return {
+      nextOpenTime: dayHours.openTime,
+      schedulingWindowEnd
+    };
+  }
+
+  return null;
 }
 
 /**
@@ -75,12 +115,15 @@ export function checkStoreStatus(storeHours: StoreHoursData[]): StoreStatusResul
 
   // Check if store is marked as closed for the day
   if (!todayHours.isOpen) {
+    const nextOpen = findNextOpenTime(storeHours, currentDay, currentMinutes);
     return {
       isOpen: false,
       isPastCutoff: true,
       message: 'We are closed today',
       currentTime,
-      storeHours: todayHours
+      storeHours: todayHours,
+      nextOpenTime: nextOpen?.nextOpenTime,
+      schedulingWindowEnd: nextOpen?.schedulingWindowEnd
     };
   }
 
@@ -105,23 +148,29 @@ export function checkStoreStatus(storeHours: StoreHoursData[]): StoreStatusResul
     const mins = minutesUntilOpen % 60;
     const timeString = hours > 0 ? `${hours}h ${mins}m` : `${mins} minutes`;
 
+    const nextOpen = findNextOpenTime(storeHours, currentDay, currentMinutes);
     return {
       isOpen: false,
       isPastCutoff: true,
       message: `We open at ${todayHours.openTime} (in ${timeString})`,
       currentTime,
-      storeHours: todayHours
+      storeHours: todayHours,
+      nextOpenTime: nextOpen?.nextOpenTime,
+      schedulingWindowEnd: nextOpen?.schedulingWindowEnd
     };
   }
 
   // Check if we're after closing time
   if (currentMinutes >= closeMinutes) {
+    const nextOpen = findNextOpenTime(storeHours, currentDay, currentMinutes);
     return {
       isOpen: false,
       isPastCutoff: true,
       message: `We are closed for the day (closed at ${todayHours.closeTime})`,
       currentTime,
-      storeHours: todayHours
+      storeHours: todayHours,
+      nextOpenTime: nextOpen?.nextOpenTime,
+      schedulingWindowEnd: nextOpen?.schedulingWindowEnd
     };
   }
 

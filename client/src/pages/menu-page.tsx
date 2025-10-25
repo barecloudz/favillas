@@ -153,16 +153,44 @@ const MenuPage = () => {
     }
   });
 
-  // Get category from URL params
+  // Get category and item from URL params
   const urlParams = new URLSearchParams(window.location.search);
   const categoryFromUrl = urlParams.get('category');
-  
+  const itemIdFromUrl = urlParams.get('item');
+
   // Set initial category from URL
   React.useEffect(() => {
     if (categoryFromUrl && !selectedCategory) {
       setSelectedCategory(categoryFromUrl);
     }
   }, [categoryFromUrl, selectedCategory]);
+
+  // Handle direct link to specific item from homepage
+  React.useEffect(() => {
+    if (itemIdFromUrl && menuItems && menuItems.length > 0) {
+      const targetItem = menuItems.find((item: any) => item.id === parseInt(itemIdFromUrl));
+
+      if (targetItem) {
+        // Expand the category containing this item
+        const newExpanded = new Set(expandedCategories);
+        newExpanded.add(targetItem.category);
+        setExpandedCategories(newExpanded);
+
+        // Scroll to the item after a short delay to allow rendering
+        setTimeout(() => {
+          const itemElement = document.getElementById(`menu-item-${targetItem.id}`);
+          if (itemElement) {
+            itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Add a highlight effect
+            itemElement.classList.add('ring-4', 'ring-red-500', 'ring-offset-2');
+            setTimeout(() => {
+              itemElement.classList.remove('ring-4', 'ring-red-500', 'ring-offset-2');
+            }, 3000);
+          }
+        }, 300);
+      }
+    }
+  }, [itemIdFromUrl, menuItems, expandedCategories]);
 
   // Create categories array with counts
   const categories = [
@@ -428,7 +456,7 @@ const MenuPage = () => {
                 <p className="font-bold text-lg">ASAP Orders Closed</p>
                 <p className="text-sm mb-1">{cutoffMessage}</p>
                 <p className="text-sm font-medium bg-yellow-600 bg-opacity-50 px-2 py-1 rounded inline-block">
-                  💡 You can still schedule an order for tomorrow!
+                  💡 You can still schedule an order for when we open{storeStatus?.nextOpenTime ? ` at ${storeStatus.nextOpenTime}` : ''}!
                 </p>
               </div>
             </div>
@@ -591,14 +619,15 @@ const MenuPage = () => {
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
                         {items.map((item: any) => (
-                          <MenuItemWithChoices
-                            key={item.id}
-                            item={item}
-                            choiceGroups={choiceGroups}
-                            choiceItems={choiceItems}
-                            menuItemChoiceGroups={menuItemChoiceGroups}
-                            isOrderingPaused={isOrderingPaused}
-                          />
+                          <div key={item.id} id={`menu-item-${item.id}`} className="transition-all duration-300">
+                            <MenuItemWithChoices
+                              item={item}
+                              choiceGroups={choiceGroups}
+                              choiceItems={choiceItems}
+                              menuItemChoiceGroups={menuItemChoiceGroups}
+                              isOrderingPaused={isOrderingPaused}
+                            />
+                          </div>
                         ))}
                       </div>
                     </div>
