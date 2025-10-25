@@ -1770,6 +1770,11 @@ export const handler: Handler = async (event, context) => {
                                authPayload?.username || 'Valued Customer');
 
             if (customerEmail) {
+              console.log('📧 Orders API: Preparing to send order confirmation email...');
+              console.log('📧 Email will be sent to:', customerEmail);
+              console.log('📧 Customer name:', customerName);
+              console.log('📧 Order ID:', newOrder.id);
+
               try {
                 const emailOrderData = {
                   orderId: newOrder.id.toString(),
@@ -1814,21 +1819,37 @@ export const handler: Handler = async (event, context) => {
                     enhancedOrder.voucherUsed.code : undefined
                 };
 
-                const emailResponse = await fetch('/api/send-order-confirmation', {
+                console.log('📧 Calling send-order-confirmation function...');
+                const emailResponse = await fetch(`${process.env.URL || 'http://localhost:8888'}/.netlify/functions/send-order-confirmation`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(emailOrderData)
                 });
 
+                console.log('📧 Email API response status:', emailResponse.status);
                 if (emailResponse.ok) {
+                  const emailResult = await emailResponse.json();
                   console.log('✅ Orders API: Order confirmation email sent successfully');
+                  console.log('✅ Email ID:', emailResult.emailId);
                 } else {
-                  console.error('❌ Orders API: Failed to send order confirmation email:', await emailResponse.text());
+                  const errorText = await emailResponse.text();
+                  console.error('❌ Orders API: Failed to send order confirmation email');
+                  console.error('❌ Status:', emailResponse.status);
+                  console.error('❌ Error:', errorText);
                 }
               } catch (emailError) {
                 console.error('❌ Orders API: Order confirmation email error:', emailError);
+                console.error('❌ Error details:', {
+                  name: (emailError as Error).name,
+                  message: (emailError as Error).message,
+                  stack: (emailError as Error).stack
+                });
                 // Don't fail the order if email fails
               }
+            } else {
+              console.log('⚠️ Orders API: No customer email provided - skipping email confirmation');
+              console.log('⚠️ orderData.email:', orderData.email);
+              console.log('⚠️ authPayload?.email:', authPayload?.email);
             }
           } catch (asyncError) {
             console.error('❌ Orders API: Async operation failed:', asyncError);
