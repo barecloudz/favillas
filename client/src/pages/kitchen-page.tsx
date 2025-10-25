@@ -522,19 +522,28 @@ const KitchenPage = () => {
         startDate: startOfDay.toISOString(),
         endDate: endOfDay.toISOString()
       });
-      const response = await fetch(`/api/orders?${queryParams}`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
+
+      let allOrdersToday = [];
+
+      try {
+        const response = await fetch(`/api/orders?${queryParams}`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          console.warn(`Orders API returned ${response.status}, printing summary with zero orders`);
+          allOrdersToday = [];
+        } else {
+          allOrdersToday = await response.json();
         }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch orders');
+      } catch (fetchError) {
+        console.warn('Failed to fetch orders, printing summary with zero orders:', fetchError);
+        allOrdersToday = [];
       }
-
-      const allOrdersToday = await response.json();
 
       // Filter test orders if the setting is enabled
       const excludeTestOrders = localStorage.getItem('excludeTestOrders') !== 'false';
