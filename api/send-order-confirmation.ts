@@ -416,9 +416,8 @@ const generateOrderConfirmationHTML = (data: OrderEmailData): string => {
             <p>📞 ${process.env.RESTAURANT_PHONE || '(555) 123-4567'} | 🌐 ${siteURL}</p>
 
             <div class="social-links">
-                <a href="#">Facebook</a> |
-                <a href="#">Instagram</a> |
-                <a href="#">Twitter</a>
+                <a href="https://www.facebook.com/favillaspizzeria/">Facebook</a> |
+                <a href="https://www.instagram.com/favillaspizza/">Instagram</a>
             </div>
 
             <p style="margin-top: 30px; font-size: 12px;">
