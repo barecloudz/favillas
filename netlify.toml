@@ -400,7 +400,7 @@
 # Promo codes validation endpoint (customer-facing)
 [[redirects]]
   from = "/api/promo-codes/validate"
-  to = "/.netlify/functions/promo-codes/validate"
+  to = "/.netlify/functions/promo-codes-validate"
   status = 200
 
 # Storage setup endpoint
