@@ -15,8 +15,11 @@ export const SMS_CONFIG = {
 
 // SMS types for tracking
 export enum SMSType {
-  MARKETING_CAMPAIGN = 'marketing_campaign',
+  ORDER_CONFIRMATION = 'order_confirmation',
   ORDER_READY = 'order_ready',
+  ORDER_PREPARING = 'order_preparing',
+  ORDER_DELIVERED = 'order_delivered',
+  MARKETING_CAMPAIGN = 'marketing_campaign',
   FLASH_SALE = 'flash_sale',
   NEW_MENU = 'new_menu',
   LOYALTY_REWARD = 'loyalty_reward'

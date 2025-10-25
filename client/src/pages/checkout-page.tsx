@@ -824,6 +824,7 @@ const CheckoutPage = () => {
       address: orderType === "delivery" ? address : "",
       addressData: orderType === "delivery" ? addressData : null,
       phone,
+      email: user?.email || null, // CRITICAL: Add email for order confirmations
       items: orderItems,
       fulfillmentTime,
       scheduledTime: fulfillmentTime === "scheduled" ? scheduledTime : null,
