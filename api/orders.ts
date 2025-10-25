@@ -522,9 +522,13 @@ export const handler: Handler = async (event, context) => {
               };
             });
 
-            // Get user info for customer name
-            let customerName = 'Guest';
-            if (order.user_id || order.supabase_user_id) {
+            // Get customer name with priority:
+            // 1. order.customer_name (stored at checkout from Stripe or user profile)
+            // 2. users table lookup (for authenticated users without customer_name)
+            // 3. Default to 'Guest'
+            let customerName = order.customer_name || 'Guest';
+
+            if (!order.customer_name && (order.user_id || order.supabase_user_id)) {
               try {
                 const userQuery = order.user_id
                   ? await sql`SELECT first_name, last_name FROM users WHERE id = ${order.user_id}`
