@@ -48,6 +48,13 @@ const MenuPage = () => {
 
   const { data: menuItems, isLoading, error } = useQuery({
     queryKey: ["/api/menu"],
+    queryFn: async () => {
+      const response = await fetch('/api/menu');
+      if (response.ok) {
+        return await response.json();
+      }
+      throw new Error('Failed to load menu');
+    }
   });
 
   // Re-enabled: Choice groups system
