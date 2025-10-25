@@ -166,15 +166,22 @@ const MenuPage = () => {
   }, [categoryFromUrl, selectedCategory]);
 
   // Handle direct link to specific item from homepage
+  const hasScrolledToItem = React.useRef(false);
+
   React.useEffect(() => {
-    if (itemIdFromUrl && menuItems && menuItems.length > 0) {
+    if (itemIdFromUrl && menuItems && menuItems.length > 0 && !hasScrolledToItem.current) {
       const targetItem = menuItems.find((item: any) => item.id === parseInt(itemIdFromUrl));
 
       if (targetItem) {
+        // Mark that we've handled this scroll
+        hasScrolledToItem.current = true;
+
         // Expand the category containing this item
-        const newExpanded = new Set(expandedCategories);
-        newExpanded.add(targetItem.category);
-        setExpandedCategories(newExpanded);
+        setExpandedCategories(prev => {
+          const newExpanded = new Set(prev);
+          newExpanded.add(targetItem.category);
+          return newExpanded;
+        });
 
         // Scroll to the item after a short delay to allow rendering
         setTimeout(() => {
@@ -190,7 +197,7 @@ const MenuPage = () => {
         }, 300);
       }
     }
-  }, [itemIdFromUrl, menuItems, expandedCategories]);
+  }, [itemIdFromUrl, menuItems]);
 
   // Create categories array with counts
   const categories = [
