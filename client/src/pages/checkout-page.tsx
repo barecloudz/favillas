@@ -841,6 +841,7 @@ const CheckoutPage = () => {
       addressData: orderType === "delivery" ? addressData : null,
       phone,
       email: email || user?.email || null, // Use input email OR user profile email (optional)
+      customerName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Valued Customer' : 'Guest', // FIXED: Add customer name
       items: orderItems,
       fulfillmentTime,
       scheduledTime: fulfillmentTime === "scheduled" ? scheduledTime : null,
