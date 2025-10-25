@@ -229,6 +229,7 @@ const CheckoutPage = () => {
   const [fulfillmentTime, setFulfillmentTime] = useState("asap");
   const [scheduledTime, setScheduledTime] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState(""); // Optional email for order confirmations
   const [address, setAddress] = useState("");
   const [addressData, setAddressData] = useState<{
     fullAddress: string;
@@ -278,6 +279,12 @@ const CheckoutPage = () => {
       if (user.phone) {
         setPhone(user.phone);
         console.log('✅ Phone auto-populated:', user.phone);
+      }
+
+      // Set email if available (for order confirmations)
+      if (user.email) {
+        setEmail(user.email);
+        console.log('✅ Email auto-populated:', user.email);
       }
 
       // Set address if available - construct full address from components
@@ -824,7 +831,7 @@ const CheckoutPage = () => {
       address: orderType === "delivery" ? address : "",
       addressData: orderType === "delivery" ? addressData : null,
       phone,
-      email: user?.email || null, // CRITICAL: Add email for order confirmations
+      email: email || user?.email || null, // Use input email OR user profile email (optional)
       items: orderItems,
       fulfillmentTime,
       scheduledTime: fulfillmentTime === "scheduled" ? scheduledTime : null,
@@ -1183,7 +1190,25 @@ const CheckoutPage = () => {
                           </p>
                         )}
                       </div>
-                      
+
+                      {/* Email Input (Optional) */}
+                      <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                        <Label htmlFor="email" className="text-blue-700 font-semibold flex items-center gap-2">
+                          📧 Email <span className="text-blue-600 text-sm">(Optional - for order confirmation)</span>
+                        </Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder={user?.email || "your.email@example.com"}
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="mt-2 border-2 border-blue-300 focus:border-blue-500 focus:ring-blue-500 bg-white"
+                        />
+                        <p className="text-xs text-blue-600 mt-1">
+                          💡 We'll send you an order confirmation if you provide an email
+                        </p>
+                      </div>
+
                       <div>
                         <Label className="mb-2 block">Order Type</Label>
                         <RadioGroup value={orderType} onValueChange={setOrderType} className="flex space-x-4">
