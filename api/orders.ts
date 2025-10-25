@@ -1820,7 +1820,7 @@ export const handler: Handler = async (event, context) => {
                 };
 
                 console.log('📧 Calling send-order-confirmation function...');
-                const emailResponse = await fetch(`${process.env.URL || 'http://localhost:8888'}/.netlify/functions/send-order-confirmation`, {
+                const emailResponse = await fetch(`${process.env.SITE_URL || process.env.URL || 'http://localhost:8888'}/.netlify/functions/send-order-confirmation`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(emailOrderData)
