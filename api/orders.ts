@@ -1762,7 +1762,10 @@ export const handler: Handler = async (event, context) => {
             }
 
             // Send order confirmation email
+            console.log('📧 EMAIL DEBUG: orderData.email =', orderData.email);
+            console.log('📧 EMAIL DEBUG: authPayload?.email =', authPayload?.email);
             const customerEmail = orderData.email || authPayload?.email;
+            console.log('📧 EMAIL DEBUG: Final customerEmail =', customerEmail);
             // Get customer name with priority: orderData (Stripe billing) > authPayload (user profile) > default
             const customerName = orderData.customerName ||
                                (authPayload?.firstName ?
