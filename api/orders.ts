@@ -1084,7 +1084,7 @@ export const handler: Handler = async (event, context) => {
             INSERT INTO orders (
               user_id, supabase_user_id, status, total, tax, delivery_fee, tip, order_type, payment_status,
               special_instructions, address, address_data, fulfillment_time, scheduled_time,
-              phone, customer_name, promo_code_id, promo_code_discount, created_at
+              phone, email, customer_name, promo_code_id, promo_code_discount, created_at
             ) VALUES (
               ${finalUserId},
               ${finalSupabaseUserId},
@@ -1101,6 +1101,7 @@ export const handler: Handler = async (event, context) => {
               ${orderData.fulfillmentTime || 'asap'},
               ${formattedScheduledTime},
               ${orderData.phone},
+              ${orderData.email || null},
               ${orderData.customerName || null},
               ${orderData.promoCodeId || null},
               ${orderData.promoCodeDiscount || 0},
