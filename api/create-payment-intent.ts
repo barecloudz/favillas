@@ -88,15 +88,22 @@ export const handler: Handler = async (event, context) => {
       // Calculate server-side total from menu prices
       let calculatedSubtotal = 0;
 
+      // OPTIMIZATION: Batch fetch all menu items in ONE query instead of N queries
+      const menuItemIds = orderData.items.map((item: any) => item.menuItemId);
+      const menuItems = await sql`
+        SELECT id, base_price FROM menu_items WHERE id IN ${sql(menuItemIds)}
+      `;
+
+      // Create a map for quick lookups
+      const menuItemsMap = new Map(menuItems.map((item: any) => [item.id, item]));
+
       for (const item of orderData.items) {
         console.log(`🔍 Processing item: ${item.menuItemId}, quantity: ${item.quantity}, frontend price: ${item.price}`);
 
-        // Get current price from database
-        const menuItems = await sql`
-          SELECT base_price FROM menu_items WHERE id = ${item.menuItemId}
-        `;
+        // Get price from our pre-fetched map
+        const menuItem = menuItemsMap.get(item.menuItemId);
 
-        if (menuItems.length === 0) {
+        if (!menuItem) {
           return {
             statusCode: 400,
             headers,
@@ -117,7 +124,7 @@ export const handler: Handler = async (event, context) => {
           console.log(`  ✅ Using frontend price: ${item.price} x ${itemQuantity} = ${itemTotal}`);
         } else {
           // Fallback: Calculate from base price + options
-          const basePrice = parseFloat(menuItems[0].base_price);
+          const basePrice = parseFloat(menuItem.base_price);
           itemTotal = basePrice * itemQuantity;
           console.log(`  📊 Base price: ${basePrice} x ${itemQuantity} = ${itemTotal}`);
 

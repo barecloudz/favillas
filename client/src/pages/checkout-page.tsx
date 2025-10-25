@@ -142,6 +142,15 @@ const CheckoutPage = () => {
   const { toast } = useToast();
   const { isOrderingPaused, displayMessage } = useVacationMode();
 
+  // OPTIMIZATION: Preload Stripe immediately on page load
+  // This ensures Stripe is ready when user clicks "Continue to Payment"
+  useEffect(() => {
+    console.log('⚡ Preloading Stripe on checkout page load...');
+    stripePromise.then(() => {
+      console.log('✅ Stripe preloaded and ready');
+    });
+  }, []);
+
   // Check for corrupted items and handle gracefully
   useEffect(() => {
     try {
