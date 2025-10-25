@@ -65,6 +65,8 @@ const generateOrderConfirmationHTML = (data: OrderEmailData): string => {
     </div>
   `).join('');
 
+  // For authenticated users: show points earned
+  // For guests: show marketing section encouraging account creation
   const pointsSection = data.pointsEarned ? `
     <div class="points-section">
       <h3>🎁 Reward Points Earned!</h3>
@@ -74,7 +76,25 @@ const generateOrderConfirmationHTML = (data: OrderEmailData): string => {
         Use your points for free items and exclusive rewards!
       </p>
     </div>
-  ` : '';
+  ` : `
+    <div class="guest-marketing-section">
+      <h3>🎁 You Could Have Earned ${Math.floor(parseFloat(data.orderTotal))} Points!</h3>
+      <p>If you had an account, you could have:</p>
+      <ul style="text-align: left; margin: 15px auto; max-width: 400px;">
+        <li>✅ Tracked your order status in real-time</li>
+        <li>✅ Earned <strong>${Math.floor(parseFloat(data.orderTotal))} reward points</strong> from this order</li>
+        <li>✅ Redeemed points for free food and exclusive discounts</li>
+        <li>✅ Saved your favorite orders for quick reordering</li>
+        <li>✅ Received exclusive member-only offers</li>
+      </ul>
+      <a href="${process.env.SITE_URL || 'https://favillasnypizza.netlify.app'}/auth?signup=true" class="track-button">
+        🚀 Create Your Free Account
+      </a>
+      <p style="font-size: 12px; opacity: 0.8; margin-top: 10px;">
+        Start earning points on your next order!
+      </p>
+    </div>
+  `;
 
   const voucherRow = data.voucherUsed ? `
     <div class="detail-row">
@@ -252,6 +272,26 @@ const generateOrderConfirmationHTML = (data: OrderEmailData): string => {
             font-weight: bold;
             margin: 10px 0;
         }
+        .guest-marketing-section {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 25px;
+            text-align: center;
+            margin: 25px 0;
+        }
+        .guest-marketing-section h3 {
+            margin: 0 0 15px 0;
+            font-size: 22px;
+        }
+        .guest-marketing-section ul {
+            list-style: none;
+            padding: 0;
+        }
+        .guest-marketing-section li {
+            padding: 8px 0;
+            font-size: 15px;
+        }
         .track-button {
             background: linear-gradient(135deg, #d73a31 0%, #c73128 100%);
             color: white;
@@ -350,11 +390,13 @@ const generateOrderConfirmationHTML = (data: OrderEmailData): string => {
 
             ${pointsSection}
 
+            ${data.pointsEarned ? `
             <div style="text-align: center;">
                 <a href="${siteURL}/orders" class="track-button">
                     📱 Track Your Order
                 </a>
             </div>
+            ` : ''}
 
             <div class="contact-section">
                 <h4>📞 Need Help?</h4>

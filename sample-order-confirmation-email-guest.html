@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Confirmation #123 | Favilla's NY Pizza</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #d73a31 0%, #c73128 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .order-number {
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 25px;
+            margin-top: 15px;
+            display: inline-block;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .content {
+            padding: 30px;
+        }
+        .order-status {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status-badge {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 16px;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+        .order-details {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+            font-weight: bold;
+            font-size: 18px;
+            margin-top: 10px;
+            padding-top: 15px;
+            border-top: 2px solid #d73a31;
+        }
+        .detail-label {
+            color: #6c757d;
+            font-weight: 500;
+        }
+        .detail-value {
+            color: #333;
+            font-weight: 600;
+        }
+        .items-section {
+            margin: 30px 0;
+        }
+        .items-section h3 {
+            color: #d73a31;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .order-item:last-child {
+            border-bottom: none;
+        }
+        .item-details {
+            flex: 1;
+        }
+        .item-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .item-modifications {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 3px;
+        }
+        .item-quantity {
+            font-size: 14px;
+            color: #888;
+        }
+        .item-price {
+            font-weight: bold;
+            color: #d73a31;
+            font-size: 16px;
+        }
+        .delivery-info {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+        .delivery-info h4 {
+            color: #856404;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        .delivery-info p {
+            margin: 5px 0;
+            color: #856404;
+        }
+        .guest-marketing-section {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 25px;
+            text-align: center;
+            margin: 25px 0;
+        }
+        .guest-marketing-section h3 {
+            margin: 0 0 15px 0;
+            font-size: 22px;
+        }
+        .guest-marketing-section ul {
+            list-style: none;
+            padding: 0;
+        }
+        .guest-marketing-section li {
+            padding: 8px 0;
+            font-size: 15px;
+        }
+        .track-button {
+            background: linear-gradient(135deg, #d73a31 0%, #c73128 100%);
+            color: white;
+            text-decoration: none;
+            padding: 15px 35px;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 16px;
+            display: inline-block;
+            margin: 20px 0;
+            transition: transform 0.2s ease;
+            box-shadow: 0 4px 15px rgba(215, 58, 49, 0.3);
+        }
+        .contact-section {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: center;
+        }
+        .contact-section h4 {
+            color: #333;
+            margin-top: 0;
+        }
+        .contact-links {
+            margin: 15px 0;
+        }
+        .contact-links a {
+            color: #d73a31;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: 500;
+        }
+        .footer {
+            background-color: #343a40;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .footer p {
+            margin: 5px 0;
+            opacity: 0.8;
+        }
+        .social-links {
+            margin: 20px 0;
+        }
+        .social-links a {
+            color: #fff;
+            text-decoration: none;
+            margin: 0 10px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍕 Order Confirmed!</h1>
+            <div class="order-number">Order #123</div>
+        </div>
+
+        <div class="content">
+            <div class="order-status">
+                <div class="status-badge">✅ Confirmed</div>
+                <p style="color: #666; margin: 0;">
+                    Estimated delivery: 45-60 minutes
+                </p>
+            </div>
+
+            <div class="order-details">
+                <div class="detail-row">
+                    <span class="detail-label">Order Date:</span>
+                    <span class="detail-value">Saturday, October 25, 2025</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Order Type:</span>
+                    <span class="detail-value">Delivery</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Payment Method:</span>
+                    <span class="detail-value">Credit Card</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Total:</span>
+                    <span class="detail-value" style="color: #d73a31;">$42.50</span>
+                </div>
+            </div>
+
+            <div class="delivery-info">
+                <h4>🚚 Delivery Information</h4>
+                <p><strong>Address:</strong> 123 Main Street, Asheville, NC 28801</p>
+                <p><strong>Phone:</strong> (828) 555-1234</p>
+                <p><strong>Instructions:</strong> Ring doorbell, leave on porch</p>
+            </div>
+
+            <div class="items-section">
+                <h3>📋 Order Items</h3>
+                <div class="order-item">
+                    <div class="item-details">
+                        <div class="item-name">Large Pepperoni Pizza</div>
+                        <div class="item-modifications">Extra cheese, Well done</div>
+                        <div class="item-quantity">Quantity: 1</div>
+                    </div>
+                    <div class="item-price">$18.99</div>
+                </div>
+                <div class="order-item">
+                    <div class="item-details">
+                        <div class="item-name">Buffalo Wings</div>
+                        <div class="item-modifications">12 pieces, Extra spicy</div>
+                        <div class="item-quantity">Quantity: 1</div>
+                    </div>
+                    <div class="item-price">$12.99</div>
+                </div>
+                <div class="order-item">
+                    <div class="item-details">
+                        <div class="item-name">Garlic Knots</div>
+                        <div class="item-quantity">Quantity: 1</div>
+                    </div>
+                    <div class="item-price">$6.99</div>
+                </div>
+            </div>
+
+            <!-- GUEST MARKETING SECTION -->
+            <div class="guest-marketing-section">
+                <h3>🎁 You Could Have Earned 42 Points!</h3>
+                <p>If you had an account, you could have:</p>
+                <ul style="text-align: left; margin: 15px auto; max-width: 400px;">
+                    <li>✅ Tracked your order status in real-time</li>
+                    <li>✅ Earned <strong>42 reward points</strong> from this order</li>
+                    <li>✅ Redeemed points for free food and exclusive discounts</li>
+                    <li>✅ Saved your favorite orders for quick reordering</li>
+                    <li>✅ Received exclusive member-only offers</li>
+                </ul>
+                <a href="https://favillaspizzeria.com/auth?signup=true" class="track-button">
+                    🚀 Create Your Free Account
+                </a>
+                <p style="font-size: 12px; opacity: 0.8; margin-top: 10px;">
+                    Start earning points on your next order!
+                </p>
+            </div>
+
+            <!-- NO TRACK ORDER BUTTON FOR GUESTS -->
+
+            <div class="contact-section">
+                <h4>📞 Need Help?</h4>
+                <p>Contact us if you have any questions about your order</p>
+                <div class="contact-links">
+                    <a href="tel:8282252885">📞 Call Us</a>
+                    <a href="mailto:info@favillaspizza.com">📧 Email Us</a>
+                    <a href="https://favillaspizzeria.com">🌐 Visit Website</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <h3 style="margin-top: 0;">Favilla's NY Pizza</h3>
+            <p>Authentic New York Style Pizza</p>
+            <p>📍 Your Restaurant Address, Asheville, NC</p>
+            <p>📞 (828) 225-2885 | 🌐 favillaspizzeria.com</p>
+
+            <div class="social-links">
+                <a href="#">Facebook</a> |
+                <a href="#">Instagram</a> |
+                <a href="#">Twitter</a>
+            </div>
+
+            <p style="margin-top: 30px; font-size: 12px;">
+                This email was sent to customer@example.com regarding Order #123<br>
+                <a href="https://favillaspizzeria.com/unsubscribe" style="color: #adb5bd;">Unsubscribe from promotional emails</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
