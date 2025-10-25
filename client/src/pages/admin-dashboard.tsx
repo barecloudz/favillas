@@ -11940,91 +11940,168 @@ const EditUserForm = ({
 // Promo Codes Management Component
 const PromoCodesManagement = () => {
   const { toast } = useToast();
-  const [promoCodes, setPromoCodes] = useState([
-    {
-      id: 1,
-      code: "WELCOME10",
-      discount: 10,
-      discountType: "percentage",
-      minOrderAmount: 20,
-      maxUses: 1000,
-      currentUses: 0,
-      expiresAt: new Date("2024-12-31"),
-      isActive: true,
-      description: "Welcome discount for new customers"
-    },
-    {
-      id: 2,
-      code: "SAVE5",
-      discount: 5,
-      discountType: "fixed",
-      minOrderAmount: 15,
-      maxUses: 500,
-      currentUses: 0,
-      expiresAt: new Date("2024-12-31"),
-      isActive: true,
-      description: "Fixed $5 off any order"
-    },
-    {
-      id: 3,
-      code: "PIZZA20",
-      discount: 20,
-      discountType: "percentage",
-      minOrderAmount: 25,
-      maxUses: 200,
-      currentUses: 0,
-      expiresAt: new Date("2024-12-31"),
-      isActive: false,
-      description: "20% off pizza orders"
-    }
-  ]);
+  const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingPromo, setEditingPromo] = useState<any>(null);
 
-  const handleCreatePromo = (data: any) => {
-    const newPromo = {
-      id: Date.now(),
-      ...data,
-      currentUses: 0,
-      isActive: true
-    };
-    setPromoCodes([...promoCodes, newPromo]);
-    setIsCreateDialogOpen(false);
-    toast({
-      title: "Promo code created",
-      description: `Promo code "${data.code}" has been created successfully.`,
-    });
+  // Fetch promo codes from database
+  const { data: promoCodes = [], isLoading } = useQuery({
+    queryKey: ["/api/promo-codes"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/promo-codes", null);
+      return await response.json();
+    }
+  });
+
+  const handleCreatePromo = async (data: any) => {
+    try {
+      const response = await apiRequest("POST", "/api/promo-codes", {
+        code: data.code,
+        name: data.name || data.code,
+        description: data.description,
+        discount: parseFloat(data.discount),
+        discountType: data.discountType,
+        minOrderAmount: parseFloat(data.minOrderAmount) || 0,
+        maxUses: parseInt(data.maxUses) || 0,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        isActive: true
+      });
+
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/promo-codes"] });
+        setIsCreateDialogOpen(false);
+        toast({
+          title: "Promo code created",
+          description: `Promo code "${data.code}" has been created successfully.`,
+        });
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to create promo code",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error creating promo code:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create promo code",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleUpdatePromo = (id: number, data: any) => {
-    setPromoCodes(promoCodes.map(promo => 
-      promo.id === id ? { ...promo, ...data } : promo
-    ));
-    setEditingPromo(null);
-    toast({
-      title: "Promo code updated",
-      description: `Promo code "${data.code}" has been updated successfully.`,
-    });
+  const handleUpdatePromo = async (id: number, data: any) => {
+    try {
+      const response = await apiRequest("PUT", "/api/promo-codes", {
+        id,
+        code: data.code,
+        name: data.name || data.code,
+        description: data.description,
+        discount: parseFloat(data.discount),
+        discountType: data.discountType,
+        minOrderAmount: parseFloat(data.minOrderAmount) || 0,
+        maxUses: parseInt(data.maxUses) || 0,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        isActive: data.isActive
+      });
+
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/promo-codes"] });
+        setEditingPromo(null);
+        toast({
+          title: "Promo code updated",
+          description: `Promo code "${data.code}" has been updated successfully.`,
+        });
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to update promo code",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error updating promo code:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update promo code",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleDeletePromo = (id: number) => {
-    const promo = promoCodes.find(p => p.id === id);
-    setPromoCodes(promoCodes.filter(p => p.id !== id));
-    toast({
-      title: "Promo code deleted",
-      description: `Promo code "${promo?.code}" has been deleted.`,
-    });
+  const handleDeletePromo = async (id: number) => {
+    const promo = promoCodes.find((p: any) => p.id === id);
+
+    try {
+      const response = await apiRequest("DELETE", "/api/promo-codes", { id });
+
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/promo-codes"] });
+        toast({
+          title: "Promo code deleted",
+          description: `Promo code "${promo?.code}" has been deleted.`,
+        });
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to delete promo code",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting promo code:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete promo code",
+        variant: "destructive"
+      });
+    }
   };
 
-  const togglePromoStatus = (id: number) => {
-    setPromoCodes(promoCodes.map(promo => 
-      promo.id === id ? { ...promo, isActive: !promo.isActive } : promo
-    ));
+  const togglePromoStatus = async (id: number) => {
+    const promo = promoCodes.find((p: any) => p.id === id);
+    if (!promo) return;
+
+    try {
+      const response = await apiRequest("PUT", "/api/promo-codes", {
+        id,
+        isActive: !promo.isActive
+      });
+
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/promo-codes"] });
+        toast({
+          title: promo.isActive ? "Promo code deactivated" : "Promo code activated",
+          description: `Promo code "${promo.code}" is now ${!promo.isActive ? 'active' : 'inactive'}.`,
+        });
+      }
+    } catch (error) {
+      console.error("Error toggling promo status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to toggle promo code status",
+        variant: "destructive"
+      });
+    }
   };
 
   const getUsagePercentage = (current: number, max: number) => {
     return Math.round((current / max) * 100);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-[#d73a31]" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -12053,42 +12130,42 @@ const PromoCodesManagement = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Active</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {promoCodes.filter(promo => promo.isActive).length}
+                  {promoCodes.filter((promo: any) => promo.isActive).length}
                 </p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Uses</p>
               <p className="text-2xl font-bold text-blue-600">
-                {(promoCodes || []).reduce((sum, promo) => sum + promo.currentUses, 0)}
+                {(promoCodes || []).reduce((sum: number, promo: any) => sum + promo.currentUses, 0)}
               </p>
             </div>
             <Users className="h-8 w-8 text-blue-600" />
           </div>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Expired</p>
               <p className="text-2xl font-bold text-red-600">
-                {promoCodes.filter(promo => new Date() > promo.expiresAt).length}
+                {promoCodes.filter((promo: any) => new Date() > new Date(promo.endDate)).length}
               </p>
             </div>
             <Clock className="h-8 w-8 text-red-600" />
@@ -12105,7 +12182,7 @@ const PromoCodesManagement = () => {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {promoCodes.map((promo) => (
+          {promoCodes.map((promo: any) => (
             <div key={promo.id} className="flex items-center justify-between p-4 border rounded-lg">
               <div className="flex-1">
                 <div className="flex items-center gap-3">
@@ -12113,8 +12190,8 @@ const PromoCodesManagement = () => {
                     <Badge variant={promo.isActive ? "default" : "secondary"}>
                       {promo.isActive ? "Active" : "Inactive"}
                     </Badge>
-                    <Badge variant={new Date() > promo.expiresAt ? "destructive" : "outline"}>
-                      {new Date() > promo.expiresAt ? "Expired" : "Valid"}
+                    <Badge variant={new Date() > new Date(promo.endDate) ? "destructive" : "outline"}>
+                      {new Date() > new Date(promo.endDate) ? "Expired" : "Valid"}
                     </Badge>
                   </div>
                   <div>
@@ -12219,11 +12296,13 @@ const PromoCodesManagement = () => {
 const CreatePromoCodeForm = ({ onSubmit, onCancel }: { onSubmit: (data: any) => void; onCancel: () => void }) => {
   const [formData, setFormData] = useState({
     code: "",
+    name: "",
     discount: "",
     discountType: "percentage",
     minOrderAmount: "",
     maxUses: "",
-    expiresAt: "",
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: "",
     description: ""
   });
 
@@ -12232,9 +12311,10 @@ const CreatePromoCodeForm = ({ onSubmit, onCancel }: { onSubmit: (data: any) => 
     onSubmit({
       ...formData,
       discount: parseFloat(formData.discount),
-      minOrderAmount: parseFloat(formData.minOrderAmount),
-      maxUses: parseInt(formData.maxUses),
-      expiresAt: new Date(formData.expiresAt)
+      minOrderAmount: parseFloat(formData.minOrderAmount) || 0,
+      maxUses: parseInt(formData.maxUses) || 0,
+      startDate: new Date(formData.startDate).toISOString(),
+      endDate: new Date(formData.endDate).toISOString()
     });
   };
 
@@ -12302,14 +12382,37 @@ const CreatePromoCodeForm = ({ onSubmit, onCancel }: { onSubmit: (data: any) => 
       </div>
       
       <div>
-        <Label htmlFor="expiresAt">Expiration Date</Label>
+        <Label htmlFor="name">Name</Label>
         <Input
-          id="expiresAt"
-          type="date"
-          value={formData.expiresAt}
-          onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
-          required
+          id="name"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          placeholder="Welcome Discount"
         />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="startDate">Start Date</Label>
+          <Input
+            id="startDate"
+            type="date"
+            value={formData.startDate}
+            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+            required
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="endDate">End Date</Label>
+          <Input
+            id="endDate"
+            type="date"
+            value={formData.endDate}
+            onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+            required
+          />
+        </div>
       </div>
       
       <div>
@@ -12338,12 +12441,15 @@ const CreatePromoCodeForm = ({ onSubmit, onCancel }: { onSubmit: (data: any) => 
 const EditPromoCodeForm = ({ promo, onSubmit, onCancel }: { promo: any; onSubmit: (data: any) => void; onCancel: () => void }) => {
   const [formData, setFormData] = useState({
     code: promo.code || "",
+    name: promo.name || "",
     discount: promo.discount?.toString() || "",
     discountType: promo.discountType || "percentage",
     minOrderAmount: promo.minOrderAmount?.toString() || "",
     maxUses: promo.maxUses?.toString() || "",
-    expiresAt: promo.expiresAt ? new Date(promo.expiresAt).toISOString().split('T')[0] : "",
-    description: promo.description || ""
+    startDate: promo.startDate ? new Date(promo.startDate).toISOString().split('T')[0] : "",
+    endDate: promo.endDate ? new Date(promo.endDate).toISOString().split('T')[0] : "",
+    description: promo.description || "",
+    isActive: promo.isActive !== undefined ? promo.isActive : true
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -12351,9 +12457,10 @@ const EditPromoCodeForm = ({ promo, onSubmit, onCancel }: { promo: any; onSubmit
     onSubmit({
       ...formData,
       discount: parseFloat(formData.discount),
-      minOrderAmount: parseFloat(formData.minOrderAmount),
-      maxUses: parseInt(formData.maxUses),
-      expiresAt: new Date(formData.expiresAt)
+      minOrderAmount: parseFloat(formData.minOrderAmount) || 0,
+      maxUses: parseInt(formData.maxUses) || 0,
+      startDate: new Date(formData.startDate).toISOString(),
+      endDate: new Date(formData.endDate).toISOString()
     });
   };
 
@@ -12421,14 +12528,37 @@ const EditPromoCodeForm = ({ promo, onSubmit, onCancel }: { promo: any; onSubmit
       </div>
       
       <div>
-        <Label htmlFor="editExpiresAt">Expiration Date</Label>
+        <Label htmlFor="editName">Name</Label>
         <Input
-          id="editExpiresAt"
-          type="date"
-          value={formData.expiresAt}
-          onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
-          required
+          id="editName"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          placeholder="Welcome Discount"
         />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="editStartDate">Start Date</Label>
+          <Input
+            id="editStartDate"
+            type="date"
+            value={formData.startDate}
+            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+            required
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="editEndDate">End Date</Label>
+          <Input
+            id="editEndDate"
+            type="date"
+            value={formData.endDate}
+            onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+            required
+          />
+        </div>
       </div>
       
       <div>
