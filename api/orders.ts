@@ -1762,10 +1762,7 @@ export const handler: Handler = async (event, context) => {
             }
 
             // Send order confirmation email
-            console.log('📧 EMAIL DEBUG: orderData.email =', orderData.email);
-            console.log('📧 EMAIL DEBUG: authPayload?.email =', authPayload?.email);
             const customerEmail = orderData.email || authPayload?.email;
-            console.log('📧 EMAIL DEBUG: Final customerEmail =', customerEmail);
             // Get customer name with priority: orderData (Stripe billing) > authPayload (user profile) > default
             const customerName = orderData.customerName ||
                                (authPayload?.firstName ?
@@ -1814,7 +1811,7 @@ export const handler: Handler = async (event, context) => {
                         .join(', ') : undefined)
                   })),
                   pointsEarned: pointsAwarded || undefined,
-                  totalPoints: userPoints ? (userPoints.points + (pointsAwarded || 0)) : undefined,
+                  totalPoints: pointsAwarded || undefined,
                   voucherUsed: enhancedOrder.voucherUsed ? true : false,
                   voucherDiscount: enhancedOrder.voucherUsed ?
                     enhancedOrder.voucherUsed.discountAmount?.toString() : undefined,
