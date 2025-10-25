@@ -11946,16 +11946,16 @@ const PromoCodesManagement = () => {
 
   // Fetch promo codes from database
   const { data: promoCodes = [], isLoading } = useQuery({
-    queryKey: ["/api/promo-codes"],
+    queryKey: ["/api/admin-promo-codes"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/promo-codes", null);
+      const response = await apiRequest("GET", "/api/admin-promo-codes", null);
       return await response.json();
     }
   });
 
   const handleCreatePromo = async (data: any) => {
     try {
-      const response = await apiRequest("POST", "/api/promo-codes", {
+      const response = await apiRequest("POST", "/api/admin-promo-codes", {
         code: data.code,
         name: data.name || data.code,
         description: data.description,
@@ -11969,7 +11969,7 @@ const PromoCodesManagement = () => {
       });
 
       if (response.ok) {
-        queryClient.invalidateQueries({ queryKey: ["/api/promo-codes"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin-promo-codes"] });
         setIsCreateDialogOpen(false);
         toast({
           title: "Promo code created",
@@ -11995,7 +11995,7 @@ const PromoCodesManagement = () => {
 
   const handleUpdatePromo = async (id: number, data: any) => {
     try {
-      const response = await apiRequest("PUT", "/api/promo-codes", {
+      const response = await apiRequest("PUT", "/api/admin-promo-codes", {
         id,
         code: data.code,
         name: data.name || data.code,
@@ -12010,7 +12010,7 @@ const PromoCodesManagement = () => {
       });
 
       if (response.ok) {
-        queryClient.invalidateQueries({ queryKey: ["/api/promo-codes"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin-promo-codes"] });
         setEditingPromo(null);
         toast({
           title: "Promo code updated",
@@ -12038,10 +12038,10 @@ const PromoCodesManagement = () => {
     const promo = promoCodes.find((p: any) => p.id === id);
 
     try {
-      const response = await apiRequest("DELETE", "/api/promo-codes", { id });
+      const response = await apiRequest("DELETE", "/api/admin-promo-codes", { id });
 
       if (response.ok) {
-        queryClient.invalidateQueries({ queryKey: ["/api/promo-codes"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin-promo-codes"] });
         toast({
           title: "Promo code deleted",
           description: `Promo code "${promo?.code}" has been deleted.`,
@@ -12069,13 +12069,13 @@ const PromoCodesManagement = () => {
     if (!promo) return;
 
     try {
-      const response = await apiRequest("PUT", "/api/promo-codes", {
+      const response = await apiRequest("PUT", "/api/admin-promo-codes", {
         id,
         isActive: !promo.isActive
       });
 
       if (response.ok) {
-        queryClient.invalidateQueries({ queryKey: ["/api/promo-codes"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin-promo-codes"] });
         toast({
           title: promo.isActive ? "Promo code deactivated" : "Promo code activated",
           description: `Promo code "${promo.code}" is now ${!promo.isActive ? 'active' : 'inactive'}.`,
