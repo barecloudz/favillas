@@ -26,7 +26,8 @@ import {
   Truck,
   Store,
   AlertCircle,
-  UserPlus
+  UserPlus,
+  RefreshCw
 } from "lucide-react";
 
 const OrderSuccessPage = () => {
@@ -40,6 +41,7 @@ const OrderSuccessPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [cartCleared, setCartCleared] = useState(false);
   const isCreatingOrder = useRef(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Initialize WebSocket for real-time updates
   useWebSocket();
@@ -144,24 +146,26 @@ const OrderSuccessPage = () => {
                 setCartCleared(true);
               }
 
-              // Invalidate orders queries to trigger refresh in admin dashboard
-              queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
-              queryClient.invalidateQueries({ queryKey: ['/api/kitchen/orders'] });
+              // OPTIMIZED: Show UI immediately, don't wait for background operations
+              setIsLoading(false);
+              isCreatingOrder.current = false;
 
               toast({
                 title: "Order Created Successfully!",
                 description: `Order #${createdOrder.id} has been placed.`,
               });
 
-              // GUARANTEED POINTS: Always award points after order creation
-              if (user && createdOrder?.id) {
-                setTimeout(async () => {
-                  try {
-                    const pointsResponse = await apiRequest('POST', '/api/award-points-for-order', {
-                      orderId: createdOrder.id
-                    });
-                    const pointsResult = await pointsResponse.json();
+              // OPTIMIZED: All background operations happen without blocking UI
+              // Invalidate orders queries to trigger refresh in admin dashboard (background)
+              queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/kitchen/orders'] });
 
+              // Award points in background without blocking UI
+              if (user && createdOrder?.id) {
+                apiRequest('POST', '/api/award-points-for-order', {
+                  orderId: createdOrder.id
+                }).then(response => response.json())
+                  .then(pointsResult => {
                     if (pointsResult.success && !pointsResult.alreadyAwarded) {
                       toast({
                         title: "Points Earned!",
@@ -169,23 +173,22 @@ const OrderSuccessPage = () => {
                       });
                       queryClient.invalidateQueries({ queryKey: ['/api/user-rewards'] });
                     }
-                  } catch (pointsError) {
+                  })
+                  .catch(pointsError => {
                     console.warn('Points award failed:', pointsError);
-                  }
-                }, 3000); // Wait 3 seconds after order creation to ensure it's fully processed
+                  });
               }
             } catch (error) {
               console.error('💥 Error creating order:', error);
               // Reset the processing flag on error so user can retry
               sessionStorage.setItem(processedKey, 'error');
+              setIsLoading(false);
+              isCreatingOrder.current = false;
               toast({
                 title: "Payment Successful",
                 description: "Your payment was processed, but there was an issue creating your order. Please contact us.",
                 variant: "destructive",
               });
-            } finally {
-              setIsLoading(false);
-              isCreatingOrder.current = false;
             }
           };
 
@@ -230,7 +233,7 @@ const OrderSuccessPage = () => {
           });
         }
       }
-    }, user ? 5000 : 2000); // Reduced timeout: 5 seconds for auth users, 2 for guests
+    }, user ? 3000 : 1500); // OPTIMIZED: Reduced timeout from 5s/2s to 3s/1.5s
 
     return () => clearTimeout(timeout);
   }, [isLoading, user, orderId, cartCleared, clearCart, toast]);
@@ -240,7 +243,7 @@ const OrderSuccessPage = () => {
     queryKey: [`/api/orders/${orderId}`],
     enabled: !!orderId && !!user,
     retry: 2, // Only retry twice
-    retryDelay: 1000, // Wait 1 second between retries
+    retryDelay: 500, // OPTIMIZED: Reduced from 1000ms to 500ms between retries
     staleTime: 0, // Always fetch fresh data
   });
 
@@ -283,27 +286,8 @@ const OrderSuccessPage = () => {
         setCartCleared(true);
       }
 
-      // GUARANTEED POINTS: Always ensure points are awarded for any order displayed
-      if (user && orderData?.id) {
-        setTimeout(async () => {
-          try {
-            const pointsResponse = await apiRequest('POST', '/api/award-points-for-order', {
-              orderId: orderData.id
-            });
-            const pointsResult = await pointsResponse.json();
-
-            if (pointsResult.success && !pointsResult.alreadyAwarded) {
-              toast({
-                title: "Points Earned!",
-                description: `You earned ${pointsResult.pointsAwarded} points for this order!`,
-              });
-              queryClient.invalidateQueries({ queryKey: ['/api/user-rewards'] });
-            }
-          } catch (pointsError) {
-            console.warn('Points award failed:', pointsError);
-          }
-        }, 3000); // 3 second delay to ensure order is fully processed
-      }
+      // OPTIMIZED: Points already awarded during order creation flow
+      // No need to duplicate here - removed to prevent double-awarding and improve performance
     } else if (orderError) {
       // If there's an error fetching order details, stop loading and show success page anyway
       console.warn('Failed to fetch order details:', orderError);
@@ -507,6 +491,29 @@ Thank you for choosing Favilla's NY Pizza!
         title: "Order Shared",
         description: "Order details copied to clipboard!",
       });
+    }
+  };
+
+  const handleRefreshOrder = async () => {
+    setIsRefreshing(true);
+    try {
+      // Invalidate and refetch order data
+      await queryClient.invalidateQueries({ queryKey: [`/api/orders/${orderId}`] });
+      await queryClient.refetchQueries({ queryKey: [`/api/orders/${orderId}`] });
+
+      toast({
+        title: "Order Updated",
+        description: "Your order status has been refreshed.",
+      });
+    } catch (error) {
+      console.error("Error refreshing order:", error);
+      toast({
+        title: "Refresh Failed",
+        description: "Could not refresh order status. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -770,8 +777,18 @@ Thank you for choosing Favilla's NY Pizza!
               {/* Order Status Timeline - only for authenticated users */}
               {order && (
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle>Order Status</CardTitle>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRefreshOrder}
+                      disabled={isRefreshing}
+                      className="h-8"
+                    >
+                      <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                    </Button>
                   </CardHeader>
                   <CardContent>
                   <div className="space-y-4">

@@ -12260,11 +12260,11 @@ const PromoCodesManagement = () => {
 
     {/* Create Promo Code Dialog */}
     <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Promo Code</DialogTitle>
         </DialogHeader>
-        
+
         <CreatePromoCodeForm
           onSubmit={handleCreatePromo}
           onCancel={() => setIsCreateDialogOpen(false)}
@@ -12274,11 +12274,11 @@ const PromoCodesManagement = () => {
 
     {/* Edit Promo Code Dialog */}
     <Dialog open={!!editingPromo} onOpenChange={() => setEditingPromo(null)}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Promo Code</DialogTitle>
         </DialogHeader>
-        
+
         {editingPromo && (
           <EditPromoCodeForm
             promo={editingPromo}
