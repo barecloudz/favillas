@@ -24,7 +24,7 @@ import { useVacationMode } from "@/hooks/use-vacation-mode";
 const KitchenPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
+  const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState("pending");
   const [isColumnMode, setIsColumnMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -816,20 +816,27 @@ const KitchenPage = () => {
                     {user?.firstName} {user?.lastName}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setLocation('/')}>
+                  <DropdownMenuItem onClick={() => navigate('/')}>
                     <Home className="mr-2 h-4 w-4" />
                     <span>Home</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setLocation('/admin/dashboard')}>
+                  <DropdownMenuItem onClick={() => navigate('/admin/dashboard')}>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Admin Dashboard</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setShowDailySummaryModal(true)}
+                  >
+                    <Printer className="mr-2 h-4 w-4" />
+                    <span>Print Daily Summary</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={async () => {
                       try {
                         await apiRequest('POST', '/api/logout', {});
-                        setLocation('/');
+                        navigate('/');
                         window.location.reload();
                       } catch (error) {
                         console.error('Logout failed:', error);
