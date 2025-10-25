@@ -1264,10 +1264,10 @@ const KitchenPage = () => {
                         )}
                         
                         <Separator className="my-4" />
-                        
+
                         <div className="flex justify-between font-medium">
-                          <span>Total:</span>
-                          <span>${formatPrice(Number(order.total) + Number(order.tax))}</span>
+                          <span>Total Paid:</span>
+                          <span>${formatPrice(Number(order.total))}</span>
                         </div>
                         
                         <div className="flex flex-col gap-3 mt-4 sm:flex-row">
@@ -1451,8 +1451,8 @@ const KitchenPage = () => {
                 {/* Order Total */}
                 <div className="border-t pt-4">
                   <div className="flex justify-between font-bold text-lg">
-                    <span>Total:</span>
-                    <span>${formatPrice(Number(selectedOrder.total) + Number(selectedOrder.tax))}</span>
+                    <span>Total Paid:</span>
+                    <span>${formatPrice(Number(selectedOrder.total))}</span>
                   </div>
                 </div>
 
