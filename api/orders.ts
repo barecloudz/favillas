@@ -1732,13 +1732,12 @@ export const handler: Handler = async (event, context) => {
           });
         }
 
-        // ASYNC: Send email confirmation and print receipt (don't block order response)
+        // CRITICAL FIX: Await email/print operations (serverless functions terminate on return)
         // NOTE: ASAP delivery orders' ShipDay integration moved to status update (when kitchen clicks "Start Cooking")
         // Scheduled delivery orders are sent to ShipDay immediately above
-        setTimeout(async () => {
+        try {
+          // Auto-print order receipt to thermal printer
           try {
-            // Auto-print order receipt to thermal printer
-            try {
               console.log('🖨️  Orders API: Auto-printing order receipt for order #', newOrder.id);
               const printResponse = await fetch(`${process.env.URL || 'http://localhost:8888'}/.netlify/functions/printer-print-order`, {
                 method: 'POST',
@@ -1851,10 +1850,10 @@ export const handler: Handler = async (event, context) => {
               console.log('⚠️ orderData.email:', orderData.email);
               console.log('⚠️ authPayload?.email:', authPayload?.email);
             }
-          } catch (asyncError) {
-            console.error('❌ Orders API: Async operation failed:', asyncError);
+          } catch (emailAsyncError) {
+            console.error('❌ Orders API: Email send operation failed:', emailAsyncError);
+            // Don't fail the order if email fails
           }
-        }, 100); // 100ms delay to ensure order response is sent first
 
         console.log('✅ Orders API: Order creation completed successfully');
 
