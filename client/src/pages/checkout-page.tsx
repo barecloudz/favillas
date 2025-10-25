@@ -1130,11 +1130,8 @@ const CheckoutPage = () => {
                     )}
                     {totals.cardProcessingFee > 0 && cardFeeSettings && (
                       <div className="flex justify-between text-gray-600">
-                        <span className="flex items-center gap-1">
+                        <span>
                           {cardFeeSettings.cardFeeLabel || 'Card Processing Fee'}
-                          {cardFeeSettings.cardFeeType === 'percentage' && (
-                            <span className="text-xs">({cardFeeSettings.cardFeeAmount}%)</span>
-                          )}
                         </span>
                         <span>${formatPrice(totals.cardProcessingFee)}</span>
                       </div>
