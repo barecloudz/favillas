@@ -549,16 +549,7 @@ const KitchenPage = () => {
         console.log(`Filtered ${allOrdersToday.length} orders to ${filteredOrders.length} (excluding test orders)`);
       }
 
-      if (filteredOrders.length === 0) {
-        toast({
-          title: "No Orders Today",
-          description: "There are no orders to include in the daily summary.",
-        });
-        setShowDailySummaryModal(false);
-        return;
-      }
-
-      // Format orders for the print function
+      // Format orders for the print function (even if empty array)
       const formattedOrders = filteredOrders.map((order: any) => ({
         id: order.id,
         orderType: order.order_type || order.orderType || 'pickup',
@@ -603,7 +594,9 @@ const KitchenPage = () => {
 
       toast({
         title: "Daily Summary Printed",
-        description: `Successfully printed summary for ${filteredOrders.length} orders today.`,
+        description: filteredOrders.length === 0
+          ? "Summary printed. No orders received today."
+          : `Successfully printed summary for ${filteredOrders.length} orders today.`,
       });
 
       setShowDailySummaryModal(false);
