@@ -36,7 +36,7 @@ const MenuPage = () => {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const { addItem, items } = useCart();
   const { isOrderingPaused, displayMessage } = useVacationMode();
-  const { isPastCutoff, canPlaceAsapOrders, cutoffMessage } = useStoreStatus();
+  const { isPastCutoff, canPlaceAsapOrders, cutoffMessage, storeStatus } = useStoreStatus();
 
   const formatPrice = (price: string | number) => {
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
