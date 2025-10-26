@@ -71,7 +71,6 @@ const generateOrderConfirmationHTML = (data: OrderEmailData): string => {
     <div class="points-section">
       <h3>🎁 Reward Points Earned!</h3>
       <div class="points-earned">+${data.pointsEarned} Points</div>
-      <p>You now have ${data.totalPoints || data.pointsEarned} total points</p>
       <p style="font-size: 14px; opacity: 0.9;">
         Use your points for free items and exclusive rewards!
       </p>

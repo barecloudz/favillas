@@ -171,11 +171,11 @@ const Footer = () => {
         <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center text-center md:text-left">
           <p className="text-gray-400">&copy; {new Date().getFullYear()} {companyName}. All rights reserved.</p>
           <div className="mt-4 md:mt-0 space-x-6">
-            <Link href="/privacy-policy">
+            <Link href="/privacy">
               <div className="text-sm text-gray-400 hover:text-white transition-colors cursor-pointer">Privacy Policy</div>
             </Link>
-            <Link href="/terms-of-service">
-              <div className="text-sm text-gray-400 hover:text-white transition-colors cursor-pointer">Terms of Service</div>
+            <Link href="/terms">
+              <div className="text-sm text-gray-400 hover:text-white transition-colors cursor-pointer">Terms & Conditions</div>
             </Link>
           </div>
         </div>

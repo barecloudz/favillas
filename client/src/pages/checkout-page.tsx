@@ -238,7 +238,8 @@ const CheckoutPage = () => {
   const [fulfillmentTime, setFulfillmentTime] = useState("asap");
   const [scheduledTime, setScheduledTime] = useState("");
   const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState(""); // Optional email for order confirmations
+  const [name, setName] = useState(""); // Customer name (required)
+  const [email, setEmail] = useState(""); // Customer email (required)
   const [address, setAddress] = useState("");
   const [addressData, setAddressData] = useState<{
     fullAddress: string;
@@ -288,6 +289,13 @@ const CheckoutPage = () => {
       if (user.phone) {
         setPhone(user.phone);
         console.log('✅ Phone auto-populated:', user.phone);
+      }
+
+      // Set name if available
+      if (user.firstName || user.lastName) {
+        const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+        setName(fullName);
+        console.log('✅ Name auto-populated:', fullName);
       }
 
       // Set email if available (for order confirmations)
@@ -702,7 +710,36 @@ const CheckoutPage = () => {
     console.log('🔄 NEW CHECKOUT FLOW - This should NOT create orders immediately!');
     console.log('🔄 If you see POST /api/orders after this, there is a caching issue!');
 
-    // Allow guest checkout - just require phone number
+    // Require name, email, and phone number for all orders
+    if (!name || !name.trim()) {
+      toast({
+        title: "Name required",
+        description: "Please provide your name for the order.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!email || !email.trim()) {
+      toast({
+        title: "Email required",
+        description: "Please provide your email address for order confirmation.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast({
+        title: "Invalid email",
+        description: "Please provide a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!phone) {
       toast({
         title: "Phone number required",
@@ -840,8 +877,8 @@ const CheckoutPage = () => {
       address: orderType === "delivery" ? address : "",
       addressData: orderType === "delivery" ? addressData : null,
       phone,
-      email: email || user?.email || null, // Use input email OR user profile email (optional)
-      customerName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Valued Customer' : 'Guest', // FIXED: Add customer name
+      email: email || user?.email || null, // Use input email OR user profile email (now required)
+      customerName: name || 'Guest', // Use the name field from the form (now required)
       items: orderItems,
       fulfillmentTime,
       scheduledTime: fulfillmentTime === "scheduled" ? scheduledTime : null,
@@ -1201,10 +1238,26 @@ const CheckoutPage = () => {
                         )}
                       </div>
 
-                      {/* Email Input (Optional) */}
-                      <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
-                        <Label htmlFor="email" className="text-blue-700 font-semibold flex items-center gap-2">
-                          📧 Email <span className="text-blue-600 text-sm">(Optional - for order confirmation)</span>
+                      {/* Name Input (Required) */}
+                      <div className="p-4 bg-red-50 border-2 border-red-300 rounded-lg">
+                        <Label htmlFor="name" className="text-red-700 font-semibold flex items-center gap-2">
+                          👤 Name <span className="text-red-600 text-sm">*Required</span>
+                        </Label>
+                        <Input
+                          id="name"
+                          type="text"
+                          placeholder="Your full name"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          required
+                          className="mt-2 border-2 border-red-300 focus:border-red-500 focus:ring-red-500 bg-white"
+                        />
+                      </div>
+
+                      {/* Email Input (Required) */}
+                      <div className="p-4 bg-red-50 border-2 border-red-300 rounded-lg">
+                        <Label htmlFor="email" className="text-red-700 font-semibold flex items-center gap-2">
+                          📧 Email <span className="text-red-600 text-sm">*Required</span>
                         </Label>
                         <Input
                           id="email"
@@ -1212,10 +1265,11 @@ const CheckoutPage = () => {
                           placeholder={user?.email || "your.email@example.com"}
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          className="mt-2 border-2 border-blue-300 focus:border-blue-500 focus:ring-blue-500 bg-white"
+                          required
+                          className="mt-2 border-2 border-red-300 focus:border-red-500 focus:ring-red-500 bg-white"
                         />
-                        <p className="text-xs text-blue-600 mt-1">
-                          💡 We'll send you an order confirmation if you provide an email
+                        <p className="text-xs text-red-600 mt-1">
+                          ✉️ We'll send your order confirmation to this email
                         </p>
                       </div>
 
@@ -1421,14 +1475,29 @@ const CheckoutPage = () => {
                       
                       <div>
                         <Label htmlFor="instructions">Special Instructions (Optional)</Label>
-                        <Textarea 
-                          id="instructions" 
-                          placeholder="Any special instructions for your order?" 
-                          value={specialInstructions} 
-                          onChange={(e) => setSpecialInstructions(e.target.value)} 
+                        <Textarea
+                          id="instructions"
+                          placeholder="Any special instructions for your order?"
+                          value={specialInstructions}
+                          onChange={(e) => setSpecialInstructions(e.target.value)}
                         />
+                        <p className="text-xs text-gray-500 mt-2">
+                          Please note any food allergies or dietary restrictions in your special instructions. Favilla's NY Pizza is not responsible for allergic reactions resulting from undisclosed allergies or dietary restrictions.
+                        </p>
                       </div>
-                      
+
+                      <p className="text-xs text-gray-700 text-center">
+                        By submitting your order, you agree to our{' '}
+                        <a href="/terms" target="_blank" className="text-[#d73a31] hover:underline font-semibold">
+                          Terms & Conditions
+                        </a>
+                        {' '}and{' '}
+                        <a href="/privacy" target="_blank" className="text-[#d73a31] hover:underline font-semibold">
+                          Privacy Policy
+                        </a>
+                        .
+                      </p>
+
                       <Button
                         type="submit"
                         className="w-full bg-[#d73a31] hover:bg-[#c73128] disabled:bg-gray-400 disabled:cursor-not-allowed"

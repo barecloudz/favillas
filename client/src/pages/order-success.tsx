@@ -42,6 +42,8 @@ const OrderSuccessPage = () => {
   const [cartCleared, setCartCleared] = useState(false);
   const isCreatingOrder = useRef(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [orderCreationError, setOrderCreationError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   
   // Initialize WebSocket for real-time updates
   useWebSocket();
@@ -182,13 +184,9 @@ const OrderSuccessPage = () => {
               console.error('💥 Error creating order:', error);
               // Reset the processing flag on error so user can retry
               sessionStorage.setItem(processedKey, 'error');
-              setIsLoading(false);
               isCreatingOrder.current = false;
-              toast({
-                title: "Payment Successful",
-                description: "Your payment was processed, but there was an issue creating your order. Please contact us.",
-                variant: "destructive",
-              });
+              // DON'T set isLoading to false - keep showing loading/error screen
+              setOrderCreationError('Network error - unable to create order. Your payment was processed successfully.');
             }
           };
 
@@ -196,11 +194,11 @@ const OrderSuccessPage = () => {
           createOrderAsync();
         } catch (error) {
           console.error('❌ Error parsing pending order data:', error);
-          setIsLoading(false);
+          setOrderCreationError('Unable to process order data. Please contact support.');
         }
       } else {
         console.warn('⚠️ No pending order data found in sessionStorage');
-        setIsLoading(false);
+        setOrderCreationError('Order data not found. Please contact support if your payment was charged.');
       }
 
       // Clear cart for successful payment
@@ -517,6 +515,74 @@ Thank you for choosing Favilla's NY Pizza!
     }
   };
 
+  const handleRetryOrderCreation = () => {
+    // Clear error state and reload the page to retry
+    setOrderCreationError(null);
+    setRetryCount(prev => prev + 1);
+    window.location.reload();
+  };
+
+  // CRITICAL: Show error screen if order creation failed
+  // This prevents showing "Order Confirmed!" when no order exists
+  if (orderCreationError) {
+    return (
+      <>
+        <Helmet>
+          <title>Order Processing Error | Favilla's NY Pizza</title>
+        </Helmet>
+
+        <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full border-red-300 bg-red-50">
+            <CardHeader>
+              <div className="flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mx-auto mb-4">
+                <AlertCircle className="h-8 w-8 text-red-600" />
+              </div>
+              <CardTitle className="text-center text-red-900">Order Processing Issue</CardTitle>
+              <CardDescription className="text-center text-red-700">
+                {orderCreationError}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-white p-4 rounded-lg border border-red-200">
+                <p className="text-sm text-gray-700 mb-2 font-semibold">Important:</p>
+                <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+                  <li>Your payment was processed successfully</li>
+                  <li>Click "Retry" to complete your order</li>
+                  <li>If retry doesn't work, please call us immediately</li>
+                  <li>Have your payment confirmation ready</li>
+                </ul>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Button
+                  onClick={handleRetryOrderCreation}
+                  className="w-full bg-red-600 hover:bg-red-700"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry Order Creation
+                </Button>
+
+                <Button
+                  onClick={() => window.location.href = 'tel:+1234567890'}
+                  variant="outline"
+                  className="w-full border-red-300 text-red-700 hover:bg-red-50"
+                >
+                  <Phone className="h-4 w-4 mr-2" />
+                  Call Restaurant
+                </Button>
+              </div>
+
+              <p className="text-xs text-gray-500 text-center mt-4">
+                Retry attempt: {retryCount + 1}
+              </p>
+            </CardContent>
+          </Card>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
   // Show loading if main loading is true, order query is loading, or if we have a user and orderId but no order data yet (and no error)
   if (isLoading || orderLoading || (user && orderId && !order && !orderError)) {
     return (
@@ -526,9 +592,10 @@ Thank you for choosing Favilla's NY Pizza!
         </Helmet>
 
         <main className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading your order details...</p>
+          <div className="text-center max-w-md mx-auto px-4">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-red-600 border-t-transparent mx-auto mb-6"></div>
+            <p className="text-red-700 font-semibold text-lg mb-2">Loading order confirmation</p>
+            <p className="text-red-600 font-medium">Don't close this screen</p>
           </div>
         </main>
         <Footer />
@@ -551,6 +618,27 @@ Thank you for choosing Favilla's NY Pizza!
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Order Not Found</h1>
             <p className="text-gray-600 mb-6">We couldn't find the order you're looking for.</p>
             <Button onClick={() => navigate("/")}>Return to Home</Button>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  // CRITICAL SAFETY CHECK: Don't show success screen unless we have an order OR orderId
+  // This prevents premature "Order Confirmed!" when order creation is still in progress
+  if (!order && !orderId) {
+    return (
+      <>
+        <Helmet>
+          <title>Order Confirmation | Favilla's NY Pizza</title>
+        </Helmet>
+
+        <main className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto px-4">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-red-600 border-t-transparent mx-auto mb-6"></div>
+            <p className="text-red-700 font-semibold text-lg mb-2">Loading order confirmation</p>
+            <p className="text-red-600 font-medium">Don't close this screen</p>
           </div>
         </main>
         <Footer />
