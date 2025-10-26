@@ -95,25 +95,9 @@ const OrderSuccessPage = () => {
           // Create the order now that payment has succeeded (only once)
           const createOrderAsync = async () => {
             try {
-              // SIMPLIFIED: Quick auth check without blocking
-              let fetchedUserData = user || null;
-
-              // Only do one quick attempt to get auth info if not already available
-              if (!fetchedUserData) {
-                try {
-                  const userResponse = await apiRequest('GET', '/api/user-profile');
-                  const userData = await userResponse.json();
-                  if (userData && userData.email) {
-                    fetchedUserData = userData;
-                  }
-                } catch (userError) {
-                  console.warn('Quick auth check failed, proceeding anyway:', userError);
-                }
-              }
-
-              // Use customer name from pendingOrderData (already includes guest name or user name)
-              // No need to fetch payment intent - speeds up page load significantly!
-              const customerName = pendingOrderData.customerName || fetchedUserData?.firstName || 'Guest';
+              // OPTIMIZED: Customer name already in pendingOrderData from checkout form
+              // No need to fetch user data - this speeds up page load significantly!
+              const customerName = pendingOrderData.customerName || 'Guest';
               console.log('📝 Using customer name from order data:', customerName);
 
               // Update order data to reflect successful payment (keep status as pending for kitchen display)
