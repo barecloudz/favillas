@@ -17059,6 +17059,7 @@ const RewardsManagement = () => {
   const [editingReward, setEditingReward] = useState<any>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [rewardToDelete, setRewardToDelete] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState("rewards");
 
   // Use /api/rewards endpoint (works on Netlify production)
   const getRewardsEndpoint = () => {
@@ -17075,6 +17076,30 @@ const RewardsManagement = () => {
     },
     staleTime: 0,
     cacheTime: 0,
+  });
+
+  // Fetch points transactions for tracking
+  const { data: pointsTransactions = [], isLoading: transactionsLoading } = useQuery({
+    queryKey: ["/api/admin/points-transactions"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/admin/points-transactions");
+      const data = await response.json();
+      return data;
+    },
+    enabled: activeTab === "tracking",
+    staleTime: 30000, // 30 seconds
+  });
+
+  // Fetch voucher usage for tracking
+  const { data: voucherUsage = [], isLoading: vouchersLoading } = useQuery({
+    queryKey: ["/api/admin/voucher-usage"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/admin/voucher-usage");
+      const data = await response.json();
+      return data;
+    },
+    enabled: activeTab === "tracking",
+    staleTime: 30000, // 30 seconds
   });
 
   // Create reward mutation
@@ -17231,17 +17256,24 @@ const RewardsManagement = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Rewards System</h2>
-          <p className="text-gray-600">Manage customer rewards and loyalty points</p>
-        </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Reward
-        </Button>
-      </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="rewards">Rewards</TabsTrigger>
+          <TabsTrigger value="tracking">Rewards Tracking</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="rewards" className="space-y-6 mt-6">
+          {/* Header */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Rewards System</h2>
+              <p className="text-gray-600">Manage customer rewards and loyalty points</p>
+            </div>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Reward
+            </Button>
+          </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -17392,6 +17424,169 @@ const RewardsManagement = () => {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="tracking" className="space-y-6 mt-6">
+          {/* Tracking Header */}
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Rewards Tracking</h2>
+            <p className="text-gray-600">Track points earned, redeemed, and voucher usage</p>
+          </div>
+
+          {/* Points Transactions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Activity className="h-5 w-5 mr-2" />
+                Points Transactions
+              </CardTitle>
+              <CardDescription>All points earned and spent across all users</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {transactionsLoading ? (
+                <div className="text-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                  <p>Loading transactions...</p>
+                </div>
+              ) : pointsTransactions.length === 0 ? (
+                <div className="text-center py-8">
+                  <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">No points transactions yet</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-4 font-medium">Date</th>
+                        <th className="text-left py-3 px-4 font-medium">User</th>
+                        <th className="text-left py-3 px-4 font-medium">Type</th>
+                        <th className="text-left py-3 px-4 font-medium">Points</th>
+                        <th className="text-left py-3 px-4 font-medium">Description</th>
+                        <th className="text-left py-3 px-4 font-medium">Order Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pointsTransactions.slice(0, 100).map((transaction: any) => (
+                        <tr key={transaction.id} className="border-b hover:bg-gray-50">
+                          <td className="py-3 px-4 text-sm">
+                            {new Date(transaction.createdAt).toLocaleDateString()} {new Date(transaction.createdAt).toLocaleTimeString()}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div>
+                              <div className="font-medium text-sm">{transaction.userName}</div>
+                              <div className="text-xs text-gray-500">{transaction.userEmail}</div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`text-xs font-medium px-2.5 py-0.5 rounded ${
+                              transaction.type === 'earned' ? 'bg-green-100 text-green-800' :
+                              transaction.type === 'redeemed' ? 'bg-red-100 text-red-800' :
+                              'bg-blue-100 text-blue-800'
+                            }`}>
+                              {transaction.type}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`font-bold ${transaction.points > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {transaction.points > 0 ? '+' : ''}{transaction.points}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-sm">{transaction.description}</td>
+                          <td className="py-3 px-4">
+                            {transaction.orderAmount ? `$${parseFloat(transaction.orderAmount).toFixed(2)}` : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Voucher Usage */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Gift className="h-5 w-5 mr-2" />
+                Voucher Usage
+              </CardTitle>
+              <CardDescription>All vouchers redeemed and their usage status</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {vouchersLoading ? (
+                <div className="text-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                  <p>Loading vouchers...</p>
+                </div>
+              ) : voucherUsage.length === 0 ? (
+                <div className="text-center py-8">
+                  <Gift className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">No vouchers redeemed yet</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-4 font-medium">Created</th>
+                        <th className="text-left py-3 px-4 font-medium">User</th>
+                        <th className="text-left py-3 px-4 font-medium">Reward</th>
+                        <th className="text-left py-3 px-4 font-medium">Code</th>
+                        <th className="text-left py-3 px-4 font-medium">Points Used</th>
+                        <th className="text-left py-3 px-4 font-medium">Discount</th>
+                        <th className="text-left py-3 px-4 font-medium">Status</th>
+                        <th className="text-left py-3 px-4 font-medium">Used Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {voucherUsage.slice(0, 100).map((voucher: any) => (
+                        <tr key={voucher.id} className="border-b hover:bg-gray-50">
+                          <td className="py-3 px-4 text-sm">
+                            {new Date(voucher.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div>
+                              <div className="font-medium text-sm">{voucher.userName}</div>
+                              <div className="text-xs text-gray-500">{voucher.userEmail}</div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-sm">{voucher.rewardName || '-'}</td>
+                          <td className="py-3 px-4">
+                            <code className="text-xs bg-gray-100 px-2 py-1 rounded">{voucher.voucherCode}</code>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-sm font-medium text-blue-600">{voucher.pointsUsed} pts</span>
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            {voucher.discountType === 'percentage'
+                              ? `${voucher.discountAmount}% off`
+                              : `$${parseFloat(voucher.discountAmount).toFixed(2)} off`
+                            }
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`text-xs font-medium px-2.5 py-0.5 rounded ${
+                              voucher.status === 'used' ? 'bg-green-100 text-green-800' :
+                              voucher.status === 'expired' ? 'bg-gray-100 text-gray-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {voucher.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            {voucher.usedAt ? new Date(voucher.usedAt).toLocaleDateString() : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Create/Edit Reward Dialog */}
       <RewardDialog
