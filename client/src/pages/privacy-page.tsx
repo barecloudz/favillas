@@ -164,7 +164,7 @@ export default function PrivacyPage() {
                 <p className="text-gray-700 mt-2">
                   <strong>Favilla's NY Pizza</strong><br />
                   Email: info@favillaspizzeria.com<br />
-                  Phone: (your phone number)
+                  Phone: (828) 225-2885
                 </p>
               </section>
 
