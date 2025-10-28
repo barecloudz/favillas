@@ -309,7 +309,9 @@ const KitchenPage = () => {
             specialInstructions: order.special_instructions || order.specialInstructions,
             createdAt: order.created_at || order.createdAt || new Date().toISOString(),
             userId: order.user_id || order.userId,
-            pointsEarned: order.pointsEarned || order.points_earned || 0
+            pointsEarned: order.pointsEarned || order.points_earned || 0,
+            fulfillmentTime: order.fulfillmentTime || order.fulfillment_time,
+            scheduledTime: order.scheduledTime || order.scheduled_time
           },
           {
             ipAddress: '192.168.1.18',
@@ -432,7 +434,9 @@ const KitchenPage = () => {
           specialInstructions: order.special_instructions || order.specialInstructions,
           createdAt: order.created_at || order.createdAt,
           userId: order.user_id || order.userId,
-          pointsEarned: order.pointsEarned || order.points_earned || 0
+          pointsEarned: order.pointsEarned || order.points_earned || 0,
+          fulfillmentTime: order.fulfillmentTime || order.fulfillment_time,
+          scheduledTime: order.scheduledTime || order.scheduled_time
         },
         {
           ipAddress: '192.168.1.18',
