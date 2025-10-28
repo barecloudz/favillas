@@ -5,12 +5,12 @@
 
   <!-- Homepage - Highest Priority -->
   <url>
-    <loc>https://favillaspizzeria.com/</loc>
+    <loc>https://www.favillaspizzeria.com/</loc>
     <lastmod>2025-10-28</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <image:image>
-      <image:loc>https://favillaspizzeria.com/images/hero-bg.jpg</image:loc>
+      <image:loc>https://www.favillaspizzeria.com/images/hero-bg.jpg</image:loc>
       <image:caption>Favilla's NY Pizza - Best Pizza in Asheville</image:caption>
       <image:title>Authentic Italian Pizza</image:title>
     </image:image>
@@ -18,59 +18,59 @@
 
   <!-- Menu Page - Very High Priority -->
   <url>
-    <loc>https://favillaspizzeria.com/menu</loc>
+    <loc>https://www.favillaspizzeria.com/menu</loc>
     <lastmod>2025-10-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
     <image:image>
-      <image:loc>https://favillaspizzeria.com/images/f1.png</image:loc>
+      <image:loc>https://www.favillaspizzeria.com/images/f1.png</image:loc>
       <image:caption>NY Style Pizza</image:caption>
     </image:image>
     <image:image>
-      <image:loc>https://favillaspizzeria.com/images/f2.jpg</image:loc>
+      <image:loc>https://www.favillaspizzeria.com/images/f2.jpg</image:loc>
       <image:caption>Sicilian Pizza Asheville</image:caption>
     </image:image>
     <image:image>
-      <image:loc>https://favillaspizzeria.com/images/f3.jpg</image:loc>
+      <image:loc>https://www.favillaspizzeria.com/images/f3.jpg</image:loc>
       <image:caption>Calzones and Stromboli Asheville</image:caption>
     </image:image>
   </url>
 
   <!-- Catering Page -->
   <url>
-    <loc>https://favillaspizzeria.com/catering</loc>
-    <lastmod>2025-10-04</lastmod>
+    <loc>https://www.favillaspizzeria.com/catering</loc>
+    <lastmod>2025-10-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <!-- Rewards Page -->
   <url>
-    <loc>https://favillaspizzeria.com/rewards</loc>
-    <lastmod>2025-10-04</lastmod>
+    <loc>https://www.favillaspizzeria.com/rewards</loc>
+    <lastmod>2025-10-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <!-- Auth Page -->
   <url>
-    <loc>https://favillaspizzeria.com/auth</loc>
-    <lastmod>2025-10-04</lastmod>
+    <loc>https://www.favillaspizzeria.com/auth</loc>
+    <lastmod>2025-10-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
 
   <!-- Profile Page -->
   <url>
-    <loc>https://favillaspizzeria.com/profile</loc>
-    <lastmod>2025-10-04</lastmod>
+    <loc>https://www.favillaspizzeria.com/profile</loc>
+    <lastmod>2025-10-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>
 
   <!-- Orders Page -->
   <url>
-    <loc>https://favillaspizzeria.com/orders</loc>
+    <loc>https://www.favillaspizzeria.com/orders</loc>
     <lastmod>2025-10-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
@@ -78,7 +78,7 @@
 
   <!-- Privacy Policy -->
   <url>
-    <loc>https://favillaspizzeria.com/privacy</loc>
+    <loc>https://www.favillaspizzeria.com/privacy</loc>
     <lastmod>2025-10-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
@@ -86,7 +86,7 @@
 
   <!-- Terms & Conditions -->
   <url>
-    <loc>https://favillaspizzeria.com/terms</loc>
+    <loc>https://www.favillaspizzeria.com/terms</loc>
     <lastmod>2025-10-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
