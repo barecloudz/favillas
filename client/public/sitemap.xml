@@ -6,7 +6,7 @@
   <!-- Homepage - Highest Priority -->
   <url>
     <loc>https://favillaspizzeria.com/</loc>
-    <lastmod>2025-10-04</lastmod>
+    <lastmod>2025-10-28</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <image:image>
@@ -19,7 +19,7 @@
   <!-- Menu Page - Very High Priority -->
   <url>
     <loc>https://favillaspizzeria.com/menu</loc>
-    <lastmod>2025-10-04</lastmod>
+    <lastmod>2025-10-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
     <image:image>
@@ -71,9 +71,25 @@
   <!-- Orders Page -->
   <url>
     <loc>https://favillaspizzeria.com/orders</loc>
-    <lastmod>2025-10-04</lastmod>
+    <lastmod>2025-10-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
+  </url>
+
+  <!-- Privacy Policy -->
+  <url>
+    <loc>https://favillaspizzeria.com/privacy</loc>
+    <lastmod>2025-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+  <!-- Terms & Conditions -->
+  <url>
+    <loc>https://favillaspizzeria.com/terms</loc>
+    <lastmod>2025-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
   </url>
 
 </urlset>
