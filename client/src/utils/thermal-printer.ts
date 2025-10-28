@@ -63,6 +63,8 @@ export interface OrderPrintData {
   createdAt: string;
   userId?: number;
   pointsEarned?: number;
+  fulfillmentTime?: string;
+  scheduledTime?: string;
 }
 
 /**
@@ -230,13 +232,24 @@ function formatCustomerReceipt(order: OrderPrintData): string {
   receipt += `${ESC}E\x00`; // Bold off
   receipt += `--------------------------------\n`;
 
-  // Points earned (if any)
+  // Points section - show earned points OR potential points for guests
+  receipt += `\n`;
   if (order.pointsEarned && order.pointsEarned > 0) {
-    receipt += `\n`;
+    // User was logged in - show points earned
+    receipt += `${ESC}E\x01`; // Bold on
     receipt += `You earned ${order.pointsEarned} reward points!\n`;
+    receipt += `${ESC}E\x00`; // Bold off
     receipt += `Use your points for free food!\n`;
-    receipt += `--------------------------------\n`;
+  } else {
+    // Guest user - show points they could have earned
+    const potentialPoints = Math.floor(order.total);
+    receipt += `${ESC}E\x01`; // Bold on
+    receipt += `You could have earned ${potentialPoints}\n`;
+    receipt += `reward points with an account!\n`;
+    receipt += `${ESC}E\x00`; // Bold off
+    receipt += `Sign up at favillaspizzeria.com\n`;
   }
+  receipt += `--------------------------------\n`;
 
   // Special instructions
   if (order.specialInstructions) {
@@ -278,6 +291,20 @@ function formatKitchenReceipt(order: OrderPrintData): string {
   receipt += `${GS}!\x00`; // Normal size
   receipt += `${ESC}E\x00`; // Bold off
   receipt += `================================\n`;
+
+  // SCHEDULED ORDER WARNING - Must be at top in large bold text
+  if (order.fulfillmentTime === 'scheduled' && order.scheduledTime) {
+    const scheduledDate = new Date(order.scheduledTime);
+    receipt += `\n`;
+    receipt += `${ESC}E\x01`; // Bold on
+    receipt += `${GS}!\x22`; // Triple height and double width (biggest text)
+    receipt += `DO NOT FULFILL UNTIL:\n`;
+    receipt += `${scheduledDate.toLocaleString()}\n`;
+    receipt += `${GS}!\x00`; // Normal size
+    receipt += `${ESC}E\x00`; // Bold off
+    receipt += `================================\n`;
+    receipt += `\n`;
+  }
 
   // Order number - CENTER aligned, VERY large text
   receipt += `${ESC}a\x01`; // Center align
@@ -363,9 +390,10 @@ function formatKitchenReceipt(order: OrderPrintData): string {
     }
 
     // Item with quantity and size - Bold, larger text
+    // NOTE: Size goes BEFORE item name for kitchen staff (e.g., "1x 16" BBQ Delight")
     receipt += `${ESC}E\x01${GS}!\x01`; // Bold and double height
     if (size) {
-      receipt += `${qty}x ${itemName} (${size})\n`;
+      receipt += `${qty}x ${size} ${itemName}\n`;
     } else {
       receipt += `${qty}x ${itemName}\n`;
     }
