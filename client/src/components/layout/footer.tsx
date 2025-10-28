@@ -145,7 +145,14 @@ const Footer = () => {
               <li className="text-gray-300">
                 <span className="flex items-center mb-1 justify-center md:justify-start">
                   <Clock className="mr-2 h-5 w-5 text-[#d73a31] flex-shrink-0" />
-                  <span className="font-semibold">Monday - Thursday</span>
+                  <span className="font-semibold">Monday</span>
+                </span>
+                <span className="block pl-0 md:pl-7 text-red-400 font-semibold">CLOSED</span>
+              </li>
+              <li className="text-gray-300">
+                <span className="flex items-center mb-1 justify-center md:justify-start">
+                  <Clock className="mr-2 h-5 w-5 text-[#d73a31] flex-shrink-0" />
+                  <span className="font-semibold">Tuesday - Thursday</span>
                 </span>
                 <span className="block pl-0 md:pl-7">11:00 AM - 8:00 PM</span>
               </li>
