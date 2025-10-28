@@ -57,59 +57,29 @@ const RewardsSection: React.FC = () => {
             <p className="text-center text-blue-100 mt-2">Your guide to maximizing rewards!</p>
           </CardHeader>
           <CardContent className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <div className="group flex items-start space-x-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 hover:border-green-300 transform hover:scale-105 transition-all duration-300">
-                  <div className="p-3 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full shadow-lg group-hover:animate-bounce">
-                    <ShoppingCart className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-gray-900 text-lg mb-2">🛒 Place Orders</h4>
-                    <p className="text-gray-600 mb-2">Earn <strong className="text-green-600">1 point for every dollar</strong> spent on orders</p>
-                    <div className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full inline-block">
-                      ✨ Automatic rewards!
-                    </div>
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+              <div className="group flex items-start space-x-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 hover:border-green-300 transform hover:scale-105 transition-all duration-300">
+                <div className="p-3 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full shadow-lg group-hover:animate-bounce">
+                  <ShoppingCart className="h-6 w-6 text-white" />
                 </div>
-                
-                <div className="group flex items-start space-x-4 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border-2 border-blue-200 hover:border-blue-300 transform hover:scale-105 transition-all duration-300">
-                  <div className="p-3 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-full shadow-lg group-hover:animate-bounce">
-                    <Pizza className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-gray-900 text-lg mb-2">🍕 Complete Orders</h4>
-                    <p className="text-gray-600 mb-2">Points are awarded when your order is <strong className="text-blue-600">completed</strong></p>
-                    <div className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full inline-block">
-                      💫 Instant gratification
-                    </div>
+                <div>
+                  <h4 className="font-bold text-gray-900 text-lg mb-2">🛒 Place Orders</h4>
+                  <p className="text-gray-600 mb-2">Earn <strong className="text-green-600">1 point for every dollar</strong> spent on orders</p>
+                  <div className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full inline-block">
+                    ✨ Automatic rewards!
                   </div>
                 </div>
               </div>
-              
-              <div className="space-y-6">
-                <div className="group flex items-start space-x-4 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border-2 border-purple-200 hover:border-purple-300 transform hover:scale-105 transition-all duration-300">
-                  <div className="p-3 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full shadow-lg group-hover:animate-bounce">
-                    <Crown className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-gray-900 text-lg mb-2">👑 VIP Benefits</h4>
-                    <p className="text-gray-600 mb-2">Earn extra points on your <strong className="text-purple-600">birthday</strong> and special occasions</p>
-                    <div className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full inline-block">
-                      🎂 Coming soon!
-                    </div>
-                  </div>
+
+              <div className="group flex items-start space-x-4 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border-2 border-blue-200 hover:border-blue-300 transform hover:scale-105 transition-all duration-300">
+                <div className="p-3 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-full shadow-lg group-hover:animate-bounce">
+                  <Pizza className="h-6 w-6 text-white" />
                 </div>
-                
-                <div className="group flex items-start space-x-4 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl border-2 border-yellow-200 hover:border-yellow-300 transform hover:scale-105 transition-all duration-300">
-                  <div className="p-3 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full shadow-lg group-hover:animate-bounce">
-                    <Zap className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-gray-900 text-lg mb-2">⚡ Refer Friends</h4>
-                    <p className="text-gray-600 mb-2">Earn points when friends place their <strong className="text-orange-600">first order</strong></p>
-                    <div className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full inline-block">
-                      🚀 Spread the love!
-                    </div>
+                <div>
+                  <h4 className="font-bold text-gray-900 text-lg mb-2">🍕 Complete Orders</h4>
+                  <p className="text-gray-600 mb-2">Points are awarded when your order is <strong className="text-blue-600">completed</strong></p>
+                  <div className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full inline-block">
+                    💫 Instant gratification
                   </div>
                 </div>
               </div>
