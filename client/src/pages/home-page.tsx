@@ -23,7 +23,7 @@ const HomePage = () => {
         <link rel="canonical" href="https://favillaspizzeria.com/" />
       </Helmet>
 
-      <div className="min-h-screen md:pt-[72px] pt-14">
+      <div className="min-h-screen md:pt-20 pt-12">
         {/* Hero Section */}
         <HeroSection />
 
