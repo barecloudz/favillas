@@ -30,6 +30,56 @@ import {
   RefreshCw
 } from "lucide-react";
 
+// Fun loading messages with emojis to keep customers entertained
+const LOADING_MESSAGES = [
+  "👨‍🍳 Sending your order to the kitchen...",
+  "🖨️ Printing your receipt...",
+  "📺 Displaying your order on our kitchen TV...",
+  "💳 Processing your payment...",
+  "👍 Confirming with our chef...",
+  "🧀 Chef Marco is inspecting the mozzarella...",
+  "🍃 Nonna is nodding in approval...",
+  "🎪 Tossing dough with unnecessary flair...",
+  "🍕 Your pizza just got promoted to priority status...",
+  "🌿 Adding a pinch of family secret (it's oregano)...",
+  "🧀 Tony insists we need MORE cheese...",
+  "🍅 Hand-selecting your toppings with tweezers...",
+  "🔥 Making sure your pizza gets the window seat in the oven...",
+  "❤️ Adding extra love (and garlic)...",
+  "🎨 Creating a masterpiece in the kitchen...",
+];
+
+// Component that rotates through fun messages
+const RotatingMessage = () => {
+  const [currentMessage, setCurrentMessage] = useState(() => {
+    // Start with a random message
+    return LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)];
+  });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Pick a random message (but avoid showing the same one twice)
+      setCurrentMessage(prev => {
+        let newMessage;
+        do {
+          newMessage = LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)];
+        } while (newMessage === prev && LOADING_MESSAGES.length > 1);
+        return newMessage;
+      });
+    }, 2500); // Change every 2.5 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="mb-3 transition-opacity duration-300">
+      <p className="text-gray-700 font-medium text-base animate-fade-in">
+        {currentMessage}
+      </p>
+    </div>
+  );
+};
+
 const OrderSuccessPage = () => {
   const { user } = useAuth();
   const { clearCart } = useCart();
@@ -582,6 +632,7 @@ Thank you for choosing Favilla's NY Pizza!
         <main className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center max-w-md mx-auto px-4">
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-red-600 border-t-transparent mx-auto mb-6"></div>
+            <RotatingMessage />
             <p className="text-red-700 font-semibold text-lg mb-2">Loading order confirmation</p>
             <p className="text-red-600 font-medium">Don't close this screen</p>
           </div>
@@ -625,6 +676,7 @@ Thank you for choosing Favilla's NY Pizza!
         <main className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center max-w-md mx-auto px-4">
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-red-600 border-t-transparent mx-auto mb-6"></div>
+            <RotatingMessage />
             <p className="text-red-700 font-semibold text-lg mb-2">Loading order confirmation</p>
             <p className="text-red-600 font-medium">Don't close this screen</p>
           </div>
