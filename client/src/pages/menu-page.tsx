@@ -437,7 +437,7 @@ const MenuPage = () => {
         <meta name="keywords" content="pizza menu asheville, order pizza online asheville, ny pizza delivery asheville, pizza pickup asheville nc, italian food menu asheville" />
       </Helmet>
 
-      <div className="min-h-screen bg-gray-50 md:pt-20 pt-12">
+      <div className="min-h-screen bg-gray-50 md:pt-4 pt-0">
         {/* Vacation Mode Banner */}
         {isOrderingPaused && (
           <div className="bg-yellow-500 border-b-4 border-yellow-600 px-4 sm:px-6 lg:px-8 py-4">
@@ -553,7 +553,11 @@ const MenuPage = () => {
                               <img
                                 src={category.imageUrl || category.image_url}
                                 alt={category.name}
-                                className="w-full h-full object-cover brightness-110 hover:brightness-125 transition-all duration-200"
+                                className={`w-full h-full object-cover transition-all duration-200 ${
+                                  !['Specialty Gourmet Pizzas', 'Salads', 'Drinks'].includes(category.name)
+                                    ? 'brightness-110 hover:brightness-125'
+                                    : 'hover:brightness-110'
+                                }`}
                               />
                             </div>
                           ) : (
