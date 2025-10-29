@@ -18,8 +18,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, X, Gift, AlertCircle } from "lucide-react";
+import { Loader2, X, Gift, AlertCircle, Pizza } from "lucide-react";
 import AddressForm from "@/components/ui/address-autocomplete";
+import { FreeItemSelectionModal } from "@/components/rewards/free-item-selection-modal";
 
 // Load Stripe outside of component to avoid recreating it on render
 if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
@@ -271,6 +272,8 @@ const CheckoutPage = () => {
   const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
   const [voucherError, setVoucherError] = useState("");
   const [selectedVoucherId, setSelectedVoucherId] = useState<string>("none");
+  const [showFreeItemModal, setShowFreeItemModal] = useState(false);
+  const [selectedRewardForFreeItem, setSelectedRewardForFreeItem] = useState<any>(null);
   const [tip, setTip] = useState(0);
   const [tipType, setTipType] = useState<"percentage" | "amount">("percentage");
   const [customTip, setCustomTip] = useState("");
@@ -705,6 +708,36 @@ const CheckoutPage = () => {
     setVoucherError("");
   };
 
+  // Handle free item selection from modal
+  const handleFreeItemSelect = (menuItem: any) => {
+    if (menuItem && selectedRewardForFreeItem) {
+      addItem({
+        id: menuItem.id,
+        name: menuItem.name,
+        price: 0, // Free item
+        quantity: 1,
+        selectedOptions: {},
+        options: [],
+        specialInstructions: `Free item from reward: ${selectedRewardForFreeItem.title || selectedRewardForFreeItem.name}`
+      });
+
+      toast({
+        title: "🎉 Free Item Added!",
+        description: `${menuItem.name} has been added to your cart for free!`,
+        duration: 6000,
+      });
+
+      setShowFreeItemModal(false);
+      setSelectedRewardForFreeItem(null);
+    }
+  };
+
+  // Handle free item modal close
+  const handleFreeItemModalClose = () => {
+    setShowFreeItemModal(false);
+    setSelectedRewardForFreeItem(null);
+  };
+
   const handleAddressSelect = (addressInfo: {
     fullAddress: string;
     street: string;
@@ -1102,6 +1135,39 @@ const CheckoutPage = () => {
                         </div>
                       ) : (
                         <>
+                          {/* Show free item vouchers that need selection */}
+                          {availableVouchers.some((v: any) => v.reward?.free_item_all_from_category && v.reward?.free_item_category) && (
+                            <div className="space-y-3 mb-4">
+                              <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
+                                <p className="text-sm font-medium text-blue-800 text-center">
+                                  ⚠️ You have free item rewards that need item selection
+                                </p>
+                              </div>
+                              {availableVouchers
+                                .filter((v: any) => v.reward?.free_item_all_from_category && v.reward?.free_item_category)
+                                .map((voucher: any) => (
+                                  <div key={voucher.id} className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border-2 border-blue-200">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <div>
+                                        <p className="font-bold text-gray-900">{voucher.title}</p>
+                                        <p className="text-xs text-gray-600">Choose from: {voucher.reward.free_item_category}</p>
+                                      </div>
+                                    </div>
+                                    <Button
+                                      className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
+                                      onClick={() => {
+                                        setSelectedRewardForFreeItem(voucher);
+                                        setShowFreeItemModal(true);
+                                      }}
+                                    >
+                                      <Pizza className="h-4 w-4 mr-2" />
+                                      🎁 Select Free Item
+                                    </Button>
+                                  </div>
+                                ))}
+                            </div>
+                          )}
+
                           {!appliedVoucher ? (
                             <Select value={selectedVoucherId} onValueChange={handleVoucherSelect}>
                               <SelectTrigger className="w-full border-blue-200 focus:border-blue-400 focus:ring-blue-100">
@@ -1804,6 +1870,17 @@ const CheckoutPage = () => {
           </div>
         </div>
       </main>
+
+      {/* Free Item Selection Modal */}
+      {showFreeItemModal && selectedRewardForFreeItem && (
+        <FreeItemSelectionModal
+          isOpen={showFreeItemModal}
+          onClose={handleFreeItemModalClose}
+          reward={selectedRewardForFreeItem.reward || selectedRewardForFreeItem}
+          onSelectItem={handleFreeItemSelect}
+        />
+      )}
+
       <Footer />
     </>
   );
