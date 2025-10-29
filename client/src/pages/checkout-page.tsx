@@ -416,13 +416,15 @@ const CheckoutPage = () => {
     const day = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
     const hour = now.getHours();
 
-    // Store hours: Tues-Sat 11AM-10PM, Sun 12PM-9PM, Mon CLOSED
-    if (day === 0) { // Sunday
-      return hour >= 12 && hour < 21;
+    // Store hours: Tues-Thurs 11AM-8PM, Fri-Sat 11AM-9PM, Sun 12PM-8PM, Mon CLOSED
+    if (day === 0) { // Sunday: 12PM-8PM
+      return hour >= 12 && hour < 20;
     } else if (day === 1) { // Monday - CLOSED
       return false;
-    } else if (day >= 2 && day <= 6) { // Tuesday-Saturday
-      return hour >= 11 && hour < 22;
+    } else if (day >= 2 && day <= 4) { // Tuesday-Thursday: 11AM-8PM
+      return hour >= 11 && hour < 20;
+    } else if (day >= 5 && day <= 6) { // Friday-Saturday: 11AM-9PM
+      return hour >= 11 && hour < 21;
     }
     return false;
   };
@@ -832,18 +834,20 @@ const CheckoutPage = () => {
       const minute = selectedDate.getMinutes();
 
       let isValidTime = false;
-      if (day === 0) { // Sunday
-        isValidTime = (hour > 12 || (hour === 12 && minute >= 0)) && hour < 21;
+      if (day === 0) { // Sunday: 12PM-8PM
+        isValidTime = (hour > 12 || (hour === 12 && minute >= 0)) && hour < 20;
       } else if (day === 1) { // Monday - CLOSED
         isValidTime = false;
-      } else if (day >= 2 && day <= 6) { // Tuesday-Saturday
-        isValidTime = (hour > 11 || (hour === 11 && minute >= 0)) && hour < 22;
+      } else if (day >= 2 && day <= 4) { // Tuesday-Thursday: 11AM-8PM
+        isValidTime = (hour > 11 || (hour === 11 && minute >= 0)) && hour < 20;
+      } else if (day >= 5 && day <= 6) { // Friday-Saturday: 11AM-9PM
+        isValidTime = (hour > 11 || (hour === 11 && minute >= 0)) && hour < 21;
       }
 
       if (!isValidTime) {
         toast({
           title: "Outside Store Hours",
-          description: "Please select a time when we're open. Tues-Sat: 11AM-10PM, Sun: 12PM-9PM, Mon: CLOSED",
+          description: "Please select a time when we're open. Tues-Thurs: 11AM-8PM, Fri-Sat: 11AM-9PM, Sun: 12PM-8PM, Mon: CLOSED",
           variant: "destructive",
         });
         return;
@@ -1300,10 +1304,10 @@ const CheckoutPage = () => {
                         </p>
                       </div>
 
-                      <div>
-                        <Label className="mb-3 block font-semibold text-base">Order Type</Label>
+                      <div className="pt-6">
+                        <Label className="mb-4 block font-bold text-lg text-center text-gray-900">Order Type</Label>
                         {/* Desktop: Standard radio buttons */}
-                        <RadioGroup value={orderType} onValueChange={setOrderType} className="md:flex space-x-4 hidden">
+                        <RadioGroup value={orderType} onValueChange={setOrderType} className="md:flex space-x-4 hidden justify-center">
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="pickup" id="pickup" />
                             <Label htmlFor="pickup">Pickup</Label>
@@ -1343,9 +1347,9 @@ const CheckoutPage = () => {
                       </div>
 
                       {/* Tip Selection */}
-                      <div>
-                        <Label className="mb-3 block font-semibold text-base">Add a Tip</Label>
-                        <p className="text-sm text-gray-500 mb-3">
+                      <div className="pt-8">
+                        <Label className="mb-4 block font-bold text-lg text-center text-gray-900">Add a Tip</Label>
+                        <p className="text-sm text-gray-500 mb-4 text-center">
                           {orderType === "pickup"
                             ? "Tips will be split among all employees currently clocked in"
                             : "25% of delivery tips will be shared with clocked-in staff"
@@ -1477,10 +1481,10 @@ const CheckoutPage = () => {
                       </div>
                       
                       {/* Fulfillment Time Selection */}
-                      <div>
-                        <Label className="mb-3 block font-semibold text-base">When would you like your order?</Label>
+                      <div className="pt-8">
+                        <Label className="mb-4 block font-bold text-lg text-center text-gray-900">When would you like your order?</Label>
                         {/* Desktop: Standard radio buttons */}
-                        <RadioGroup value={fulfillmentTime} onValueChange={setFulfillmentTime} className="md:flex space-x-4 hidden">
+                        <RadioGroup value={fulfillmentTime} onValueChange={setFulfillmentTime} className="md:flex space-x-4 hidden justify-center">
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="asap" id="asap" />
                             <Label htmlFor="asap">ASAP</Label>
@@ -1528,8 +1532,9 @@ const CheckoutPage = () => {
                             <div className="mb-4 p-3 bg-white/80 rounded-lg border border-blue-200">
                               <p className="text-sm font-semibold text-gray-700 mb-1">🕒 Store Hours:</p>
                               <ul className="text-sm text-gray-600 space-y-0.5 ml-1">
-                                <li>• Tuesday - Saturday: 11:00 AM - 10:00 PM</li>
-                                <li>• Sunday: 12:00 PM - 9:00 PM</li>
+                                <li>• Tuesday - Thursday: 11:00 AM - 8:00 PM</li>
+                                <li>• Friday - Saturday: 11:00 AM - 9:00 PM</li>
+                                <li>• Sunday: 12:00 PM - 8:00 PM</li>
                                 <li>• Monday: CLOSED</li>
                               </ul>
                               <p className="text-xs text-blue-600 mt-2 font-medium">
@@ -1549,18 +1554,20 @@ const CheckoutPage = () => {
 
                                 // Check if selected time is within store hours
                                 let isValidTime = false;
-                                if (day === 0) { // Sunday
-                                  isValidTime = (hour > 12 || (hour === 12 && minute >= 0)) && hour < 21;
+                                if (day === 0) { // Sunday: 12PM-8PM
+                                  isValidTime = (hour > 12 || (hour === 12 && minute >= 0)) && hour < 20;
                                 } else if (day === 1) { // Monday - CLOSED
                                   isValidTime = false;
-                                } else if (day >= 2 && day <= 6) { // Tuesday-Saturday
-                                  isValidTime = (hour > 11 || (hour === 11 && minute >= 0)) && hour < 22;
+                                } else if (day >= 2 && day <= 4) { // Tuesday-Thursday: 11AM-8PM
+                                  isValidTime = (hour > 11 || (hour === 11 && minute >= 0)) && hour < 20;
+                                } else if (day >= 5 && day <= 6) { // Friday-Saturday: 11AM-9PM
+                                  isValidTime = (hour > 11 || (hour === 11 && minute >= 0)) && hour < 21;
                                 }
 
                                 if (!isValidTime) {
                                   toast({
                                     title: "Outside Store Hours",
-                                    description: "Please select a time when we're open. Tues-Sat: 11AM-10PM, Sun: 12PM-9PM, Mon: CLOSED",
+                                    description: "Please select a time when we're open. Tues-Thurs: 11AM-8PM, Fri-Sat: 11AM-9PM, Sun: 12PM-8PM, Mon: CLOSED",
                                     variant: "destructive"
                                   });
                                 }
@@ -1584,20 +1591,21 @@ const CheckoutPage = () => {
                               ⚠️ Store is currently closed. Please select a scheduled time or try again during business hours.
                             </p>
                             <p className="text-xs text-red-600 mt-1">
-                              Hours: Tues-Sat 11AM-10PM, Sun 12PM-9PM, Mon CLOSED
+                              Hours: Tues-Thurs 11AM-8PM, Fri-Sat 11AM-9PM, Sun 12PM-8PM, Mon CLOSED
                             </p>
                           </div>
                         )}
                       </div>
                       
                       {orderType === "delivery" && (
-                        <div>
+                        <div className="pt-8">
+                          <Label className="mb-4 block font-bold text-lg text-center text-gray-900">Delivery Address</Label>
                           <AddressForm
                             value={address}
                             onChange={setAddress}
                             onAddressSelect={handleAddressSelect}
                             placeholder={user ? "Your address will be saved for future orders" : "Enter your delivery address"}
-                            label="Delivery Address"
+                            label=""
                             required={true}
                           />
                           {user && !address && (
@@ -1617,21 +1625,22 @@ const CheckoutPage = () => {
                           )}
                         </div>
                       )}
-                      
-                      <div>
-                        <Label htmlFor="instructions">Special Instructions (Optional)</Label>
+
+                      <div className="pt-8">
+                        <Label htmlFor="instructions" className="mb-4 block font-bold text-lg text-center text-gray-900">Special Instructions (Optional)</Label>
                         <Textarea
                           id="instructions"
                           placeholder="Any special instructions for your order?"
                           value={specialInstructions}
                           onChange={(e) => setSpecialInstructions(e.target.value)}
+                          className="min-h-[100px]"
                         />
-                        <p className="text-xs text-gray-500 mt-2">
+                        <p className="text-xs text-gray-500 mt-2 text-center">
                           Please note any food allergies or dietary restrictions in your special instructions. Favilla's NY Pizza is not responsible for allergic reactions resulting from undisclosed allergies or dietary restrictions.
                         </p>
                       </div>
 
-                      <p className="text-xs text-gray-700 text-center">
+                      <p className="text-xs text-gray-700 text-center pt-6">
                         By submitting your order, you agree to our{' '}
                         <a href="/terms" target="_blank" className="text-[#d73a31] hover:underline font-semibold">
                           Terms & Conditions
