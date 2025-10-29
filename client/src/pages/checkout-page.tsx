@@ -30,7 +30,7 @@ console.log('🔑 Initializing Stripe with public key:', import.meta.env.VITE_ST
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 // CheckoutForm with Stripe integration
-const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, customerAddress }: {
+const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, customerAddress, finalTotal }: {
   orderId?: number | null,
   clientSecret: string,
   customerPhone?: string,
@@ -42,7 +42,8 @@ const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, cust
     state?: string,
     postal_code?: string,
     country?: string
-  }
+  },
+  finalTotal: number
 }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -133,7 +134,7 @@ const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, cust
             </>
           ) : (
             <>
-              🔒 Pay ${(totals.finalTotal).toFixed(2)}
+              🔒 Pay ${finalTotal.toFixed(2)}
             </>
           )}
         </Button>
@@ -1463,6 +1464,7 @@ const CheckoutPage = () => {
                           postal_code: addressData.zipCode || undefined,
                           country: 'US'
                         } : undefined}
+                        finalTotal={totals.finalTotal}
                       />
                     </Elements>
                   ) : (
@@ -1508,6 +1510,7 @@ const CheckoutPage = () => {
                           postal_code: addressData.zipCode || undefined,
                           country: 'US'
                         } : undefined}
+                        finalTotal={totals.finalTotal}
                       />
                     </Elements>
                   </div>
