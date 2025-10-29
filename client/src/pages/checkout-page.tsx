@@ -110,26 +110,37 @@ const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, cust
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <PaymentElement
-        options={{
-          fields: {
-            billingDetails: 'auto'  // Let Stripe collect everything it needs
-          }
-        }}
-      />
-      <div className="mt-6">
-        <Button 
-          type="submit" 
-          className="w-full bg-[#d73a31] hover:bg-[#c73128]" 
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="bg-white md:bg-gray-50 p-4 md:p-0 rounded-lg">
+        <PaymentElement
+          options={{
+            fields: {
+              billingDetails: 'auto'  // Let Stripe collect everything it needs
+            }
+          }}
+        />
+      </div>
+      <div className="px-4 md:px-0">
+        <Button
+          type="submit"
+          className="w-full bg-[#d73a31] hover:bg-[#c73128] h-14 text-lg font-semibold rounded-xl shadow-lg"
           disabled={!stripe || !elements || isLoading}
         >
           {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          ) : null}
-          Pay Now
+            <>
+              <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              Processing Payment...
+            </>
+          ) : (
+            <>
+              🔒 Pay ${(totals.finalTotal).toFixed(2)}
+            </>
+          )}
         </Button>
       </div>
+      <p className="text-xs text-gray-500 text-center px-4 md:px-0">
+        Your payment information is secure and encrypted
+      </p>
     </form>
   );
 };
@@ -1420,18 +1431,24 @@ const CheckoutPage = () => {
             
             {/* Payment */}
             <div id="payment-section">
-              <Card>
+              <Card className="md:block hidden">
                 <CardHeader>
                   <CardTitle>Payment</CardTitle>
                   <CardDescription>Secure payment processing by Stripe</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {clientSecret ? (
-                    <Elements 
-                      stripe={stripePromise} 
-                      options={{ 
+                    <Elements
+                      stripe={stripePromise}
+                      options={{
                         clientSecret,
-                        appearance: { theme: 'stripe' } 
+                        appearance: {
+                          theme: 'stripe',
+                          variables: {
+                            colorPrimary: '#d73a31',
+                            borderRadius: '8px'
+                          }
+                        }
                       }}
                     >
                       <CheckoutForm
@@ -1455,6 +1472,53 @@ const CheckoutPage = () => {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Mobile App-Style Payment */}
+              <div className="md:hidden">
+                {clientSecret ? (
+                  <div className="bg-white rounded-t-3xl shadow-2xl -mx-4 px-0 py-6">
+                    <div className="px-6 mb-6">
+                      <h2 className="text-2xl font-bold text-gray-900">Payment</h2>
+                      <p className="text-sm text-gray-500 mt-1">Complete your order securely</p>
+                    </div>
+                    <Elements
+                      stripe={stripePromise}
+                      options={{
+                        clientSecret,
+                        appearance: {
+                          theme: 'stripe',
+                          variables: {
+                            colorPrimary: '#d73a31',
+                            borderRadius: '12px',
+                            fontSizeBase: '16px',
+                            spacingUnit: '4px'
+                          }
+                        }
+                      }}
+                    >
+                      <CheckoutForm
+                        orderId={orderId}
+                        clientSecret={clientSecret}
+                        customerPhone={phone}
+                        customerName={user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || undefined : undefined}
+                        customerAddress={addressData ? {
+                          line1: addressData.street || undefined,
+                          city: addressData.city || undefined,
+                          state: addressData.state || undefined,
+                          postal_code: addressData.zipCode || undefined,
+                          country: 'US'
+                        } : undefined}
+                      />
+                    </Elements>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-t-3xl shadow-lg -mx-4 px-6 py-8">
+                    <div className="text-center text-gray-500">
+                      <p>Complete your order details to continue</p>
+                    </div>
+                  </div>
+                )}
+              </div>
               
               {rewards && rewards.length > 0 && (
                 <Card className="mt-6">
