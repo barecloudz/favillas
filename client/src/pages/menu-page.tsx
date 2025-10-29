@@ -553,7 +553,7 @@ const MenuPage = () => {
                               <img
                                 src={category.imageUrl || category.image_url}
                                 alt={category.name}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover brightness-110 hover:brightness-125 transition-all duration-200"
                               />
                             </div>
                           ) : (
