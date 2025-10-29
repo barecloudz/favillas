@@ -790,55 +790,15 @@ Thank you for choosing Favilla's NY Pizza!
                             </div>
                             <div className="flex-1">
                               <h3 className="font-bold text-gray-900 text-lg">{item?.name || 'Unknown Item'}</h3>
-                              {item.specialInstructions && (
-                                <p className="text-sm text-gray-500">Note: {item.specialInstructions}</p>
-                              )}
-                              {item.options && (
-                                <p className="text-sm text-gray-500">
-                                  {(() => {
-                                    let options = item.options;
-
-                                    // If options is a string, try to parse it as JSON
-                                    if (typeof options === 'string') {
-                                      try {
-                                        // Handle potential double-encoding or character index issues
-                                        if (options.startsWith('[') || options.startsWith('{')) {
-                                          options = JSON.parse(options);
-                                        } else {
-                                          return null; // Don't display corrupted options
-                                        }
-                                      } catch (e) {
-                                        console.warn('Failed to parse item options:', e.message);
-                                        return null; // Don't display unparseable options
-                                      }
-                                    }
-
-                                    // Handle array format (new system)
-                                    if (Array.isArray(options)) {
-                                      const validOptions = options.filter(opt => opt && (opt.itemName || opt.name));
-                                      if (validOptions.length === 0) return null;
-
-                                      return 'Add-ons: ' + validOptions.map(opt => {
-                                        const name = opt.itemName || opt.name || 'Unknown';
-                                        const price = opt.price ? ` (+$${parseFloat(opt.price).toFixed(2)})` : '';
-                                        return `${name}${price}`;
-                                      }).join(', ');
-                                    }
-
-                                    // Handle object format (fallback)
-                                    if (options && typeof options === 'object') {
-                                      const entries = Object.entries(options).filter(([key, value]) =>
-                                        value !== null && value !== undefined && value !== ''
-                                      );
-                                      if (entries.length === 0) return null;
-
-                                      return 'Add-ons: ' + entries.map(([key, value]) => `${key}: ${value}`).join(', ');
-                                    }
-
-                                    // If we get here, options is not in a recognizable format
-                                    return null;
-                                  })()}
-                                </p>
+                              {item.options && Array.isArray(item.options) && item.options.length > 0 && (
+                                <div className="mt-1 space-y-1">
+                                  {item.options.map((option: any, optIndex: number) => (
+                                    <p key={optIndex} className="text-sm text-gray-600">
+                                      • {option.itemName || option.name}
+                                      {option.price > 0 && ` (+${formatCurrency(option.price)})`}
+                                    </p>
+                                  ))}
+                                </div>
                               )}
                               {item.specialInstructions && (
                                 <p className="text-sm text-gray-500 mt-2 italic">
