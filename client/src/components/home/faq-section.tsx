@@ -13,10 +13,27 @@ interface FAQItem {
 const FAQSection: React.FC = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
-  // Fetch FAQs from API - uses default queryFn from queryClient
+  // Fetch FAQs from API - public endpoint, no auth required
   const { data: faqData = [], isLoading, error } = useQuery<FAQItem[]>({
     queryKey: ["/api/faqs"],
-    staleTime: 5 * 60 * 1000 // 5 minutes
+    queryFn: async () => {
+      // Direct fetch without authentication for public endpoint
+      const response = await fetch('/api/faqs', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch FAQs');
+      }
+
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 3, // Retry up to 3 times on failure
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
   });
 
   const toggleFAQ = (index: number) => {
