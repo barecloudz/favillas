@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-supabase-auth";
+import { useLocation } from "wouter";
 import { useAdminWebSocket } from "@/hooks/use-admin-websocket";
 import { supabase } from "@/lib/supabase";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -120,6 +121,7 @@ import { TipsReport } from "@/components/admin/tips-report";
 const AdminDashboard = () => {
   const { user, logoutMutation, isLoading } = useAuth();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
 
   // Sound notification settings
   const [soundNotificationsEnabled, setSoundNotificationsEnabled] = useState(() => {
@@ -1110,6 +1112,7 @@ const AdminDashboard = () => {
       icon: Settings,
       items: [
         { name: "Frontend Customization", icon: Palette, href: "frontend" },
+        { name: "FAQ Management", icon: HelpCircle, href: "/admin/faqs", external: true },
         { name: "QR Code Management", icon: QrCode, href: "qr-codes" },
         { name: "Website Widget", icon: Globe, href: "widget" },
         { name: "Smart Links", icon: Link, href: "smart-links" },
@@ -1271,7 +1274,12 @@ const AdminDashboard = () => {
                         <DropdownMenuItem
                           key={itemIndex}
                           onClick={() => {
-                            changeActiveTab(item.href);
+                            // Check if this is an external navigation link
+                            if ((item as any).external) {
+                              navigate(item.href);
+                            } else {
+                              changeActiveTab(item.href);
+                            }
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
                           className={activeTab === item.href ? "bg-red-50 text-red-600" : ""}
