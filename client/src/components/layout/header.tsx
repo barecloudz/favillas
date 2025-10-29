@@ -73,7 +73,7 @@ const Header = () => {
     return (
       <>
         {/* Desktop Header */}
-        <header className={`fixed w-full top-0 z-50 transition-all duration-300 hidden md:block ${
+        <header className={`fixed w-full top-0 z-50 transition-all duration-300 hidden lg:block ${
           isScrolled ? "bg-white shadow-lg" : "bg-white/95 backdrop-blur-sm shadow-md"
         }`} style={{ 
           paddingTop: 'env(safe-area-inset-top, 0px)',
@@ -222,7 +222,7 @@ const Header = () => {
         </header>
 
         {/* Mobile Top Header */}
-        <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 md:hidden" style={{ 
+        <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 lg:hidden" style={{ 
           paddingTop: 'env(safe-area-inset-top, 0px)',
           top: 'env(safe-area-inset-top, 0px)'
         }}>
@@ -255,7 +255,7 @@ const Header = () => {
         </header>
 
         {/* Mobile Bottom Navigation */}
-        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white shadow-lg border-t-2 border-[#d73a31] md:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white shadow-lg border-t-2 border-[#d73a31] lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
           <div className="flex justify-around items-center h-16 px-4">
             <Link href="/">
               <div className={`flex flex-col items-center space-y-1 transition-colors ${
@@ -319,7 +319,7 @@ const Header = () => {
         {/* Full-Screen Mobile Profile Menu Overlay */}
         {mobileProfileMenuOpen && (
           <div
-            className="fixed inset-0 z-[100] bg-white md:hidden animate-in slide-in-from-right duration-300"
+            className="fixed inset-0 z-[100] bg-white lg:hidden animate-in slide-in-from-right duration-300"
             style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
           >
             {/* Header with Close Button */}
@@ -451,7 +451,7 @@ const Header = () => {
         )}
 
         {/* Add bottom padding to main content for mobile */}
-        <div className="pb-16 md:pb-0"></div>
+        <div className="pb-16 lg:pb-0"></div>
       </>
     );
   }

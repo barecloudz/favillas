@@ -437,7 +437,7 @@ const MenuPage = () => {
         <meta name="keywords" content="pizza menu asheville, order pizza online asheville, ny pizza delivery asheville, pizza pickup asheville nc, italian food menu asheville" />
       </Helmet>
 
-      <div className="min-h-screen bg-gray-50 md:pt-4 pt-0">
+      <div className="min-h-screen bg-gray-50 lg:pt-4 pt-0">
         {/* Vacation Mode Banner */}
         {isOrderingPaused && (
           <div className="bg-yellow-500 border-b-4 border-yellow-600 px-4 sm:px-6 lg:px-8 py-4">

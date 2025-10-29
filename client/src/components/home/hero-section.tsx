@@ -20,7 +20,7 @@ const HeroSection: React.FC = () => {
   };
 
   return (
-    <section className="relative h-screen md:h-[600px] bg-cover bg-center -mt-20 md:-mt-20" style={{ backgroundImage: "url('/images/hero-bg.jpg')" }}>
+    <section className="relative h-screen lg:h-[600px] bg-cover bg-center -mt-20 lg:-mt-20" style={{ backgroundImage: "url('/images/hero-bg.jpg')" }}>
       <div className="absolute inset-0 bg-black bg-opacity-50"></div>
       <div className="container mx-auto px-4 h-full flex flex-col justify-center items-center relative z-10 text-center">
         <img src="/images/logopng.png" alt="Favilla's Pizza Logo" className="w-[160px] md:w-[190px] mb-6" loading="eager" fetchpriority="high" />
