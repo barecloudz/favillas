@@ -139,6 +139,7 @@ export const orders = pgTable("orders", {
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   tax: decimal("tax", { precision: 10, scale: 2 }).notNull(),
   deliveryFee: decimal("delivery_fee", { precision: 10, scale: 2 }).default("0").notNull(),
+  serviceFee: decimal("service_fee", { precision: 10, scale: 2 }).default("0").notNull(),
   tip: decimal("tip", { precision: 10, scale: 2 }).default("0").notNull(),
   orderType: text("order_type").notNull(), // delivery, pickup
   paymentStatus: text("payment_status").notNull().default("pending"),
@@ -427,6 +428,8 @@ export const restaurantSettings = pgTable("restaurant_settings", {
   pickupEnabled: boolean("pickup_enabled").default(true).notNull(),
   orderSchedulingEnabled: boolean("order_scheduling_enabled").default(false).notNull(),
   maxAdvanceOrderHours: integer("max_advance_order_hours").default(24).notNull(),
+  serviceFeePercentage: decimal("service_fee_percentage", { precision: 5, scale: 2 }).default("3.50").notNull(),
+  serviceFeeEnabled: boolean("service_fee_enabled").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

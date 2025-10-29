@@ -95,7 +95,22 @@ export const handler: Handler = async (event, context) => {
           } : null
         }));
 
-        return { ...order, items: transformedItems };
+        // Extract first name from customer_name field or use first_name from user profile
+        let firstName = '';
+        if (order.customer_name) {
+          // Extract first word/name from customer_name (handles both "John Doe" and "John")
+          firstName = order.customer_name.trim().split(/\s+/)[0];
+        } else if (order.first_name) {
+          // Fallback to first_name from user profile
+          firstName = order.first_name;
+        }
+
+        return {
+          ...order,
+          items: transformedItems,
+          first_name: firstName,  // Override with extracted first name
+          last_name: ''  // Clear last name since we're only showing first name
+        };
       })
     );
 

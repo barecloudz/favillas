@@ -320,6 +320,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Login successful",
         description: `Welcome back, ${user.firstName || user.username}!`,
       });
+
+      // CRITICAL FIX: Navigate immediately after successful login to prevent stuck state
+      // The auth-page will check for user state and won't redirect if mutation is still pending
+      // By navigating here directly, we ensure smooth transition without requiring back button
+      setTimeout(() => {
+        navigate('/');
+      }, 100);
     },
     onError: (error: Error) => {
       toast({

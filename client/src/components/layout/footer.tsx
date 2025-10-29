@@ -145,7 +145,14 @@ const Footer = () => {
               <li className="text-gray-300">
                 <span className="flex items-center mb-1 justify-center md:justify-start">
                   <Clock className="mr-2 h-5 w-5 text-[#d73a31] flex-shrink-0" />
-                  <span className="font-semibold">Monday - Thursday</span>
+                  <span className="font-semibold">Monday</span>
+                </span>
+                <span className="block pl-0 md:pl-7 text-red-400 font-semibold">CLOSED</span>
+              </li>
+              <li className="text-gray-300">
+                <span className="flex items-center mb-1 justify-center md:justify-start">
+                  <Clock className="mr-2 h-5 w-5 text-[#d73a31] flex-shrink-0" />
+                  <span className="font-semibold">Tuesday - Thursday</span>
                 </span>
                 <span className="block pl-0 md:pl-7">11:00 AM - 8:00 PM</span>
               </li>
@@ -171,11 +178,11 @@ const Footer = () => {
         <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center text-center md:text-left">
           <p className="text-gray-400">&copy; {new Date().getFullYear()} {companyName}. All rights reserved.</p>
           <div className="mt-4 md:mt-0 space-x-6">
-            <Link href="/privacy-policy">
+            <Link href="/privacy">
               <div className="text-sm text-gray-400 hover:text-white transition-colors cursor-pointer">Privacy Policy</div>
             </Link>
-            <Link href="/terms-of-service">
-              <div className="text-sm text-gray-400 hover:text-white transition-colors cursor-pointer">Terms of Service</div>
+            <Link href="/terms">
+              <div className="text-sm text-gray-400 hover:text-white transition-colors cursor-pointer">Terms & Conditions</div>
             </Link>
           </div>
         </div>

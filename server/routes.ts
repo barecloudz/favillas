@@ -9,8 +9,8 @@ import { storage } from "./storage";
 import { authenticateSupabaseUser, requireAuth } from "./supabase-auth";
 import { setupTimeTrackingRoutes } from "./time-tracking-routes";
 import { db } from "./db";
-import { insertMenuItemSchema, insertOrderSchema, insertOrderItemSchema, insertRewardSchema, insertUserRewardSchema, insertPromoCodeSchema, insertChoiceGroupSchema, insertChoiceItemSchema, insertMenuItemChoiceGroupSchema, insertCategoryChoiceGroupSchema, insertTaxCategorySchema, insertTaxSettingsSchema, insertPauseServiceSchema, orders, orderItems, menuItemChoiceGroups, menuItems } from "@shared/schema";
-import { eq, sql } from "drizzle-orm";
+import { insertMenuItemSchema, insertOrderSchema, insertOrderItemSchema, insertRewardSchema, insertUserRewardSchema, insertPromoCodeSchema, insertChoiceGroupSchema, insertChoiceItemSchema, insertMenuItemChoiceGroupSchema, insertCategoryChoiceGroupSchema, insertTaxCategorySchema, insertTaxSettingsSchema, insertPauseServiceSchema, orders, orderItems, menuItemChoiceGroups, menuItems, pointsTransactions, userVouchers, userPointsRedemptions, users, rewards } from "@shared/schema";
+import { eq, sql, desc } from "drizzle-orm";
 import { z } from "zod";
 import { log } from "./vite";
 import { sendToPrinter, testPrinter, printReceipt, printAllReceipts, printAllReceiptsAuto, printCustomerReceipt, printKitchenTicket, printRecordsCopy, testPrimaryPrinter, discoverNetworkPrinters, type OrderData } from "./printer";
@@ -3976,6 +3976,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteReward(id);
       res.json({ message: "Reward deleted successfully" });
     } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get all points transactions for admin tracking
+  app.get("/api/admin/points-transactions", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user.isAdmin) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const transactions = await db
+        .select({
+          id: pointsTransactions.id,
+          userId: pointsTransactions.userId,
+          orderId: pointsTransactions.orderId,
+          type: pointsTransactions.type,
+          points: pointsTransactions.points,
+          description: pointsTransactions.description,
+          orderAmount: pointsTransactions.orderAmount,
+          createdAt: pointsTransactions.createdAt,
+          userName: sql`${users.firstName} || ' ' || ${users.lastName}`,
+          userEmail: users.email,
+        })
+        .from(pointsTransactions)
+        .leftJoin(users, eq(pointsTransactions.userId, users.id))
+        .orderBy(desc(pointsTransactions.createdAt))
+        .limit(500);
+
+      res.json(transactions);
+    } catch (error: any) {
+      console.error("Error fetching points transactions:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get all voucher usage and redemptions for admin tracking
+  app.get("/api/admin/voucher-usage", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user.isAdmin) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const vouchers = await db
+        .select({
+          id: userVouchers.id,
+          userId: userVouchers.userId,
+          voucherCode: userVouchers.voucherCode,
+          pointsUsed: userVouchers.pointsUsed,
+          discountAmount: userVouchers.discountAmount,
+          discountType: userVouchers.discountType,
+          status: userVouchers.status,
+          appliedToOrderId: userVouchers.appliedToOrderId,
+          createdAt: userVouchers.createdAt,
+          usedAt: userVouchers.usedAt,
+          expiresAt: userVouchers.expiresAt,
+          title: userVouchers.title,
+          description: userVouchers.description,
+          userName: sql`${users.firstName} || ' ' || ${users.lastName}`,
+          userEmail: users.email,
+          rewardName: rewards.name,
+        })
+        .from(userVouchers)
+        .leftJoin(users, eq(userVouchers.userId, users.id))
+        .leftJoin(rewards, eq(userVouchers.rewardId, rewards.id))
+        .orderBy(desc(userVouchers.createdAt))
+        .limit(500);
+
+      res.json(vouchers);
+    } catch (error: any) {
+      console.error("Error fetching voucher usage:", error);
       res.status(500).json({ message: error.message });
     }
   });

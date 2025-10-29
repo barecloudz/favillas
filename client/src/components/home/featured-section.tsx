@@ -52,7 +52,7 @@ const FeaturedSection: React.FC<FeaturedSectionProps> = ({ menuItems }) => {
                   <h3 className="text-2xl font-bold mb-2">{item?.name || 'Unknown Item'}</h3>
                   <p className="text-gray-600 mb-2">{item.description}</p>
                   <p className="text-lg font-bold text-[#d73a31] mb-4">${item.basePrice}</p>
-                  <Link href="/menu">
+                  <Link href={`/menu?item=${item.id}`}>
                     <Button className="w-full bg-[#d73a31] hover:bg-[#c73128] text-white rounded-full">
                       Order Now
                     </Button>

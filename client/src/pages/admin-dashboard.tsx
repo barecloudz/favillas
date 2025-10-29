@@ -11940,91 +11940,168 @@ const EditUserForm = ({
 // Promo Codes Management Component
 const PromoCodesManagement = () => {
   const { toast } = useToast();
-  const [promoCodes, setPromoCodes] = useState([
-    {
-      id: 1,
-      code: "WELCOME10",
-      discount: 10,
-      discountType: "percentage",
-      minOrderAmount: 20,
-      maxUses: 1000,
-      currentUses: 0,
-      expiresAt: new Date("2024-12-31"),
-      isActive: true,
-      description: "Welcome discount for new customers"
-    },
-    {
-      id: 2,
-      code: "SAVE5",
-      discount: 5,
-      discountType: "fixed",
-      minOrderAmount: 15,
-      maxUses: 500,
-      currentUses: 0,
-      expiresAt: new Date("2024-12-31"),
-      isActive: true,
-      description: "Fixed $5 off any order"
-    },
-    {
-      id: 3,
-      code: "PIZZA20",
-      discount: 20,
-      discountType: "percentage",
-      minOrderAmount: 25,
-      maxUses: 200,
-      currentUses: 0,
-      expiresAt: new Date("2024-12-31"),
-      isActive: false,
-      description: "20% off pizza orders"
-    }
-  ]);
+  const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingPromo, setEditingPromo] = useState<any>(null);
 
-  const handleCreatePromo = (data: any) => {
-    const newPromo = {
-      id: Date.now(),
-      ...data,
-      currentUses: 0,
-      isActive: true
-    };
-    setPromoCodes([...promoCodes, newPromo]);
-    setIsCreateDialogOpen(false);
-    toast({
-      title: "Promo code created",
-      description: `Promo code "${data.code}" has been created successfully.`,
-    });
+  // Fetch promo codes from database
+  const { data: promoCodes = [], isLoading } = useQuery({
+    queryKey: ["/api/admin-promo-codes"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/admin-promo-codes", null);
+      return await response.json();
+    }
+  });
+
+  const handleCreatePromo = async (data: any) => {
+    try {
+      const response = await apiRequest("POST", "/api/admin-promo-codes", {
+        code: data.code,
+        name: data.name || data.code,
+        description: data.description,
+        discount: parseFloat(data.discount),
+        discountType: data.discountType,
+        minOrderAmount: parseFloat(data.minOrderAmount) || 0,
+        maxUses: parseInt(data.maxUses) || 0,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        isActive: true
+      });
+
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/admin-promo-codes"] });
+        setIsCreateDialogOpen(false);
+        toast({
+          title: "Promo code created",
+          description: `Promo code "${data.code}" has been created successfully.`,
+        });
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to create promo code",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error creating promo code:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create promo code",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleUpdatePromo = (id: number, data: any) => {
-    setPromoCodes(promoCodes.map(promo => 
-      promo.id === id ? { ...promo, ...data } : promo
-    ));
-    setEditingPromo(null);
-    toast({
-      title: "Promo code updated",
-      description: `Promo code "${data.code}" has been updated successfully.`,
-    });
+  const handleUpdatePromo = async (id: number, data: any) => {
+    try {
+      const response = await apiRequest("PUT", "/api/admin-promo-codes", {
+        id,
+        code: data.code,
+        name: data.name || data.code,
+        description: data.description,
+        discount: parseFloat(data.discount),
+        discountType: data.discountType,
+        minOrderAmount: parseFloat(data.minOrderAmount) || 0,
+        maxUses: parseInt(data.maxUses) || 0,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        isActive: data.isActive
+      });
+
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/admin-promo-codes"] });
+        setEditingPromo(null);
+        toast({
+          title: "Promo code updated",
+          description: `Promo code "${data.code}" has been updated successfully.`,
+        });
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to update promo code",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error updating promo code:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update promo code",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleDeletePromo = (id: number) => {
-    const promo = promoCodes.find(p => p.id === id);
-    setPromoCodes(promoCodes.filter(p => p.id !== id));
-    toast({
-      title: "Promo code deleted",
-      description: `Promo code "${promo?.code}" has been deleted.`,
-    });
+  const handleDeletePromo = async (id: number) => {
+    const promo = promoCodes.find((p: any) => p.id === id);
+
+    try {
+      const response = await apiRequest("DELETE", "/api/admin-promo-codes", { id });
+
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/admin-promo-codes"] });
+        toast({
+          title: "Promo code deleted",
+          description: `Promo code "${promo?.code}" has been deleted.`,
+        });
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to delete promo code",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting promo code:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete promo code",
+        variant: "destructive"
+      });
+    }
   };
 
-  const togglePromoStatus = (id: number) => {
-    setPromoCodes(promoCodes.map(promo => 
-      promo.id === id ? { ...promo, isActive: !promo.isActive } : promo
-    ));
+  const togglePromoStatus = async (id: number) => {
+    const promo = promoCodes.find((p: any) => p.id === id);
+    if (!promo) return;
+
+    try {
+      const response = await apiRequest("PUT", "/api/admin-promo-codes", {
+        id,
+        isActive: !promo.isActive
+      });
+
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/admin-promo-codes"] });
+        toast({
+          title: promo.isActive ? "Promo code deactivated" : "Promo code activated",
+          description: `Promo code "${promo.code}" is now ${!promo.isActive ? 'active' : 'inactive'}.`,
+        });
+      }
+    } catch (error) {
+      console.error("Error toggling promo status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to toggle promo code status",
+        variant: "destructive"
+      });
+    }
   };
 
   const getUsagePercentage = (current: number, max: number) => {
     return Math.round((current / max) * 100);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-[#d73a31]" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -12053,42 +12130,42 @@ const PromoCodesManagement = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Active</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {promoCodes.filter(promo => promo.isActive).length}
+                  {promoCodes.filter((promo: any) => promo.isActive).length}
                 </p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Uses</p>
               <p className="text-2xl font-bold text-blue-600">
-                {(promoCodes || []).reduce((sum, promo) => sum + promo.currentUses, 0)}
+                {(promoCodes || []).reduce((sum: number, promo: any) => sum + promo.currentUses, 0)}
               </p>
             </div>
             <Users className="h-8 w-8 text-blue-600" />
           </div>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Expired</p>
               <p className="text-2xl font-bold text-red-600">
-                {promoCodes.filter(promo => new Date() > promo.expiresAt).length}
+                {promoCodes.filter((promo: any) => new Date() > new Date(promo.endDate)).length}
               </p>
             </div>
             <Clock className="h-8 w-8 text-red-600" />
@@ -12105,7 +12182,7 @@ const PromoCodesManagement = () => {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {promoCodes.map((promo) => (
+          {promoCodes.map((promo: any) => (
             <div key={promo.id} className="flex items-center justify-between p-4 border rounded-lg">
               <div className="flex-1">
                 <div className="flex items-center gap-3">
@@ -12113,8 +12190,8 @@ const PromoCodesManagement = () => {
                     <Badge variant={promo.isActive ? "default" : "secondary"}>
                       {promo.isActive ? "Active" : "Inactive"}
                     </Badge>
-                    <Badge variant={new Date() > promo.expiresAt ? "destructive" : "outline"}>
-                      {new Date() > promo.expiresAt ? "Expired" : "Valid"}
+                    <Badge variant={new Date() > new Date(promo.endDate) ? "destructive" : "outline"}>
+                      {new Date() > new Date(promo.endDate) ? "Expired" : "Valid"}
                     </Badge>
                   </div>
                   <div>
@@ -12183,11 +12260,11 @@ const PromoCodesManagement = () => {
 
     {/* Create Promo Code Dialog */}
     <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Promo Code</DialogTitle>
         </DialogHeader>
-        
+
         <CreatePromoCodeForm
           onSubmit={handleCreatePromo}
           onCancel={() => setIsCreateDialogOpen(false)}
@@ -12197,11 +12274,11 @@ const PromoCodesManagement = () => {
 
     {/* Edit Promo Code Dialog */}
     <Dialog open={!!editingPromo} onOpenChange={() => setEditingPromo(null)}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Promo Code</DialogTitle>
         </DialogHeader>
-        
+
         {editingPromo && (
           <EditPromoCodeForm
             promo={editingPromo}
@@ -12219,11 +12296,13 @@ const PromoCodesManagement = () => {
 const CreatePromoCodeForm = ({ onSubmit, onCancel }: { onSubmit: (data: any) => void; onCancel: () => void }) => {
   const [formData, setFormData] = useState({
     code: "",
+    name: "",
     discount: "",
     discountType: "percentage",
     minOrderAmount: "",
     maxUses: "",
-    expiresAt: "",
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: "",
     description: ""
   });
 
@@ -12232,9 +12311,10 @@ const CreatePromoCodeForm = ({ onSubmit, onCancel }: { onSubmit: (data: any) => 
     onSubmit({
       ...formData,
       discount: parseFloat(formData.discount),
-      minOrderAmount: parseFloat(formData.minOrderAmount),
-      maxUses: parseInt(formData.maxUses),
-      expiresAt: new Date(formData.expiresAt)
+      minOrderAmount: parseFloat(formData.minOrderAmount) || 0,
+      maxUses: parseInt(formData.maxUses) || 0,
+      startDate: new Date(formData.startDate).toISOString(),
+      endDate: new Date(formData.endDate).toISOString()
     });
   };
 
@@ -12302,14 +12382,37 @@ const CreatePromoCodeForm = ({ onSubmit, onCancel }: { onSubmit: (data: any) => 
       </div>
       
       <div>
-        <Label htmlFor="expiresAt">Expiration Date</Label>
+        <Label htmlFor="name">Name</Label>
         <Input
-          id="expiresAt"
-          type="date"
-          value={formData.expiresAt}
-          onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
-          required
+          id="name"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          placeholder="Welcome Discount"
         />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="startDate">Start Date</Label>
+          <Input
+            id="startDate"
+            type="date"
+            value={formData.startDate}
+            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+            required
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="endDate">End Date</Label>
+          <Input
+            id="endDate"
+            type="date"
+            value={formData.endDate}
+            onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+            required
+          />
+        </div>
       </div>
       
       <div>
@@ -12338,12 +12441,15 @@ const CreatePromoCodeForm = ({ onSubmit, onCancel }: { onSubmit: (data: any) => 
 const EditPromoCodeForm = ({ promo, onSubmit, onCancel }: { promo: any; onSubmit: (data: any) => void; onCancel: () => void }) => {
   const [formData, setFormData] = useState({
     code: promo.code || "",
+    name: promo.name || "",
     discount: promo.discount?.toString() || "",
     discountType: promo.discountType || "percentage",
     minOrderAmount: promo.minOrderAmount?.toString() || "",
     maxUses: promo.maxUses?.toString() || "",
-    expiresAt: promo.expiresAt ? new Date(promo.expiresAt).toISOString().split('T')[0] : "",
-    description: promo.description || ""
+    startDate: promo.startDate ? new Date(promo.startDate).toISOString().split('T')[0] : "",
+    endDate: promo.endDate ? new Date(promo.endDate).toISOString().split('T')[0] : "",
+    description: promo.description || "",
+    isActive: promo.isActive !== undefined ? promo.isActive : true
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -12351,9 +12457,10 @@ const EditPromoCodeForm = ({ promo, onSubmit, onCancel }: { promo: any; onSubmit
     onSubmit({
       ...formData,
       discount: parseFloat(formData.discount),
-      minOrderAmount: parseFloat(formData.minOrderAmount),
-      maxUses: parseInt(formData.maxUses),
-      expiresAt: new Date(formData.expiresAt)
+      minOrderAmount: parseFloat(formData.minOrderAmount) || 0,
+      maxUses: parseInt(formData.maxUses) || 0,
+      startDate: new Date(formData.startDate).toISOString(),
+      endDate: new Date(formData.endDate).toISOString()
     });
   };
 
@@ -12421,14 +12528,37 @@ const EditPromoCodeForm = ({ promo, onSubmit, onCancel }: { promo: any; onSubmit
       </div>
       
       <div>
-        <Label htmlFor="editExpiresAt">Expiration Date</Label>
+        <Label htmlFor="editName">Name</Label>
         <Input
-          id="editExpiresAt"
-          type="date"
-          value={formData.expiresAt}
-          onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
-          required
+          id="editName"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          placeholder="Welcome Discount"
         />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="editStartDate">Start Date</Label>
+          <Input
+            id="editStartDate"
+            type="date"
+            value={formData.startDate}
+            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+            required
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="editEndDate">End Date</Label>
+          <Input
+            id="editEndDate"
+            type="date"
+            value={formData.endDate}
+            onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+            required
+          />
+        </div>
       </div>
       
       <div>
@@ -16929,6 +17059,7 @@ const RewardsManagement = () => {
   const [editingReward, setEditingReward] = useState<any>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [rewardToDelete, setRewardToDelete] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState("rewards");
 
   // Use /api/rewards endpoint (works on Netlify production)
   const getRewardsEndpoint = () => {
@@ -16945,6 +17076,30 @@ const RewardsManagement = () => {
     },
     staleTime: 0,
     cacheTime: 0,
+  });
+
+  // Fetch points transactions for tracking
+  const { data: pointsTransactions = [], isLoading: transactionsLoading } = useQuery({
+    queryKey: ["/api/admin/points-transactions"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/admin/points-transactions");
+      const data = await response.json();
+      return data;
+    },
+    enabled: activeTab === "tracking",
+    staleTime: 30000, // 30 seconds
+  });
+
+  // Fetch voucher usage for tracking
+  const { data: voucherUsage = [], isLoading: vouchersLoading } = useQuery({
+    queryKey: ["/api/admin/voucher-usage"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/admin/voucher-usage");
+      const data = await response.json();
+      return data;
+    },
+    enabled: activeTab === "tracking",
+    staleTime: 30000, // 30 seconds
   });
 
   // Create reward mutation
@@ -17101,17 +17256,24 @@ const RewardsManagement = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Rewards System</h2>
-          <p className="text-gray-600">Manage customer rewards and loyalty points</p>
-        </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Reward
-        </Button>
-      </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="rewards">Rewards</TabsTrigger>
+          <TabsTrigger value="tracking">Rewards Tracking</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="rewards" className="space-y-6 mt-6">
+          {/* Header */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Rewards System</h2>
+              <p className="text-gray-600">Manage customer rewards and loyalty points</p>
+            </div>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Reward
+            </Button>
+          </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -17262,6 +17424,169 @@ const RewardsManagement = () => {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="tracking" className="space-y-6 mt-6">
+          {/* Tracking Header */}
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Rewards Tracking</h2>
+            <p className="text-gray-600">Track points earned, redeemed, and voucher usage</p>
+          </div>
+
+          {/* Points Transactions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Activity className="h-5 w-5 mr-2" />
+                Points Transactions
+              </CardTitle>
+              <CardDescription>All points earned and spent across all users</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {transactionsLoading ? (
+                <div className="text-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                  <p>Loading transactions...</p>
+                </div>
+              ) : pointsTransactions.length === 0 ? (
+                <div className="text-center py-8">
+                  <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">No points transactions yet</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-4 font-medium">Date</th>
+                        <th className="text-left py-3 px-4 font-medium">User</th>
+                        <th className="text-left py-3 px-4 font-medium">Type</th>
+                        <th className="text-left py-3 px-4 font-medium">Points</th>
+                        <th className="text-left py-3 px-4 font-medium">Description</th>
+                        <th className="text-left py-3 px-4 font-medium">Order Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pointsTransactions.slice(0, 100).map((transaction: any) => (
+                        <tr key={transaction.id} className="border-b hover:bg-gray-50">
+                          <td className="py-3 px-4 text-sm">
+                            {new Date(transaction.createdAt).toLocaleDateString()} {new Date(transaction.createdAt).toLocaleTimeString()}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div>
+                              <div className="font-medium text-sm">{transaction.userName}</div>
+                              <div className="text-xs text-gray-500">{transaction.userEmail}</div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`text-xs font-medium px-2.5 py-0.5 rounded ${
+                              transaction.type === 'earned' ? 'bg-green-100 text-green-800' :
+                              transaction.type === 'redeemed' ? 'bg-red-100 text-red-800' :
+                              'bg-blue-100 text-blue-800'
+                            }`}>
+                              {transaction.type}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`font-bold ${transaction.points > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {transaction.points > 0 ? '+' : ''}{transaction.points}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-sm">{transaction.description}</td>
+                          <td className="py-3 px-4">
+                            {transaction.orderAmount ? `$${parseFloat(transaction.orderAmount).toFixed(2)}` : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Voucher Usage */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Gift className="h-5 w-5 mr-2" />
+                Voucher Usage
+              </CardTitle>
+              <CardDescription>All vouchers redeemed and their usage status</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {vouchersLoading ? (
+                <div className="text-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                  <p>Loading vouchers...</p>
+                </div>
+              ) : voucherUsage.length === 0 ? (
+                <div className="text-center py-8">
+                  <Gift className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">No vouchers redeemed yet</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-4 font-medium">Created</th>
+                        <th className="text-left py-3 px-4 font-medium">User</th>
+                        <th className="text-left py-3 px-4 font-medium">Reward</th>
+                        <th className="text-left py-3 px-4 font-medium">Code</th>
+                        <th className="text-left py-3 px-4 font-medium">Points Used</th>
+                        <th className="text-left py-3 px-4 font-medium">Discount</th>
+                        <th className="text-left py-3 px-4 font-medium">Status</th>
+                        <th className="text-left py-3 px-4 font-medium">Used Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {voucherUsage.slice(0, 100).map((voucher: any) => (
+                        <tr key={voucher.id} className="border-b hover:bg-gray-50">
+                          <td className="py-3 px-4 text-sm">
+                            {new Date(voucher.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div>
+                              <div className="font-medium text-sm">{voucher.userName}</div>
+                              <div className="text-xs text-gray-500">{voucher.userEmail}</div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-sm">{voucher.rewardName || '-'}</td>
+                          <td className="py-3 px-4">
+                            <code className="text-xs bg-gray-100 px-2 py-1 rounded">{voucher.voucherCode}</code>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-sm font-medium text-blue-600">{voucher.pointsUsed} pts</span>
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            {voucher.discountType === 'percentage'
+                              ? `${voucher.discountAmount}% off`
+                              : `$${parseFloat(voucher.discountAmount).toFixed(2)} off`
+                            }
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`text-xs font-medium px-2.5 py-0.5 rounded ${
+                              voucher.status === 'used' ? 'bg-green-100 text-green-800' :
+                              voucher.status === 'expired' ? 'bg-gray-100 text-gray-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {voucher.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            {voucher.usedAt ? new Date(voucher.usedAt).toLocaleDateString() : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Create/Edit Reward Dialog */}
       <RewardDialog

@@ -24,7 +24,7 @@ import { useVacationMode } from "@/hooks/use-vacation-mode";
 const KitchenPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
+  const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState("pending");
   const [isColumnMode, setIsColumnMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -297,18 +297,21 @@ const KitchenPage = () => {
           {
             id: order.id,
             orderType: order.order_type || order.orderType,
-            customerName: order.customer_name || order.customerName,
+            customerName: order.customerName || order.customer_name,
             phone: order.phone,
             address: order.address,
             items: order.items || [],
             total: parseFloat(order.total || 0),
             tax: parseFloat(order.tax || 0),
             deliveryFee: parseFloat(order.delivery_fee || order.deliveryFee || 0),
+            serviceFee: parseFloat(order.service_fee || order.serviceFee || 0),
             tip: parseFloat(order.tip || 0),
             specialInstructions: order.special_instructions || order.specialInstructions,
             createdAt: order.created_at || order.createdAt || new Date().toISOString(),
             userId: order.user_id || order.userId,
-            pointsEarned: order.pointsEarned || order.points_earned || 0
+            pointsEarned: order.pointsEarned || order.points_earned || 0,
+            fulfillmentTime: order.fulfillmentTime || order.fulfillment_time,
+            scheduledTime: order.scheduledTime || order.scheduled_time
           },
           {
             ipAddress: '192.168.1.18',
@@ -333,6 +336,7 @@ const KitchenPage = () => {
     }
     return numPrice.toFixed(2);
   };
+
   
   // Query for active orders
   const { data: orders, isLoading, error } = useQuery({
@@ -373,6 +377,13 @@ const KitchenPage = () => {
              !isOrderReadyToStart(order);
     }
     return true;
+  }).sort((a: any, b: any) => {
+    // Sort picked_up orders newest first
+    if (activeTab === "picked_up") {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    }
+    // Default order for other tabs
+    return 0;
   }) : [];
 
   // Separate pending orders into ready-to-start and scheduled-for-later
@@ -418,11 +429,14 @@ const KitchenPage = () => {
           total: parseFloat(order.total),
           tax: parseFloat(order.tax || 0),
           deliveryFee: parseFloat(order.delivery_fee || order.deliveryFee || 0),
+          serviceFee: parseFloat(order.service_fee || order.serviceFee || 0),
           tip: parseFloat(order.tip || 0),
           specialInstructions: order.special_instructions || order.specialInstructions,
           createdAt: order.created_at || order.createdAt,
           userId: order.user_id || order.userId,
-          pointsEarned: order.pointsEarned || order.points_earned || 0
+          pointsEarned: order.pointsEarned || order.points_earned || 0,
+          fulfillmentTime: order.fulfillmentTime || order.fulfillment_time,
+          scheduledTime: order.scheduledTime || order.scheduled_time
         },
         {
           ipAddress: '192.168.1.18',
@@ -512,19 +526,28 @@ const KitchenPage = () => {
         startDate: startOfDay.toISOString(),
         endDate: endOfDay.toISOString()
       });
-      const response = await fetch(`/api/orders?${queryParams}`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
+
+      let allOrdersToday = [];
+
+      try {
+        const response = await fetch(`/api/orders?${queryParams}`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          console.warn(`Orders API returned ${response.status}, printing summary with zero orders`);
+          allOrdersToday = [];
+        } else {
+          allOrdersToday = await response.json();
         }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch orders');
+      } catch (fetchError) {
+        console.warn('Failed to fetch orders, printing summary with zero orders:', fetchError);
+        allOrdersToday = [];
       }
-
-      const allOrdersToday = await response.json();
 
       // Filter test orders if the setting is enabled
       const excludeTestOrders = localStorage.getItem('excludeTestOrders') !== 'false';
@@ -539,16 +562,7 @@ const KitchenPage = () => {
         console.log(`Filtered ${allOrdersToday.length} orders to ${filteredOrders.length} (excluding test orders)`);
       }
 
-      if (filteredOrders.length === 0) {
-        toast({
-          title: "No Orders Today",
-          description: "There are no orders to include in the daily summary.",
-        });
-        setShowDailySummaryModal(false);
-        return;
-      }
-
-      // Format orders for the print function
+      // Format orders for the print function (even if empty array)
       const formattedOrders = filteredOrders.map((order: any) => ({
         id: order.id,
         orderType: order.order_type || order.orderType || 'pickup',
@@ -593,7 +607,9 @@ const KitchenPage = () => {
 
       toast({
         title: "Daily Summary Printed",
-        description: `Successfully printed summary for ${filteredOrders.length} orders today.`,
+        description: filteredOrders.length === 0
+          ? "Summary printed. No orders received today."
+          : `Successfully printed summary for ${filteredOrders.length} orders today.`,
       });
 
       setShowDailySummaryModal(false);
@@ -806,20 +822,27 @@ const KitchenPage = () => {
                     {user?.firstName} {user?.lastName}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setLocation('/')}>
+                  <DropdownMenuItem onClick={() => navigate('/')}>
                     <Home className="mr-2 h-4 w-4" />
                     <span>Home</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setLocation('/admin/dashboard')}>
+                  <DropdownMenuItem onClick={() => navigate('/admin/dashboard')}>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Admin Dashboard</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setShowDailySummaryModal(true)}
+                  >
+                    <Printer className="mr-2 h-4 w-4" />
+                    <span>Print Daily Summary</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={async () => {
                       try {
                         await apiRequest('POST', '/api/logout', {});
-                        setLocation('/');
+                        navigate('/');
                         window.location.reload();
                       } catch (error) {
                         console.error('Logout failed:', error);
@@ -1130,8 +1153,13 @@ const KitchenPage = () => {
                         ${order.status === 'completed' ? 'bg-green-100' : ''}
                         ${order.status === 'picked_up' ? 'bg-gray-100' : ''}
                       `}>
-                        <div className="flex justify-between items-center">
-                          <CardTitle>Order #{order.id}</CardTitle>
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="text-xl font-bold text-gray-900">
+                              {order.customer_name || 'Guest'}
+                            </p>
+                            <CardTitle className="text-base">Order #{order.id}</CardTitle>
+                          </div>
                           <Badge className={`
                             ${order.status === 'pending' ? 'bg-red-500' : ''}
                             ${order.status === 'cooking' ? 'bg-yellow-500' : ''}
@@ -1240,10 +1268,10 @@ const KitchenPage = () => {
                         )}
                         
                         <Separator className="my-4" />
-                        
+
                         <div className="flex justify-between font-medium">
-                          <span>Total:</span>
-                          <span>${formatPrice(Number(order.total) + Number(order.tax))}</span>
+                          <span>Total Paid:</span>
+                          <span>${formatPrice(Number(order.total))}</span>
                         </div>
                         
                         <div className="flex flex-col gap-3 mt-4 sm:flex-row">
@@ -1427,8 +1455,8 @@ const KitchenPage = () => {
                 {/* Order Total */}
                 <div className="border-t pt-4">
                   <div className="flex justify-between font-bold text-lg">
-                    <span>Total:</span>
-                    <span>${formatPrice(Number(selectedOrder.total) + Number(selectedOrder.tax))}</span>
+                    <span>Total Paid:</span>
+                    <span>${formatPrice(Number(selectedOrder.total))}</span>
                   </div>
                 </div>
 

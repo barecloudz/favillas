@@ -154,6 +154,15 @@ const CheckoutPage = () => {
   const { toast } = useToast();
   const { isOrderingPaused, displayMessage } = useVacationMode();
 
+  // OPTIMIZATION: Preload Stripe immediately on page load
+  // This ensures Stripe is ready when user clicks "Continue to Payment"
+  useEffect(() => {
+    console.log('⚡ Preloading Stripe on checkout page load...');
+    stripePromise.then(() => {
+      console.log('✅ Stripe preloaded and ready');
+    });
+  }, []);
+
   // Check for corrupted items and handle gracefully
   useEffect(() => {
     try {
@@ -241,6 +250,8 @@ const CheckoutPage = () => {
   const [fulfillmentTime, setFulfillmentTime] = useState("asap");
   const [scheduledTime, setScheduledTime] = useState("");
   const [phone, setPhone] = useState("");
+  const [name, setName] = useState(""); // Customer name (required)
+  const [email, setEmail] = useState(""); // Customer email (required)
   const [address, setAddress] = useState("");
   const [addressData, setAddressData] = useState<{
     fullAddress: string;
@@ -290,6 +301,19 @@ const CheckoutPage = () => {
       if (user.phone) {
         setPhone(user.phone);
         console.log('✅ Phone auto-populated:', user.phone);
+      }
+
+      // Set name if available
+      if (user.firstName || user.lastName) {
+        const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+        setName(fullName);
+        console.log('✅ Name auto-populated:', fullName);
+      }
+
+      // Set email if available (for order confirmations)
+      if (user.email) {
+        setEmail(user.email);
+        console.log('✅ Email auto-populated:', user.email);
       }
 
       // Set address if available - construct full address from components
@@ -700,7 +724,36 @@ const CheckoutPage = () => {
     console.log('🔄 NEW CHECKOUT FLOW - This should NOT create orders immediately!');
     console.log('🔄 If you see POST /api/orders after this, there is a caching issue!');
 
-    // Allow guest checkout - just require phone number
+    // Require name, email, and phone number for all orders
+    if (!name || !name.trim()) {
+      toast({
+        title: "Name required",
+        description: "Please provide your name for the order.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!email || !email.trim()) {
+      toast({
+        title: "Email required",
+        description: "Please provide your email address for order confirmation.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast({
+        title: "Invalid email",
+        description: "Please provide a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!phone) {
       toast({
         title: "Phone number required",
@@ -840,6 +893,8 @@ const CheckoutPage = () => {
       address: orderType === "delivery" ? address : "",
       addressData: orderType === "delivery" ? addressData : null,
       phone,
+      email: email || user?.email || null, // Use input email OR user profile email (now required)
+      customerName: name || 'Guest', // Use the name field from the form (now required)
       items: orderItems,
       fulfillmentTime,
       scheduledTime: fulfillmentTime === "scheduled" ? scheduledTime : null,
@@ -1157,11 +1212,8 @@ const CheckoutPage = () => {
                     )}
                     {totals.cardProcessingFee > 0 && cardFeeSettings && (
                       <div className="flex justify-between text-gray-600">
-                        <span className="flex items-center gap-1">
+                        <span>
                           {cardFeeSettings.cardFeeLabel || 'Card Processing Fee'}
-                          {cardFeeSettings.cardFeeType === 'percentage' && (
-                            <span className="text-xs">({cardFeeSettings.cardFeeAmount}%)</span>
-                          )}
                         </span>
                         <span>${formatPrice(totals.cardProcessingFee)}</span>
                       </div>
@@ -1212,7 +1264,42 @@ const CheckoutPage = () => {
                           </p>
                         )}
                       </div>
-                      
+
+                      {/* Name Input (Required) */}
+                      <div className="p-4 bg-red-50 border-2 border-red-300 rounded-lg">
+                        <Label htmlFor="name" className="text-red-700 font-semibold flex items-center gap-2">
+                          👤 Name <span className="text-red-600 text-sm">*Required</span>
+                        </Label>
+                        <Input
+                          id="name"
+                          type="text"
+                          placeholder="Your full name"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          required
+                          className="mt-2 border-2 border-red-300 focus:border-red-500 focus:ring-red-500 bg-white"
+                        />
+                      </div>
+
+                      {/* Email Input (Required) */}
+                      <div className="p-4 bg-red-50 border-2 border-red-300 rounded-lg">
+                        <Label htmlFor="email" className="text-red-700 font-semibold flex items-center gap-2">
+                          📧 Email <span className="text-red-600 text-sm">*Required</span>
+                        </Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder={user?.email || "your.email@example.com"}
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                          className="mt-2 border-2 border-red-300 focus:border-red-500 focus:ring-red-500 bg-white"
+                        />
+                        <p className="text-xs text-red-600 mt-1">
+                          ✉️ We'll send your order confirmation to this email
+                        </p>
+                      </div>
+
                       <div>
                         <Label className="mb-3 block font-semibold text-base">Order Type</Label>
                         {/* Desktop: Standard radio buttons */}
@@ -1533,14 +1620,29 @@ const CheckoutPage = () => {
                       
                       <div>
                         <Label htmlFor="instructions">Special Instructions (Optional)</Label>
-                        <Textarea 
-                          id="instructions" 
-                          placeholder="Any special instructions for your order?" 
-                          value={specialInstructions} 
-                          onChange={(e) => setSpecialInstructions(e.target.value)} 
+                        <Textarea
+                          id="instructions"
+                          placeholder="Any special instructions for your order?"
+                          value={specialInstructions}
+                          onChange={(e) => setSpecialInstructions(e.target.value)}
                         />
+                        <p className="text-xs text-gray-500 mt-2">
+                          Please note any food allergies or dietary restrictions in your special instructions. Favilla's NY Pizza is not responsible for allergic reactions resulting from undisclosed allergies or dietary restrictions.
+                        </p>
                       </div>
-                      
+
+                      <p className="text-xs text-gray-700 text-center">
+                        By submitting your order, you agree to our{' '}
+                        <a href="/terms" target="_blank" className="text-[#d73a31] hover:underline font-semibold">
+                          Terms & Conditions
+                        </a>
+                        {' '}and{' '}
+                        <a href="/privacy" target="_blank" className="text-[#d73a31] hover:underline font-semibold">
+                          Privacy Policy
+                        </a>
+                        .
+                      </p>
+
                       <Button
                         type="submit"
                         className="w-full bg-[#d73a31] hover:bg-[#c73128] disabled:bg-gray-400 disabled:cursor-not-allowed"

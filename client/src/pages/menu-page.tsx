@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { useCart } from "@/hooks/use-cart";
 import { useVacationMode } from "@/hooks/use-vacation-mode";
+import { useStoreStatus } from "@/hooks/use-store-status";
 import MenuItemSimple from "@/components/menu/menu-item-simple";
 import MenuItemWithChoices from "@/components/menu/menu-item-with-choices";
 
@@ -35,6 +36,7 @@ const MenuPage = () => {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const { addItem, items } = useCart();
   const { isOrderingPaused, displayMessage } = useVacationMode();
+  const { isPastCutoff, canPlaceAsapOrders, cutoffMessage, storeStatus } = useStoreStatus();
 
   const formatPrice = (price: string | number) => {
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
@@ -46,6 +48,13 @@ const MenuPage = () => {
 
   const { data: menuItems, isLoading, error } = useQuery({
     queryKey: ["/api/menu"],
+    queryFn: async () => {
+      const response = await fetch('/api/menu');
+      if (response.ok) {
+        return await response.json();
+      }
+      throw new Error('Failed to load menu');
+    }
   });
 
   // Re-enabled: Choice groups system
@@ -144,16 +153,51 @@ const MenuPage = () => {
     }
   });
 
-  // Get category from URL params
+  // Get category and item from URL params
   const urlParams = new URLSearchParams(window.location.search);
   const categoryFromUrl = urlParams.get('category');
-  
+  const itemIdFromUrl = urlParams.get('item');
+
   // Set initial category from URL
   React.useEffect(() => {
     if (categoryFromUrl && !selectedCategory) {
       setSelectedCategory(categoryFromUrl);
     }
   }, [categoryFromUrl, selectedCategory]);
+
+  // Handle direct link to specific item from homepage
+  const hasScrolledToItem = React.useRef(false);
+
+  React.useEffect(() => {
+    if (itemIdFromUrl && menuItems && menuItems.length > 0 && !hasScrolledToItem.current) {
+      const targetItem = menuItems.find((item: any) => item.id === parseInt(itemIdFromUrl));
+
+      if (targetItem) {
+        // Mark that we've handled this scroll
+        hasScrolledToItem.current = true;
+
+        // Expand the category containing this item
+        setExpandedCategories(prev => {
+          const newExpanded = new Set(prev);
+          newExpanded.add(targetItem.category);
+          return newExpanded;
+        });
+
+        // Scroll to the item after a short delay to allow rendering
+        setTimeout(() => {
+          const itemElement = document.getElementById(`menu-item-${targetItem.id}`);
+          if (itemElement) {
+            itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Add a highlight effect
+            itemElement.classList.add('ring-4', 'ring-red-500', 'ring-offset-2');
+            setTimeout(() => {
+              itemElement.classList.remove('ring-4', 'ring-red-500', 'ring-offset-2');
+            }, 3000);
+          }
+        }, 300);
+      }
+    }
+  }, [itemIdFromUrl, menuItems]);
 
   // Create categories array with counts
   const categories = [
@@ -410,6 +454,22 @@ const MenuPage = () => {
           </div>
         )}
 
+        {/* Store Hours Cutoff Banner */}
+        {!isOrderingPaused && isPastCutoff && (
+          <div className="bg-yellow-500 border-b-4 border-yellow-600 px-4 sm:px-6 lg:px-8 py-4">
+            <div className="max-w-7xl mx-auto flex items-center gap-3 text-white">
+              <AlertCircle className="h-6 w-6 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-bold text-lg">ASAP Orders Closed</p>
+                <p className="text-sm mb-1">{cutoffMessage}</p>
+                <p className="text-sm font-medium bg-yellow-600 bg-opacity-50 px-2 py-1 rounded inline-block">
+                  💡 You can still schedule an order for when we open{storeStatus?.nextOpenTime ? ` at ${storeStatus.nextOpenTime}` : ''}!
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -421,7 +481,7 @@ const MenuPage = () => {
               className="relative"
               data-cart-button="true"
               data-desktop-cart="true"
-              disabled={isOrderingPaused}
+              disabled={isOrderingPaused || isPastCutoff}
             >
               <ShoppingCart className="h-4 w-4 mr-2" />
               Cart
@@ -566,14 +626,15 @@ const MenuPage = () => {
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
                         {items.map((item: any) => (
-                          <MenuItemWithChoices
-                            key={item.id}
-                            item={item}
-                            choiceGroups={choiceGroups}
-                            choiceItems={choiceItems}
-                            menuItemChoiceGroups={menuItemChoiceGroups}
-                            isOrderingPaused={isOrderingPaused}
-                          />
+                          <div key={item.id} id={`menu-item-${item.id}`} className="transition-all duration-300">
+                            <MenuItemWithChoices
+                              item={item}
+                              choiceGroups={choiceGroups}
+                              choiceItems={choiceItems}
+                              menuItemChoiceGroups={menuItemChoiceGroups}
+                              isOrderingPaused={isOrderingPaused}
+                            />
+                          </div>
                         ))}
                       </div>
                     </div>

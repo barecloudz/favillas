@@ -26,6 +26,8 @@ import Fix169Page from "@/pages/fix-169";
 import DebugOrdersPage from "@/pages/debug-orders";
 import EmployeeClockPage from "@/pages/employee-clock";
 import FixPointsPage from "@/pages/fix-points-page";
+import TermsPage from "@/pages/terms-page";
+import PrivacyPage from "@/pages/privacy-page";
 import { AuthProvider } from "@/hooks/use-supabase-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { AdminProtectedRoute } from "@/lib/admin-protected-route";
@@ -33,6 +35,7 @@ import { CartProvider } from "@/hooks/use-cart";
 import CartSidebar from "@/components/cart/cart-sidebar";
 import Header from "@/components/layout/header";
 import LoginModalWrapper from "@/components/auth/login-modal-wrapper";
+import { UpdateBanner } from "@/components/update-banner";
 
 // Pages that should NOT show the main header (standalone full-screen pages)
 const STANDALONE_PAGES = ['/kitchen', '/display'];
@@ -67,6 +70,8 @@ function Router() {
         <Route path="/orders" component={OrdersPage} />
         <Route path="/rewards" component={RewardsPage} />
         <Route path="/profile" component={ProfilePage} />
+        <Route path="/terms" component={TermsPage} />
+        <Route path="/privacy" component={PrivacyPage} />
         <ProtectedRoute path="/kitchen" component={KitchenPage} />
         <AdminProtectedRoute path="/admin/dashboard" component={AdminDashboard} />
         <AdminProtectedRoute path="/admin/faqs" component={AdminFAQsPage} />
@@ -88,6 +93,7 @@ function App() {
         <CartProvider>
           <TooltipProvider>
             <Toaster />
+            <UpdateBanner />
             {!isStandalonePage && <Header />}
             {!isStandalonePage && <CartSidebar />}
             <LoginModalWrapper />

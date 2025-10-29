@@ -61,6 +61,18 @@ export const handler: Handler = async (event, context) => {
 
   } catch (error: any) {
     console.error('FAQ fetch error:', error);
+
+    // If table doesn't exist, return empty array instead of error
+    // This prevents homepage from showing error when faqs table hasn't been set up
+    if (error.message?.includes('does not exist') || error.message?.includes('relation') || error.code === '42P01') {
+      console.log('FAQs table does not exist yet, returning empty array');
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify([])
+      };
+    }
+
     return {
       statusCode: 500,
       headers,

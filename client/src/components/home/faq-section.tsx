@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { ChevronDown, ChevronUp, Loader2, AlertCircle } from "lucide-react";
 
 interface FAQItem {
@@ -14,10 +13,9 @@ interface FAQItem {
 const FAQSection: React.FC = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
-  // Fetch FAQs from API
+  // Fetch FAQs from API - uses default queryFn from queryClient
   const { data: faqData = [], isLoading, error } = useQuery<FAQItem[]>({
     queryKey: ["/api/faqs"],
-    queryFn: () => apiRequest<FAQItem[]>("/api/faqs"),
     staleTime: 5 * 60 * 1000 // 5 minutes
   });
 

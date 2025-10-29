@@ -64,9 +64,15 @@ export const handler: Handler = async (event, context) => {
     userId: authResult.user.legacyUserId, // Always use legacy ID if available
     supabaseUserId: authResult.user.id, // Always store Supabase UUID
     username: authResult.user.email || authResult.user.username || 'user',
+    email: authResult.user.email,
     role: authResult.user.role || 'customer',
     isSupabase: !authResult.user.legacyUserId, // If no legacy user found, treat as Supabase-only
     hasLegacyUser: !!authResult.user.legacyUserId, // Track if we found legacy user
+    // CRITICAL FIX: Include name fields from auth token for Google OAuth users
+    firstName: authResult.user.firstName,
+    lastName: authResult.user.lastName,
+    fullName: authResult.user.fullName,
+    marketingOptIn: authResult.user.marketingOptIn,
   };
 
   console.log('🔍 User Profile API: Created authPayload:', JSON.stringify(authPayload, null, 2));
@@ -187,6 +193,34 @@ export const handler: Handler = async (event, context) => {
           headers,
           body: JSON.stringify({ error: 'User not found and could not be created' })
         };
+      }
+
+      // CRITICAL FIX: Update Google users with "User Customer" default names
+      if (authPayload.isSupabase &&
+          user[0].first_name === 'User' &&
+          user[0].last_name === 'Customer' &&
+          (authPayload.firstName || authPayload.fullName)) {
+
+        console.log('🔧 Updating Google user with real name from OAuth token:', {
+          currentName: `${user[0].first_name} ${user[0].last_name}`,
+          newFirstName: authPayload.firstName || authPayload.fullName?.split(' ')[0],
+          newLastName: authPayload.lastName || authPayload.fullName?.split(' ').slice(1).join(' ')
+        });
+
+        const updatedUser = await sql`
+          UPDATE users
+          SET
+            first_name = ${authPayload.firstName || authPayload.fullName?.split(' ')[0] || 'User'},
+            last_name = ${authPayload.lastName || authPayload.fullName?.split(' ').slice(1).join(' ') || ''},
+            updated_at = NOW()
+          WHERE id = ${user[0].id}
+          RETURNING *
+        `;
+
+        if (updatedUser && updatedUser.length > 0) {
+          user[0] = updatedUser[0];
+          console.log('✅ Successfully updated Google user name');
+        }
       }
 
       // CRITICAL FIX: Add correct authentication type information for frontend

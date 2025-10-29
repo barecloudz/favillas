@@ -2,6 +2,7 @@ import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
 import jwt from 'jsonwebtoken';
 import { authenticateToken as authenticateTokenFromUtils } from './utils/auth';
+import { checkStoreStatus } from './utils/store-hours-utils';
 
 let dbConnection: any = null;
 
@@ -521,9 +522,13 @@ export const handler: Handler = async (event, context) => {
               };
             });
 
-            // Get user info for customer name
-            let customerName = 'Guest';
-            if (order.user_id || order.supabase_user_id) {
+            // Get customer name with priority:
+            // 1. order.customer_name (stored at checkout from Stripe or user profile)
+            // 2. users table lookup (for authenticated users without customer_name)
+            // 3. Default to 'Guest'
+            let customerName = order.customer_name || 'Guest';
+
+            if (!order.customer_name && (order.user_id || order.supabase_user_id)) {
               try {
                 const userQuery = order.user_id
                   ? await sql`SELECT first_name, last_name FROM users WHERE id = ${order.user_id}`
@@ -667,6 +672,58 @@ export const handler: Handler = async (event, context) => {
               })
             };
           }
+        }
+
+        // Check store hours and cutoff time for ASAP orders
+        // Wrapped in try-catch in case store_hours table doesn't exist yet
+        try {
+          console.log('🕐 Orders API: Checking store hours and cutoff time...');
+          const storeHoursData = await sql`
+            SELECT * FROM store_hours ORDER BY day_of_week
+          `;
+
+          if (storeHoursData.length > 0) {
+            const storeStatus = checkStoreStatus(storeHoursData.map((h: any) => ({
+              dayOfWeek: h.day_of_week,
+              dayName: h.day_name,
+              isOpen: h.is_open,
+              openTime: h.open_time,
+              closeTime: h.close_time,
+              isBreakTime: h.is_break_time,
+              breakStartTime: h.break_start_time,
+              breakEndTime: h.break_end_time,
+            })));
+
+            // Only validate for ASAP orders, allow scheduled orders to proceed
+            if (orderData.fulfillmentTime !== 'scheduled') {
+              if (!storeStatus.isOpen || storeStatus.isPastCutoff) {
+                console.log(`❌ Orders API: ASAP orders not available - ${storeStatus.message}`);
+                return {
+                  statusCode: 503,
+                  headers,
+                  body: JSON.stringify({
+                    error: 'ASAP orders not available',
+                    message: storeStatus.message,
+                    reason: 'outside_hours',
+                    isPastCutoff: storeStatus.isPastCutoff,
+                    isOpen: storeStatus.isOpen,
+                    scheduledOrdersAllowed: true,
+                    currentTime: storeStatus.currentTime,
+                    storeHours: storeStatus.storeHours
+                  })
+                };
+              }
+              console.log(`✅ Orders API: Store is open and within cutoff time`);
+            } else {
+              console.log(`✅ Orders API: Allowing scheduled order (bypassing store hours check)`);
+            }
+          } else {
+            console.log('⚠️ Orders API: No store hours configured, allowing order to proceed');
+          }
+        } catch (storeHoursError) {
+          console.log('⚠️ Orders API: Store hours check failed (table may not exist), allowing order to proceed');
+          console.log('Store hours error:', storeHoursError);
+          // Continue with order creation - don't block orders if store hours feature isn't set up yet
         }
 
         console.log('✅ Orders API: Service available, proceeding with order creation');
@@ -1027,7 +1084,7 @@ export const handler: Handler = async (event, context) => {
             INSERT INTO orders (
               user_id, supabase_user_id, status, total, tax, delivery_fee, tip, order_type, payment_status,
               special_instructions, address, address_data, fulfillment_time, scheduled_time,
-              phone, customer_name, promo_code_id, promo_code_discount, created_at
+              phone, email, customer_name, promo_code_id, promo_code_discount, created_at
             ) VALUES (
               ${finalUserId},
               ${finalSupabaseUserId},
@@ -1044,6 +1101,7 @@ export const handler: Handler = async (event, context) => {
               ${orderData.fulfillmentTime || 'asap'},
               ${formattedScheduledTime},
               ${orderData.phone},
+              ${orderData.email || null},
               ${orderData.customerName || null},
               ${orderData.promoCodeId || null},
               ${orderData.promoCodeDiscount || 0},
@@ -1675,13 +1733,12 @@ export const handler: Handler = async (event, context) => {
           });
         }
 
-        // ASYNC: Send email confirmation and print receipt (don't block order response)
+        // CRITICAL FIX: Await email/print operations (serverless functions terminate on return)
         // NOTE: ASAP delivery orders' ShipDay integration moved to status update (when kitchen clicks "Start Cooking")
         // Scheduled delivery orders are sent to ShipDay immediately above
-        setTimeout(async () => {
+        try {
+          // Auto-print order receipt to thermal printer
           try {
-            // Auto-print order receipt to thermal printer
-            try {
               console.log('🖨️  Orders API: Auto-printing order receipt for order #', newOrder.id);
               const printResponse = await fetch(`${process.env.URL || 'http://localhost:8888'}/.netlify/functions/printer-print-order`, {
                 method: 'POST',
@@ -1713,6 +1770,11 @@ export const handler: Handler = async (event, context) => {
                                authPayload?.username || 'Valued Customer');
 
             if (customerEmail) {
+              console.log('📧 Orders API: Preparing to send order confirmation email...');
+              console.log('📧 Email will be sent to:', customerEmail);
+              console.log('📧 Customer name:', customerName);
+              console.log('📧 Order ID:', newOrder.id);
+
               try {
                 const emailOrderData = {
                   orderId: newOrder.id.toString(),
@@ -1749,7 +1811,7 @@ export const handler: Handler = async (event, context) => {
                         .join(', ') : undefined)
                   })),
                   pointsEarned: pointsAwarded || undefined,
-                  totalPoints: userPoints ? (userPoints.points + (pointsAwarded || 0)) : undefined,
+                  totalPoints: pointsAwarded || undefined,
                   voucherUsed: enhancedOrder.voucherUsed ? true : false,
                   voucherDiscount: enhancedOrder.voucherUsed ?
                     enhancedOrder.voucherUsed.discountAmount?.toString() : undefined,
@@ -1757,26 +1819,42 @@ export const handler: Handler = async (event, context) => {
                     enhancedOrder.voucherUsed.code : undefined
                 };
 
-                const emailResponse = await fetch('/api/send-order-confirmation', {
+                console.log('📧 Calling send-order-confirmation function...');
+                const emailResponse = await fetch(`${process.env.SITE_URL || process.env.URL || 'http://localhost:8888'}/.netlify/functions/send-order-confirmation`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(emailOrderData)
                 });
 
+                console.log('📧 Email API response status:', emailResponse.status);
                 if (emailResponse.ok) {
+                  const emailResult = await emailResponse.json();
                   console.log('✅ Orders API: Order confirmation email sent successfully');
+                  console.log('✅ Email ID:', emailResult.emailId);
                 } else {
-                  console.error('❌ Orders API: Failed to send order confirmation email:', await emailResponse.text());
+                  const errorText = await emailResponse.text();
+                  console.error('❌ Orders API: Failed to send order confirmation email');
+                  console.error('❌ Status:', emailResponse.status);
+                  console.error('❌ Error:', errorText);
                 }
               } catch (emailError) {
                 console.error('❌ Orders API: Order confirmation email error:', emailError);
+                console.error('❌ Error details:', {
+                  name: (emailError as Error).name,
+                  message: (emailError as Error).message,
+                  stack: (emailError as Error).stack
+                });
                 // Don't fail the order if email fails
               }
+            } else {
+              console.log('⚠️ Orders API: No customer email provided - skipping email confirmation');
+              console.log('⚠️ orderData.email:', orderData.email);
+              console.log('⚠️ authPayload?.email:', authPayload?.email);
             }
-          } catch (asyncError) {
-            console.error('❌ Orders API: Async operation failed:', asyncError);
+          } catch (emailAsyncError) {
+            console.error('❌ Orders API: Email send operation failed:', emailAsyncError);
+            // Don't fail the order if email fails
           }
-        }, 100); // 100ms delay to ensure order response is sent first
 
         console.log('✅ Orders API: Order creation completed successfully');
 

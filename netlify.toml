@@ -391,10 +391,16 @@
   to = "/.netlify/functions/payment-intent/[id]"
   status = 200
 
-# Promo codes validation endpoint
+# Admin promo codes management endpoint
+[[redirects]]
+  from = "/api/admin-promo-codes"
+  to = "/.netlify/functions/admin-promo-codes"
+  status = 200
+
+# Promo codes validation endpoint (customer-facing)
 [[redirects]]
   from = "/api/promo-codes/validate"
-  to = "/.netlify/functions/promo-codes/validate"
+  to = "/.netlify/functions/promo-codes-validate"
   status = 200
 
 # Storage setup endpoint
@@ -530,6 +536,37 @@
   to = "/:splat.css"
   status = 200
   headers = {Cache-Control = "public, max-age=31536000, immutable"}
+
+# Old website page redirects (SEO preservation)
+[[redirects]]
+  from = "/best-pizza-asheville-2024.html"
+  to = "/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/menu-items/grandmascaprese.html"
+  to = "/menu"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/about.html"
+  to = "/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/cateringfunnel.html"
+  to = "/catering"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/book.html"
+  to = "/catering"
+  status = 301
+  force = true
 
 # Careers page redirect to Indeed job posting
 [[redirects]]

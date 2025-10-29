@@ -65,16 +65,35 @@ const generateOrderConfirmationHTML = (data: OrderEmailData): string => {
     </div>
   `).join('');
 
+  // For authenticated users: show points earned
+  // For guests: show marketing section encouraging account creation
   const pointsSection = data.pointsEarned ? `
     <div class="points-section">
       <h3>🎁 Reward Points Earned!</h3>
       <div class="points-earned">+${data.pointsEarned} Points</div>
-      <p>You now have ${data.totalPoints || data.pointsEarned} total points</p>
       <p style="font-size: 14px; opacity: 0.9;">
         Use your points for free items and exclusive rewards!
       </p>
     </div>
-  ` : '';
+  ` : `
+    <div class="guest-marketing-section">
+      <h3>🎁 You Could Have Earned ${Math.floor(parseFloat(data.orderTotal))} Points!</h3>
+      <p>If you had an account, you could have:</p>
+      <ul style="text-align: left; margin: 15px auto; max-width: 400px;">
+        <li>✅ Tracked your order status in real-time</li>
+        <li>✅ Earned <strong>${Math.floor(parseFloat(data.orderTotal))} reward points</strong> from this order</li>
+        <li>✅ Redeemed points for free food and exclusive discounts</li>
+        <li>✅ Saved your favorite orders for quick reordering</li>
+        <li>✅ Received exclusive member-only offers</li>
+      </ul>
+      <a href="${process.env.SITE_URL || 'https://favillasnypizza.netlify.app'}/auth?signup=true" class="track-button">
+        🚀 Create Your Free Account
+      </a>
+      <p style="font-size: 12px; opacity: 0.8; margin-top: 10px;">
+        Start earning points on your next order!
+      </p>
+    </div>
+  `;
 
   const voucherRow = data.voucherUsed ? `
     <div class="detail-row">
@@ -252,6 +271,26 @@ const generateOrderConfirmationHTML = (data: OrderEmailData): string => {
             font-weight: bold;
             margin: 10px 0;
         }
+        .guest-marketing-section {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 25px;
+            text-align: center;
+            margin: 25px 0;
+        }
+        .guest-marketing-section h3 {
+            margin: 0 0 15px 0;
+            font-size: 22px;
+        }
+        .guest-marketing-section ul {
+            list-style: none;
+            padding: 0;
+        }
+        .guest-marketing-section li {
+            padding: 8px 0;
+            font-size: 15px;
+        }
         .track-button {
             background: linear-gradient(135deg, #d73a31 0%, #c73128 100%);
             color: white;
@@ -350,11 +389,13 @@ const generateOrderConfirmationHTML = (data: OrderEmailData): string => {
 
             ${pointsSection}
 
+            ${data.pointsEarned ? `
             <div style="text-align: center;">
                 <a href="${siteURL}/orders" class="track-button">
                     📱 Track Your Order
                 </a>
             </div>
+            ` : ''}
 
             <div class="contact-section">
                 <h4>📞 Need Help?</h4>
@@ -374,9 +415,8 @@ const generateOrderConfirmationHTML = (data: OrderEmailData): string => {
             <p>📞 ${process.env.RESTAURANT_PHONE || '(555) 123-4567'} | 🌐 ${siteURL}</p>
 
             <div class="social-links">
-                <a href="#">Facebook</a> |
-                <a href="#">Instagram</a> |
-                <a href="#">Twitter</a>
+                <a href="https://www.facebook.com/favillaspizzeria/">Facebook</a> |
+                <a href="https://www.instagram.com/favillaspizza/">Instagram</a>
             </div>
 
             <p style="margin-top: 30px; font-size: 12px;">
@@ -439,7 +479,7 @@ export const handler: Handler = async (event, context) => {
     const htmlContent = generateOrderConfirmationHTML(orderData);
 
     // Send email via Resend
-    const emailResult = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || 'noreply@favillaspizza.com',
       to: [orderData.customerEmail],
       subject: `Order Confirmation #${orderData.orderId} - Favilla's NY Pizza`,
@@ -450,7 +490,19 @@ export const handler: Handler = async (event, context) => {
       ]
     });
 
-    console.log('✅ Order confirmation email sent successfully:', emailResult);
+    if (error) {
+      console.error('❌ Resend API error:', error);
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({
+          error: 'Failed to send email via Resend',
+          details: error
+        })
+      };
+    }
+
+    console.log('✅ Order confirmation email sent successfully:', data);
 
     // Log email send to database for tracking
     try {
@@ -468,7 +520,7 @@ export const handler: Handler = async (event, context) => {
           ${orderData.customerEmail},
           'order_confirmation',
           'sent',
-          ${emailResult.data?.id || null},
+          ${data?.id || null},
           NOW()
         )
       `;
@@ -483,7 +535,7 @@ export const handler: Handler = async (event, context) => {
       headers,
       body: JSON.stringify({
         success: true,
-        emailId: emailResult.data?.id,
+        emailId: data?.id,
         message: 'Order confirmation email sent successfully'
       })
     };

@@ -32,4 +32,4 @@ Allow: /*.gif
 Allow: /*.webp
 
 # Sitemap location
-Sitemap: https://favillaspizzeria.com/sitemap.xml
+Sitemap: https://www.favillaspizzeria.com/sitemap.xml

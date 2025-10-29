@@ -26,7 +26,8 @@ import {
   Truck,
   Store,
   AlertCircle,
-  UserPlus
+  UserPlus,
+  RefreshCw
 } from "lucide-react";
 
 const OrderSuccessPage = () => {
@@ -40,6 +41,9 @@ const OrderSuccessPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [cartCleared, setCartCleared] = useState(false);
   const isCreatingOrder = useRef(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [orderCreationError, setOrderCreationError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   
   // Initialize WebSocket for real-time updates
   useWebSocket();
@@ -91,47 +95,17 @@ const OrderSuccessPage = () => {
           // Create the order now that payment has succeeded (only once)
           const createOrderAsync = async () => {
             try {
-              // SIMPLIFIED: Quick auth check without blocking
-              let fetchedUserData = user || null;
-
-              // Only do one quick attempt to get auth info if not already available
-              if (!fetchedUserData) {
-                try {
-                  const userResponse = await apiRequest('GET', '/api/user-profile');
-                  const userData = await userResponse.json();
-                  if (userData && userData.email) {
-                    fetchedUserData = userData;
-                  }
-                } catch (userError) {
-                  console.warn('Quick auth check failed, proceeding anyway:', userError);
-                }
-              }
-
-              // Fetch payment intent to get customer name from billing details
-              let customerName = fetchedUserData?.firstName || 'Guest';
-              try {
-                const piResponse = await apiRequest('GET', `/api/payment-intent/${paymentIntentParam}`);
-                const piData = await piResponse.json();
-
-                // Extract name from Stripe payment intent billing details
-                if (piData.billing_details?.name) {
-                  customerName = piData.billing_details.name;
-                  console.log('📝 Got customer name from Stripe billing details:', customerName);
-                } else if (piData.payment_method?.billing_details?.name) {
-                  customerName = piData.payment_method.billing_details.name;
-                  console.log('📝 Got customer name from Stripe payment method billing details:', customerName);
-                }
-              } catch (piError) {
-                console.warn('Could not fetch payment intent for customer name:', piError);
-                // Continue with default name
-              }
+              // OPTIMIZED: Customer name already in pendingOrderData from checkout form
+              // No need to fetch user data - this speeds up page load significantly!
+              const customerName = pendingOrderData.customerName || 'Guest';
+              console.log('📝 Using customer name from order data:', customerName);
 
               // Update order data to reflect successful payment (keep status as pending for kitchen display)
               const confirmedOrderData = {
                 ...pendingOrderData,
                 status: "pending",
                 paymentStatus: "succeeded",
-                customerName: customerName  // Add customer name to order data
+                customerName: customerName  // Already set from checkout form
               };
 
               const response = await apiRequest('POST', '/api/orders', confirmedOrderData);
@@ -158,24 +132,26 @@ const OrderSuccessPage = () => {
                 setCartCleared(true);
               }
 
-              // Invalidate orders queries to trigger refresh in admin dashboard
-              queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
-              queryClient.invalidateQueries({ queryKey: ['/api/kitchen/orders'] });
+              // OPTIMIZED: Show UI immediately, don't wait for background operations
+              setIsLoading(false);
+              isCreatingOrder.current = false;
 
               toast({
                 title: "Order Created Successfully!",
                 description: `Order #${createdOrder.id} has been placed.`,
               });
 
-              // GUARANTEED POINTS: Always award points after order creation
-              if (user && createdOrder?.id) {
-                setTimeout(async () => {
-                  try {
-                    const pointsResponse = await apiRequest('POST', '/api/award-points-for-order', {
-                      orderId: createdOrder.id
-                    });
-                    const pointsResult = await pointsResponse.json();
+              // OPTIMIZED: All background operations happen without blocking UI
+              // Invalidate orders queries to trigger refresh in admin dashboard (background)
+              queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/kitchen/orders'] });
 
+              // Award points in background without blocking UI
+              if (user && createdOrder?.id) {
+                apiRequest('POST', '/api/award-points-for-order', {
+                  orderId: createdOrder.id
+                }).then(response => response.json())
+                  .then(pointsResult => {
                     if (pointsResult.success && !pointsResult.alreadyAwarded) {
                       toast({
                         title: "Points Earned!",
@@ -183,23 +159,18 @@ const OrderSuccessPage = () => {
                       });
                       queryClient.invalidateQueries({ queryKey: ['/api/user-rewards'] });
                     }
-                  } catch (pointsError) {
+                  })
+                  .catch(pointsError => {
                     console.warn('Points award failed:', pointsError);
-                  }
-                }, 3000); // Wait 3 seconds after order creation to ensure it's fully processed
+                  });
               }
             } catch (error) {
               console.error('💥 Error creating order:', error);
               // Reset the processing flag on error so user can retry
               sessionStorage.setItem(processedKey, 'error');
-              toast({
-                title: "Payment Successful",
-                description: "Your payment was processed, but there was an issue creating your order. Please contact us.",
-                variant: "destructive",
-              });
-            } finally {
-              setIsLoading(false);
               isCreatingOrder.current = false;
+              // DON'T set isLoading to false - keep showing loading/error screen
+              setOrderCreationError('Network error - unable to create order. Your payment was processed successfully.');
             }
           };
 
@@ -207,11 +178,11 @@ const OrderSuccessPage = () => {
           createOrderAsync();
         } catch (error) {
           console.error('❌ Error parsing pending order data:', error);
-          setIsLoading(false);
+          setOrderCreationError('Unable to process order data. Please contact support.');
         }
       } else {
         console.warn('⚠️ No pending order data found in sessionStorage');
-        setIsLoading(false);
+        setOrderCreationError('Order data not found. Please contact support if your payment was charged.');
       }
 
       // Clear cart for successful payment
@@ -244,7 +215,7 @@ const OrderSuccessPage = () => {
           });
         }
       }
-    }, user ? 5000 : 2000); // Reduced timeout: 5 seconds for auth users, 2 for guests
+    }, user ? 3000 : 1500); // OPTIMIZED: Reduced timeout from 5s/2s to 3s/1.5s
 
     return () => clearTimeout(timeout);
   }, [isLoading, user, orderId, cartCleared, clearCart, toast]);
@@ -254,7 +225,7 @@ const OrderSuccessPage = () => {
     queryKey: [`/api/orders/${orderId}`],
     enabled: !!orderId && !!user,
     retry: 2, // Only retry twice
-    retryDelay: 1000, // Wait 1 second between retries
+    retryDelay: 500, // OPTIMIZED: Reduced from 1000ms to 500ms between retries
     staleTime: 0, // Always fetch fresh data
   });
 
@@ -297,27 +268,8 @@ const OrderSuccessPage = () => {
         setCartCleared(true);
       }
 
-      // GUARANTEED POINTS: Always ensure points are awarded for any order displayed
-      if (user && orderData?.id) {
-        setTimeout(async () => {
-          try {
-            const pointsResponse = await apiRequest('POST', '/api/award-points-for-order', {
-              orderId: orderData.id
-            });
-            const pointsResult = await pointsResponse.json();
-
-            if (pointsResult.success && !pointsResult.alreadyAwarded) {
-              toast({
-                title: "Points Earned!",
-                description: `You earned ${pointsResult.pointsAwarded} points for this order!`,
-              });
-              queryClient.invalidateQueries({ queryKey: ['/api/user-rewards'] });
-            }
-          } catch (pointsError) {
-            console.warn('Points award failed:', pointsError);
-          }
-        }, 3000); // 3 second delay to ensure order is fully processed
-      }
+      // OPTIMIZED: Points already awarded during order creation flow
+      // No need to duplicate here - removed to prevent double-awarding and improve performance
     } else if (orderError) {
       // If there's an error fetching order details, stop loading and show success page anyway
       console.warn('Failed to fetch order details:', orderError);
@@ -524,6 +476,97 @@ Thank you for choosing Favilla's NY Pizza!
     }
   };
 
+  const handleRefreshOrder = async () => {
+    setIsRefreshing(true);
+    try {
+      // Invalidate and refetch order data
+      await queryClient.invalidateQueries({ queryKey: [`/api/orders/${orderId}`] });
+      await queryClient.refetchQueries({ queryKey: [`/api/orders/${orderId}`] });
+
+      toast({
+        title: "Order Updated",
+        description: "Your order status has been refreshed.",
+      });
+    } catch (error) {
+      console.error("Error refreshing order:", error);
+      toast({
+        title: "Refresh Failed",
+        description: "Could not refresh order status. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleRetryOrderCreation = () => {
+    // Clear error state and reload the page to retry
+    setOrderCreationError(null);
+    setRetryCount(prev => prev + 1);
+    window.location.reload();
+  };
+
+  // CRITICAL: Show error screen if order creation failed
+  // This prevents showing "Order Confirmed!" when no order exists
+  if (orderCreationError) {
+    return (
+      <>
+        <Helmet>
+          <title>Order Processing Error | Favilla's NY Pizza</title>
+        </Helmet>
+
+        <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full border-red-300 bg-red-50">
+            <CardHeader>
+              <div className="flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mx-auto mb-4">
+                <AlertCircle className="h-8 w-8 text-red-600" />
+              </div>
+              <CardTitle className="text-center text-red-900">Order Processing Issue</CardTitle>
+              <CardDescription className="text-center text-red-700">
+                {orderCreationError}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-white p-4 rounded-lg border border-red-200">
+                <p className="text-sm text-gray-700 mb-2 font-semibold">Important:</p>
+                <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+                  <li>Your payment was processed successfully</li>
+                  <li>Click "Retry" to complete your order</li>
+                  <li>If retry doesn't work, please call us immediately</li>
+                  <li>Have your payment confirmation ready</li>
+                </ul>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Button
+                  onClick={handleRetryOrderCreation}
+                  className="w-full bg-red-600 hover:bg-red-700"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry Order Creation
+                </Button>
+
+                <Button
+                  onClick={() => window.location.href = 'tel:+1234567890'}
+                  variant="outline"
+                  className="w-full border-red-300 text-red-700 hover:bg-red-50"
+                >
+                  <Phone className="h-4 w-4 mr-2" />
+                  Call Restaurant
+                </Button>
+              </div>
+
+              <p className="text-xs text-gray-500 text-center mt-4">
+                Retry attempt: {retryCount + 1}
+              </p>
+            </CardContent>
+          </Card>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
   // Show loading if main loading is true, order query is loading, or if we have a user and orderId but no order data yet (and no error)
   if (isLoading || orderLoading || (user && orderId && !order && !orderError)) {
     return (
@@ -533,9 +576,10 @@ Thank you for choosing Favilla's NY Pizza!
         </Helmet>
 
         <main className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading your order details...</p>
+          <div className="text-center max-w-md mx-auto px-4">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-red-600 border-t-transparent mx-auto mb-6"></div>
+            <p className="text-red-700 font-semibold text-lg mb-2">Loading order confirmation</p>
+            <p className="text-red-600 font-medium">Don't close this screen</p>
           </div>
         </main>
         <Footer />
@@ -558,6 +602,27 @@ Thank you for choosing Favilla's NY Pizza!
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Order Not Found</h1>
             <p className="text-gray-600 mb-6">We couldn't find the order you're looking for.</p>
             <Button onClick={() => navigate("/")}>Return to Home</Button>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  // CRITICAL SAFETY CHECK: Don't show success screen unless we have an order OR orderId
+  // This prevents premature "Order Confirmed!" when order creation is still in progress
+  if (!order && !orderId) {
+    return (
+      <>
+        <Helmet>
+          <title>Order Confirmation | Favilla's NY Pizza</title>
+        </Helmet>
+
+        <main className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto px-4">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-red-600 border-t-transparent mx-auto mb-6"></div>
+            <p className="text-red-700 font-semibold text-lg mb-2">Loading order confirmation</p>
+            <p className="text-red-600 font-medium">Don't close this screen</p>
           </div>
         </main>
         <Footer />
@@ -784,8 +849,18 @@ Thank you for choosing Favilla's NY Pizza!
               {/* Order Status Timeline - only for authenticated users */}
               {order && (
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle>Order Status</CardTitle>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRefreshOrder}
+                      disabled={isRefreshing}
+                      className="h-8"
+                    >
+                      <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                    </Button>
                   </CardHeader>
                   <CardContent>
                   <div className="space-y-4">
