@@ -10,8 +10,8 @@ const LocationSection: React.FC = () => {
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-display font-bold mb-6 text-[#d73a31]">VISIT US</h2>
           <p className="text-xl text-gray-700 max-w-3xl mx-auto">
-            Experience our authentic Italian cuisine at our convenient Asheville location. 
-            We're open 7 days a week to serve you the best NY style pizza in town!
+            Experience our authentic Italian cuisine at our convenient Asheville location.
+            We're open Tuesday through Sunday to serve you the best NY style pizza in town!
           </p>
         </div>
         
@@ -64,7 +64,8 @@ const LocationSection: React.FC = () => {
                     <div>
                       <h4 className="text-xl font-bold mb-2">Hours</h4>
                       <ul className="space-y-1 text-gray-700">
-                        <li>Monday - Thursday: 11:00 AM - 8:00 PM</li>
+                        <li className="font-semibold text-red-600">Monday: CLOSED</li>
+                        <li>Tuesday - Thursday: 11:00 AM - 8:00 PM</li>
                         <li>Friday - Saturday: 11:00 AM - 9:00 PM</li>
                         <li>Sunday: 12:00 PM - 8:00 PM</li>
                       </ul>
