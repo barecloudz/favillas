@@ -543,7 +543,7 @@ const AuthPage = () => {
                     <span className="flex-shrink-0 w-8 h-8 bg-[#d73a31] text-white rounded-full flex items-center justify-center mr-3">2</span>
                     <div>
                       <h4 className="font-bold">Earn Rewards</h4>
-                      <p className="text-gray-600">Spin the wheel after each order for a chance to win exclusive rewards and discounts.</p>
+                      <p className="text-gray-600">Earn points with every order and redeem them for exclusive rewards and discounts.</p>
                     </div>
                   </li>
                   <li className="flex items-start">
@@ -551,13 +551,6 @@ const AuthPage = () => {
                     <div>
                       <h4 className="font-bold">Faster Checkout</h4>
                       <p className="text-gray-600">Save your delivery information for a seamless ordering experience.</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="flex-shrink-0 w-8 h-8 bg-[#d73a31] text-white rounded-full flex items-center justify-center mr-3">4</span>
-                    <div>
-                      <h4 className="font-bold">Exclusive Offers</h4>
-                      <p className="text-gray-600">Access members-only deals and promotions sent straight to your inbox.</p>
                     </div>
                   </li>
                 </ul>

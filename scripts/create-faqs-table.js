@@ -37,7 +37,7 @@ async function createFAQsTable() {
       },
       {
         question: "What are your hours in Asheville?",
-        answer: "We're open Monday-Thursday 11:00 AM - 8:00 PM, Friday-Saturday 11:00 AM - 9:00 PM, and Sunday 12:00 PM - 8:00 PM. Order online 24/7 at favillaspizzeria.com for pickup or delivery!",
+        answer: "We're open Tuesday-Thursday 11:00 AM - 8:00 PM, Friday-Saturday 11:00 AM - 9:00 PM, and Sunday 12:00 PM - 8:00 PM. We're CLOSED on Mondays. Order online 24/7 at favillaspizzeria.com for pickup or delivery!",
         display_order: 2
       },
       {

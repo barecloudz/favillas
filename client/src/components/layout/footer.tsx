@@ -65,11 +65,11 @@ const Footer = () => {
               >
                 <Facebook size={20} />
               </a>
-              <a 
-                href="https://www.instagram.com/favillaspizzeria/" 
-                target="_blank" 
+              <a
+                href="https://www.instagram.com/favillaspizza/"
+                target="_blank"
                 rel="noopener noreferrer"
-                className="bg-[#d73a31] hover:bg-[#f2c94c] text-white p-2 rounded-full transition-colors" 
+                className="bg-[#d73a31] hover:bg-[#f2c94c] text-white p-2 rounded-full transition-colors"
                 aria-label="Instagram"
               >
                 <Instagram size={20} />
