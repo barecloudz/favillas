@@ -616,7 +616,14 @@ const CheckoutPage = () => {
         if (rewardData.discount_type === 'delivery_fee' || rewardData.reward_type === 'free_delivery') {
           voucherDiscountAmount = 0; // Will be set to delivery fee amount below
         } else if (appliedVoucher.discount_type === 'percentage') {
+          // Calculate percentage discount
           voucherDiscountAmount = (subtotal * appliedVoucher.discount_amount) / 100;
+
+          // Apply maximum discount cap if set
+          const maxDiscountAmount = rewardData.max_discount_amount || appliedVoucher.max_discount_amount;
+          if (maxDiscountAmount && voucherDiscountAmount > maxDiscountAmount) {
+            voucherDiscountAmount = maxDiscountAmount;
+          }
         } else {
           voucherDiscountAmount = appliedVoucher.discount_amount;
         }

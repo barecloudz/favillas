@@ -17141,7 +17141,8 @@ const RewardsManagement = () => {
       return response.json();
     },
     onSuccess: async () => {
-      // Force immediate refetch of all rewards queries
+      // Force immediate cache invalidation and refetch
+      await queryClient.invalidateQueries({ queryKey: [getRewardsEndpoint()] });
       await queryClient.refetchQueries({ queryKey: [getRewardsEndpoint()] });
       await refetch();
       setEditingReward(null);
@@ -17203,6 +17204,8 @@ const RewardsManagement = () => {
       pointsRequired: parseInt(data.pointsRequired) || 100,
       rewardType: data.rewardType || 'discount',
       discount: data.rewardType === 'discount' ? parseFloat(data.discount) : null,
+      discountType: data.rewardType === 'discount' ? (data.discountType || 'percentage') : null,
+      maxDiscountAmount: data.rewardType === 'discount' && data.maxDiscountAmount ? parseFloat(data.maxDiscountAmount) : null,
       freeItem: data.rewardType === 'free_item' ? data.freeItem : null,
       freeItemMenuId: data.rewardType === 'free_item' && menuId ? parseInt(menuId) : null,
       freeItemCategory: data.rewardType === 'free_item' ? data.freeItemCategory : null,
@@ -17224,6 +17227,8 @@ const RewardsManagement = () => {
         pointsRequired: parseInt(data.pointsRequired) || 100,
         rewardType: data.rewardType || 'discount',
         discount: data.rewardType === 'discount' ? parseFloat(data.discount) : null,
+        discountType: data.rewardType === 'discount' ? (data.discountType || 'percentage') : null,
+        maxDiscountAmount: data.rewardType === 'discount' && data.maxDiscountAmount ? parseFloat(data.maxDiscountAmount) : null,
         freeItem: data.rewardType === 'free_item' ? data.freeItem : null,
         freeItemMenuId: data.rewardType === 'free_item' && menuId ? parseInt(menuId) : null,
         freeItemCategory: data.rewardType === 'free_item' ? data.freeItemCategory : null,
@@ -17852,6 +17857,8 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
     pointsRequired: "",
     rewardType: "discount",
     discount: "",
+    discountType: "percentage",
+    maxDiscountAmount: "",
     freeItem: "",
     freeItemMenuId: "",
     freeItemCategory: "",
@@ -17885,6 +17892,7 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
         rewardType: reward.reward_type || "discount",
         discount: reward.discount?.toString() || "",
         discountType: reward.discount_type || "percentage",
+        maxDiscountAmount: reward.max_discount_amount?.toString() || "",
         freeItem: reward.free_item || "",
         freeItemMenuId: menuIdValue,
         freeItemCategory: reward.free_item_category || "",
@@ -18028,6 +18036,30 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
                     : 'Enter the dollar amount (e.g., 5.00 for $5 off)'}
                 </p>
               </div>
+
+              {/* Maximum Discount Amount (for percentage discounts) */}
+              {formData.discountType === 'percentage' && (
+                <div className="space-y-2">
+                  <Label htmlFor="maxDiscountAmount">
+                    Maximum Discount Amount
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-600">$</span>
+                    <Input
+                      id="maxDiscountAmount"
+                      type="number"
+                      step="0.01"
+                      value={formData.maxDiscountAmount}
+                      onChange={(e) => setFormData({ ...formData, maxDiscountAmount: e.target.value })}
+                      placeholder="e.g., 20.00"
+                      min="0"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Cap the maximum discount (e.g., 20% off $400 = $80, but with $20 max, discount is only $20)
+                  </p>
+                </div>
+              )}
             </>
           )}
 

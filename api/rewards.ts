@@ -33,13 +33,13 @@ export const handler: Handler = async (event, context) => {
     'Content-Type': 'application/json',
   };
 
-  // Add caching headers for GET requests
+  // Add caching headers for GET requests (reduced cache time for better admin UX)
   const headersWithCache = event.httpMethod === 'GET' ? {
     ...headers,
-    // Cache rewards for 5 minutes with stale-while-revalidate
-    'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=60',
-    'CDN-Cache-Control': 'max-age=600',
-    'Surrogate-Control': 'max-age=3600'
+    // Cache rewards for 30 seconds with stale-while-revalidate for better admin update experience
+    'Cache-Control': 'public, max-age=30, s-maxage=30, stale-while-revalidate=15',
+    'CDN-Cache-Control': 'max-age=60',
+    'Surrogate-Control': 'max-age=120'
   } : headers;
   
   if (event.httpMethod === 'OPTIONS') {
@@ -69,7 +69,7 @@ export const handler: Handler = async (event, context) => {
       };
 
     } else if (event.httpMethod === 'POST') {
-      const { name, description, pointsRequired, rewardType, discount, discountType, freeItem, freeItemMenuId, freeItemCategory, freeItemAllFromCategory, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
+      const { name, description, pointsRequired, rewardType, discount, discountType, maxDiscountAmount, freeItem, freeItemMenuId, freeItemCategory, freeItemAllFromCategory, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
 
       if (!name || !description) {
         return {
@@ -83,7 +83,7 @@ export const handler: Handler = async (event, context) => {
 
       const result = await sql`
         INSERT INTO rewards (
-          name, description, points_required, reward_type, discount, discount_type, free_item,
+          name, description, points_required, reward_type, discount, discount_type, max_discount_amount, free_item,
           free_item_menu_id, free_item_category, free_item_all_from_category,
           min_order_amount, expires_at, is_active, created_at
         )
@@ -94,6 +94,7 @@ export const handler: Handler = async (event, context) => {
           ${rewardType || 'discount'},
           ${discount ? parseFloat(discount) : null},
           ${discountType || 'percentage'},
+          ${maxDiscountAmount ? parseFloat(maxDiscountAmount) : null},
           ${freeItem || null},
           ${freeItemMenuId ? parseInt(freeItemMenuId) : null},
           ${freeItemCategory || null},
@@ -125,7 +126,7 @@ export const handler: Handler = async (event, context) => {
         };
       }
 
-      const { name, description, pointsRequired, rewardType, discount, discountType, freeItem, freeItemMenuId, freeItemCategory, freeItemAllFromCategory, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
+      const { name, description, pointsRequired, rewardType, discount, discountType, maxDiscountAmount, freeItem, freeItemMenuId, freeItemCategory, freeItemAllFromCategory, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
 
       // First get the existing reward to preserve values
       const existing = await sql`
@@ -147,6 +148,7 @@ export const handler: Handler = async (event, context) => {
       const updatedRewardType = rewardType !== undefined ? rewardType : existing[0].reward_type;
       const updatedDiscount = discount !== undefined ? (discount ? parseFloat(discount) : null) : existing[0].discount;
       const updatedDiscountType = discountType !== undefined ? discountType : (existing[0].discount_type || 'percentage');
+      const updatedMaxDiscountAmount = maxDiscountAmount !== undefined ? (maxDiscountAmount ? parseFloat(maxDiscountAmount) : null) : existing[0].max_discount_amount;
       const updatedFreeItem = freeItem !== undefined ? freeItem : existing[0].free_item;
       const updatedFreeItemMenuId = freeItemMenuId !== undefined ? (freeItemMenuId ? parseInt(freeItemMenuId) : null) : existing[0].free_item_menu_id;
       const updatedFreeItemCategory = freeItemCategory !== undefined ? freeItemCategory : existing[0].free_item_category;
@@ -162,6 +164,7 @@ export const handler: Handler = async (event, context) => {
             reward_type = ${updatedRewardType},
             discount = ${updatedDiscount},
             discount_type = ${updatedDiscountType},
+            max_discount_amount = ${updatedMaxDiscountAmount},
             free_item = ${updatedFreeItem},
             free_item_menu_id = ${updatedFreeItemMenuId},
             free_item_category = ${updatedFreeItemCategory},
