@@ -8777,14 +8777,17 @@ const VacationModeSection = () => {
 
   const { data: vacationModeData, refetch } = useQuery({
     queryKey: ["/api/vacation-mode"],
-    queryFn: () => apiRequest("/api/vacation-mode"),
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/vacation-mode");
+      return response.json();
+    },
   });
 
   const updateVacationModeMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("/api/vacation-mode", {
-      method: "PUT",
-      body: JSON.stringify(data)
-    }),
+    mutationFn: async (data: any) => {
+      const response = await apiRequest("PUT", "/api/vacation-mode", data);
+      return response.json();
+    },
     onSuccess: () => {
       toast({ title: "Success", description: "Vacation mode updated successfully." });
       refetch();
@@ -9081,15 +9084,17 @@ const StoreHoursSection = () => {
 
   const { data: storeHoursData, refetch } = useQuery({
     queryKey: ["/api/store-hours"],
-    queryFn: () => apiRequest("/api/store-hours"),
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/store-hours");
+      return response.json();
+    },
   });
 
   const updateStoreHoursMutation = useMutation({
-    mutationFn: ({ dayOfWeek, data }: { dayOfWeek: number; data: any }) => 
-      apiRequest(`/api/store-hours/${dayOfWeek}`, {
-        method: "PUT",
-        body: JSON.stringify(data)
-      }),
+    mutationFn: async ({ dayOfWeek, data }: { dayOfWeek: number; data: any }) => {
+      const response = await apiRequest("PUT", `/api/store-hours/${dayOfWeek}`, data);
+      return response.json();
+    },
     onSuccess: () => {
       toast({ title: "Success", description: "Store hours updated successfully." });
       refetch();
@@ -14390,19 +14395,17 @@ const SMSMarketingTab = ({ users }: { users: any[] }) => {
 
     setIsSending(true);
     try {
-      const response = await apiRequest('/api/email/send-campaign', {
-        method: 'POST',
-        body: JSON.stringify({
-          campaignName: formData.name,
-          subject: formData.subject,
-          content: formData.content,
-          ctaText: formData.ctaText || undefined,
-          ctaUrl: formData.ctaUrl || undefined,
-          recipientType: formData.audienceType,
-          template: formData.template,
-          accentColor: formData.accentColor
-        })
+      const responseObj = await apiRequest('POST', '/api/email/send-campaign', {
+        campaignName: formData.name,
+        subject: formData.subject,
+        content: formData.content,
+        ctaText: formData.ctaText || undefined,
+        ctaUrl: formData.ctaUrl || undefined,
+        recipientType: formData.audienceType,
+        template: formData.template,
+        accentColor: formData.accentColor
       });
+      const response = await responseObj.json();
 
       if (response.success) {
         toast({
@@ -14457,19 +14460,17 @@ const SMSMarketingTab = ({ users }: { users: any[] }) => {
   const sendDraftCampaign = async (campaign) => {
     setIsSending(true);
     try {
-      const response = await apiRequest('/api/email/send-campaign', {
-        method: 'POST',
-        body: JSON.stringify({
-          campaignName: campaign.name,
-          subject: campaign.subject,
-          content: campaign.content || 'Draft campaign content',
-          ctaText: campaign.ctaText || undefined,
-          ctaUrl: campaign.ctaUrl || undefined,
-          recipientType: 'all',
-          template: campaign.template || 'default',
-          accentColor: campaign.accentColor || '#d73a31'
-        })
+      const responseObj = await apiRequest('POST', '/api/email/send-campaign', {
+        campaignName: campaign.name,
+        subject: campaign.subject,
+        content: campaign.content || 'Draft campaign content',
+        ctaText: campaign.ctaText || undefined,
+        ctaUrl: campaign.ctaUrl || undefined,
+        recipientType: 'all',
+        template: campaign.template || 'default',
+        accentColor: campaign.accentColor || '#d73a31'
       });
+      const response = await responseObj.json();
 
       if (response.success) {
         toast({

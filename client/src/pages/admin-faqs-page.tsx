@@ -58,17 +58,18 @@ const AdminFAQsPage: React.FC = () => {
   // Fetch all FAQs (admin endpoint returns both active and inactive)
   const { data: faqs, isLoading, error } = useQuery<FAQ[]>({
     queryKey: ["/api/admin-faqs"],
-    queryFn: () => apiRequest<FAQ[]>("/api/admin-faqs")
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/admin-faqs");
+      return response.json();
+    }
   });
 
   // Create FAQ mutation
   const createFAQ = useMutation({
-    mutationFn: (data: FAQFormData) =>
-      apiRequest("/api/admin-faqs", {
-        method: "POST",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" }
-      }),
+    mutationFn: async (data: FAQFormData) => {
+      const response = await apiRequest("POST", "/api/admin-faqs", data);
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin-faqs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/faqs"] }); // Invalidate public endpoint too
@@ -90,12 +91,10 @@ const AdminFAQsPage: React.FC = () => {
 
   // Update FAQ mutation
   const updateFAQ = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: FAQFormData }) =>
-      apiRequest(`/api/admin-faqs/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" }
-      }),
+    mutationFn: async ({ id, data }: { id: number; data: FAQFormData }) => {
+      const response = await apiRequest("PUT", `/api/admin-faqs/${id}`, data);
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin-faqs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/faqs"] });
@@ -118,10 +117,10 @@ const AdminFAQsPage: React.FC = () => {
 
   // Delete FAQ mutation
   const deleteFAQ = useMutation({
-    mutationFn: (id: number) =>
-      apiRequest(`/api/admin-faqs/${id}`, {
-        method: "DELETE"
-      }),
+    mutationFn: async (id: number) => {
+      const response = await apiRequest("DELETE", `/api/admin-faqs/${id}`);
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin-faqs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/faqs"] });
@@ -143,20 +142,17 @@ const AdminFAQsPage: React.FC = () => {
 
   // Reorder FAQ mutation
   const reorderFAQ = useMutation({
-    mutationFn: ({ id, newOrder }: { id: number; newOrder: number }) => {
+    mutationFn: async ({ id, newOrder }: { id: number; newOrder: number }) => {
       const faq = faqs?.find(f => f.id === id);
       if (!faq) throw new Error("FAQ not found");
 
-      return apiRequest(`/api/admin-faqs/${id}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          question: faq.question,
-          answer: faq.answer,
-          display_order: newOrder,
-          is_active: faq.is_active
-        }),
-        headers: { "Content-Type": "application/json" }
+      const response = await apiRequest("PUT", `/api/admin-faqs/${id}`, {
+        question: faq.question,
+        answer: faq.answer,
+        display_order: newOrder,
+        is_active: faq.is_active
       });
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin-faqs"] });
