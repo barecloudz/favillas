@@ -27,7 +27,9 @@ import {
   Store,
   AlertCircle,
   UserPlus,
-  RefreshCw
+  RefreshCw,
+  ArrowLeft,
+  Calendar
 } from "lucide-react";
 
 // Fun loading messages with emojis to keep customers entertained
@@ -692,67 +694,102 @@ Thank you for choosing Favilla's NY Pizza!
         <title>Order Confirmation | Favilla's NY Pizza</title>
       </Helmet>
 
-      <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8 md:pt-[72px] pt-14">
+      <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 lg:pt-24 pt-16">
         <div className="max-w-5xl mx-auto px-4">
           {/* Back Button */}
-          <div className="mb-8">
-            <Button
-              variant="ghost"
-              onClick={() => navigate("/orders")}
-              className="flex items-center gap-2 hover:bg-gray-100 transition-colors"
-            >
-              ← Back to My Orders
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/orders")}
+            className="mb-6 hover:bg-white"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to My Orders
+          </Button>
 
-          {/* Success Header - More Premium */}
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-100 to-green-50 rounded-full mb-6 shadow-lg ring-4 ring-green-50 animate-in fade-in zoom-in duration-500">
-              <CheckCircle className="h-10 w-10 text-green-600" />
+          {/* Status Hero Card - Matches Order Details Design */}
+          <Card className="mb-6 overflow-hidden border-none shadow-2xl">
+            <div className={`${order && order.status ? getStatusColor(order.status, order.shipday_status) : 'bg-green-500'} p-8 text-white`}>
+              <div className="flex items-start justify-between flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full">
+                      <CheckCircle className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h1 className="text-3xl font-bold">Order Confirmed!</h1>
+                      <p className="text-white/90 text-lg">
+                        {order ? getDisplayStatus(order.status, order.shipday_status) : 'Order Received'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-6 mt-4 text-white/90 flex-wrap">
+                    <div className="flex items-center">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      <span>{order && order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric'
+                      }) : new Date().toLocaleDateString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Clock className="h-4 w-4 mr-2" />
+                      <span>{order && order.createdAt ? new Date(order.createdAt).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit'
+                      }) : new Date().toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit'
+                      })}</span>
+                    </div>
+                    {order && order.orderType && (
+                      <div className="flex items-center">
+                        {order.orderType === 'pickup' ? <Store className="h-4 w-4 mr-2" /> : <Truck className="h-4 w-4 mr-2" />}
+                        <span>{order.orderType === 'pickup' ? 'Pickup' : 'Delivery'}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="bg-white/20 backdrop-blur-sm px-6 py-4 rounded-2xl">
+                    <p className="text-white/80 text-sm mb-1">Total</p>
+                    <p className="text-4xl font-bold">{order ? formatCurrency(parseFloat(order.total || 0)) : '$0.00'}</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-3 tracking-tight">Order Confirmed!</h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">Thank you for your order. We're preparing your delicious pizza with care.</p>
-          </div>
+          </Card>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Order Details */}
             <div className="lg:col-span-2 space-y-6">
               {/* Order Summary */}
-              <Card className="shadow-lg border-gray-200 hover:shadow-xl transition-shadow duration-300">
-                <CardHeader className="border-b border-gray-100 bg-gradient-to-r from-white to-gray-50">
-                  <CardTitle className="flex items-center justify-between text-xl">
-                    <span className="flex items-center gap-2">
-                      <Receipt className="h-5 w-5 text-[#d73a31]" />
-                      Order #{orderId}
-                    </span>
-                    {order && order.status && (
-                      <Badge className={`${getStatusColor(order.status)} px-3 py-1 text-sm font-semibold`}>
-                        {getDisplayStatus(order.status, order.shipday_status)}
-                      </Badge>
-                    )}
-                  </CardTitle>
-                  <CardDescription className="text-base">
-                    {order && order.createdAt ? (
-                      `Placed on ${new Date(order.createdAt).toLocaleDateString()} at ${new Date(order.createdAt).toLocaleTimeString()}`
-                    ) : (
-                      "Your order has been placed successfully"
-                    )}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
+              <Card className="border-none shadow-xl">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">Your Items</h2>
+                    <Badge variant="outline" className="text-sm">
+                      {order?.items?.length || 0} items
+                    </Badge>
+                  </div>
+
                   {order ? (
                     <div className="space-y-4">
                       {/* Order Items */}
-                      <div>
-                        <h3 className="font-semibold mb-4 text-lg flex items-center gap-2">
-                          <Pizza className="h-5 w-5 text-[#d73a31]" />
-                          Your Order
-                        </h3>
-                        <div className="space-y-4">
-                          {order.items?.map((item: any, index: number) => (
-                          <div key={index} className="flex justify-between items-start py-3 px-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <div className="space-y-4">
+                        {order.items?.map((item: any, index: number) => (
+                          <div
+                            key={index}
+                            className="flex items-start space-x-4 p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl border border-gray-100 hover:shadow-md transition-shadow"
+                          >
+                            <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-[#d73a31] to-[#ff6b35] rounded-lg flex items-center justify-center">
+                              <Pizza className="h-8 w-8 text-white" />
+                            </div>
                             <div className="flex-1">
-                              <p className="font-semibold text-gray-900">{item.name}</p>
+                              <h3 className="font-bold text-gray-900 text-lg">{item?.name || 'Unknown Item'}</h3>
                               {item.specialInstructions && (
                                 <p className="text-sm text-gray-500">Note: {item.specialInstructions}</p>
                               )}
@@ -803,12 +840,17 @@ Thank you for choosing Favilla's NY Pizza!
                                   })()}
                                 </p>
                               )}
+                              {item.specialInstructions && (
+                                <p className="text-sm text-gray-500 mt-2 italic">
+                                  Note: {item.specialInstructions}
+                                </p>
+                              )}
                             </div>
-                            <div className="text-right flex flex-col items-end">
-                              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#d73a31] text-white font-bold text-sm mb-1">
-                                {item.quantity}
-                              </span>
-                              <p className="text-lg font-bold text-gray-900">{formatCurrency(parseFloat(item.price || 0) * item.quantity)}</p>
+                            <div className="text-right">
+                              <p className="text-sm text-gray-500 mb-1">Qty: {item.quantity}</p>
+                              <p className="text-lg font-bold text-gray-900">
+                                {formatCurrency(item.price * item.quantity)}
+                              </p>
                             </div>
                           </div>
                         ))}
@@ -923,8 +965,8 @@ Thank you for choosing Favilla's NY Pizza!
 
               {/* Order Status Timeline - only for authenticated users */}
               {order && (
-                <Card className="shadow-lg border-gray-200 hover:shadow-xl transition-shadow duration-300">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-gray-100 bg-gradient-to-r from-white to-gray-50">
+                <Card className="border-none shadow-xl">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                     <CardTitle className="text-xl flex items-center gap-2">
                       <Clock className="h-5 w-5 text-[#d73a31]" />
                       Order Status
@@ -1035,8 +1077,8 @@ Thank you for choosing Favilla's NY Pizza!
             {user && order ? (
               <div className="space-y-6">
                 {/* Estimated Time */}
-              <Card className="shadow-lg border-gray-200 hover:shadow-xl transition-shadow duration-300">
-                <CardHeader className="border-b border-gray-100 bg-gradient-to-r from-white to-gray-50">
+              <Card className="border-none shadow-xl">
+                <CardHeader>
                   <CardTitle className="flex items-center text-lg">
                     <Clock className="h-5 w-5 mr-2 text-[#d73a31]" />
                     {order.fulfillmentTime === "scheduled" ? "Scheduled" : "Estimated"} {order.orderType === 'pickup' ? 'Pickup' : 'Delivery'} Time
