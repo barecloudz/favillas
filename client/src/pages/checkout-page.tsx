@@ -391,11 +391,13 @@ const CheckoutPage = () => {
     const now = new Date();
     const day = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
     const hour = now.getHours();
-    
-    // Store hours: Mon-Sat 11AM-10PM, Sun 12PM-9PM
+
+    // Store hours: Tues-Sat 11AM-10PM, Sun 12PM-9PM, Mon CLOSED
     if (day === 0) { // Sunday
       return hour >= 12 && hour < 21;
-    } else if (day >= 1 && day <= 6) { // Monday-Saturday
+    } else if (day === 1) { // Monday - CLOSED
+      return false;
+    } else if (day >= 2 && day <= 6) { // Tuesday-Saturday
       return hour >= 11 && hour < 22;
     }
     return false;
@@ -779,14 +781,16 @@ const CheckoutPage = () => {
       let isValidTime = false;
       if (day === 0) { // Sunday
         isValidTime = (hour > 12 || (hour === 12 && minute >= 0)) && hour < 21;
-      } else if (day >= 1 && day <= 6) { // Monday-Saturday
+      } else if (day === 1) { // Monday - CLOSED
+        isValidTime = false;
+      } else if (day >= 2 && day <= 6) { // Tuesday-Saturday
         isValidTime = (hour > 11 || (hour === 11 && minute >= 0)) && hour < 22;
       }
 
       if (!isValidTime) {
         toast({
           title: "Outside Store Hours",
-          description: "Please select a time when we're open. Mon-Sat: 11AM-10PM, Sun: 12PM-9PM",
+          description: "Please select a time when we're open. Tues-Sat: 11AM-10PM, Sun: 12PM-9PM, Mon: CLOSED",
           variant: "destructive",
         });
         return;
@@ -1311,8 +1315,9 @@ const CheckoutPage = () => {
                             <div className="mb-4 p-3 bg-white/80 rounded-lg border border-blue-200">
                               <p className="text-sm font-semibold text-gray-700 mb-1">🕒 Store Hours:</p>
                               <ul className="text-sm text-gray-600 space-y-0.5 ml-1">
-                                <li>• Monday - Saturday: 11:00 AM - 10:00 PM</li>
+                                <li>• Tuesday - Saturday: 11:00 AM - 10:00 PM</li>
                                 <li>• Sunday: 12:00 PM - 9:00 PM</li>
+                                <li>• Monday: CLOSED</li>
                               </ul>
                               <p className="text-xs text-blue-600 mt-2 font-medium">
                                 💡 Please select a time during our operating hours
@@ -1333,14 +1338,16 @@ const CheckoutPage = () => {
                                 let isValidTime = false;
                                 if (day === 0) { // Sunday
                                   isValidTime = (hour > 12 || (hour === 12 && minute >= 0)) && hour < 21;
-                                } else if (day >= 1 && day <= 6) { // Monday-Saturday
+                                } else if (day === 1) { // Monday - CLOSED
+                                  isValidTime = false;
+                                } else if (day >= 2 && day <= 6) { // Tuesday-Saturday
                                   isValidTime = (hour > 11 || (hour === 11 && minute >= 0)) && hour < 22;
                                 }
 
                                 if (!isValidTime) {
                                   toast({
                                     title: "Outside Store Hours",
-                                    description: "Please select a time when we're open. Mon-Sat: 11AM-10PM, Sun: 12PM-9PM",
+                                    description: "Please select a time when we're open. Tues-Sat: 11AM-10PM, Sun: 12PM-9PM, Mon: CLOSED",
                                     variant: "destructive"
                                   });
                                 }
@@ -1364,7 +1371,7 @@ const CheckoutPage = () => {
                               ⚠️ Store is currently closed. Please select a scheduled time or try again during business hours.
                             </p>
                             <p className="text-xs text-red-600 mt-1">
-                              Hours: Mon-Sat 11AM-10PM, Sun 12PM-9PM
+                              Hours: Tues-Sat 11AM-10PM, Sun 12PM-9PM, Mon CLOSED
                             </p>
                           </div>
                         )}
