@@ -69,7 +69,7 @@ const Header = () => {
   }
 
   // Show bottom navigation for main pages on mobile (excluding admin dashboard)
-  if (["/", "/menu", "/catering", "/checkout", "/kitchen", "/orders", "/rewards"].includes(location)) {
+  if (["/", "/menu", "/catering", "/checkout", "/kitchen", "/orders", "/rewards", "/employee/clock", "/profile"].includes(location)) {
     return (
       <>
         {/* Desktop Header */}

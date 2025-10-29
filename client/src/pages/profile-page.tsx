@@ -229,57 +229,67 @@ const ProfilePage: React.FC = () => {
         <meta name="description" content="Manage your account information, saved addresses, and preferences." />
       </Helmet>
 
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-pink-50 pt-20 pb-20">
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto">
-            {/* Header */}
-            <div className="mb-8 text-center">
-              <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-[#d73a31] to-[#ff6b6b] rounded-full flex items-center justify-center shadow-lg">
-                <span className="text-3xl font-bold text-white">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        {/* Hero Header with Profile Circle */}
+        <div className="bg-gradient-to-r from-[#d73a31] to-[#ff6b35] text-white pt-20 lg:pt-24 pb-32">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto text-center">
+              <div className="w-32 h-32 mx-auto mb-6 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center shadow-2xl border-4 border-white/30 transform hover:scale-105 transition-transform">
+                <span className="text-5xl font-bold text-white">
                   {user.firstName?.[0]}{user.lastName?.[0]}
                 </span>
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back, {user.firstName}!</h1>
-              <p className="text-gray-600">Manage your account and explore your rewards</p>
+              <h1 className="text-4xl font-bold mb-3">Welcome back, {user.firstName}!</h1>
+              <p className="text-white/90 text-lg">Manage your account and explore your rewards</p>
             </div>
+          </div>
+        </div>
 
-            {/* Mobile App Style Quick Actions */}
+        <div className="container mx-auto px-4 -mt-20">
+          <div className="max-w-4xl mx-auto">
+
+            {/* Quick Actions Grid */}
             <div className="mb-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">Quick Actions</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <Link href="/">
-                  <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                  <Card className="bg-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1">
                     <CardContent className="p-6 text-center">
-                      <Home className="h-8 w-8 mx-auto mb-3" />
-                      <h3 className="font-bold text-lg">Return Home</h3>
-                      <p className="text-green-100 text-sm">Back to menu</p>
+                      <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center shadow-lg">
+                        <Home className="h-8 w-8 text-white" />
+                      </div>
+                      <h3 className="font-bold text-lg text-gray-900 mb-1">Return Home</h3>
+                      <p className="text-gray-500 text-sm">Back to menu</p>
                     </CardContent>
                   </Card>
                 </Link>
                 <Link href="/orders">
-                  <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                  <Card className="bg-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1">
                     <CardContent className="p-6 text-center">
-                      <ShoppingBag className="h-8 w-8 mx-auto mb-3" />
-                      <h3 className="font-bold text-lg">My Orders</h3>
-                      <p className="text-blue-100 text-sm">View order history</p>
+                      <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
+                        <ShoppingBag className="h-8 w-8 text-white" />
+                      </div>
+                      <h3 className="font-bold text-lg text-gray-900 mb-1">My Orders</h3>
+                      <p className="text-gray-500 text-sm">View order history</p>
                     </CardContent>
                   </Card>
                 </Link>
                 <Link href="/rewards">
-                  <Card className="bg-gradient-to-br from-yellow-500 to-orange-500 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                  <Card className="bg-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1">
                     <CardContent className="p-6 text-center">
-                      <Star className="h-8 w-8 mx-auto mb-3" />
-                      <h3 className="font-bold text-lg">My Rewards</h3>
-                      <p className="text-yellow-100 text-sm">Earn & redeem points</p>
+                      <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
+                        <Star className="h-8 w-8 text-white" />
+                      </div>
+                      <h3 className="font-bold text-lg text-gray-900 mb-1">My Rewards</h3>
+                      <p className="text-gray-500 text-sm">Earn & redeem points</p>
                     </CardContent>
                   </Card>
                 </Link>
               </div>
-              
+
               <div className="text-center">
-                <Button 
-                  variant="outline" 
-                  className="w-full max-w-xs bg-white border-red-200 text-red-600 hover:text-red-700 hover:bg-red-50 shadow-lg"
+                <Button
+                  variant="outline"
+                  className="w-full max-w-xs bg-white border-2 border-gray-200 text-gray-700 hover:text-red-600 hover:bg-red-50 hover:border-red-300 shadow-lg"
                   onClick={() => logoutMutation.mutate()}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
