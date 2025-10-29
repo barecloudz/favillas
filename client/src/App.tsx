@@ -14,6 +14,7 @@ import CateringPage from "@/pages/catering-page";
 import CustomerDisplay from "@/pages/customer-display";
 import CheckoutPage from "@/pages/checkout-page";
 import OrderSuccessPage from "@/pages/order-success";
+import OrderDetailsPage from "@/pages/order-details-page";
 import OrdersPage from "@/pages/orders-page";
 import RewardsPage from "@/pages/rewards-page";
 import ProfilePage from "@/pages/profile-page";
@@ -67,6 +68,7 @@ function Router() {
         <Route path="/debug-orders" component={DebugOrdersPage} />
         <Route path="/checkout" component={CheckoutPage} />
         <Route path="/order-success" component={OrderSuccessPage} />
+        <Route path="/order-details" component={OrderDetailsPage} />
         <Route path="/orders" component={OrdersPage} />
         <Route path="/rewards" component={RewardsPage} />
         <Route path="/profile" component={ProfilePage} />

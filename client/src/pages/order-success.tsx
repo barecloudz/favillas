@@ -60,11 +60,15 @@ const OrderSuccessPage = () => {
       // Old flow: direct order ID
       setOrderId(parseInt(orderIdParam));
 
+      // Only clear cart and show toast if this is from a new checkout
+      // Check if there was pending order data (indicates new order)
+      const hadPendingOrder = sessionStorage.getItem('pendingOrderData');
+
       // Clear pending order data from sessionStorage since payment was successful
       sessionStorage.removeItem('pendingOrderData');
 
-      // Clear cart immediately for guest users when we have an order ID
-      if (!user && !cartCleared) {
+      // Only clear cart and show toast for NEW orders (not when viewing old orders)
+      if (hadPendingOrder && !user && !cartCleared) {
         clearCart();
         setCartCleared(true);
         toast({

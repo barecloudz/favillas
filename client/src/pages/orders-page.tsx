@@ -218,7 +218,7 @@ Thank you for choosing Favilla's NY Pizza!
   };
 
   const handleViewOrder = (order: any) => {
-    navigate(`/order-success?orderId=${order.id}`);
+    navigate(`/order-details?orderId=${order.id}`);
   };
 
   if (!user) {
