@@ -777,50 +777,51 @@ Thank you for choosing Favilla's NY Pizza!
                   </div>
 
                   {order ? (
-                    <div className="space-y-4">
-                      {/* Order Items */}
+                    <>
                       <div className="space-y-4">
-                        {order.items?.map((item: any, index: number) => (
-                          <div
-                            key={index}
-                            className="flex items-start space-x-4 p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl border border-gray-100 hover:shadow-md transition-shadow"
-                          >
-                            <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-[#d73a31] to-[#ff6b35] rounded-lg flex items-center justify-center">
-                              <Pizza className="h-8 w-8 text-white" />
-                            </div>
-                            <div className="flex-1">
-                              <h3 className="font-bold text-gray-900 text-lg">{item?.name || 'Unknown Item'}</h3>
-                              {item.options && Array.isArray(item.options) && item.options.length > 0 && (
-                                <div className="mt-1 space-y-1">
-                                  {item.options.map((option: any, optIndex: number) => (
-                                    <p key={optIndex} className="text-sm text-gray-600">
-                                      • {option.itemName || option.name}
-                                      {option.price > 0 && ` (+${formatCurrency(option.price)})`}
-                                    </p>
-                                  ))}
-                                </div>
-                              )}
-                              {item.specialInstructions && (
-                                <p className="text-sm text-gray-500 mt-2 italic">
-                                  Note: {item.specialInstructions}
+                        {/* Order Items */}
+                        <div className="space-y-4">
+                          {order.items?.map((item: any, index: number) => (
+                            <div
+                              key={index}
+                              className="flex items-start space-x-4 p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl border border-gray-100 hover:shadow-md transition-shadow"
+                            >
+                              <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-[#d73a31] to-[#ff6b35] rounded-lg flex items-center justify-center">
+                                <Pizza className="h-8 w-8 text-white" />
+                              </div>
+                              <div className="flex-1">
+                                <h3 className="font-bold text-gray-900 text-lg">{item?.name || 'Unknown Item'}</h3>
+                                {item.options && Array.isArray(item.options) && item.options.length > 0 && (
+                                  <div className="mt-1 space-y-1">
+                                    {item.options.map((option: any, optIndex: number) => (
+                                      <p key={optIndex} className="text-sm text-gray-600">
+                                        • {option.itemName || option.name}
+                                        {option.price > 0 && ` (+${formatCurrency(option.price)})`}
+                                      </p>
+                                    ))}
+                                  </div>
+                                )}
+                                {item.specialInstructions && (
+                                  <p className="text-sm text-gray-500 mt-2 italic">
+                                    Note: {item.specialInstructions}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm text-gray-500 mb-1">Qty: {item.quantity}</p>
+                                <p className="text-lg font-bold text-gray-900">
+                                  {formatCurrency(item.price * item.quantity)}
                                 </p>
-                              )}
+                              </div>
                             </div>
-                            <div className="text-right">
-                              <p className="text-sm text-gray-500 mb-1">Qty: {item.quantity}</p>
-                              <p className="text-lg font-bold text-gray-900">
-                                {formatCurrency(item.price * item.quantity)}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
 
-                    <Separator />
+                      <Separator />
 
-                    {/* Order Totals */}
-                    <div className="space-y-2">
+                      {/* Order Totals */}
+                      <div className="space-y-2">
                       {(() => {
                         // Parse order breakdown from address_data if available
                         let orderBreakdown = null;
@@ -906,7 +907,7 @@ Thank you for choosing Favilla's NY Pizza!
                         </>
                       )}
                     </div>
-                  </div>
+                    </>
                   ) : (
                     // Guest user content
                     <div className="text-center py-8">
