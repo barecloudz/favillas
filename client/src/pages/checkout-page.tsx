@@ -1068,10 +1068,21 @@ const CheckoutPage = () => {
                       ) : availableVouchers.length === 0 ? (
                         <div className="p-4 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
                           <div className="text-gray-400 mb-2">🎁</div>
-                          <p className="text-gray-600 font-medium">No vouchers available</p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Redeem rewards to get vouchers for discounts!
-                          </p>
+                          {!user ? (
+                            <>
+                              <p className="text-gray-600 font-medium">Rewards unavailable for guests</p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Sign in or create an account to earn and redeem rewards!
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-gray-600 font-medium">No rewards available</p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Redeem rewards to get vouchers for discounts!
+                              </p>
+                            </>
+                          )}
                         </div>
                       ) : (
                         <>
