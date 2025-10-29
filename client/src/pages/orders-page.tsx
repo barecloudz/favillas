@@ -37,7 +37,7 @@ import {
 
 const OrdersPage = () => {
   const { user } = useAuth();
-  const { addToCart } = useCart();
+  const { addItem, toggleCart } = useCart();
   const [location, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -153,13 +153,13 @@ const OrdersPage = () => {
   const handleReorder = (order: any) => {
     // Add all items from the order to cart
     order.items?.forEach((item: any) => {
-      addToCart({
-        id: item.menuItemId,
+      addItem({
+        id: item.menuItemId || item.menu_item_id,
         name: item?.name || 'Unknown Item',
         price: item.price,
         quantity: item.quantity,
         options: item.options,
-        specialInstructions: item.specialInstructions
+        specialInstructions: item.specialInstructions || item.special_instructions
       });
     });
 
@@ -168,8 +168,8 @@ const OrdersPage = () => {
       description: `Added ${order.items?.length || 0} items from Order #${order.id} to your cart.`,
     });
 
-    // Navigate to checkout
-    navigate("/checkout");
+    // Open the cart to show the items
+    toggleCart();
   };
 
   const handleDownloadReceipt = (order: any) => {
