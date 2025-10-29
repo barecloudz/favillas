@@ -638,6 +638,17 @@ Thank you for choosing Favilla's NY Pizza!
 
       <main className="min-h-screen bg-gray-50 py-8 md:pt-[72px] pt-14">
         <div className="max-w-4xl mx-auto px-4">
+          {/* Back Button */}
+          <div className="mb-6">
+            <Button
+              variant="ghost"
+              onClick={() => navigate("/orders")}
+              className="flex items-center gap-2"
+            >
+              ← Back to My Orders
+            </Button>
+          </div>
+
           {/* Success Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
