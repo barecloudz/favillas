@@ -692,43 +692,46 @@ Thank you for choosing Favilla's NY Pizza!
         <title>Order Confirmation | Favilla's NY Pizza</title>
       </Helmet>
 
-      <main className="min-h-screen bg-gray-50 py-8 md:pt-[72px] pt-14">
-        <div className="max-w-4xl mx-auto px-4">
+      <main className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8 md:pt-[72px] pt-14">
+        <div className="max-w-5xl mx-auto px-4">
           {/* Back Button */}
-          <div className="mb-6">
+          <div className="mb-8">
             <Button
               variant="ghost"
               onClick={() => navigate("/orders")}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 hover:bg-gray-100 transition-colors"
             >
               ← Back to My Orders
             </Button>
           </div>
 
-          {/* Success Header */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+          {/* Success Header - More Premium */}
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-100 to-green-50 rounded-full mb-6 shadow-lg ring-4 ring-green-50 animate-in fade-in zoom-in duration-500">
+              <CheckCircle className="h-10 w-10 text-green-600" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Order Confirmed!</h1>
-            <p className="text-gray-600">Thank you for your order. We're preparing it now.</p>
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-3 tracking-tight">Order Confirmed!</h1>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">Thank you for your order. We're preparing your delicious pizza with care.</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Order Details */}
             <div className="lg:col-span-2 space-y-6">
               {/* Order Summary */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span>Order #{orderId}</span>
+              <Card className="shadow-lg border-gray-200 hover:shadow-xl transition-shadow duration-300">
+                <CardHeader className="border-b border-gray-100 bg-gradient-to-r from-white to-gray-50">
+                  <CardTitle className="flex items-center justify-between text-xl">
+                    <span className="flex items-center gap-2">
+                      <Receipt className="h-5 w-5 text-[#d73a31]" />
+                      Order #{orderId}
+                    </span>
                     {order && order.status && (
-                      <Badge className={getStatusColor(order.status)}>
+                      <Badge className={`${getStatusColor(order.status)} px-3 py-1 text-sm font-semibold`}>
                         {getDisplayStatus(order.status, order.shipday_status)}
                       </Badge>
                     )}
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-base">
                     {order && order.createdAt ? (
                       `Placed on ${new Date(order.createdAt).toLocaleDateString()} at ${new Date(order.createdAt).toLocaleTimeString()}`
                     ) : (
@@ -741,12 +744,15 @@ Thank you for choosing Favilla's NY Pizza!
                     <div className="space-y-4">
                       {/* Order Items */}
                       <div>
-                        <h3 className="font-semibold mb-3">Your Order</h3>
-                        <div className="space-y-3">
+                        <h3 className="font-semibold mb-4 text-lg flex items-center gap-2">
+                          <Pizza className="h-5 w-5 text-[#d73a31]" />
+                          Your Order
+                        </h3>
+                        <div className="space-y-4">
                           {order.items?.map((item: any, index: number) => (
-                          <div key={index} className="flex justify-between items-start">
+                          <div key={index} className="flex justify-between items-start py-3 px-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                             <div className="flex-1">
-                              <p className="font-medium">{item.name}</p>
+                              <p className="font-semibold text-gray-900">{item.name}</p>
                               {item.specialInstructions && (
                                 <p className="text-sm text-gray-500">Note: {item.specialInstructions}</p>
                               )}
@@ -798,9 +804,11 @@ Thank you for choosing Favilla's NY Pizza!
                                 </p>
                               )}
                             </div>
-                            <div className="text-right">
-                              <p className="font-medium">x{item.quantity}</p>
-                              <p className="text-gray-600">{formatCurrency(parseFloat(item.price || 0) * item.quantity)}</p>
+                            <div className="text-right flex flex-col items-end">
+                              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#d73a31] text-white font-bold text-sm mb-1">
+                                {item.quantity}
+                              </span>
+                              <p className="text-lg font-bold text-gray-900">{formatCurrency(parseFloat(item.price || 0) * item.quantity)}</p>
                             </div>
                           </div>
                         ))}
@@ -915,68 +923,71 @@ Thank you for choosing Favilla's NY Pizza!
 
               {/* Order Status Timeline - only for authenticated users */}
               {order && (
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle>Order Status</CardTitle>
+                <Card className="shadow-lg border-gray-200 hover:shadow-xl transition-shadow duration-300">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-gray-100 bg-gradient-to-r from-white to-gray-50">
+                    <CardTitle className="text-xl flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-[#d73a31]" />
+                      Order Status
+                    </CardTitle>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleRefreshOrder}
                       disabled={isRefreshing}
-                      className="h-8"
+                      className="h-9 hover:bg-gray-100 transition-colors"
                     >
                       <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                       {isRefreshing ? 'Refreshing...' : 'Refresh'}
                     </Button>
                   </CardHeader>
-                  <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
+                  <CardContent className="pt-6">
+                  <div className="space-y-6">
+                    <div className="flex items-center space-x-4 relative">
+                      <div className="w-10 h-10 bg-gradient-to-br from-green-100 to-green-50 rounded-full flex items-center justify-center shadow-md ring-2 ring-green-200">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium">Order Confirmed</p>
-                        <p className="text-sm text-gray-500">{order.createdAt ? new Date(order.createdAt).toLocaleTimeString() : 'Order confirmed'}</p>
+                        <p className="font-semibold text-gray-900">Order Confirmed</p>
+                        <p className="text-sm text-gray-600">{order.createdAt ? new Date(order.createdAt).toLocaleTimeString() : 'Order confirmed'}</p>
                       </div>
                     </div>
-                    
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        ['processing', 'ready', 'completed'].includes(order.status) 
-                          ? 'bg-blue-100' 
+
+                    <div className="flex items-center space-x-4 relative ml-5 border-l-2 border-gray-200 pl-5 -mt-2 pb-2">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ${
+                        ['processing', 'ready', 'completed'].includes(order.status)
+                          ? 'bg-gradient-to-br from-[#d73a31] to-[#c73128] ring-2 ring-red-200'
                           : 'bg-gray-100'
                       }`}>
-                        <Pizza className={`h-4 w-4 ${
-                          ['processing', 'ready', 'completed'].includes(order.status) 
-                            ? 'text-blue-600' 
+                        <Pizza className={`h-5 w-5 ${
+                          ['processing', 'ready', 'completed'].includes(order.status)
+                            ? 'text-white'
                             : 'text-gray-400'
                         }`} />
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium">Preparing Your Order</p>
-                        <p className="text-sm text-gray-500">
-                          {['processing', 'ready', 'completed'].includes(order.status) 
-                            ? 'Your pizza is being prepared' 
+                        <p className="font-semibold text-gray-900">Preparing Your Order</p>
+                        <p className="text-sm text-gray-600">
+                          {['processing', 'ready', 'completed'].includes(order.status)
+                            ? 'Your pizza is being prepared'
                             : 'Will start soon'}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    <div className="flex items-center space-x-4 relative ml-5 border-l-2 border-gray-200 pl-5 -mt-2 pb-2">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ${
                         ['ready', 'completed'].includes(order.status) || ['picked_up', 'out_for_delivery', 'delivered'].includes(order.shipday_status)
-                          ? 'bg-green-100'
+                          ? 'bg-gradient-to-br from-green-100 to-green-50 ring-2 ring-green-200'
                           : 'bg-gray-100'
                       }`}>
                         {order.orderType === 'pickup' ? (
-                          <Store className={`h-4 w-4 ${
+                          <Store className={`h-5 w-5 ${
                             ['ready', 'completed'].includes(order.status)
                               ? 'text-green-600'
                               : 'text-gray-400'
                           }`} />
                         ) : (
-                          <Truck className={`h-4 w-4 ${
+                          <Truck className={`h-5 w-5 ${
                             ['ready', 'completed'].includes(order.status) || ['picked_up', 'out_for_delivery', 'delivered'].includes(order.shipday_status)
                               ? 'text-green-600'
                               : 'text-gray-400'
@@ -984,14 +995,14 @@ Thank you for choosing Favilla's NY Pizza!
                         )}
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium">
+                        <p className="font-semibold text-gray-900">
                           {order.orderType === 'pickup' ? 'Ready for Pickup' :
                            order.shipday_status === 'delivered' ? 'Delivered' :
                            order.shipday_status === 'out_for_delivery' ? 'Out for Delivery' :
                            order.shipday_status === 'picked_up' ? 'Picked Up by Driver' :
                            'Out for Delivery'}
                         </p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-600">
                           {order.shipday_status === 'delivered' ? 'Your order has been delivered!' :
                            order.shipday_status === 'out_for_delivery' ? 'Driver is on the way to you' :
                            order.shipday_status === 'picked_up' ? 'Driver has picked up your order' :
@@ -1004,13 +1015,13 @@ Thank you for choosing Favilla's NY Pizza!
 
                     {/* Additional delivery status if we have ShipDay info */}
                     {order.orderType === 'delivery' && order.shipday_status === 'delivered' && (
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
+                      <div className="flex items-center space-x-4 relative ml-5 border-l-2 border-gray-200 pl-5 -mt-2">
+                        <div className="w-10 h-10 bg-gradient-to-br from-green-100 to-green-50 rounded-full flex items-center justify-center shadow-md ring-2 ring-green-200">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-medium text-green-600">Order Delivered!</p>
-                          <p className="text-sm text-gray-500">Your order has been successfully delivered</p>
+                          <p className="font-semibold text-green-600">Order Delivered!</p>
+                          <p className="text-sm text-gray-600">Your order has been successfully delivered</p>
                         </div>
                       </div>
                     )}
@@ -1024,16 +1035,16 @@ Thank you for choosing Favilla's NY Pizza!
             {user && order ? (
               <div className="space-y-6">
                 {/* Estimated Time */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Clock className="h-5 w-5 mr-2" />
+              <Card className="shadow-lg border-gray-200 hover:shadow-xl transition-shadow duration-300">
+                <CardHeader className="border-b border-gray-100 bg-gradient-to-r from-white to-gray-50">
+                  <CardTitle className="flex items-center text-lg">
+                    <Clock className="h-5 w-5 mr-2 text-[#d73a31]" />
                     {order.fulfillmentTime === "scheduled" ? "Scheduled" : "Estimated"} {order.orderType === 'pickup' ? 'Pickup' : 'Delivery'} Time
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-gray-900">{getEstimatedTime()}</p>
-                  <p className="text-sm text-gray-500 mt-1">
+                <CardContent className="pt-6">
+                  <p className="text-3xl font-bold text-[#d73a31] mb-2">{getEstimatedTime()}</p>
+                  <p className="text-sm text-gray-600 leading-relaxed">
                     {order.estimated_delivery_time
                       ? "Live estimate from delivery service"
                       : order.fulfillmentTime === "scheduled"
