@@ -610,11 +610,13 @@ const CheckoutPage = () => {
     if (appliedVoucher) {
       // Check minimum order amount
       if (subtotal >= (appliedVoucher.min_order_amount || 0)) {
-        if (appliedVoucher.discount_type === 'percentage') {
+        const rewardData = appliedVoucher.reward || appliedVoucher;
+
+        // Skip discount calculation for free delivery rewards - handled separately below
+        if (rewardData.discount_type === 'delivery_fee' || rewardData.reward_type === 'free_delivery') {
+          voucherDiscountAmount = 0; // Will be set to delivery fee amount below
+        } else if (appliedVoucher.discount_type === 'percentage') {
           voucherDiscountAmount = (subtotal * appliedVoucher.discount_amount) / 100;
-        } else if (appliedVoucher.discount_type === 'delivery_fee') {
-          // Free delivery - this would be handled separately in delivery fee calculation
-          voucherDiscountAmount = 0; // Delivery fee discount handled elsewhere
         } else {
           voucherDiscountAmount = appliedVoucher.discount_amount;
         }
@@ -633,7 +635,21 @@ const CheckoutPage = () => {
     }
 
     // Use dynamic delivery fee (calculated based on distance)
-    const currentDeliveryFee = orderType === "delivery" ? deliveryFee : 0;
+    // Check if voucher waives delivery fee
+    let currentDeliveryFee = orderType === "delivery" ? deliveryFee : 0;
+
+    // Apply free delivery from voucher if applicable
+    if (appliedVoucher && orderType === "delivery") {
+      // Check if this is a free delivery reward
+      const rewardData = appliedVoucher.reward || appliedVoucher;
+      if (rewardData.discount_type === 'delivery_fee' ||
+          rewardData.reward_type === 'free_delivery') {
+        // Save the original delivery fee amount as the voucher discount
+        voucherDiscountAmount = currentDeliveryFee;
+        // Waive the delivery fee
+        currentDeliveryFee = 0;
+      }
+    }
 
     // Calculate card processing fee if enabled
     let cardProcessingFee = 0;

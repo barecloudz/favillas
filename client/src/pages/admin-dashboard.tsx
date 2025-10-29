@@ -17433,6 +17433,214 @@ const RewardsManagement = () => {
             <p className="text-gray-600">Track points earned, redeemed, and voucher usage</p>
           </div>
 
+          {/* Insights Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Total Points Earned */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Total Points Earned</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-green-600">
+                  {pointsTransactions
+                    .filter((t: any) => t.type === 'earned')
+                    .reduce((sum: number, t: any) => sum + Math.abs(t.points), 0)
+                    .toLocaleString()}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {pointsTransactions.filter((t: any) => t.type === 'earned').length} transactions
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Total Points Redeemed */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Total Points Redeemed</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-red-600">
+                  {pointsTransactions
+                    .filter((t: any) => t.type === 'redeemed')
+                    .reduce((sum: number, t: any) => sum + Math.abs(t.points), 0)
+                    .toLocaleString()}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {pointsTransactions.filter((t: any) => t.type === 'redeemed').length} redemptions
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Total Vouchers */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Total Vouchers</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-blue-600">
+                  {voucherUsage.length}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {voucherUsage.filter((v: any) => v.status === 'used').length} used • {' '}
+                  {voucherUsage.filter((v: any) => v.status === 'active').length} active
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Redemption Rate */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Voucher Usage Rate</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-purple-600">
+                  {voucherUsage.length > 0
+                    ? Math.round((voucherUsage.filter((v: any) => v.status === 'used').length / voucherUsage.length) * 100)
+                    : 0}%
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {voucherUsage.filter((v: any) => v.status === 'used').length} of {voucherUsage.length} vouchers used
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Additional Insights */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Most Popular Rewards */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Most Popular Rewards</CardTitle>
+                <CardDescription>Top 5 most redeemed rewards</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const rewardCounts = voucherUsage.reduce((acc: any, v: any) => {
+                    const name = v.rewardName || 'Unknown';
+                    acc[name] = (acc[name] || 0) + 1;
+                    return acc;
+                  }, {});
+                  const topRewards = Object.entries(rewardCounts)
+                    .sort(([, a]: any, [, b]: any) => b - a)
+                    .slice(0, 5);
+
+                  return topRewards.length > 0 ? (
+                    <div className="space-y-2">
+                      {topRewards.map(([name, count]: any, idx: number) => (
+                        <div key={name} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-gray-400">#{idx + 1}</span>
+                            <span className="text-sm font-medium">{name}</span>
+                          </div>
+                          <span className="text-sm font-bold text-blue-600">{count} redeemed</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 text-center py-4">No redemptions yet</p>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+
+            {/* Top Users by Points Earned */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Top Users by Points Earned</CardTitle>
+                <CardDescription>Users who earned the most points</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const userPoints = pointsTransactions
+                    .filter((t: any) => t.type === 'earned')
+                    .reduce((acc: any, t: any) => {
+                      const key = t.userEmail || t.userName || 'Unknown';
+                      if (!acc[key]) {
+                        acc[key] = { name: t.userName, email: t.userEmail, points: 0 };
+                      }
+                      acc[key].points += Math.abs(t.points);
+                      return acc;
+                    }, {});
+                  const topUsers = Object.values(userPoints)
+                    .sort((a: any, b: any) => b.points - a.points)
+                    .slice(0, 5);
+
+                  return topUsers.length > 0 ? (
+                    <div className="space-y-2">
+                      {topUsers.map((user: any, idx: number) => (
+                        <div key={user.email} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-gray-400">#{idx + 1}</span>
+                            <div>
+                              <div className="text-sm font-medium">{user.name}</div>
+                              <div className="text-xs text-gray-500">{user.email}</div>
+                            </div>
+                          </div>
+                          <span className="text-sm font-bold text-green-600">{user.points} pts</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 text-center py-4">No points earned yet</p>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quick Stats */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Quick Statistics</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-3 bg-green-50 rounded-lg">
+                  <div className="text-2xl font-bold text-green-700">
+                    ${(pointsTransactions
+                      .filter((t: any) => t.type === 'earned' && t.orderAmount)
+                      .reduce((sum: number, t: any) => sum + parseFloat(t.orderAmount || 0), 0)
+                    ).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1">Total Sales (Points Orders)</div>
+                </div>
+                <div className="text-center p-3 bg-blue-50 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-700">
+                    {pointsTransactions.filter((t: any) => t.type === 'earned').length > 0
+                      ? Math.round(
+                          pointsTransactions
+                            .filter((t: any) => t.type === 'earned')
+                            .reduce((sum: number, t: any) => sum + Math.abs(t.points), 0) /
+                          pointsTransactions.filter((t: any) => t.type === 'earned').length
+                        )
+                      : 0}
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1">Avg Points Per Transaction</div>
+                </div>
+                <div className="text-center p-3 bg-purple-50 rounded-lg">
+                  <div className="text-2xl font-bold text-purple-700">
+                    {voucherUsage.length > 0
+                      ? Math.round(
+                          voucherUsage.reduce((sum: number, v: any) => sum + (v.pointsUsed || 0), 0) /
+                          voucherUsage.length
+                        )
+                      : 0}
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1">Avg Points Per Voucher</div>
+                </div>
+                <div className="text-center p-3 bg-orange-50 rounded-lg">
+                  <div className="text-2xl font-bold text-orange-700">
+                    {(() => {
+                      const uniqueUsers = new Set(pointsTransactions.map((t: any) => t.userEmail || t.userName));
+                      return uniqueUsers.size;
+                    })()}
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1">Active Users</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Points Transactions */}
           <Card>
             <CardHeader>
@@ -17676,6 +17884,7 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
         pointsRequired: reward.points_required?.toString() || "100",
         rewardType: reward.reward_type || "discount",
         discount: reward.discount?.toString() || "",
+        discountType: reward.discount_type || "percentage",
         freeItem: reward.free_item || "",
         freeItemMenuId: menuIdValue,
         freeItemCategory: reward.free_item_category || "",
@@ -17690,6 +17899,7 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
         pointsRequired: "100",
         rewardType: "discount",
         discount: "",
+        discountType: "percentage",
         freeItem: "",
         freeItemMenuId: "",
         freeItemCategory: "",
@@ -17779,18 +17989,46 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
           </div>
 
           {formData.rewardType === 'discount' && (
-            <div className="space-y-2">
-              <Label htmlFor="discount">Discount Percentage</Label>
-            <Input
-              id="discount"
-              type="number"
-              value={formData.discount}
-              onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
-              placeholder="e.g., 10"
-              min="0"
-              max="100"
-            />
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="discountType">Discount Type</Label>
+                <select
+                  id="discountType"
+                  value={formData.discountType}
+                  onChange={(e) => setFormData({ ...formData, discountType: e.target.value })}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="percentage">Percentage (%)</option>
+                  <option value="fixed">Fixed Amount ($)</option>
+                </select>
+                <p className="text-xs text-gray-500">
+                  {formData.discountType === 'percentage'
+                    ? 'Percentage off the order total (e.g., 10% off)'
+                    : 'Fixed dollar amount off the order total (e.g., $5.00 off)'}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="discount">
+                  {formData.discountType === 'percentage' ? 'Discount Percentage' : 'Discount Amount'}
+                </Label>
+                <Input
+                  id="discount"
+                  type="number"
+                  step={formData.discountType === 'percentage' ? '1' : '0.01'}
+                  value={formData.discount}
+                  onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
+                  placeholder={formData.discountType === 'percentage' ? 'e.g., 10' : 'e.g., 5.00'}
+                  min="0"
+                  max={formData.discountType === 'percentage' ? '100' : undefined}
+                />
+                <p className="text-xs text-gray-500">
+                  {formData.discountType === 'percentage'
+                    ? 'Enter a number between 0-100'
+                    : 'Enter the dollar amount (e.g., 5.00 for $5 off)'}
+                </p>
+              </div>
+            </>
           )}
 
           {formData.rewardType === 'free_item' && (

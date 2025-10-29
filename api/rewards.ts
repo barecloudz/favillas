@@ -69,7 +69,7 @@ export const handler: Handler = async (event, context) => {
       };
 
     } else if (event.httpMethod === 'POST') {
-      const { name, description, pointsRequired, rewardType, discount, freeItem, freeItemMenuId, freeItemCategory, freeItemAllFromCategory, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
+      const { name, description, pointsRequired, rewardType, discount, discountType, freeItem, freeItemMenuId, freeItemCategory, freeItemAllFromCategory, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
 
       if (!name || !description) {
         return {
@@ -83,7 +83,7 @@ export const handler: Handler = async (event, context) => {
 
       const result = await sql`
         INSERT INTO rewards (
-          name, description, points_required, reward_type, discount, free_item,
+          name, description, points_required, reward_type, discount, discount_type, free_item,
           free_item_menu_id, free_item_category, free_item_all_from_category,
           min_order_amount, expires_at, is_active, created_at
         )
@@ -93,6 +93,7 @@ export const handler: Handler = async (event, context) => {
           ${pointsRequired ? parseInt(pointsRequired) : 100},
           ${rewardType || 'discount'},
           ${discount ? parseFloat(discount) : null},
+          ${discountType || 'percentage'},
           ${freeItem || null},
           ${freeItemMenuId ? parseInt(freeItemMenuId) : null},
           ${freeItemCategory || null},
@@ -124,7 +125,7 @@ export const handler: Handler = async (event, context) => {
         };
       }
 
-      const { name, description, pointsRequired, rewardType, discount, freeItem, freeItemMenuId, freeItemCategory, freeItemAllFromCategory, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
+      const { name, description, pointsRequired, rewardType, discount, discountType, freeItem, freeItemMenuId, freeItemCategory, freeItemAllFromCategory, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
 
       // First get the existing reward to preserve values
       const existing = await sql`
@@ -145,6 +146,7 @@ export const handler: Handler = async (event, context) => {
       const updatedPointsRequired = pointsRequired !== undefined ? parseInt(pointsRequired) : existing[0].points_required;
       const updatedRewardType = rewardType !== undefined ? rewardType : existing[0].reward_type;
       const updatedDiscount = discount !== undefined ? (discount ? parseFloat(discount) : null) : existing[0].discount;
+      const updatedDiscountType = discountType !== undefined ? discountType : (existing[0].discount_type || 'percentage');
       const updatedFreeItem = freeItem !== undefined ? freeItem : existing[0].free_item;
       const updatedFreeItemMenuId = freeItemMenuId !== undefined ? (freeItemMenuId ? parseInt(freeItemMenuId) : null) : existing[0].free_item_menu_id;
       const updatedFreeItemCategory = freeItemCategory !== undefined ? freeItemCategory : existing[0].free_item_category;
@@ -159,6 +161,7 @@ export const handler: Handler = async (event, context) => {
             points_required = ${updatedPointsRequired},
             reward_type = ${updatedRewardType},
             discount = ${updatedDiscount},
+            discount_type = ${updatedDiscountType},
             free_item = ${updatedFreeItem},
             free_item_menu_id = ${updatedFreeItemMenuId},
             free_item_category = ${updatedFreeItemCategory},
