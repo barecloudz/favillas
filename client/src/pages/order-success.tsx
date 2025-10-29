@@ -403,15 +403,18 @@ const OrderSuccessPage = () => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string, shipdayStatus?: string) => {
+    if (status === 'picked_up' || shipdayStatus === 'delivered' || shipdayStatus === 'picked_up') {
+      return "bg-green-500";
+    }
     switch (status) {
-      case "pending": return "bg-yellow-100 text-yellow-800";
-      case "cooking": return "bg-orange-100 text-orange-800";
-      case "processing": return "bg-blue-100 text-blue-800";
-      case "ready": return "bg-green-100 text-green-800";
-      case "completed": return "bg-green-100 text-green-800";
-      case "picked_up": return "bg-purple-100 text-purple-800";
-      default: return "bg-gray-100 text-gray-800";
+      case "pending": return "bg-yellow-500";
+      case "cooking": return "bg-orange-500";
+      case "processing": return "bg-blue-500";
+      case "ready": return "bg-green-500";
+      case "completed": return "bg-green-500";
+      case "cancelled": return "bg-red-500";
+      default: return "bg-gray-500";
     }
   };
 
@@ -708,7 +711,7 @@ Thank you for choosing Favilla's NY Pizza!
 
           {/* Status Hero Card - Matches Order Details Design */}
           <Card className="mb-6 overflow-hidden border-none shadow-2xl">
-            <div className={`${order && order.status ? getStatusColor(order.status, order.shipday_status) : 'bg-green-500'} p-8 text-white`}>
+            <div className="bg-green-500 p-8 text-white">
               <div className="flex items-start justify-between flex-col md:flex-row gap-4">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-2">
