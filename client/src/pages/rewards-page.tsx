@@ -856,7 +856,7 @@ const RewardsPage = () => {
               <p className="text-center text-blue-100 mt-2">Your guide to maximizing rewards!</p>
             </CardHeader>
             <CardContent className="p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
                 <div className="group flex items-start space-x-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 hover:border-green-300 transform hover:scale-105 transition-all duration-300">
                   <div className="p-3 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full shadow-lg group-hover:animate-bounce">
                     <ShoppingCart className="h-6 w-6 text-white" />
@@ -879,6 +879,19 @@ const RewardsPage = () => {
                     <p className="text-gray-600 mb-2">Points are awarded when your order is <strong className="text-blue-600">completed</strong></p>
                     <div className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full inline-block">
                       💫 Instant gratification
+                    </div>
+                  </div>
+                </div>
+
+                <div className="group flex items-start space-x-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border-2 border-purple-200 hover:border-purple-300 transform hover:scale-105 transition-all duration-300">
+                  <div className="p-3 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full shadow-lg group-hover:animate-bounce">
+                    <Gift className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-lg mb-2">🎁 Redeem Rewards</h4>
+                    <p className="text-gray-600 mb-2">Use points for <strong className="text-purple-600">free food & discounts</strong> on your orders</p>
+                    <div className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full inline-block">
+                      🎉 Delicious savings!
                     </div>
                   </div>
                 </div>
