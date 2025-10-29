@@ -17111,10 +17111,17 @@ const RewardsManagement = () => {
       }
       return response.json();
     },
-    onSuccess: async () => {
-      // Force immediate refetch of all rewards queries
+    onSuccess: async (newReward) => {
+      // Immediately add the new reward to the cache
+      queryClient.setQueryData([getRewardsEndpoint()], (oldData: any) => {
+        if (!oldData) return [newReward];
+        return [...oldData, newReward];
+      });
+
+      // Force cache invalidation and refetch for consistency
+      await queryClient.invalidateQueries({ queryKey: [getRewardsEndpoint()] });
       await queryClient.refetchQueries({ queryKey: [getRewardsEndpoint()] });
-      await refetch();
+
       setIsCreateDialogOpen(false);
       toast({
         title: "Reward Created",
@@ -17140,11 +17147,19 @@ const RewardsManagement = () => {
       }
       return response.json();
     },
-    onSuccess: async () => {
-      // Force immediate cache invalidation and refetch
+    onSuccess: async (updatedReward) => {
+      // Immediately update the cache with the new reward data
+      queryClient.setQueryData([getRewardsEndpoint()], (oldData: any) => {
+        if (!oldData) return [updatedReward];
+        return oldData.map((reward: any) =>
+          reward.id === updatedReward.id ? updatedReward : reward
+        );
+      });
+
+      // Force cache invalidation and refetch for consistency
       await queryClient.invalidateQueries({ queryKey: [getRewardsEndpoint()] });
       await queryClient.refetchQueries({ queryKey: [getRewardsEndpoint()] });
-      await refetch();
+
       setEditingReward(null);
       toast({
         title: "Reward Updated",
@@ -17168,12 +17183,19 @@ const RewardsManagement = () => {
       if (!response.ok) {
         throw new Error("Failed to delete reward");
       }
-      return response.json();
+      return { id };
     },
-    onSuccess: async () => {
-      // Force immediate refetch of all rewards queries
+    onSuccess: async ({ id }) => {
+      // Immediately remove the deleted reward from the cache
+      queryClient.setQueryData([getRewardsEndpoint()], (oldData: any) => {
+        if (!oldData) return [];
+        return oldData.filter((reward: any) => reward.id !== id);
+      });
+
+      // Force cache invalidation and refetch for consistency
+      await queryClient.invalidateQueries({ queryKey: [getRewardsEndpoint()] });
       await queryClient.refetchQueries({ queryKey: [getRewardsEndpoint()] });
-      await refetch();
+
       setIsDeleteDialogOpen(false);
       setRewardToDelete(null);
       toast({
