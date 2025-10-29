@@ -1203,8 +1203,9 @@ const CheckoutPage = () => {
                       </div>
                       
                       <div>
-                        <Label className="mb-2 block">Order Type</Label>
-                        <RadioGroup value={orderType} onValueChange={setOrderType} className="flex space-x-4">
+                        <Label className="mb-3 block font-semibold text-base">Order Type</Label>
+                        {/* Desktop: Standard radio buttons */}
+                        <RadioGroup value={orderType} onValueChange={setOrderType} className="md:flex space-x-4 hidden">
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="pickup" id="pickup" />
                             <Label htmlFor="pickup">Pickup</Label>
@@ -1214,19 +1215,47 @@ const CheckoutPage = () => {
                             <Label htmlFor="delivery">Delivery</Label>
                           </div>
                         </RadioGroup>
+                        {/* Mobile: App-style buttons */}
+                        <div className="md:hidden grid grid-cols-2 gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setOrderType("pickup")}
+                            className={`p-4 rounded-xl border-2 font-semibold text-center transition-all ${
+                              orderType === "pickup"
+                                ? "bg-[#d73a31] border-[#d73a31] text-white shadow-lg scale-105"
+                                : "bg-white border-gray-300 text-gray-700 hover:border-gray-400"
+                            }`}
+                          >
+                            <div className="text-2xl mb-1">🏪</div>
+                            Pickup
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setOrderType("delivery")}
+                            className={`p-4 rounded-xl border-2 font-semibold text-center transition-all ${
+                              orderType === "delivery"
+                                ? "bg-[#d73a31] border-[#d73a31] text-white shadow-lg scale-105"
+                                : "bg-white border-gray-300 text-gray-700 hover:border-gray-400"
+                            }`}
+                          >
+                            <div className="text-2xl mb-1">🚗</div>
+                            Delivery
+                          </button>
+                        </div>
                       </div>
 
                       {/* Tip Selection */}
                       <div>
-                        <Label className="mb-2 block">Add a Tip</Label>
+                        <Label className="mb-3 block font-semibold text-base">Add a Tip</Label>
                         <p className="text-sm text-gray-500 mb-3">
-                          {orderType === "pickup" 
+                          {orderType === "pickup"
                             ? "Tips will be split among all employees currently clocked in"
                             : "25% of delivery tips will be shared with clocked-in staff"
                           }
                         </p>
                         <div className="space-y-3">
-                          <RadioGroup value={tipType} onValueChange={setTipType} className="flex space-x-4">
+                          {/* Desktop: Standard radio buttons */}
+                          <RadioGroup value={tipType} onValueChange={setTipType} className="md:flex space-x-4 hidden">
                             <div className="flex items-center space-x-2">
                               <RadioGroupItem value="percentage" id="percentage" />
                               <Label htmlFor="percentage">Percentage</Label>
@@ -1236,33 +1265,89 @@ const CheckoutPage = () => {
                               <Label htmlFor="amount">Custom Amount</Label>
                             </div>
                           </RadioGroup>
-                          
+                          {/* Mobile: App-style buttons */}
+                          <div className="md:hidden grid grid-cols-2 gap-2 mb-3">
+                            <button
+                              type="button"
+                              onClick={() => setTipType("percentage")}
+                              className={`py-2 px-4 rounded-lg border-2 font-medium text-sm transition-all ${
+                                tipType === "percentage"
+                                  ? "bg-blue-500 border-blue-500 text-white"
+                                  : "bg-white border-gray-300 text-gray-700"
+                              }`}
+                            >
+                              Percentage
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setTipType("amount")}
+                              className={`py-2 px-4 rounded-lg border-2 font-medium text-sm transition-all ${
+                                tipType === "amount"
+                                  ? "bg-blue-500 border-blue-500 text-white"
+                                  : "bg-white border-gray-300 text-gray-700"
+                              }`}
+                            >
+                              Custom Amount
+                            </button>
+                          </div>
+
                           {tipType === "percentage" && (
-                            <div className="flex space-x-2">
-                              {[15, 18, 20, 25].map((percent) => (
+                            <>
+                              {/* Desktop percentage buttons */}
+                              <div className="md:flex space-x-2 hidden">
+                                {[15, 18, 20, 25].map((percent) => (
+                                  <Button
+                                    key={percent}
+                                    type="button"
+                                    variant={tip === percent ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => setTip(percent)}
+                                    className="flex-1"
+                                  >
+                                    {percent}%
+                                  </Button>
+                                ))}
                                 <Button
-                                  key={percent}
                                   type="button"
-                                  variant={tip === percent ? "default" : "outline"}
+                                  variant={tip === 0 ? "default" : "outline"}
                                   size="sm"
-                                  onClick={() => setTip(percent)}
+                                  onClick={() => setTip(0)}
                                   className="flex-1"
                                 >
-                                  {percent}%
+                                  No Tip
                                 </Button>
-                              ))}
-                              <Button
-                                type="button"
-                                variant={tip === 0 ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => setTip(0)}
-                                className="flex-1"
-                              >
-                                No Tip
-                              </Button>
-                            </div>
+                              </div>
+                              {/* Mobile percentage buttons */}
+                              <div className="md:hidden grid grid-cols-3 gap-2">
+                                {[15, 18, 20, 25].map((percent) => (
+                                  <button
+                                    key={percent}
+                                    type="button"
+                                    onClick={() => setTip(percent)}
+                                    className={`py-4 rounded-xl border-2 font-bold text-lg transition-all ${
+                                      tip === percent
+                                        ? "bg-green-500 border-green-500 text-white shadow-lg scale-105"
+                                        : "bg-white border-gray-300 text-gray-700"
+                                    }`}
+                                  >
+                                    {percent}%
+                                  </button>
+                                ))}
+                                <button
+                                  type="button"
+                                  onClick={() => setTip(0)}
+                                  className={`py-4 rounded-xl border-2 font-bold text-base transition-all ${
+                                    tip === 0
+                                      ? "bg-gray-500 border-gray-500 text-white shadow-lg scale-105"
+                                      : "bg-white border-gray-300 text-gray-700"
+                                  }`}
+                                >
+                                  No Tip
+                                </button>
+                              </div>
+                            </>
                           )}
-                          
+
                           {tipType === "amount" && (
                             <div className="flex space-x-2">
                               <div className="flex-1">
@@ -1273,6 +1358,7 @@ const CheckoutPage = () => {
                                   onChange={(e) => setCustomTip(e.target.value)}
                                   min="0"
                                   step="0.01"
+                                  className="md:h-auto h-12 text-lg"
                                 />
                               </div>
                               <Button
@@ -1283,6 +1369,7 @@ const CheckoutPage = () => {
                                   setTipType("percentage");
                                   setTip(0);
                                 }}
+                                className="md:h-auto h-12"
                               >
                                 No Tip
                               </Button>
@@ -1293,8 +1380,9 @@ const CheckoutPage = () => {
                       
                       {/* Fulfillment Time Selection */}
                       <div>
-                        <Label className="mb-2 block">When would you like your order?</Label>
-                        <RadioGroup value={fulfillmentTime} onValueChange={setFulfillmentTime} className="flex space-x-4">
+                        <Label className="mb-3 block font-semibold text-base">When would you like your order?</Label>
+                        {/* Desktop: Standard radio buttons */}
+                        <RadioGroup value={fulfillmentTime} onValueChange={setFulfillmentTime} className="md:flex space-x-4 hidden">
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="asap" id="asap" />
                             <Label htmlFor="asap">ASAP</Label>
@@ -1304,6 +1392,33 @@ const CheckoutPage = () => {
                             <Label htmlFor="scheduled">Schedule for Later</Label>
                           </div>
                         </RadioGroup>
+                        {/* Mobile: App-style buttons */}
+                        <div className="md:hidden grid grid-cols-2 gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setFulfillmentTime("asap")}
+                            className={`p-4 rounded-xl border-2 font-semibold text-center transition-all ${
+                              fulfillmentTime === "asap"
+                                ? "bg-orange-500 border-orange-500 text-white shadow-lg scale-105"
+                                : "bg-white border-gray-300 text-gray-700 hover:border-gray-400"
+                            }`}
+                          >
+                            <div className="text-2xl mb-1">⚡</div>
+                            ASAP
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFulfillmentTime("scheduled")}
+                            className={`p-4 rounded-xl border-2 font-semibold text-center transition-all ${
+                              fulfillmentTime === "scheduled"
+                                ? "bg-purple-500 border-purple-500 text-white shadow-lg scale-105"
+                                : "bg-white border-gray-300 text-gray-700 hover:border-gray-400"
+                            }`}
+                          >
+                            <div className="text-2xl mb-1">📅</div>
+                            Schedule
+                          </button>
+                        </div>
                         
                         {fulfillmentTime === "scheduled" && (
                           <div className="mt-4 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl shadow-sm">
