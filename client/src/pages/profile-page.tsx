@@ -20,13 +20,26 @@ import {
   EyeOff,
   Save,
   LogOut,
-  Home
+  Home,
+  AlertTriangle,
+  Trash2
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const ProfilePage: React.FC = () => {
   const { user, logoutMutation, refreshUserProfile } = useAuth();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   
   // Form states
   const [firstName, setFirstName] = useState(user?.firstName || "");
@@ -70,7 +83,11 @@ const ProfilePage: React.FC = () => {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
+  // Delete account states
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { first_name?: string; last_name?: string; email?: string; phone: string; address: string; city: string; state: string; zip_code: string }) => {
@@ -133,7 +150,47 @@ const ProfilePage: React.FC = () => {
       });
     },
   });
-  
+
+  // Delete account mutation
+  const deleteAccountMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("DELETE", "/api/user/delete-account", {});
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Account Deleted",
+        description: "Your account and personal data have been permanently deleted.",
+      });
+      // Log the user out and redirect to home
+      setTimeout(() => {
+        logoutMutation.mutate();
+        navigate("/");
+      }, 2000);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete account",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteAccount = () => {
+    if (deleteConfirmText === "DELETE") {
+      deleteAccountMutation.mutate();
+      setShowDeleteDialog(false);
+      setDeleteConfirmText("");
+    } else {
+      toast({
+        title: "Confirmation Required",
+        description: "Please type DELETE to confirm account deletion",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -597,11 +654,114 @@ const ProfilePage: React.FC = () => {
                     </CardContent>
                   </Card>
                 )}
+
+                {/* Danger Zone */}
+                <Card className="bg-white shadow-lg border-2 border-red-300">
+                  <CardHeader className="bg-gradient-to-r from-red-500 to-red-600 text-white rounded-t-lg">
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                      <AlertTriangle className="h-6 w-6" />
+                      Danger Zone
+                    </CardTitle>
+                    <CardDescription className="text-red-100">
+                      Irreversible actions
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6">
+                      <div className="flex items-start gap-4 mb-4">
+                        <div className="flex-shrink-0">
+                          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                            <Trash2 className="h-6 w-6 text-red-600" />
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-lg font-bold text-gray-900 mb-2">Delete My Account</h3>
+                          <p className="text-gray-700 mb-2">
+                            Permanently delete your account and all personal data. This action cannot be undone.
+                          </p>
+                          <ul className="text-sm text-gray-600 space-y-1 mb-4">
+                            <li>• All personal information will be deleted</li>
+                            <li>• Your rewards and points will be lost</li>
+                            <li>• Order history will be anonymized (kept for business records)</li>
+                            <li>• You cannot recover your account after deletion</li>
+                          </ul>
+                          <Button
+                            variant="destructive"
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            onClick={() => setShowDeleteDialog(true)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete My Account
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Delete Account Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Delete Account - Are You Absolutely Sure?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-4">
+              <p className="font-semibold text-gray-900">
+                This action cannot be undone. This will permanently delete your account and remove your personal data from our servers.
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-gray-700 mb-3">
+                  <strong>What will be deleted:</strong>
+                </p>
+                <ul className="text-sm text-gray-600 space-y-1 mb-3">
+                  <li>• Your name, email, phone, and address</li>
+                  <li>• Your rewards account and points balance</li>
+                  <li>• Your saved preferences</li>
+                  <li>• Your account login credentials</li>
+                </ul>
+                <p className="text-sm text-gray-700">
+                  <strong>What will be kept (anonymized):</strong>
+                </p>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  <li>• Order history (for business/tax records)</li>
+                  <li>• Transaction records (required by law)</li>
+                </ul>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="delete-confirm" className="text-gray-900 font-semibold">
+                  Type <span className="text-red-600 font-mono">DELETE</span> to confirm:
+                </Label>
+                <Input
+                  id="delete-confirm"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="Type DELETE here"
+                  className="font-mono"
+                />
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteConfirmText("")}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAccount}
+              disabled={deleteConfirmText !== "DELETE" || deleteAccountMutation.isPending}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleteAccountMutation.isPending ? "Deleting..." : "Delete Account Permanently"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

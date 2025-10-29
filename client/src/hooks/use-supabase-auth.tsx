@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           zipCode: userData.zip_code || '',
           role: userData.role || 'customer',
           isAdmin: userData.role === 'admin' || userData.role === 'super_admin' || userData.is_admin === true,
-          isGoogleUser: !!userData.supabase_user_id
+          isGoogleUser: userData.isGoogleUser || false
         };
         return mappedUser;
       }

@@ -73,6 +73,7 @@ export const handler: Handler = async (event, context) => {
     lastName: authResult.user.lastName,
     fullName: authResult.user.fullName,
     marketingOptIn: authResult.user.marketingOptIn,
+    isGoogleUser: authResult.user.isGoogleUser || false,
   };
 
   console.log('🔍 User Profile API: Created authPayload:', JSON.stringify(authPayload, null, 2));
@@ -226,10 +227,10 @@ export const handler: Handler = async (event, context) => {
       // CRITICAL FIX: Add correct authentication type information for frontend
       const userProfile = {
         ...user[0],
-        // Fix authentication type detection - should be based on how they logged in, not just having a supabase_user_id
-        isGoogleUser: authPayload.isSupabase && !authPayload.hasLegacyUser,
+        // Fix authentication type detection - use provider info from auth token
+        isGoogleUser: authPayload.isGoogleUser,
         authenticationSource: authPayload.hasLegacyUser ? 'legacy' : 'supabase',
-        canChangePassword: authPayload.hasLegacyUser // Only legacy users can change password
+        canChangePassword: !authPayload.isGoogleUser // Google users cannot change password, email/password users can
       };
 
       console.log('✅ User Profile API: Returning profile with auth info:', {

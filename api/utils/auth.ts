@@ -14,6 +14,7 @@ export interface AuthenticatedUser {
   lastName?: string;
   fullName?: string;
   marketingOptIn?: boolean;
+  isGoogleUser?: boolean;
 }
 
 export interface AuthResult {
@@ -133,6 +134,9 @@ async function validateSupabaseToken(token: string): Promise<AuthResult> {
       lastName = nameParts.slice(1).join(' ');
     }
 
+    // Check if user signed in with Google OAuth
+    const isGoogleUser = user.app_metadata?.provider === 'google';
+
     return {
       success: true,
       user: {
@@ -145,7 +149,8 @@ async function validateSupabaseToken(token: string): Promise<AuthResult> {
         firstName: firstName || undefined,
         lastName: lastName || undefined,
         fullName: fullName || undefined,
-        marketingOptIn: user.user_metadata?.marketing_opt_in !== false // Default to true if not explicitly false
+        marketingOptIn: user.user_metadata?.marketing_opt_in !== false, // Default to true if not explicitly false
+        isGoogleUser: isGoogleUser
       }
     };
   } catch (error) {
