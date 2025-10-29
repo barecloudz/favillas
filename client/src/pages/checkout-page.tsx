@@ -1063,19 +1063,19 @@ const CheckoutPage = () => {
                     </div>
                   </div>
 
-                  {/* Available Vouchers Section */}
+                  {/* Available Rewards Section */}
                   <div className="mt-4 space-y-3">
                     <div className="space-y-2">
                       <Label className="text-sm font-medium flex items-center gap-2">
                         <Gift className="h-4 w-4 text-blue-600" />
-                        Available Vouchers
+                        Available Rewards
                       </Label>
-                      <p className="text-xs text-gray-500">Select one of your redeemed vouchers to apply (no codes needed!)</p>
+                      <p className="text-xs text-gray-500">Select one of your redeemed rewards to apply (no codes needed!)</p>
 
                       {vouchersLoading ? (
                         <div className="flex items-center gap-2 p-3 text-gray-500 bg-gray-50 rounded-lg">
                           <Loader2 className="h-4 w-4 animate-spin" />
-                          <span>Loading your vouchers...</span>
+                          <span>Loading your rewards...</span>
                         </div>
                       ) : availableVouchers.length === 0 ? (
                         <div className="p-4 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
@@ -1091,7 +1091,7 @@ const CheckoutPage = () => {
                             <>
                               <p className="text-gray-600 font-medium">No rewards available</p>
                               <p className="text-xs text-gray-500 mt-1">
-                                Redeem rewards to get vouchers for discounts!
+                                Redeem rewards to earn discounts!
                               </p>
                             </>
                           )}
@@ -1101,10 +1101,10 @@ const CheckoutPage = () => {
                           {!appliedVoucher ? (
                             <Select value={selectedVoucherId} onValueChange={handleVoucherSelect}>
                               <SelectTrigger className="w-full border-blue-200 focus:border-blue-400 focus:ring-blue-100">
-                                <SelectValue placeholder="Choose a voucher to apply (optional)" />
+                                <SelectValue placeholder="Choose a reward to apply (optional)" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="none">No voucher</SelectItem>
+                                <SelectItem value="none">No reward</SelectItem>
                                 {availableVouchers.map((voucher: any) => (
                                   <SelectItem key={voucher.id} value={voucher.id.toString()}>
                                     <div className="flex flex-col py-1">
@@ -1176,7 +1176,7 @@ const CheckoutPage = () => {
                       <div className="flex justify-between text-green-600 font-medium">
                         <span className="flex items-center gap-1">
                           <Gift className="h-4 w-4" />
-                          Voucher Discount
+                          Reward Discount
                         </span>
                         <span>-${formatPrice(totals.voucherDiscount)}</span>
                       </div>
