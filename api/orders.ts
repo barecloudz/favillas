@@ -446,12 +446,28 @@ export const handler: Handler = async (event, context) => {
       // Request for all orders (existing logic)
       console.log('🔍 Orders API: Getting orders for user:', authPayload.userId || authPayload.supabaseUserId, 'role:', authPayload.role);
 
+      // Check for date range query parameters (for daily summary)
+      const queryParams = event.queryStringParameters || {};
+      const startDate = queryParams.startDate;
+      const endDate = queryParams.endDate;
+
       let allOrders;
-      
+
       if (isStaff(authPayload)) {
         // Staff can see all orders
         console.log('📋 Orders API: Getting all orders (staff access)');
-        allOrders = await sql`SELECT * FROM orders ORDER BY created_at DESC`;
+
+        // Apply date range filter if provided
+        if (startDate && endDate) {
+          console.log('📅 Orders API: Filtering by date range:', startDate, 'to', endDate);
+          allOrders = await sql`
+            SELECT * FROM orders
+            WHERE created_at >= ${startDate} AND created_at <= ${endDate}
+            ORDER BY created_at DESC
+          `;
+        } else {
+          allOrders = await sql`SELECT * FROM orders ORDER BY created_at DESC`;
+        }
       } else {
         // CRITICAL FIX: Customers can only see their own orders
         // Use comprehensive query to find orders by any available identifier
