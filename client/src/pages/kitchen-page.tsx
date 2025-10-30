@@ -509,6 +509,35 @@ const KitchenPage = () => {
     }
   };
 
+  // Helper function to get printer server URL (same logic as thermal-printer.ts)
+  const getPrinterServerUrl = async (): Promise<string> => {
+    // Check if custom printer server URL is configured in localStorage first
+    const customUrl = localStorage.getItem('printerServerUrl');
+    if (customUrl) {
+      return customUrl;
+    }
+
+    // Try to fetch from system settings
+    try {
+      const response = await fetch('/api/admin/system-settings', {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const settingsData = await response.json();
+        const printerSettings = settingsData.printer || [];
+        const serverUrlSetting = printerSettings.find((s: any) => s.setting_key === 'PRINTER_SERVER_URL');
+        if (serverUrlSetting && serverUrlSetting.setting_value) {
+          return serverUrlSetting.setting_value;
+        }
+      }
+    } catch (error) {
+      console.warn('Could not fetch printer server URL from settings, using default');
+    }
+
+    // Default: Raspberry Pi printer server on store network (HTTPS with self-signed cert)
+    return 'https://192.168.1.18:3001';
+  };
+
   // Handle daily summary print
   const handlePrintDailySummary = async () => {
     try {
@@ -585,8 +614,8 @@ const KitchenPage = () => {
       // Generate the daily summary receipt
       const summaryReceipt = printDailySummary(formattedOrders);
 
-      // Send to printer
-      const printerServerUrl = localStorage.getItem('printerServerUrl') || 'https://192.168.1.18:3001';
+      // Get printer server URL using same logic as regular order printing
+      const printerServerUrl = await getPrinterServerUrl();
       console.log(`Sending daily summary to printer server: ${printerServerUrl}`);
 
       const printResponse = await fetch(`${printerServerUrl}/print`, {
