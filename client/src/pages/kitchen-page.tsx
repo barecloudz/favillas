@@ -559,6 +559,11 @@ const KitchenPage = () => {
       let allOrdersToday = [];
 
       try {
+        console.log('📡 Daily Summary: Fetching orders with date range:', {
+          startDate: startOfDay.toISOString(),
+          endDate: endOfDay.toISOString()
+        });
+
         const response = await fetch(`/api/orders?${queryParams}`, {
           method: 'GET',
           credentials: 'include',
@@ -568,19 +573,33 @@ const KitchenPage = () => {
         });
 
         if (!response.ok) {
-          console.warn(`Orders API returned ${response.status}, printing summary with zero orders`);
+          console.error(`❌ Daily Summary: Orders API returned ${response.status}`);
+          const errorText = await response.text();
+          console.error('❌ Daily Summary: Error response:', errorText);
           allOrdersToday = [];
         } else {
           allOrdersToday = await response.json();
+          console.log(`✅ Daily Summary: Fetched ${allOrdersToday.length} orders from API`);
+          if (allOrdersToday.length > 0) {
+            console.log('📋 Daily Summary: First order sample:', {
+              id: allOrdersToday[0].id,
+              created_at: allOrdersToday[0].created_at,
+              total: allOrdersToday[0].total
+            });
+          }
         }
       } catch (fetchError) {
-        console.warn('Failed to fetch orders, printing summary with zero orders:', fetchError);
+        console.error('❌ Daily Summary: Failed to fetch orders:', fetchError);
         allOrdersToday = [];
       }
+
+      console.log(`📊 Daily Summary: Fetched ${allOrdersToday.length} total orders for today`);
 
       // Filter test orders if the setting is enabled
       const excludeTestOrders = localStorage.getItem('excludeTestOrders') !== 'false';
       let filteredOrders = allOrdersToday;
+
+      console.log(`🔧 Daily Summary: excludeTestOrders setting = ${excludeTestOrders}`);
 
       if (excludeTestOrders) {
         // Exclude orders before #52 and specific test orders #55, #56
@@ -588,7 +607,16 @@ const KitchenPage = () => {
           const orderId = order.id;
           return orderId >= 52 && orderId !== 55 && orderId !== 56;
         });
-        console.log(`Filtered ${allOrdersToday.length} orders to ${filteredOrders.length} (excluding test orders)`);
+        console.log(`🔍 Daily Summary: Filtered ${allOrdersToday.length} orders to ${filteredOrders.length} (excluding test orders < 52, #55, #56)`);
+
+        // Log which orders were filtered out
+        const filteredOut = allOrdersToday.filter((order: any) => {
+          const orderId = order.id;
+          return orderId < 52 || orderId === 55 || orderId === 56;
+        });
+        if (filteredOut.length > 0) {
+          console.log('🗑️ Daily Summary: Filtered out order IDs:', filteredOut.map((o: any) => o.id).join(', '));
+        }
       }
 
       // Format orders for the print function (even if empty array)
