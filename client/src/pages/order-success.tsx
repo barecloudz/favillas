@@ -161,6 +161,7 @@ const OrderSuccessPage = () => {
                 ...pendingOrderData,
                 status: "pending",
                 paymentStatus: "succeeded",
+                paymentIntentId: paymentIntentParam, // Save Stripe payment intent ID for refunds
                 customerName: customerName  // Already set from checkout form
               };
 
