@@ -1865,43 +1865,41 @@ const KitchenPage = () => {
 
               {/* Sizes Section */}
               <div className="mt-8">
-                <h3 className="text-lg font-bold mb-4 text-gray-900">Quick Size Management</h3>
+                <h3 className="text-lg font-bold mb-4 text-gray-900">Size & Option Management</h3>
                 {(() => {
-                  // Find size-related choice groups
-                  const sizeGroups = (choiceGroups as any[]).filter((cg: any) =>
-                    cg.name?.toLowerCase().includes('size') && cg.isActive
-                  );
+                  // Show ALL active choice groups (not just sizes)
+                  const activeGroups = (Array.isArray(choiceGroups) ? choiceGroups : []).filter((cg: any) => cg.isActive);
 
-                  if (sizeGroups.length === 0) {
+                  if (activeGroups.length === 0) {
                     return (
                       <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg">
-                        <p>No size groups found</p>
+                        <p>No choice groups found</p>
                       </div>
                     );
                   }
 
                   return (
                     <div className="space-y-4">
-                      {sizeGroups.map((sizeGroup: any) => {
-                        const sizeItems = (choiceItems as any[]).filter((item: any) =>
-                          item.choiceGroupId === sizeGroup.id
+                      {activeGroups.map((group: any) => {
+                        const groupItems = (Array.isArray(choiceItems) ? choiceItems : []).filter((item: any) =>
+                          item.choiceGroupId === group.id
                         );
 
-                        if (sizeItems.length === 0) return null;
+                        if (groupItems.length === 0) return null;
 
                         return (
-                          <div key={sizeGroup.id} className="border rounded-lg p-4 bg-white">
-                            <h4 className="font-semibold text-md mb-3 text-gray-800">{sizeGroup.name}</h4>
+                          <div key={group.id} className="border rounded-lg p-4 bg-white">
+                            <h4 className="font-semibold text-md mb-3 text-gray-800">{group.name}</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              {sizeItems.map((sizeItem: any) => {
-                                const isUnavailable = sizeItem.isTemporarilyUnavailable || false;
+                              {groupItems.map((choiceItem: any) => {
+                                const isUnavailable = choiceItem.isTemporarilyUnavailable || false;
                                 return (
                                   <div
-                                    key={sizeItem.id}
+                                    key={choiceItem.id}
                                     className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                                   >
                                     <div className="flex-1">
-                                      <span className="font-medium">{sizeItem.name}</span>
+                                      <span className="font-medium">{choiceItem.name}</span>
                                       {isUnavailable && (
                                         <Badge variant="destructive" className="ml-2 text-xs">
                                           Out of Stock
@@ -1912,7 +1910,7 @@ const KitchenPage = () => {
                                       <Switch
                                         checked={!isUnavailable}
                                         onCheckedChange={(checked) =>
-                                          toggleSizeAvailability(sizeItem.id, !checked, sizeItem.name)
+                                          toggleSizeAvailability(choiceItem.id, !checked, choiceItem.name)
                                         }
                                       />
                                       <span className="text-sm font-medium min-w-[90px]">
