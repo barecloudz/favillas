@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-supabase-auth";
+import { supabase } from "@/lib/supabase";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminWebSocket } from "@/hooks/use-admin-websocket";
@@ -580,9 +581,16 @@ const KitchenPage = () => {
   // Toggle category availability
   const toggleCategoryAvailability = async (categoryId: number, isUnavailable: boolean, categoryName: string) => {
     try {
+      // Get Supabase session token
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
       const response = await fetch('/api/admin-category-availability', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         credentials: 'include',
         body: JSON.stringify({
           categoryId,
@@ -615,9 +623,16 @@ const KitchenPage = () => {
   // Toggle individual menu item availability
   const toggleItemAvailability = async (itemId: number, isAvailable: boolean, itemName: string) => {
     try {
+      // Get Supabase session token
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
       const response = await fetch('/api/admin-menu-item-availability', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         credentials: 'include',
         body: JSON.stringify({
           menuItemId: itemId,
@@ -649,9 +664,16 @@ const KitchenPage = () => {
   // Toggle size availability
   const toggleSizeAvailability = async (choiceItemId: number, isUnavailable: boolean, sizeName: string) => {
     try {
+      // Get Supabase session token
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
       const response = await fetch('/api/admin-choice-item-availability', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         credentials: 'include',
         body: JSON.stringify({
           choiceItemIds: [choiceItemId],
