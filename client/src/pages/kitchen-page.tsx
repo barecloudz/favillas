@@ -541,10 +541,10 @@ const KitchenPage = () => {
   // Handle daily summary print
   const handlePrintDailySummary = async () => {
     try {
-      console.log('Fetching today\'s analytics for daily summary...');
+      console.log('Fetching today\'s orders for daily summary...');
 
-      // Use the working analytics API instead of fetching individual orders
-      const response = await fetch(`/api/admin-analytics?period=today`, {
+      // Fetch from kitchen-orders endpoint which has the data we need
+      const response = await fetch(`/api/kitchen/orders`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -553,24 +553,63 @@ const KitchenPage = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`Analytics API returned ${response.status}`);
+        throw new Error(`Kitchen orders API returned ${response.status}`);
       }
 
-      const analytics = await response.json();
-      console.log('Daily Summary Analytics:', analytics);
+      const allOrders = await response.json();
+      console.log('Daily Summary: Fetched orders:', allOrders.length);
 
-      // Convert analytics data to order format for the printer
+      // Filter to today's orders only
+      const today = new Date().toISOString().split('T')[0];
+      const todaysOrders = allOrders.filter((order: any) => {
+        const orderDate = new Date(order.created_at || order.createdAt).toISOString().split('T')[0];
+        return orderDate === today && order.status !== 'cancelled';
+      });
+
+      console.log(`Daily Summary: ${todaysOrders.length} orders today`);
+
+      // Calculate summary statistics
+      const pickupOrders = todaysOrders.filter((o: any) => o.order_type === 'pickup' || o.orderType === 'pickup');
+      const deliveryOrders = todaysOrders.filter((o: any) => o.order_type === 'delivery' || o.orderType === 'delivery');
+
+      const totalRevenue = todaysOrders.reduce((sum: number, o: any) => sum + parseFloat(o.total || 0), 0);
+      const pickupRevenue = pickupOrders.reduce((sum: number, o: any) => sum + parseFloat(o.total || 0), 0);
+      const deliveryRevenue = deliveryOrders.reduce((sum: number, o: any) => sum + parseFloat(o.total || 0), 0);
+
+      const totalTips = todaysOrders.reduce((sum: number, o: any) => sum + parseFloat(o.tip || 0), 0);
+      const pickupTips = pickupOrders.reduce((sum: number, o: any) => sum + parseFloat(o.tip || 0), 0);
+      const deliveryTips = deliveryOrders.reduce((sum: number, o: any) => sum + parseFloat(o.tip || 0), 0);
+
+      const totalTax = todaysOrders.reduce((sum: number, o: any) => sum + parseFloat(o.tax || 0), 0);
+      const totalDeliveryFees = deliveryOrders.reduce((sum: number, o: any) => sum + parseFloat(o.delivery_fee || o.deliveryFee || 0), 0);
+
+      // Count popular items
+      const itemCounts: Map<string, number> = new Map();
+      todaysOrders.forEach((order: any) => {
+        const items = order.items || [];
+        items.forEach((item: any) => {
+          const itemName = item.menuItem?.name || item.name || 'Unknown Item';
+          itemCounts.set(itemName, (itemCounts.get(itemName) || 0) + (item.quantity || 1));
+        });
+      });
+
+      const topItems = Array.from(itemCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([name, count]) => ({ name, count }));
+
+      // Convert to print format
       const formattedOrders = [{
         id: 'daily-summary',
         orderType: 'summary',
         customerName: 'Daily Summary',
         phone: '',
         address: '',
-        items: analytics.topProducts || [],
-        total: parseFloat(analytics.revenue?.totalRevenue || 0),
-        tax: parseFloat(analytics.revenue?.totalTax || 0),
-        deliveryFee: parseFloat(analytics.revenue?.totalDeliveryFees || 0),
-        tip: parseFloat(analytics.revenue?.totalTips || 0),
+        items: topItems,
+        total: totalRevenue,
+        tax: totalTax,
+        deliveryFee: totalDeliveryFees,
+        tip: totalTips,
         specialInstructions: '',
         createdAt: new Date().toISOString(),
         userId: null,
@@ -578,13 +617,13 @@ const KitchenPage = () => {
         paymentStatus: 'paid',
         payment_status: 'paid',
         // Add summary-specific data
-        totalOrders: analytics.revenue?.totalOrders || 0,
-        pickupOrders: analytics.ordersByType?.find((t: any) => t.orderType === 'pickup')?.count || 0,
-        deliveryOrders: analytics.ordersByType?.find((t: any) => t.orderType === 'delivery')?.count || 0,
-        pickupRevenue: analytics.ordersByType?.find((t: any) => t.orderType === 'pickup')?.revenue || 0,
-        deliveryRevenue: analytics.ordersByType?.find((t: any) => t.orderType === 'delivery')?.revenue || 0,
-        pickupTips: analytics.ordersByType?.find((t: any) => t.orderType === 'pickup')?.tips || 0,
-        deliveryTips: analytics.ordersByType?.find((t: any) => t.orderType === 'delivery')?.tips || 0
+        totalOrders: todaysOrders.length,
+        pickupOrders: pickupOrders.length,
+        deliveryOrders: deliveryOrders.length,
+        pickupRevenue: pickupRevenue,
+        deliveryRevenue: deliveryRevenue,
+        pickupTips: pickupTips,
+        deliveryTips: deliveryTips
       }];
 
       // Generate the daily summary receipt
@@ -610,14 +649,11 @@ const KitchenPage = () => {
         throw new Error('Print request failed');
       }
 
-      const totalOrders = analytics.revenue?.totalOrders || 0;
-      const totalRevenue = analytics.revenue?.totalRevenue || 0;
-
       toast({
         title: "Daily Summary Printed",
-        description: totalOrders === 0
+        description: todaysOrders.length === 0
           ? "Summary printed. No orders received today."
-          : `Successfully printed summary: ${totalOrders} orders, $${totalRevenue.toFixed(2)} revenue.`,
+          : `Successfully printed summary: ${todaysOrders.length} orders, $${totalRevenue.toFixed(2)} revenue, $${totalTips.toFixed(2)} tips.`,
       });
 
       setShowDailySummaryModal(false);
