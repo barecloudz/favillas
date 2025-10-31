@@ -12,11 +12,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Loader2, Printer, Volume2, Columns3, LayoutGrid, User, Home, Settings, LogOut, PauseCircle, PlayCircle } from "lucide-react";
+import { Loader2, Printer, Volume2, Columns3, LayoutGrid, User, Home, Settings, LogOut, PauseCircle, PlayCircle, Package, ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { printToThermalPrinter, printDailySummary } from "@/utils/thermal-printer";
 import { useLocation } from "wouter";
 import { useVacationMode } from "@/hooks/use-vacation-mode";
@@ -46,6 +47,10 @@ const KitchenPage = () => {
   const [showDailySummaryModal, setShowDailySummaryModal] = useState(false);
   const [storeHours, setStoreHours] = useState<any[]>([]);
   const [closingTime, setClosingTime] = useState<string | null>(null);
+
+  // Item Management Modal State
+  const [showItemManagementModal, setShowItemManagementModal] = useState(false);
+  const [expandedItemCategories, setExpandedItemCategories] = useState<Set<string>>(new Set());
   // Use localStorage to track printed orders across all browser tabs/devices
   const [printedOrders, setPrintedOrders] = useState<Set<number>>(() => {
     const stored = localStorage.getItem('printedOrders');
@@ -345,6 +350,18 @@ const KitchenPage = () => {
     enabled: !!user, // Only fetch when user is authenticated
   });
 
+  // Fetch menu items for item management modal
+  const { data: menuItems = [], refetch: refetchMenuItems } = useQuery({
+    queryKey: ["/api/menu"],
+    enabled: showItemManagementModal, // Only fetch when modal is open
+  });
+
+  // Fetch categories for item management modal
+  const { data: categoriesData } = useQuery({
+    queryKey: ["/api/categories"],
+    enabled: showItemManagementModal, // Only fetch when modal is open
+  });
+
   // Helper function to check if order is ready to start (for scheduled orders)
   const isOrderReadyToStart = (order: any) => {
     if (order.fulfillmentTime !== 'scheduled' || !order.scheduledTime) {
@@ -536,6 +553,41 @@ const KitchenPage = () => {
 
     // Default: Raspberry Pi printer server on store network (HTTPS with self-signed cert)
     return 'https://192.168.1.18:3001';
+  };
+
+  // Toggle category availability
+  const toggleCategoryAvailability = async (categoryId: number, isUnavailable: boolean, categoryName: string) => {
+    try {
+      const response = await fetch('/api/admin-category-availability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          categoryId,
+          isTemporarilyUnavailable: isUnavailable,
+          reason: isUnavailable ? 'Out of stock' : null
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update category availability');
+      }
+
+      // Refresh categories
+      queryClient.invalidateQueries({ queryKey: ['/api/categories'] });
+
+      toast({
+        title: isUnavailable ? `${categoryName} marked as out of stock` : `${categoryName} marked as available`,
+        description: 'Menu updated successfully'
+      });
+    } catch (error) {
+      console.error('Error toggling category availability:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update category availability',
+        variant: 'destructive'
+      });
+    }
   };
 
   // Handle daily summary print
@@ -880,6 +932,12 @@ const KitchenPage = () => {
                   >
                     <Printer className="mr-2 h-4 w-4" />
                     <span>Print Daily Summary</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setShowItemManagementModal(true)}
+                  >
+                    <Package className="mr-2 h-4 w-4" />
+                    <span>Item Management</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -1592,6 +1650,121 @@ const KitchenPage = () => {
                 onClick={() => setShowDailySummaryModal(false)}
               >
                 No, Maybe Later
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Item Management Modal */}
+        <Dialog open={showItemManagementModal} onOpenChange={setShowItemManagementModal}>
+          <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0">
+            <DialogHeader className="px-6 pt-6">
+              <DialogTitle className="text-2xl font-bold">Item Management</DialogTitle>
+              <DialogDescription>
+                Mark categories as out of stock quickly and easily
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex-1 overflow-y-auto px-6 pb-6">
+              {(() => {
+                const categories = categoriesData?.categories || [];
+                const sortedCategories = categories
+                  .filter((cat: any) => cat.isActive)
+                  .sort((a: any, b: any) => a.order - b.order);
+
+                if (sortedCategories.length === 0) {
+                  return (
+                    <div className="flex items-center justify-center py-12 text-gray-500">
+                      <p>No categories available</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-2">
+                    {sortedCategories.map((category: any) => {
+                      const isExpanded = expandedItemCategories.has(category.name);
+                      const categoryItems = menuItems.filter((item: any) => item.category === category.name);
+                      const isUnavailable = category.isTemporarilyUnavailable;
+
+                      return (
+                        <div key={category.id} className="border rounded-lg overflow-hidden">
+                          {/* Category Header */}
+                          <div className="bg-gray-50 border-b p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3 flex-1">
+                                <button
+                                  onClick={() => {
+                                    const newExpanded = new Set(expandedItemCategories);
+                                    if (isExpanded) {
+                                      newExpanded.delete(category.name);
+                                    } else {
+                                      newExpanded.add(category.name);
+                                    }
+                                    setExpandedItemCategories(newExpanded);
+                                  }}
+                                  className="hover:bg-gray-200 p-1 rounded"
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="h-5 w-5" />
+                                  ) : (
+                                    <ChevronRight className="h-5 w-5" />
+                                  )}
+                                </button>
+                                <div className="flex-1">
+                                  <h3 className="font-bold text-lg">{category.name}</h3>
+                                  <p className="text-sm text-gray-600">{categoryItems.length} items</p>
+                                </div>
+                                {isUnavailable && (
+                                  <Badge variant="destructive" className="animate-pulse">
+                                    <AlertTriangle className="h-3 w-3 mr-1" />
+                                    Out of Stock
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 ml-4">
+                                <Switch
+                                  checked={!isUnavailable}
+                                  onCheckedChange={(checked) =>
+                                    toggleCategoryAvailability(category.id, !checked, category.name)
+                                  }
+                                />
+                                <span className="text-sm font-medium min-w-[90px]">
+                                  {isUnavailable ? 'Unavailable' : 'Available'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Category Items (when expanded) */}
+                          {isExpanded && categoryItems.length > 0 && (
+                            <div className="p-4 space-y-2 bg-white">
+                              {categoryItems.map((item: any) => (
+                                <div key={item.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded hover:bg-gray-100">
+                                  <span className="font-medium">{item.name}</span>
+                                  <Badge variant={item.isAvailable !== false ? 'default' : 'secondary'}>
+                                    {item.isAvailable !== false ? 'Available' : 'Unavailable'}
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            <DialogFooter className="px-6 pb-6 border-t pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => setShowItemManagementModal(false)}
+              >
+                Close
               </Button>
             </DialogFooter>
           </DialogContent>
