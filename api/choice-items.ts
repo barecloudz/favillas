@@ -60,7 +60,12 @@ export const handler: Handler = async (event, context) => {
         price: item.price,
         isDefault: item.is_default,
         choice_group_name: item.choice_group_name,
-        created_at: item.created_at
+        created_at: item.created_at,
+        // Add availability fields
+        isActive: item.is_active !== false,
+        isTemporarilyUnavailable: item.is_temporarily_unavailable || false,
+        unavailabilityReason: item.unavailability_reason,
+        unavailableSince: item.unavailable_since
       }));
 
       return {

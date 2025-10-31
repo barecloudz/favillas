@@ -66,7 +66,12 @@ export const handler: Handler = async (event, context) => {
         isActive: cat.is_active,
         is_upsell_enabled: cat.is_upsell_enabled,
         image_url: cat.image_url,
-        created_at: cat.created_at
+        created_at: cat.created_at,
+        // Add availability fields
+        isTemporarilyUnavailable: cat.is_temporarily_unavailable || false,
+        unavailabilityReason: cat.unavailability_reason,
+        unavailableSince: cat.unavailable_since,
+        unavailableUntil: cat.unavailable_until
       }));
 
       return {
