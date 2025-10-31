@@ -2826,13 +2826,28 @@ const OrdersManagement = ({ orders, cateringData, onUpdateStatus }: any) => {
                             <Truck className="h-4 w-4" />
                           </Button>
                         )}
-                        
+
+                        {/* Debug logging for refund button */}
+                        {(() => {
+                          const shouldShow = (order.status === "completed" || order.status === "processing") && order.paymentIntentId && !order.refundId;
+                          console.log(`Order #${order.id} refund button check:`, {
+                            status: order.status,
+                            hasPaymentIntentId: !!order.paymentIntentId,
+                            paymentIntentId: order.paymentIntentId,
+                            hasRefundId: !!order.refundId,
+                            refundId: order.refundId,
+                            shouldShowButton: shouldShow
+                          });
+                          return null;
+                        })()}
+
                         {(order.status === "completed" || order.status === "processing") && order.paymentIntentId && !order.refundId && (
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleRefundClick(order)}
                             className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                            title="Refund Order"
                           >
                             <RefreshCw className="h-4 w-4" />
                           </Button>
