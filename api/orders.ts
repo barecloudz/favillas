@@ -427,6 +427,8 @@ export const handler: Handler = async (event, context) => {
           completedAt: order.completed_at,
           fulfillmentTime: order.fulfillment_time, // Transform snake_case to camelCase for kitchen display
           scheduledTime: order.scheduled_time, // Transform snake_case to camelCase for kitchen display
+          paymentIntentId: order.payment_intent_id, // Transform for refund button
+          refundId: order.refund_id, // Transform for refund check
           total: parseFloat(order.total || '0'),
           tax: parseFloat(order.tax || '0'),
           delivery_fee: parseFloat(order.delivery_fee || '0'),
@@ -583,6 +585,8 @@ export const handler: Handler = async (event, context) => {
               completedAt: order.completed_at,
               fulfillmentTime: order.fulfillment_time, // Transform snake_case to camelCase for kitchen display
               scheduledTime: order.scheduled_time, // Transform snake_case to camelCase for kitchen display
+              paymentIntentId: order.payment_intent_id, // Transform for refund button
+              refundId: order.refund_id, // Transform for refund check
               total: parseFloat(order.total || '0'),
               tax: parseFloat(order.tax || '0'),
               delivery_fee: parseFloat(order.delivery_fee || '0'),
@@ -606,6 +610,8 @@ export const handler: Handler = async (event, context) => {
               completedAt: order.completed_at,
               fulfillmentTime: order.fulfillment_time, // Transform snake_case to camelCase for kitchen display
               scheduledTime: order.scheduled_time, // Transform snake_case to camelCase for kitchen display
+              paymentIntentId: order.payment_intent_id, // Transform for refund button
+              refundId: order.refund_id, // Transform for refund check
               total: parseFloat(order.total || '0'),
               tax: parseFloat(order.tax || '0'),
               delivery_fee: parseFloat(order.delivery_fee || '0'),
