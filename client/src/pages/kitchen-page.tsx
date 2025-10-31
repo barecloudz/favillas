@@ -362,6 +362,27 @@ const KitchenPage = () => {
     enabled: showItemManagementModal, // Only fetch when modal is open
   });
 
+  // Fetch choice groups and items for size management
+  const { data: choiceGroups = [] } = useQuery({
+    queryKey: ['choice-groups'],
+    queryFn: async () => {
+      const response = await fetch('/api/choice-groups');
+      if (response.ok) return await response.json();
+      return [];
+    },
+    enabled: showItemManagementModal,
+  });
+
+  const { data: choiceItems = [], refetch: refetchChoiceItems } = useQuery({
+    queryKey: ['choice-items'],
+    queryFn: async () => {
+      const response = await fetch('/api/choice-items');
+      if (response.ok) return await response.json();
+      return [];
+    },
+    enabled: showItemManagementModal,
+  });
+
   // Helper function to check if order is ready to start (for scheduled orders)
   const isOrderReadyToStart = (order: any) => {
     if (order.fulfillmentTime !== 'scheduled' || !order.scheduledTime) {
@@ -619,6 +640,41 @@ const KitchenPage = () => {
       toast({
         title: 'Error',
         description: 'Failed to update item availability',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // Toggle size availability
+  const toggleSizeAvailability = async (choiceItemId: number, isUnavailable: boolean, sizeName: string) => {
+    try {
+      const response = await fetch('/api/admin-choice-item-availability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          choiceItemIds: [choiceItemId],
+          isTemporarilyUnavailable: isUnavailable,
+          reason: isUnavailable ? `${sizeName} size out of stock` : null
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update size availability');
+      }
+
+      // Refresh choice items
+      refetchChoiceItems();
+
+      toast({
+        title: isUnavailable ? `${sizeName} marked as out of stock` : `${sizeName} marked as available`,
+        description: 'Menu updated successfully'
+      });
+    } catch (error) {
+      console.error('Error toggling size availability:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update size availability',
         variant: 'destructive'
       });
     }
@@ -1695,7 +1751,7 @@ const KitchenPage = () => {
             <DialogHeader className="px-6 pt-6">
               <DialogTitle className="text-2xl font-bold">Item Management</DialogTitle>
               <DialogDescription>
-                Mark categories as out of stock quickly and easily
+                Mark categories, items, and sizes as out of stock quickly and easily
               </DialogDescription>
             </DialogHeader>
 
@@ -1806,6 +1862,74 @@ const KitchenPage = () => {
                   </div>
                 );
               })()}
+
+              {/* Sizes Section */}
+              <div className="mt-8">
+                <h3 className="text-lg font-bold mb-4 text-gray-900">Quick Size Management</h3>
+                {(() => {
+                  // Find size-related choice groups
+                  const sizeGroups = (choiceGroups as any[]).filter((cg: any) =>
+                    cg.name?.toLowerCase().includes('size') && cg.isActive
+                  );
+
+                  if (sizeGroups.length === 0) {
+                    return (
+                      <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg">
+                        <p>No size groups found</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-4">
+                      {sizeGroups.map((sizeGroup: any) => {
+                        const sizeItems = (choiceItems as any[]).filter((item: any) =>
+                          item.choiceGroupId === sizeGroup.id
+                        );
+
+                        if (sizeItems.length === 0) return null;
+
+                        return (
+                          <div key={sizeGroup.id} className="border rounded-lg p-4 bg-white">
+                            <h4 className="font-semibold text-md mb-3 text-gray-800">{sizeGroup.name}</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {sizeItems.map((sizeItem: any) => {
+                                const isUnavailable = sizeItem.isTemporarilyUnavailable || false;
+                                return (
+                                  <div
+                                    key={sizeItem.id}
+                                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                                  >
+                                    <div className="flex-1">
+                                      <span className="font-medium">{sizeItem.name}</span>
+                                      {isUnavailable && (
+                                        <Badge variant="destructive" className="ml-2 text-xs">
+                                          Out of Stock
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      <Switch
+                                        checked={!isUnavailable}
+                                        onCheckedChange={(checked) =>
+                                          toggleSizeAvailability(sizeItem.id, !checked, sizeItem.name)
+                                        }
+                                      />
+                                      <span className="text-sm font-medium min-w-[90px]">
+                                        {isUnavailable ? 'Unavailable' : 'Available'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
 
             <DialogFooter className="px-6 pb-6 border-t pt-4">
