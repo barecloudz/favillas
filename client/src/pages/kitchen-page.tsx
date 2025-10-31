@@ -541,103 +541,51 @@ const KitchenPage = () => {
   // Handle daily summary print
   const handlePrintDailySummary = async () => {
     try {
-      console.log('Fetching today\'s orders for daily summary...');
+      console.log('Fetching today\'s analytics for daily summary...');
 
-      // Get today's date range
-      const now = new Date();
-      const startOfDay = new Date(now);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(now);
-      endOfDay.setHours(23, 59, 59, 999);
-
-      // Fetch ALL orders for today (not just active ones)
-      const queryParams = new URLSearchParams({
-        startDate: startOfDay.toISOString(),
-        endDate: endOfDay.toISOString()
+      // Use the working analytics API instead of fetching individual orders
+      const response = await fetch(`/api/admin-analytics?period=today`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
 
-      let allOrdersToday = [];
-
-      try {
-        console.log('📡 Daily Summary: Fetching orders with date range:', {
-          startDate: startOfDay.toISOString(),
-          endDate: endOfDay.toISOString()
-        });
-
-        const response = await fetch(`/api/orders?${queryParams}`, {
-          method: 'GET',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!response.ok) {
-          console.error(`❌ Daily Summary: Orders API returned ${response.status}`);
-          const errorText = await response.text();
-          console.error('❌ Daily Summary: Error response:', errorText);
-          allOrdersToday = [];
-        } else {
-          allOrdersToday = await response.json();
-          console.log(`✅ Daily Summary: Fetched ${allOrdersToday.length} orders from API`);
-          if (allOrdersToday.length > 0) {
-            console.log('📋 Daily Summary: First order sample:', {
-              id: allOrdersToday[0].id,
-              created_at: allOrdersToday[0].created_at,
-              total: allOrdersToday[0].total
-            });
-          }
-        }
-      } catch (fetchError) {
-        console.error('❌ Daily Summary: Failed to fetch orders:', fetchError);
-        allOrdersToday = [];
+      if (!response.ok) {
+        throw new Error(`Analytics API returned ${response.status}`);
       }
 
-      console.log(`📊 Daily Summary: Fetched ${allOrdersToday.length} total orders for today`);
+      const analytics = await response.json();
+      console.log('Daily Summary Analytics:', analytics);
 
-      // Filter test orders if the setting is enabled
-      const excludeTestOrders = localStorage.getItem('excludeTestOrders') !== 'false';
-      let filteredOrders = allOrdersToday;
-
-      console.log(`🔧 Daily Summary: excludeTestOrders setting = ${excludeTestOrders}`);
-
-      if (excludeTestOrders) {
-        // Exclude orders before #52 and specific test orders #55, #56
-        filteredOrders = allOrdersToday.filter((order: any) => {
-          const orderId = order.id;
-          return orderId >= 52 && orderId !== 55 && orderId !== 56;
-        });
-        console.log(`🔍 Daily Summary: Filtered ${allOrdersToday.length} orders to ${filteredOrders.length} (excluding test orders < 52, #55, #56)`);
-
-        // Log which orders were filtered out
-        const filteredOut = allOrdersToday.filter((order: any) => {
-          const orderId = order.id;
-          return orderId < 52 || orderId === 55 || orderId === 56;
-        });
-        if (filteredOut.length > 0) {
-          console.log('🗑️ Daily Summary: Filtered out order IDs:', filteredOut.map((o: any) => o.id).join(', '));
-        }
-      }
-
-      // Format orders for the print function (even if empty array)
-      const formattedOrders = filteredOrders.map((order: any) => ({
-        id: order.id,
-        orderType: order.order_type || order.orderType || 'pickup',
-        customerName: order.customer_name || order.customerName || 'Guest',
-        phone: order.phone,
-        address: order.address,
-        items: order.items || [],
-        total: parseFloat(order.total || 0),
-        tax: parseFloat(order.tax || 0),
-        deliveryFee: parseFloat(order.delivery_fee || order.deliveryFee || 0),
-        tip: parseFloat(order.tip || 0),
-        specialInstructions: order.special_instructions || order.specialInstructions,
-        createdAt: order.created_at || order.createdAt || new Date().toISOString(),
-        userId: order.user_id || order.userId,
-        pointsEarned: order.points_earned || order.pointsEarned || 0,
-        paymentStatus: order.payment_status || order.paymentStatus,
-        payment_status: order.payment_status
-      }));
+      // Convert analytics data to order format for the printer
+      const formattedOrders = [{
+        id: 'daily-summary',
+        orderType: 'summary',
+        customerName: 'Daily Summary',
+        phone: '',
+        address: '',
+        items: analytics.topProducts || [],
+        total: parseFloat(analytics.revenue?.totalRevenue || 0),
+        tax: parseFloat(analytics.revenue?.totalTax || 0),
+        deliveryFee: parseFloat(analytics.revenue?.totalDeliveryFees || 0),
+        tip: parseFloat(analytics.revenue?.totalTips || 0),
+        specialInstructions: '',
+        createdAt: new Date().toISOString(),
+        userId: null,
+        pointsEarned: 0,
+        paymentStatus: 'paid',
+        payment_status: 'paid',
+        // Add summary-specific data
+        totalOrders: analytics.revenue?.totalOrders || 0,
+        pickupOrders: analytics.ordersByType?.find((t: any) => t.orderType === 'pickup')?.count || 0,
+        deliveryOrders: analytics.ordersByType?.find((t: any) => t.orderType === 'delivery')?.count || 0,
+        pickupRevenue: analytics.ordersByType?.find((t: any) => t.orderType === 'pickup')?.revenue || 0,
+        deliveryRevenue: analytics.ordersByType?.find((t: any) => t.orderType === 'delivery')?.revenue || 0,
+        pickupTips: analytics.ordersByType?.find((t: any) => t.orderType === 'pickup')?.tips || 0,
+        deliveryTips: analytics.ordersByType?.find((t: any) => t.orderType === 'delivery')?.tips || 0
+      }];
 
       // Generate the daily summary receipt
       const summaryReceipt = printDailySummary(formattedOrders);
@@ -662,11 +610,14 @@ const KitchenPage = () => {
         throw new Error('Print request failed');
       }
 
+      const totalOrders = analytics.revenue?.totalOrders || 0;
+      const totalRevenue = analytics.revenue?.totalRevenue || 0;
+
       toast({
         title: "Daily Summary Printed",
-        description: filteredOrders.length === 0
+        description: totalOrders === 0
           ? "Summary printed. No orders received today."
-          : `Successfully printed summary for ${filteredOrders.length} orders today.`,
+          : `Successfully printed summary: ${totalOrders} orders, $${totalRevenue.toFixed(2)} revenue.`,
       });
 
       setShowDailySummaryModal(false);

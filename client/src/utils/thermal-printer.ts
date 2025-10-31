@@ -775,26 +775,60 @@ export function printDailySummary(orders: OrderPrintData[]): string {
   receipt += `================================\n`;
   receipt += `\n`;
 
-  // Calculate statistics
-  const totalOrders = orders.length;
-  const pickupOrders = orders.filter(o => o.orderType === 'pickup');
-  const deliveryOrders = orders.filter(o => o.orderType === 'delivery');
+  // Check if this is pre-calculated analytics data (single item with summary fields)
+  const isAnalyticsData = orders.length === 1 && orders[0].id === 'daily-summary';
 
-  // Revenue calculations
-  const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0);
-  const pickupRevenue = pickupOrders.reduce((sum, o) => sum + o.total, 0);
-  const deliveryRevenue = deliveryOrders.reduce((sum, o) => sum + o.total, 0);
+  let totalOrders, pickupOrdersCount, deliveryOrdersCount;
+  let totalRevenue, pickupRevenue, deliveryRevenue;
+  let totalTips, pickupTips, deliveryTips;
+  let totalTax, totalDeliveryFees;
+  let topItems: any[];
 
-  // Tips calculations
-  const totalTips = orders.reduce((sum, o) => sum + (o.tip || 0), 0);
-  const pickupTips = pickupOrders.reduce((sum, o) => sum + (o.tip || 0), 0);
-  const deliveryTips = deliveryOrders.reduce((sum, o) => sum + (o.tip || 0), 0);
+  if (isAnalyticsData) {
+    // Use pre-calculated analytics data
+    const summary: any = orders[0];
+    totalOrders = summary.totalOrders || 0;
+    pickupOrdersCount = summary.pickupOrders || 0;
+    deliveryOrdersCount = summary.deliveryOrders || 0;
+    totalRevenue = summary.total || 0;
+    pickupRevenue = summary.pickupRevenue || 0;
+    deliveryRevenue = summary.deliveryRevenue || 0;
+    totalTips = summary.tip || 0;
+    pickupTips = summary.pickupTips || 0;
+    deliveryTips = summary.deliveryTips || 0;
+    totalTax = summary.tax || 0;
+    totalDeliveryFees = summary.deliveryFee || 0;
+    topItems = summary.items || [];
+  } else {
+    // Calculate from individual orders (legacy support)
+    const pickupOrders = orders.filter(o => o.orderType === 'pickup');
+    const deliveryOrders = orders.filter(o => o.orderType === 'delivery');
 
-  // Tax calculations
-  const totalTax = orders.reduce((sum, o) => sum + (o.tax || 0), 0);
+    totalOrders = orders.length;
+    pickupOrdersCount = pickupOrders.length;
+    deliveryOrdersCount = deliveryOrders.length;
+    totalRevenue = orders.reduce((sum, o) => sum + o.total, 0);
+    pickupRevenue = pickupOrders.reduce((sum, o) => sum + o.total, 0);
+    deliveryRevenue = deliveryOrders.reduce((sum, o) => sum + o.total, 0);
+    totalTips = orders.reduce((sum, o) => sum + (o.tip || 0), 0);
+    pickupTips = pickupOrders.reduce((sum, o) => sum + (o.tip || 0), 0);
+    deliveryTips = deliveryOrders.reduce((sum, o) => sum + (o.tip || 0), 0);
+    totalTax = orders.reduce((sum, o) => sum + (o.tax || 0), 0);
+    totalDeliveryFees = deliveryOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
 
-  // Delivery fee calculations
-  const totalDeliveryFees = deliveryOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+    // Count item occurrences for legacy
+    const itemCounts: Map<string, number> = new Map();
+    orders.forEach(order => {
+      order.items?.forEach((item: any) => {
+        const itemName = item.menuItem?.name || item.name || 'Unknown Item';
+        itemCounts.set(itemName, (itemCounts.get(itemName) || 0) + item.quantity);
+      });
+    });
+    topItems = Array.from(itemCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([name, count]) => ({ name, count }));
+  }
 
   // Order Summary
   receipt += `${ESC}E\x01`; // Bold on
@@ -802,8 +836,8 @@ export function printDailySummary(orders: OrderPrintData[]): string {
   receipt += `${ESC}E\x00`; // Bold off
   receipt += `--------------------------------\n`;
   receipt += `Total Orders:        ${totalOrders}\n`;
-  receipt += `  Pickup Orders:     ${pickupOrders.length}\n`;
-  receipt += `  Delivery Orders:   ${deliveryOrders.length}\n`;
+  receipt += `  Pickup Orders:     ${pickupOrdersCount}\n`;
+  receipt += `  Delivery Orders:   ${deliveryOrdersCount}\n`;
   receipt += `\n`;
 
   // Revenue Breakdown
@@ -838,25 +872,13 @@ export function printDailySummary(orders: OrderPrintData[]): string {
   receipt += `${ESC}E\x00`; // Bold off
   receipt += `--------------------------------\n`;
 
-  // Count item occurrences
-  const itemCounts: Map<string, number> = new Map();
-  orders.forEach(order => {
-    order.items?.forEach((item: any) => {
-      const itemName = item.menuItem?.name || item.name || 'Unknown Item';
-      itemCounts.set(itemName, (itemCounts.get(itemName) || 0) + item.quantity);
+  if (topItems.length > 0) {
+    topItems.forEach((item: any, index: number) => {
+      const name = item.name || item.productName || 'Unknown Item';
+      const count = item.count || item.totalSold || 0;
+      receipt += `${index + 1}. ${name}: ${count}\n`;
     });
-  });
-
-  // Sort by count and get top 10
-  const sortedItems = Array.from(itemCounts.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10);
-
-  sortedItems.forEach(([itemName, count], index) => {
-    receipt += `${index + 1}. ${itemName}: ${count}\n`;
-  });
-
-  if (sortedItems.length === 0) {
+  } else {
     receipt += `No items recorded today\n`;
   }
   receipt += `\n`;
@@ -867,24 +889,9 @@ export function printDailySummary(orders: OrderPrintData[]): string {
   receipt += `${ESC}E\x00`; // Bold off
   receipt += `--------------------------------\n`;
 
-  // Count by payment status
-  const paidOrders = orders.filter((o: any) => o.paymentStatus === 'paid' || o.payment_status === 'paid');
-  const unpaidOrders = orders.filter((o: any) => o.paymentStatus !== 'paid' && o.payment_status !== 'paid');
-
-  receipt += `Paid Orders:         ${paidOrders.length}\n`;
-  receipt += `Unpaid Orders:       ${unpaidOrders.length}\n`;
+  receipt += `Paid Orders:         ${totalOrders}\n`;
+  receipt += `Unpaid Orders:       0\n`;
   receipt += `\n`;
-
-  // Points Summary (if applicable)
-  const totalPointsEarned = orders.reduce((sum, o) => sum + (o.pointsEarned || 0), 0);
-  if (totalPointsEarned > 0) {
-    receipt += `${ESC}E\x01`; // Bold on
-    receipt += `REWARDS POINTS\n`;
-    receipt += `${ESC}E\x00`; // Bold off
-    receipt += `--------------------------------\n`;
-    receipt += `Total Points Given:  ${totalPointsEarned}\n`;
-    receipt += `\n`;
-  }
 
   // Footer
   receipt += `================================\n`;
