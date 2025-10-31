@@ -590,6 +590,40 @@ const KitchenPage = () => {
     }
   };
 
+  // Toggle individual menu item availability
+  const toggleItemAvailability = async (itemId: number, isAvailable: boolean, itemName: string) => {
+    try {
+      const response = await fetch('/api/admin-menu-item-availability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          menuItemId: itemId,
+          isAvailable: isAvailable
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update item availability');
+      }
+
+      // Refresh menu items
+      refetchMenuItems();
+
+      toast({
+        title: !isAvailable ? `${itemName} marked as out of stock` : `${itemName} marked as available`,
+        description: 'Menu updated successfully'
+      });
+    } catch (error) {
+      console.error('Error toggling item availability:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update item availability',
+        variant: 'destructive'
+      });
+    }
+  };
+
   // Handle daily summary print
   const handlePrintDailySummary = async () => {
     try {
@@ -1740,14 +1774,30 @@ const KitchenPage = () => {
                           {/* Category Items (when expanded) */}
                           {isExpanded && categoryItems.length > 0 && (
                             <div className="p-4 space-y-2 bg-white">
-                              {categoryItems.map((item: any) => (
-                                <div key={item.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded hover:bg-gray-100">
-                                  <span className="font-medium">{item.name}</span>
-                                  <Badge variant={item.isAvailable !== false ? 'default' : 'secondary'}>
-                                    {item.isAvailable !== false ? 'Available' : 'Unavailable'}
-                                  </Badge>
-                                </div>
-                              ))}
+                              {categoryItems.map((item: any) => {
+                                const itemAvailable = item.isAvailable !== false;
+                                return (
+                                  <div key={item.id} className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded hover:bg-gray-100">
+                                    <div className="flex-1">
+                                      <span className="font-medium">{item.name}</span>
+                                      {!itemAvailable && (
+                                        <Badge variant="destructive" className="ml-2">
+                                          Out of Stock
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      <Switch
+                                        checked={itemAvailable}
+                                        onCheckedChange={(checked) => toggleItemAvailability(item.id, checked, item.name)}
+                                      />
+                                      <span className="text-sm font-medium min-w-[90px]">
+                                        {itemAvailable ? 'Available' : 'Unavailable'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                         </div>

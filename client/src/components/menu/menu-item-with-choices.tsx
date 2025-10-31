@@ -541,22 +541,30 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                 const dynamicPrice = dynamicPrices[choiceItem.id];
                                 const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
                                 const isItemSelected = selectedChoices[group.id]?.includes(choiceItem.id.toString());
+                                const isUnavailable = choiceItem.isTemporarilyUnavailable || false;
 
                                 return (
                                 <div
                                   key={choiceItem.id}
-                                  className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all cursor-pointer hover:shadow-md ${
-                                    isItemSelected
-                                      ? 'border-[#d73a31] bg-red-50 shadow-md'
-                                      : 'border-gray-200 bg-white hover:border-gray-300'
+                                  className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all ${
+                                    isUnavailable
+                                      ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                                      : isItemSelected
+                                      ? 'border-[#d73a31] bg-red-50 shadow-md cursor-pointer hover:shadow-md'
+                                      : 'border-gray-200 bg-white hover:border-gray-300 cursor-pointer hover:shadow-md'
                                   }`}
-                                  onClick={() => handleChoiceSelection(group.id.toString(), choiceItem.id.toString(), true)}
+                                  onClick={() => !isUnavailable && handleChoiceSelection(group.id.toString(), choiceItem.id.toString(), true)}
                                 >
                                   <div className="flex items-center space-x-3">
-                                    <RadioGroupItem value={choiceItem.id.toString()} className="data-[state=checked]:bg-[#d73a31] data-[state=checked]:border-[#d73a31] pointer-events-none" />
+                                    <RadioGroupItem
+                                      value={choiceItem.id.toString()}
+                                      disabled={isUnavailable}
+                                      className="data-[state=checked]:bg-[#d73a31] data-[state=checked]:border-[#d73a31] pointer-events-none"
+                                    />
                                     <div className="flex-1">
-                                      <Label className={`font-medium cursor-pointer ${
-                                        isItemSelected ? 'text-[#d73a31]' : 'text-gray-700'
+                                      <Label className={`font-medium ${
+                                        isUnavailable ? 'text-gray-400 cursor-not-allowed' :
+                                        isItemSelected ? 'text-[#d73a31] cursor-pointer' : 'text-gray-700 cursor-pointer'
                                       }`}>
                                         {choiceItem.name}
                                       </Label>
@@ -565,7 +573,11 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                       )}
                                     </div>
                                   </div>
-                                  {price > 0 && (
+                                  {isUnavailable ? (
+                                    <Badge variant="destructive" className="text-xs">
+                                      Out of Stock
+                                    </Badge>
+                                  ) : price > 0 ? (
                                     <Badge className={`text-sm font-bold ${
                                       isItemSelected
                                         ? 'bg-[#d73a31] text-white'
@@ -573,7 +585,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                     }`}>
                                       {isPrimary ? '$' : '+$'}{formatPrice(price)}
                                     </Badge>
-                                  )}
+                                  ) : null}
                                 </div>
                                 );
                               })}
@@ -586,25 +598,30 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                             const dynamicPrice = dynamicPrices[choiceItem.id];
                             const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
                             const isItemSelected = selectedChoices[group.id]?.includes(choiceItem.id.toString());
+                            const isUnavailable = choiceItem.isTemporarilyUnavailable || false;
 
                             return (
                             <div
                               key={choiceItem.id}
-                              className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all cursor-pointer hover:shadow-md ${
-                                isItemSelected
-                                  ? 'border-green-400 bg-green-50 shadow-md'
-                                  : 'border-gray-200 bg-white hover:border-gray-300'
+                              className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all ${
+                                isUnavailable
+                                  ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                                  : isItemSelected
+                                  ? 'border-green-400 bg-green-50 shadow-md cursor-pointer hover:shadow-md'
+                                  : 'border-gray-200 bg-white hover:border-gray-300 cursor-pointer hover:shadow-md'
                               }`}
-                              onClick={() => handleChoiceSelection(group.id.toString(), choiceItem.id.toString(), false)}
+                              onClick={() => !isUnavailable && handleChoiceSelection(group.id.toString(), choiceItem.id.toString(), false)}
                             >
                               <div className="flex items-center space-x-3">
                                 <Checkbox
                                   checked={isItemSelected}
+                                  disabled={isUnavailable}
                                   className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 pointer-events-none"
                                 />
                                 <div className="flex-1">
-                                  <Label className={`font-medium cursor-pointer ${
-                                    isItemSelected ? 'text-green-700' : 'text-gray-700'
+                                  <Label className={`font-medium ${
+                                    isUnavailable ? 'text-gray-400 cursor-not-allowed' :
+                                    isItemSelected ? 'text-green-700 cursor-pointer' : 'text-gray-700 cursor-pointer'
                                   }`}>
                                     {choiceItem.name}
                                   </Label>
@@ -613,7 +630,11 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                   )}
                                 </div>
                               </div>
-                              {price > 0 && (
+                              {isUnavailable ? (
+                                <Badge variant="destructive" className="text-xs">
+                                  Out of Stock
+                                </Badge>
+                              ) : price > 0 ? (
                                 <Badge className={`text-sm font-bold ${
                                   isItemSelected
                                     ? 'bg-green-500 text-white'

@@ -271,10 +271,10 @@ const MenuPage = () => {
     allGroupIds.forEach(groupId => {
       const group = choiceGroups.find((cg: any) => cg.id === groupId && cg.isActive);
       if (group) {
+        // Include ALL active items, even if temporarily unavailable (we'll show them as "Out of Stock")
         const groupItems = choiceItems.filter((ci: any) =>
           ci.choiceGroupId === groupId &&
-          ci.isActive &&
-          !ci.isTemporarilyUnavailable
+          ci.isActive
         );
         relevantGroups.push({
           ...group,
