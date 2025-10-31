@@ -117,6 +117,8 @@ const MenuPage = () => {
               ...cat,
               isActive: cat.isActive ?? cat.is_active ?? true,
               imageUrl: cat.imageUrl ?? cat.image_url ?? null,
+              isTemporarilyUnavailable: cat.isTemporarilyUnavailable ?? false,
+              unavailabilityReason: cat.unavailabilityReason ?? null,
             }))
           };
         }
@@ -199,11 +201,11 @@ const MenuPage = () => {
     }
   }, [itemIdFromUrl, menuItems]);
 
-  // Create categories array with counts
+  // Create categories array with counts (filter out inactive and temporarily unavailable)
   const categories = [
     { id: null, name: "All", count: (menuItems || []).length },
     ...(categoriesData?.categories || [])
-      .filter((cat: any) => cat.isActive)
+      .filter((cat: any) => cat.isActive && !cat.isTemporarilyUnavailable)
       .sort((a: any, b: any) => a.order - b.order)
       .map((cat: any) => ({
         id: cat.name,
@@ -269,7 +271,11 @@ const MenuPage = () => {
     allGroupIds.forEach(groupId => {
       const group = choiceGroups.find((cg: any) => cg.id === groupId && cg.isActive);
       if (group) {
-        const groupItems = choiceItems.filter((ci: any) => ci.choiceGroupId === groupId && ci.isActive);
+        const groupItems = choiceItems.filter((ci: any) =>
+          ci.choiceGroupId === groupId &&
+          ci.isActive &&
+          !ci.isTemporarilyUnavailable
+        );
         relevantGroups.push({
           ...group,
           items: groupItems.sort((a: any, b: any) => a.order - b.order)

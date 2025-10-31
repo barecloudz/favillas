@@ -3594,6 +3594,7 @@ const MenuEditor = ({ menuItems }: any) => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const [isCreateCategoryOpen, setIsCreateCategoryOpen] = useState(false);
+  const [isSizeManagerOpen, setIsSizeManagerOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
   const [expandedMenuCategories, setExpandedMenuCategories] = useState<Set<number>>(new Set());
@@ -4007,6 +4008,74 @@ const MenuEditor = ({ menuItems }: any) => {
           order: category.order,
           isActive: !category.isActive
         }
+      });
+    }
+  };
+
+  const toggleCategoryAvailability = async (categoryId: number, isUnavailable: boolean) => {
+    try {
+      const response = await fetch('/api/admin-category-availability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          categoryId,
+          isTemporarilyUnavailable: isUnavailable,
+          reason: isUnavailable ? 'Out of stock' : null
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update category availability');
+      }
+
+      // Refresh categories
+      queryClient.invalidateQueries({ queryKey: ['/api/categories'] });
+
+      toast({
+        title: isUnavailable ? 'Category marked as out of stock' : 'Category marked as available',
+        description: 'Menu updated successfully'
+      });
+    } catch (error) {
+      console.error('Error toggling category availability:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update category availability',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const toggleSizeAvailability = async (choiceItemIds: number[], isUnavailable: boolean, sizeName: string) => {
+    try {
+      const response = await fetch('/api/admin-choice-item-availability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          choiceItemIds,
+          isTemporarilyUnavailable: isUnavailable,
+          reason: isUnavailable ? `${sizeName} size out of stock` : null
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update size availability');
+      }
+
+      // Refresh choice items
+      refetchChoiceItems();
+
+      toast({
+        title: isUnavailable ? `${sizeName} marked as out of stock` : `${sizeName} marked as available`,
+        description: `Updated ${choiceItemIds.length} item(s)`
+      });
+    } catch (error) {
+      console.error('Error toggling size availability:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update size availability',
+        variant: 'destructive'
       });
     }
   };
@@ -4893,6 +4962,10 @@ const MenuEditor = ({ menuItems }: any) => {
             <Grid className="h-4 w-4 mr-2" />
             Manage Categories
           </Button>
+          <Button variant="outline" onClick={() => setIsSizeManagerOpen(true)}>
+            <Package className="h-4 w-4 mr-2" />
+            Size Availability
+          </Button>
           <Button onClick={() => setIsCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Menu Item
@@ -5588,6 +5661,25 @@ const MenuEditor = ({ menuItems }: any) => {
                         {category.isActive ? "Active" : "Inactive"}
                       </Badge>
 
+                      {category.isTemporarilyUnavailable && (
+                        <Badge variant="destructive" className="animate-pulse">
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          Out of Stock
+                        </Badge>
+                      )}
+
+                      {/* Availability Toggle */}
+                      <div className="flex items-center gap-2 border-l pl-2">
+                        <Switch
+                          checked={!category.isTemporarilyUnavailable}
+                          onCheckedChange={(checked) => toggleCategoryAvailability(category.id, !checked)}
+                          disabled={!category.isActive}
+                        />
+                        <span className="text-xs text-gray-600 min-w-[60px]">
+                          {category.isTemporarilyUnavailable ? 'Unavailable' : 'Available'}
+                        </span>
+                      </div>
+
                       <Button
                         variant="outline"
                         size="sm"
@@ -5645,7 +5737,7 @@ const MenuEditor = ({ menuItems }: any) => {
           <DialogHeader>
             <DialogTitle>Edit Category</DialogTitle>
           </DialogHeader>
-          
+
           {editingCategory && (
             <EditCategoryForm
               category={editingCategory}
@@ -5653,6 +5745,100 @@ const MenuEditor = ({ menuItems }: any) => {
               onCancel={() => setEditingCategory(null)}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Size Availability Manager Dialog */}
+      <Dialog open={isSizeManagerOpen} onOpenChange={setIsSizeManagerOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Size Availability Manager</DialogTitle>
+            <DialogDescription>
+              Quickly toggle size availability across all specialty pizzas
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 overflow-y-auto flex-1 pr-2">
+            {(() => {
+              // Find the "Size" choice group
+              const sizeGroup = choiceGroups.find((cg: any) =>
+                cg.name?.toLowerCase() === 'size' || cg.name?.toLowerCase() === 'sizes'
+              );
+
+              if (!sizeGroup) {
+                return (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No size choice group found.</p>
+                    <p className="text-sm mt-2">Create a choice group named "Size" first.</p>
+                  </div>
+                );
+              }
+
+              // Get all choice items for this group
+              const sizeItems = (choiceItems as any[]).filter((item: any) =>
+                item.choiceGroupId === sizeGroup.id
+              );
+
+              if (sizeItems.length === 0) {
+                return (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No sizes found in the Size choice group.</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="grid gap-3">
+                  {sizeItems.map((sizeItem: any) => {
+                    const isUnavailable = sizeItem.isTemporarilyUnavailable;
+
+                    return (
+                      <div
+                        key={sizeItem.id}
+                        className="flex items-center justify-between p-4 border rounded-lg bg-white hover:bg-gray-50"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-medium text-lg">{sizeItem.name}</h3>
+                            {isUnavailable && (
+                              <Badge variant="destructive" className="animate-pulse">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                Out of Stock
+                              </Badge>
+                            )}
+                          </div>
+                          {sizeItem.price > 0 && (
+                            <p className="text-sm text-gray-500">
+                              Additional: ${sizeItem.price.toFixed(2)}
+                            </p>
+                          )}
+                          {isUnavailable && sizeItem.unavailabilityReason && (
+                            <p className="text-xs text-red-600 mt-1">
+                              {sizeItem.unavailabilityReason}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={!isUnavailable}
+                              onCheckedChange={(checked) =>
+                                toggleSizeAvailability([sizeItem.id], !checked, sizeItem.name)
+                              }
+                            />
+                            <span className="text-sm text-gray-600 min-w-[80px]">
+                              {isUnavailable ? 'Unavailable' : 'Available'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
         </DialogContent>
       </Dialog>
 
