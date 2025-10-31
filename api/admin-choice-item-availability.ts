@@ -33,10 +33,23 @@ export const handler: Handler = async (event, context) => {
     return { statusCode: 200, headers, body: '' };
   }
 
+  console.log('🔍 Choice Item Availability - Headers received:', {
+    hasAuth: !!event.headers.authorization,
+    hasCookie: !!event.headers.cookie,
+    cookiePreview: event.headers.cookie?.substring(0, 50) + '...'
+  });
+
   // Authenticate user
   const authPayload = await authenticateToken(event);
 
+  console.log('🔍 Auth result:', {
+    authenticated: !!authPayload,
+    role: authPayload?.role,
+    isStaff: authPayload ? isStaff(authPayload) : false
+  });
+
   if (!authPayload) {
+    console.log('❌ No auth payload - returning 401');
     return {
       statusCode: 401,
       headers,
@@ -46,6 +59,7 @@ export const handler: Handler = async (event, context) => {
 
   // Check if user is staff
   if (!isStaff(authPayload)) {
+    console.log('❌ User not staff - role:', authPayload.role);
     return {
       statusCode: 403,
       headers,
