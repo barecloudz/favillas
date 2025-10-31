@@ -58,6 +58,7 @@ export const handler: Handler = async (event, context) => {
         minSelections: group.min_selections,
         maxSelections: group.max_selections,
         isRequired: group.is_required,
+        isActive: group.is_active !== false,
         priority: group.priority || 0,
         created_at: group.created_at
       }));
