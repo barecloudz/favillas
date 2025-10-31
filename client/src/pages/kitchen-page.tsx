@@ -51,6 +51,7 @@ const KitchenPage = () => {
   // Item Management Modal State
   const [showItemManagementModal, setShowItemManagementModal] = useState(false);
   const [expandedItemCategories, setExpandedItemCategories] = useState<Set<string>>(new Set());
+  const [expandedChoiceGroups, setExpandedChoiceGroups] = useState<Set<number>>(new Set());
   // Use localStorage to track printed orders across all browser tabs/devices
   const [printedOrders, setPrintedOrders] = useState<Set<number>>(() => {
     const stored = localStorage.getItem('printedOrders');
@@ -660,7 +661,9 @@ const KitchenPage = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update size availability');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Size availability API error:', response.status, errorData);
+        throw new Error(errorData.error || 'Failed to update size availability');
       }
 
       // Refresh choice items
@@ -670,11 +673,11 @@ const KitchenPage = () => {
         title: isUnavailable ? `${sizeName} marked as out of stock` : `${sizeName} marked as available`,
         description: 'Menu updated successfully'
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error toggling size availability:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update size availability',
+        description: error.message || 'Failed to update size availability',
         variant: 'destructive'
       });
     }
@@ -1887,40 +1890,78 @@ const KitchenPage = () => {
 
                         if (groupItems.length === 0) return null;
 
+                        const isExpanded = expandedChoiceGroups.has(group.id);
+                        const unavailableCount = groupItems.filter((item: any) => item.isTemporarilyUnavailable).length;
+
                         return (
-                          <div key={group.id} className="border rounded-lg p-4 bg-white">
-                            <h4 className="font-semibold text-md mb-3 text-gray-800">{group.name}</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              {groupItems.map((choiceItem: any) => {
-                                const isUnavailable = choiceItem.isTemporarilyUnavailable || false;
-                                return (
-                                  <div
-                                    key={choiceItem.id}
-                                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                                  >
-                                    <div className="flex-1">
-                                      <span className="font-medium">{choiceItem.name}</span>
-                                      {isUnavailable && (
-                                        <Badge variant="destructive" className="ml-2 text-xs">
-                                          Out of Stock
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                      <Switch
-                                        checked={!isUnavailable}
-                                        onCheckedChange={(checked) =>
-                                          toggleSizeAvailability(choiceItem.id, !checked, choiceItem.name)
-                                        }
-                                      />
-                                      <span className="text-sm font-medium min-w-[90px]">
-                                        {isUnavailable ? 'Unavailable' : 'Available'}
-                                      </span>
-                                    </div>
-                                  </div>
-                                );
-                              })}
+                          <div key={group.id} className="border rounded-lg overflow-hidden bg-white">
+                            {/* Choice Group Header */}
+                            <div
+                              className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                              onClick={() => {
+                                const newExpanded = new Set(expandedChoiceGroups);
+                                if (isExpanded) {
+                                  newExpanded.delete(group.id);
+                                } else {
+                                  newExpanded.add(group.id);
+                                }
+                                setExpandedChoiceGroups(newExpanded);
+                              }}
+                            >
+                              <div className="flex items-center gap-3">
+                                {isExpanded ? (
+                                  <ChevronDown className="h-5 w-5 text-gray-500" />
+                                ) : (
+                                  <ChevronRight className="h-5 w-5 text-gray-500" />
+                                )}
+                                <h4 className="font-semibold text-md text-gray-800">{group.name}</h4>
+                                {unavailableCount > 0 && (
+                                  <Badge variant="destructive" className="text-xs">
+                                    {unavailableCount} Out of Stock
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {groupItems.length} {groupItems.length === 1 ? 'option' : 'options'}
+                              </div>
                             </div>
+
+                            {/* Choice Group Items */}
+                            {isExpanded && (
+                              <div className="border-t p-4 bg-gray-50">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {groupItems.map((choiceItem: any) => {
+                                    const isUnavailable = choiceItem.isTemporarilyUnavailable || false;
+                                    return (
+                                      <div
+                                        key={choiceItem.id}
+                                        className="flex items-center justify-between p-3 bg-white rounded-lg border"
+                                      >
+                                        <div className="flex-1">
+                                          <span className="font-medium">{choiceItem.name}</span>
+                                          {isUnavailable && (
+                                            <Badge variant="destructive" className="ml-2 text-xs">
+                                              Out of Stock
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                          <Switch
+                                            checked={!isUnavailable}
+                                            onCheckedChange={(checked) =>
+                                              toggleSizeAvailability(choiceItem.id, !checked, choiceItem.name)
+                                            }
+                                          />
+                                          <span className="text-sm font-medium min-w-[90px]">
+                                            {isUnavailable ? 'Unavailable' : 'Available'}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
