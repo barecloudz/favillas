@@ -1667,7 +1667,8 @@ const KitchenPage = () => {
 
             <div className="flex-1 overflow-y-auto px-6 pb-6">
               {(() => {
-                const categories = categoriesData?.categories || [];
+                // Handle both array format and object format
+                const categories = Array.isArray(categoriesData) ? categoriesData : (categoriesData?.categories || []);
                 const sortedCategories = categories
                   .filter((cat: any) => cat.isActive)
                   .sort((a: any, b: any) => a.order - b.order);
