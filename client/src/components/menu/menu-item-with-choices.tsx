@@ -642,7 +642,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                 }`}>
                                   {isPrimary ? '$' : '+$'}{formatPrice(price)}
                                 </Badge>
-                              )}
+                              ) : null}
                             </div>
                             );
                           })}
