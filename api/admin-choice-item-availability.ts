@@ -34,12 +34,9 @@ export const handler: Handler = async (event, context) => {
   }
 
   // Authenticate user
-  const authResult = await authenticateToken(
-    event.headers.authorization || event.headers.Authorization,
-    event.headers.cookie || event.headers.Cookie
-  );
+  const authPayload = await authenticateToken(event);
 
-  if (!authResult.success || !authResult.user) {
+  if (!authPayload) {
     return {
       statusCode: 401,
       headers,
@@ -48,7 +45,7 @@ export const handler: Handler = async (event, context) => {
   }
 
   // Check if user is staff
-  if (!isStaff(authResult.user)) {
+  if (!isStaff(authPayload)) {
     return {
       statusCode: 403,
       headers,
