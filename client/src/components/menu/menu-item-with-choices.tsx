@@ -264,6 +264,22 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
   // Handle choice selection with dynamic pricing
   const handleChoiceSelection = (groupId: string, itemId: string, isRadio: boolean) => {
     setSelectedChoices(prev => {
+      // Check if this is a size selection
+      const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
+      const isSizeGroup = group?.name === 'Size' ||
+                          group?.name === 'Calzone Size' ||
+                          group?.name === 'Stromboli Size' ||
+                          group?.name === 'Traditional Pizza Size' ||
+                          group?.name === 'Specialty Gourmet Pizza Size' ||
+                          group?.name === 'Wing Flavors';
+
+      // If changing size, clear ALL selections and start fresh with just the new size
+      if (isSizeGroup && isRadio) {
+        setSizeCollapsed(true);
+        return { [groupId]: [itemId] };
+      }
+
+      // For non-size selections, keep existing behavior
       const newChoices = isRadio
         ? { ...prev, [groupId]: [itemId] }
         : {
@@ -281,19 +297,6 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       const allSelected = Object.values(newChoices).flat();
       if (allSelected.length > 0) {
         fetchDynamicPrices(allSelected);
-      }
-
-      // If this is a size selection, collapse the size section
-      const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
-      const isSizeGroup = group?.name === 'Size' ||
-                          group?.name === 'Calzone Size' ||
-                          group?.name === 'Stromboli Size' ||
-                          group?.name === 'Traditional Pizza Size' ||
-                          group?.name === 'Specialty Gourmet Pizza Size' ||
-                          group?.name === 'Wing Flavors';
-
-      if (group && isSizeGroup && isRadio) {
-        setSizeCollapsed(true);
       }
 
       return newChoices;
