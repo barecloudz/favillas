@@ -628,7 +628,8 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                     const isSelected = selectedChoices[group.id] && selectedChoices[group.id].length > 0;
 
                     return (
-                    <div key={group.id} className={`space-y-4 p-4 rounded-xl border-2 transition-all ${
+                    <React.Fragment key={group.id}>
+                    <div className={`space-y-4 p-4 rounded-xl border-2 transition-all ${
                       isSelected
                         ? 'border-[#d73a31] bg-red-50/50 shadow-lg'
                         : 'border-gray-200 bg-white shadow-sm hover:shadow-md hover:border-gray-300'
@@ -935,7 +936,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                         )}
                       </div>
                     )}
-                    </div>
+                    </React.Fragment>
                     );
                   })}
 
