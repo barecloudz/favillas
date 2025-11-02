@@ -946,48 +946,74 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                 />
 
                                 {/* Topping emojis on left half */}
-                                <div className="absolute left-2 top-1/2 transform -translate-y-1/2 flex flex-col gap-0.5 text-lg">
-                                  {(() => {
-                                    const toppingEmojis: string[] = [];
-                                    Object.entries(firstHalfSelections).forEach(([groupId, selections]) => {
-                                      const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
-                                      if (group) {
-                                        selections.forEach(selectionId => {
-                                          const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
-                                          if (choiceItem) {
-                                            toppingEmojis.push(getToppingEmoji(choiceItem.name));
-                                          }
-                                        });
-                                      }
-                                    });
-                                    // Show up to 4 toppings
-                                    return toppingEmojis.slice(0, 4).map((emoji, idx) => (
-                                      <span key={idx} className="drop-shadow-lg">{emoji}</span>
-                                    ));
-                                  })()}
-                                </div>
+                                {(() => {
+                                  const toppingEmojis: string[] = [];
+                                  Object.entries(firstHalfSelections).forEach(([groupId, selections]) => {
+                                    const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
+                                    if (group) {
+                                      selections.forEach(selectionId => {
+                                        const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
+                                        if (choiceItem) {
+                                          toppingEmojis.push(getToppingEmoji(choiceItem.name));
+                                        }
+                                      });
+                                    }
+                                  });
+
+                                  return (
+                                    <>
+                                      {/* Outer left column (first 4) */}
+                                      <div className="absolute left-2 top-1/2 transform -translate-y-1/2 flex flex-col gap-0.5 text-lg">
+                                        {toppingEmojis.slice(0, 4).map((emoji, idx) => (
+                                          <span key={idx} className="drop-shadow-lg">{emoji}</span>
+                                        ))}
+                                      </div>
+                                      {/* Inner left column (next 4) */}
+                                      {toppingEmojis.length > 4 && (
+                                        <div className="absolute left-8 top-1/2 transform -translate-y-1/2 flex flex-col gap-0.5 text-lg">
+                                          {toppingEmojis.slice(4, 8).map((emoji, idx) => (
+                                            <span key={idx + 4} className="drop-shadow-lg">{emoji}</span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </>
+                                  );
+                                })()}
 
                                 {/* Topping emojis on right half */}
-                                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex flex-col gap-0.5 text-lg">
-                                  {(() => {
-                                    const toppingEmojis: string[] = [];
-                                    Object.entries(secondHalfSelections).forEach(([groupId, selections]) => {
-                                      const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
-                                      if (group) {
-                                        selections.forEach(selectionId => {
-                                          const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
-                                          if (choiceItem) {
-                                            toppingEmojis.push(getToppingEmoji(choiceItem.name));
-                                          }
-                                        });
-                                      }
-                                    });
-                                    // Show up to 4 toppings
-                                    return toppingEmojis.slice(0, 4).map((emoji, idx) => (
-                                      <span key={idx} className="drop-shadow-lg">{emoji}</span>
-                                    ));
-                                  })()}
-                                </div>
+                                {(() => {
+                                  const toppingEmojis: string[] = [];
+                                  Object.entries(secondHalfSelections).forEach(([groupId, selections]) => {
+                                    const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
+                                    if (group) {
+                                      selections.forEach(selectionId => {
+                                        const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
+                                        if (choiceItem) {
+                                          toppingEmojis.push(getToppingEmoji(choiceItem.name));
+                                        }
+                                      });
+                                    }
+                                  });
+
+                                  return (
+                                    <>
+                                      {/* Outer right column (first 4) */}
+                                      <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex flex-col gap-0.5 text-lg">
+                                        {toppingEmojis.slice(0, 4).map((emoji, idx) => (
+                                          <span key={idx} className="drop-shadow-lg">{emoji}</span>
+                                        ))}
+                                      </div>
+                                      {/* Inner right column (next 4) */}
+                                      {toppingEmojis.length > 4 && (
+                                        <div className="absolute right-8 top-1/2 transform -translate-y-1/2 flex flex-col gap-0.5 text-lg">
+                                          {toppingEmojis.slice(4, 8).map((emoji, idx) => (
+                                            <span key={idx + 4} className="drop-shadow-lg">{emoji}</span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </div>
 
