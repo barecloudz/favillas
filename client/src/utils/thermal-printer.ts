@@ -148,8 +148,26 @@ function formatCustomerReceipt(order: OrderPrintData): string {
     // The item.price already includes all option prices
     let size = '';
     let addons: Array<{name: string, price: string, isSize?: boolean}> = [];
+    let halfAndHalfData: { firstHalf: any[], secondHalf: any[] } | null = null;
 
-    if (parsedOptions && Array.isArray(parsedOptions)) {
+    // Check if this is a half-and-half pizza
+    if (item.halfAndHalf && (item.halfAndHalf.firstHalf || item.halfAndHalf.secondHalf)) {
+      halfAndHalfData = {
+        firstHalf: item.halfAndHalf.firstHalf || [],
+        secondHalf: item.halfAndHalf.secondHalf || []
+      };
+
+      // Extract size from regular options if present
+      if (parsedOptions && Array.isArray(parsedOptions)) {
+        parsedOptions.forEach((opt: any) => {
+          const groupName = (opt.groupName || '').toLowerCase();
+          const itemNameOpt = opt.itemName || opt.name || '';
+          if (groupName.includes('size')) {
+            size = itemNameOpt;
+          }
+        });
+      }
+    } else if (parsedOptions && Array.isArray(parsedOptions)) {
       parsedOptions.forEach((opt: any) => {
         const groupName = (opt.groupName || '').toLowerCase();
         const itemNameOpt = opt.itemName || opt.name || '';
@@ -187,8 +205,39 @@ function formatCustomerReceipt(order: OrderPrintData): string {
       receipt += `${qty}x ${itemName}\n`;
     }
 
-    // Add-ons without group names
-    if (addons.length > 0) {
+    // Half-and-half pizza display
+    if (halfAndHalfData) {
+      receipt += `${ESC}E\x01`; // Bold on
+      receipt += `   HALF & HALF PIZZA\n`;
+      receipt += `${ESC}E\x00`; // Bold off
+
+      // First Half
+      receipt += `   1st Half:\n`;
+      if (halfAndHalfData.firstHalf && halfAndHalfData.firstHalf.length > 0) {
+        halfAndHalfData.firstHalf.forEach((topping: any) => {
+          const toppingName = topping.itemName || topping.name || 'Topping';
+          const toppingPrice = topping.price || 0;
+          const priceText = toppingPrice > 0 ? ` (+$${parseFloat(toppingPrice).toFixed(2)})` : '';
+          receipt += `     + ${toppingName}${priceText}\n`;
+        });
+      } else {
+        receipt += `     Plain\n`;
+      }
+
+      // Second Half
+      receipt += `   2nd Half:\n`;
+      if (halfAndHalfData.secondHalf && halfAndHalfData.secondHalf.length > 0) {
+        halfAndHalfData.secondHalf.forEach((topping: any) => {
+          const toppingName = topping.itemName || topping.name || 'Topping';
+          const toppingPrice = topping.price || 0;
+          const priceText = toppingPrice > 0 ? ` (+$${parseFloat(toppingPrice).toFixed(2)})` : '';
+          receipt += `     + ${toppingName}${priceText}\n`;
+        });
+      } else {
+        receipt += `     Plain\n`;
+      }
+    } else if (addons.length > 0) {
+      // Regular add-ons display
       receipt += `   Add-ons:\n`;
       addons.forEach((addon) => {
         // Only show price for true add-ons, not for required selections
@@ -361,8 +410,26 @@ function formatKitchenReceipt(order: OrderPrintData): string {
     // Extract size and add-ons from options
     let size = '';
     let addons: string[] = [];
+    let halfAndHalfData: { firstHalf: any[], secondHalf: any[] } | null = null;
 
-    if (parsedOptions && Array.isArray(parsedOptions)) {
+    // Check if this is a half-and-half pizza
+    if (item.halfAndHalf && (item.halfAndHalf.firstHalf || item.halfAndHalf.secondHalf)) {
+      halfAndHalfData = {
+        firstHalf: item.halfAndHalf.firstHalf || [],
+        secondHalf: item.halfAndHalf.secondHalf || []
+      };
+
+      // Extract size from regular options if present
+      if (parsedOptions && Array.isArray(parsedOptions)) {
+        parsedOptions.forEach((opt: any) => {
+          const groupName = (opt.groupName || '').toLowerCase();
+          const itemNameOpt = opt.itemName || opt.name || '';
+          if (groupName.includes('size')) {
+            size = itemNameOpt;
+          }
+        });
+      }
+    } else if (parsedOptions && Array.isArray(parsedOptions)) {
       parsedOptions.forEach((opt: any) => {
         const groupName = (opt.groupName || '').toLowerCase();
         const itemNameOpt = opt.itemName || opt.name || '';
@@ -399,8 +466,37 @@ function formatKitchenReceipt(order: OrderPrintData): string {
     }
     receipt += `${GS}!\x00${ESC}E\x00`; // Normal size and weight
 
-    // Add-ons/Toppings - Make them bigger and clearer
-    if (addons.length > 0) {
+    // Half-and-half pizza display for kitchen
+    if (halfAndHalfData) {
+      receipt += `${ESC}E\x01${GS}!\x11`; // Bold and double height
+      receipt += `  *** HALF & HALF ***\n`;
+      receipt += `${GS}!\x00${ESC}E\x00`; // Normal size and weight
+
+      // First Half - BIG and BOLD for kitchen
+      receipt += `${GS}!\x11`; // Double height and width
+      receipt += `  1ST HALF:\n`;
+      if (halfAndHalfData.firstHalf && halfAndHalfData.firstHalf.length > 0) {
+        halfAndHalfData.firstHalf.forEach((topping: any) => {
+          const toppingName = topping.itemName || topping.name || 'Topping';
+          receipt += `    ${toppingName}\n`;
+        });
+      } else {
+        receipt += `    PLAIN\n`;
+      }
+
+      // Second Half - BIG and BOLD for kitchen
+      receipt += `  2ND HALF:\n`;
+      if (halfAndHalfData.secondHalf && halfAndHalfData.secondHalf.length > 0) {
+        halfAndHalfData.secondHalf.forEach((topping: any) => {
+          const toppingName = topping.itemName || topping.name || 'Topping';
+          receipt += `    ${toppingName}\n`;
+        });
+      } else {
+        receipt += `    PLAIN\n`;
+      }
+      receipt += `${GS}!\x00`; // Back to normal size
+    } else if (addons.length > 0) {
+      // Regular add-ons/toppings - Make them bigger and clearer
       receipt += `  Add-ons:\n`;
       receipt += `${GS}!\x11`; // Double height and width for add-ons
       addons.forEach((addon) => {
