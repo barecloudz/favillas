@@ -162,6 +162,9 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
 
   // Progressive reveal: require size selection first for calzones/stromboli/specialty pizzas/traditional pizzas/salads, then filter toppings by size
   const getVisibleChoiceGroups = () => {
+    console.log('🔍 getVisibleChoiceGroups called for item:', item.name);
+    console.log('🔍 All item choice groups:', itemChoiceGroups.map(g => g.name));
+
     // Check for Wing Flavors group - it should ALWAYS appear first
     const wingFlavorGroup = itemChoiceGroups.find(g => g.name === 'Wing Flavors');
 
@@ -191,10 +194,17 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       const selectedSizeChoice = choiceItems.find(ci => ci.id === parseInt(selectedSizeId));
       const selectedSizeName = selectedSizeChoice?.name || '';
 
+      console.log('🍕 Filtering groups for Traditional Pizza:');
+      console.log('Selected size:', selectedSizeName);
+      console.log('All groups:', itemChoiceGroups.map(g => g.name));
+
       // Filter groups to show only size group and groups that match the selected size
       const filteredGroups = itemChoiceGroups.filter(g => {
         // Always show the size group
-        if (g.id === sizeGroup.id) return true;
+        if (g.id === sizeGroup.id) {
+          console.log('✅ Showing size group:', g.name);
+          return true;
+        }
 
         // Check if this group matches the selected size
         const groupName = g.name.toLowerCase();
@@ -202,29 +212,61 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
 
         // Check if the group name contains the size (this covers both topping groups and other size-specific groups)
         // Calzone/Stromboli sizes
-        if (sizeName.includes('small') && groupName.includes('small')) return true;
-        if (sizeName.includes('medium') && groupName.includes('medium')) return true;
-        if (sizeName.includes('large') && groupName.includes('large')) return true;
+        if (sizeName.includes('small') && groupName.includes('small')) {
+          console.log('✅ Showing (small match):', g.name);
+          return true;
+        }
+        if (sizeName.includes('medium') && groupName.includes('medium')) {
+          console.log('✅ Showing (medium match):', g.name);
+          return true;
+        }
+        if (sizeName.includes('large') && groupName.includes('large')) {
+          console.log('✅ Showing (large match):', g.name);
+          return true;
+        }
 
         // Traditional Pizza sizes
-        if (sizeName.includes('personal') && groupName.includes('personal')) return true;
-        if (sizeName.includes('10') && groupName.includes('10')) return true;
-        if (sizeName.includes('12') && groupName.includes('12')) return true;
-        if (sizeName.includes('14') && groupName.includes('14')) return true;
-        if (sizeName.includes('16') && groupName.includes('16')) return true;
-        if (sizeName.toLowerCase().includes('sicilian') && groupName.includes('sicilian')) return true;
+        if (sizeName.includes('personal') && groupName.includes('personal')) {
+          console.log('✅ Showing (personal match):', g.name);
+          return true;
+        }
+        if (sizeName.includes('10') && groupName.includes('10')) {
+          console.log('✅ Showing (10" match):', g.name);
+          return true;
+        }
+        if (sizeName.includes('12') && groupName.includes('12')) {
+          console.log('✅ Showing (12" match):', g.name);
+          return true;
+        }
+        if (sizeName.includes('14') && groupName.includes('14')) {
+          console.log('✅ Showing (14" match):', g.name);
+          return true;
+        }
+        if (sizeName.includes('16') && groupName.includes('16')) {
+          console.log('✅ Showing (16" match):', g.name);
+          return true;
+        }
+        if (sizeName.toLowerCase().includes('sicilian') && groupName.includes('sicilian')) {
+          console.log('✅ Showing (sicilian match):', g.name);
+          return true;
+        }
 
         // If the group name doesn't contain any size indicator, show it (it's a generic group)
         const hasSizeInName = groupName.includes('small') || groupName.includes('medium') || groupName.includes('large') ||
                              groupName.includes('personal') || groupName.includes('10') || groupName.includes('12') ||
                              groupName.includes('14') || groupName.includes('16') || groupName.includes('sicilian');
 
-        if (!hasSizeInName) return true; // Show groups without size indicators
+        if (!hasSizeInName) {
+          console.log('✅ Showing (no size indicator):', g.name);
+          return true; // Show groups without size indicators
+        }
 
         // Don't show groups for other sizes
+        console.log('❌ Hiding (other size):', g.name);
         return false;
       });
 
+      console.log('Filtered groups:', filteredGroups.map(g => g.name));
       return filteredGroups;
     }
 
