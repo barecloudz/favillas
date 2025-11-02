@@ -1237,25 +1237,73 @@ const KitchenPage = () => {
                                 <span>${formatPrice(item.price)}</span>
                               </div>
                               {/* Display detailed choices and addons */}
-                              {item.options && Array.isArray(item.options) && item.options.length > 0 && (
-                                <div className="text-sm text-gray-600 space-y-1">
-                                  {item.options.map((option: any, idx: number) => {
-                                    // Simplify group names for kitchen display
-                                    const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
-                                    // Don't show price for required size selections (it's the base price, not an add-on)
-                                    const isSize = option.groupName?.toLowerCase().includes('size');
-                                    const showPrice = option.price && option.price > 0 && !isSize;
+                              {item.halfAndHalf ? (
+                                /* Half-and-Half Pizza Display */
+                                <div className="text-sm grid grid-cols-2 gap-2 mt-2 border-t pt-2">
+                                  {/* First Half */}
+                                  <div className="border-r-2 border-orange-300 pr-2">
+                                    <div className="font-bold text-orange-600 mb-1">🍕 1st Half</div>
+                                    {item.halfAndHalf.firstHalf && item.halfAndHalf.firstHalf.length > 0 ? (
+                                      item.halfAndHalf.firstHalf.map((option: any, idx: number) => {
+                                        const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
+                                        const showPrice = option.price && option.price > 0;
+                                        return (
+                                          <div key={idx} className="flex justify-between items-start text-xs">
+                                            <span className="flex-1">{groupName}: {option.itemName}</span>
+                                            {showPrice && (
+                                              <span className="text-green-600 font-medium ml-1">+${option.price.toFixed(2)}</span>
+                                            )}
+                                          </div>
+                                        );
+                                      })
+                                    ) : (
+                                      <span className="text-gray-400 italic text-xs">Plain</span>
+                                    )}
+                                  </div>
 
-                                    return (
-                                      <div key={idx} className="flex justify-between items-center">
-                                        <span>{groupName}: {option.itemName}</span>
-                                        {showPrice && (
-                                          <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
+                                  {/* Second Half */}
+                                  <div className="pl-2">
+                                    <div className="font-bold text-blue-600 mb-1">🍕 2nd Half</div>
+                                    {item.halfAndHalf.secondHalf && item.halfAndHalf.secondHalf.length > 0 ? (
+                                      item.halfAndHalf.secondHalf.map((option: any, idx: number) => {
+                                        const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
+                                        const showPrice = option.price && option.price > 0;
+                                        return (
+                                          <div key={idx} className="flex justify-between items-start text-xs">
+                                            <span className="flex-1">{groupName}: {option.itemName}</span>
+                                            {showPrice && (
+                                              <span className="text-green-600 font-medium ml-1">+${option.price.toFixed(2)}</span>
+                                            )}
+                                          </div>
+                                        );
+                                      })
+                                    ) : (
+                                      <span className="text-gray-400 italic text-xs">Plain</span>
+                                    )}
+                                  </div>
                                 </div>
+                              ) : (
+                                /* Regular Options Display */
+                                item.options && Array.isArray(item.options) && item.options.length > 0 && (
+                                  <div className="text-sm text-gray-600 space-y-1">
+                                    {item.options.map((option: any, idx: number) => {
+                                      // Simplify group names for kitchen display
+                                      const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
+                                      // Don't show price for required size selections (it's the base price, not an add-on)
+                                      const isSize = option.groupName?.toLowerCase().includes('size');
+                                      const showPrice = option.price && option.price > 0 && !isSize;
+
+                                      return (
+                                        <div key={idx} className="flex justify-between items-center">
+                                          <span>{groupName}: {option.itemName}</span>
+                                          {showPrice && (
+                                            <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )
                               )}
 
                               {/* Legacy options support */}
@@ -1448,25 +1496,73 @@ const KitchenPage = () => {
                           <span>${formatPrice(item.price)}</span>
                         </div>
                         {/* Display detailed choices and addons */}
-                        {item.options && Array.isArray(item.options) && item.options.length > 0 && (
-                          <div className="text-sm text-gray-600 space-y-1 mt-1">
-                            {item.options.map((option: any, idx: number) => {
-                              // Simplify group names for kitchen display
-                              const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
-                              // Don't show price for required size selections (it's the base price, not an add-on)
-                              const isSize = option.groupName?.toLowerCase().includes('size');
-                              const showPrice = option.price && option.price > 0 && !isSize;
+                        {item.halfAndHalf ? (
+                          /* Half-and-Half Pizza Display */
+                          <div className="text-sm grid grid-cols-2 gap-3 mt-3 border-t pt-2">
+                            {/* First Half */}
+                            <div className="border-r-2 border-orange-300 pr-3">
+                              <div className="font-bold text-orange-600 mb-2">🍕 1st Half</div>
+                              {item.halfAndHalf.firstHalf && item.halfAndHalf.firstHalf.length > 0 ? (
+                                item.halfAndHalf.firstHalf.map((option: any, idx: number) => {
+                                  const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
+                                  const showPrice = option.price && option.price > 0;
+                                  return (
+                                    <div key={idx} className="flex justify-between items-start text-sm mb-1">
+                                      <span className="flex-1">{groupName}: {option.itemName}</span>
+                                      {showPrice && (
+                                        <span className="text-green-600 font-medium ml-2">+${option.price.toFixed(2)}</span>
+                                      )}
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <span className="text-gray-400 italic text-sm">Plain</span>
+                              )}
+                            </div>
 
-                              return (
-                                <div key={idx} className="flex justify-between items-center">
-                                  <span>{groupName}: {option.itemName}</span>
-                                  {showPrice && (
-                                    <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
-                                  )}
-                                </div>
-                              );
-                            })}
+                            {/* Second Half */}
+                            <div className="pl-3">
+                              <div className="font-bold text-blue-600 mb-2">🍕 2nd Half</div>
+                              {item.halfAndHalf.secondHalf && item.halfAndHalf.secondHalf.length > 0 ? (
+                                item.halfAndHalf.secondHalf.map((option: any, idx: number) => {
+                                  const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
+                                  const showPrice = option.price && option.price > 0;
+                                  return (
+                                    <div key={idx} className="flex justify-between items-start text-sm mb-1">
+                                      <span className="flex-1">{groupName}: {option.itemName}</span>
+                                      {showPrice && (
+                                        <span className="text-green-600 font-medium ml-2">+${option.price.toFixed(2)}</span>
+                                      )}
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <span className="text-gray-400 italic text-sm">Plain</span>
+                              )}
+                            </div>
                           </div>
+                        ) : (
+                          /* Regular Options Display */
+                          item.options && Array.isArray(item.options) && item.options.length > 0 && (
+                            <div className="text-sm text-gray-600 space-y-1 mt-1">
+                              {item.options.map((option: any, idx: number) => {
+                                // Simplify group names for kitchen display
+                                const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
+                                // Don't show price for required size selections (it's the base price, not an add-on)
+                                const isSize = option.groupName?.toLowerCase().includes('size');
+                                const showPrice = option.price && option.price > 0 && !isSize;
+
+                                return (
+                                  <div key={idx} className="flex justify-between items-center">
+                                    <span>{groupName}: {option.itemName}</span>
+                                    {showPrice && (
+                                      <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )
                         )}
                         {item.specialInstructions && (
                           <p className="text-sm text-gray-600 italic font-medium bg-yellow-100 px-2 py-1 rounded mt-2">

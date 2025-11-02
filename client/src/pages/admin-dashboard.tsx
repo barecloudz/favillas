@@ -11202,7 +11202,8 @@ const EditCategoryForm = ({ category, onSubmit, onCancel }: { category: any; onS
     name: category.name || "",
     order: category.order || 1,
     isActive: category.isActive !== false,
-    imageUrl: category.imageUrl || category.image_url || ""
+    imageUrl: category.imageUrl || category.image_url || "",
+    enableHalfAndHalf: category.enableHalfAndHalf || false
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -11231,6 +11232,24 @@ const EditCategoryForm = ({ category, onSubmit, onCancel }: { category: any; onS
           onRemove={() => setFormData({ ...formData, imageUrl: "" })}
         />
         <p className="text-sm text-gray-500 mt-1">Upload an image to display on the category card (optional)</p>
+      </div>
+
+      <div className="flex items-center justify-between p-4 border rounded-lg bg-gradient-to-r from-orange-50 to-yellow-50">
+        <div className="flex items-center space-x-3">
+          <div className="text-2xl">🍕</div>
+          <div>
+            <Label htmlFor="edit-enable-half-and-half" className="text-base font-semibold cursor-pointer">
+              Enable Half-and-Half Customization
+            </Label>
+            <p className="text-sm text-gray-600">Allow customers to split pizza with different toppings on each half</p>
+          </div>
+        </div>
+        <Switch
+          id="edit-enable-half-and-half"
+          checked={formData.enableHalfAndHalf}
+          onCheckedChange={(checked) => setFormData({ ...formData, enableHalfAndHalf: checked })}
+          className="data-[state=checked]:bg-orange-500"
+        />
       </div>
 
       <div className="flex justify-end space-x-2">

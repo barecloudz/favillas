@@ -635,17 +635,21 @@ const MenuPage = () => {
                         )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
-                        {items.map((item: any) => (
-                          <div key={item.id} id={`menu-item-${item.id}`} className="transition-all duration-300">
-                            <MenuItemWithChoices
-                              item={item}
-                              choiceGroups={choiceGroups}
-                              choiceItems={choiceItems}
-                              menuItemChoiceGroups={menuItemChoiceGroups}
-                              isOrderingPaused={isOrderingPaused}
-                            />
-                          </div>
-                        ))}
+                        {items.map((item: any) => {
+                          const categoryInfo = categoriesData?.categories?.find((c: any) => c.name === categoryName);
+                          return (
+                            <div key={item.id} id={`menu-item-${item.id}`} className="transition-all duration-300">
+                              <MenuItemWithChoices
+                                item={item}
+                                choiceGroups={choiceGroups}
+                                choiceItems={choiceItems}
+                                menuItemChoiceGroups={menuItemChoiceGroups}
+                                isOrderingPaused={isOrderingPaused}
+                                categoryInfo={categoryInfo}
+                              />
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
