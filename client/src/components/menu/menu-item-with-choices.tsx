@@ -41,6 +41,86 @@ interface MenuItemProps {
   categoryInfo?: any;
 }
 
+// Topping emoji mapping
+const TOPPING_EMOJIS: { [key: string]: string } = {
+  // Meats
+  'pepperoni': '🍕',
+  'sausage': '🌭',
+  'bacon': '🥓',
+  'ham': '🍖',
+  'meatball': '🧆',
+  'meatballs': '🧆',
+  'chicken': '🍗',
+  'ground beef': '🥩',
+  'beef': '🥩',
+  'steak': '🥩',
+  'anchovies': '🐟',
+
+  // Vegetables
+  'mushroom': '🍄',
+  'mushrooms': '🍄',
+  'onion': '🧅',
+  'onions': '🧅',
+  'pepper': '🫑',
+  'peppers': '🫑',
+  'bell pepper': '🫑',
+  'green pepper': '🫑',
+  'red pepper': '🌶️',
+  'hot pepper': '🌶️',
+  'jalapeno': '🌶️',
+  'jalapeños': '🌶️',
+  'olive': '🫒',
+  'olives': '🫒',
+  'black olive': '🫒',
+  'tomato': '🍅',
+  'tomatoes': '🍅',
+  'spinach': '🥬',
+  'broccoli': '🥦',
+  'garlic': '🧄',
+  'basil': '🌿',
+  'arugula': '🥗',
+  'artichoke': '🌿',
+  'eggplant': '🍆',
+  'zucchini': '🥒',
+
+  // Cheese
+  'cheese': '🧀',
+  'mozzarella': '🧀',
+  'ricotta': '🧀',
+  'parmesan': '🧀',
+  'feta': '🧀',
+  'cheddar': '🧀',
+  'provolone': '🧀',
+
+  // Other
+  'pineapple': '🍍',
+  'ranch': '🥛',
+  'bbq': '🍖',
+  'buffalo': '🔥',
+  'extra sauce': '🥫',
+  'sauce': '🥫'
+};
+
+// Get emoji for a topping name
+const getToppingEmoji = (toppingName: string): string => {
+  const normalized = toppingName.toLowerCase().trim();
+
+  // Check for exact matches first
+  if (TOPPING_EMOJIS[normalized]) {
+    return TOPPING_EMOJIS[normalized];
+  }
+
+  // Check for partial matches
+  for (const [key, emoji] of Object.entries(TOPPING_EMOJIS)) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return emoji;
+    }
+  }
+
+  // Default emoji if no match found
+  return '🍕';
+};
+
 const MenuItemWithChoices: React.FC<MenuItemProps> = ({
   item,
   choiceGroups = [],
@@ -865,18 +945,48 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                   style={{ clipPath: 'polygon(50% 0, 100% 0, 100% 100%, 50% 100%)' }}
                                 />
 
-                                {/* Topping count on left half */}
-                                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-orange-600">
-                                  {Object.values(firstHalfSelections).flat().length > 0 && (
-                                    <span>{Object.values(firstHalfSelections).flat().length}</span>
-                                  )}
+                                {/* Topping emojis on left half */}
+                                <div className="absolute left-2 top-1/2 transform -translate-y-1/2 flex flex-col gap-0.5 text-lg">
+                                  {(() => {
+                                    const toppingEmojis: string[] = [];
+                                    Object.entries(firstHalfSelections).forEach(([groupId, selections]) => {
+                                      const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
+                                      if (group) {
+                                        selections.forEach(selectionId => {
+                                          const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
+                                          if (choiceItem) {
+                                            toppingEmojis.push(getToppingEmoji(choiceItem.name));
+                                          }
+                                        });
+                                      }
+                                    });
+                                    // Show up to 4 toppings
+                                    return toppingEmojis.slice(0, 4).map((emoji, idx) => (
+                                      <span key={idx} className="drop-shadow-lg">{emoji}</span>
+                                    ));
+                                  })()}
                                 </div>
 
-                                {/* Topping count on right half */}
-                                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-blue-600">
-                                  {Object.values(secondHalfSelections).flat().length > 0 && (
-                                    <span>{Object.values(secondHalfSelections).flat().length}</span>
-                                  )}
+                                {/* Topping emojis on right half */}
+                                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex flex-col gap-0.5 text-lg">
+                                  {(() => {
+                                    const toppingEmojis: string[] = [];
+                                    Object.entries(secondHalfSelections).forEach(([groupId, selections]) => {
+                                      const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
+                                      if (group) {
+                                        selections.forEach(selectionId => {
+                                          const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
+                                          if (choiceItem) {
+                                            toppingEmojis.push(getToppingEmoji(choiceItem.name));
+                                          }
+                                        });
+                                      }
+                                    });
+                                    // Show up to 4 toppings
+                                    return toppingEmojis.slice(0, 4).map((emoji, idx) => (
+                                      <span key={idx} className="drop-shadow-lg">{emoji}</span>
+                                    ));
+                                  })()}
                                 </div>
                               </div>
                             </div>
