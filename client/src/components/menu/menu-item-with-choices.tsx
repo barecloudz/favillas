@@ -738,7 +738,13 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                 if (!selectedItem) return null;
 
                                 const dynamicPrice = dynamicPrices[selectedItem.id];
-                                const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(selectedItem.price) || 0;
+                                let price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(selectedItem.price) || 0;
+
+                                // Apply 50% discount for toppings in half-and-half mode
+                                const isToppingGroup = group.name?.toLowerCase().includes('topping');
+                                if (halfAndHalfMode && isToppingGroup) {
+                                  price = price / 2;
+                                }
 
                                 return (
                                   <div className="flex items-center justify-between p-4 rounded-lg border-2 border-[#d73a31] bg-red-50 shadow-md">
@@ -781,7 +787,14 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                             >
                               {group.items.map(choiceItem => {
                                 const dynamicPrice = dynamicPrices[choiceItem.id];
-                                const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
+                                let price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
+
+                                // Apply 50% discount for toppings in half-and-half mode
+                                const isToppingGroup = group.name?.toLowerCase().includes('topping');
+                                if (halfAndHalfMode && isToppingGroup) {
+                                  price = price / 2;
+                                }
+
                                 const currentSelections = halfAndHalfMode ? getCurrentSelections() : selectedChoices;
                                 const isItemSelected = currentSelections[group.id]?.includes(choiceItem.id.toString());
                                 const isUnavailable = choiceItem.isTemporarilyUnavailable || false;
@@ -828,7 +841,14 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                         <div className="grid grid-cols-1 gap-3">
                           {group.items.map(choiceItem => {
                             const dynamicPrice = dynamicPrices[choiceItem.id];
-                            const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
+                            let price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
+
+                            // Apply 50% discount for toppings in half-and-half mode
+                            const isToppingGroup = group.name?.toLowerCase().includes('topping');
+                            if (halfAndHalfMode && isToppingGroup) {
+                              price = price / 2;
+                            }
+
                             const currentSelections = halfAndHalfMode ? getCurrentSelections() : selectedChoices;
                             const isItemSelected = currentSelections[group.id]?.includes(choiceItem.id.toString());
                             const isUnavailable = choiceItem.isTemporarilyUnavailable || false;
