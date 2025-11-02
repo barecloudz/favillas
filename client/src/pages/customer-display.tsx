@@ -74,6 +74,39 @@ const CustomerDisplay = () => {
     }, []) || [];
   // Note: picked_up orders are excluded from customer display
 
+  // Dynamic sizing based on order count per column
+  const getCardSize = (orderCount: number) => {
+    if (orderCount <= 4) {
+      return {
+        padding: 'p-4',
+        nameSize: 'text-xl',
+        orderIdSize: 'text-sm',
+        timeSize: 'text-lg',
+        itemsSize: 'text-sm'
+      };
+    } else if (orderCount <= 6) {
+      return {
+        padding: 'p-3',
+        nameSize: 'text-lg',
+        orderIdSize: 'text-xs',
+        timeSize: 'text-base',
+        itemsSize: 'text-xs'
+      };
+    } else {
+      // 7+ orders - smallest size
+      return {
+        padding: 'p-2',
+        nameSize: 'text-base',
+        orderIdSize: 'text-xs',
+        timeSize: 'text-sm',
+        itemsSize: 'text-xs'
+      };
+    }
+  };
+
+  const cookingCardSize = getCardSize(cookingOrders.length);
+  const readyCardSize = getCardSize(readyOrders.length);
+
   return (
     <>
       <Helmet>
@@ -117,7 +150,7 @@ const CustomerDisplay = () => {
                     {cookingOrders.map((order: any) => (
                       <div
                         key={order.id}
-                        className="bg-gray-700 rounded-lg p-4 border-l-4 border-yellow-500 hover:bg-gray-650 transition-colors"
+                        className={`bg-gray-700 rounded-lg ${cookingCardSize.padding} border-l-4 border-yellow-500 hover:bg-gray-650 transition-colors`}
                       >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
@@ -125,17 +158,17 @@ const CustomerDisplay = () => {
                             <Car className="w-6 h-6 text-blue-400" />
                           )}
                           <div>
-                            <div className="text-xl font-semibold text-white">
+                            <div className={`${cookingCardSize.nameSize} font-semibold text-white`}>
                               {formatCustomerName(order.first_name, order.last_name)}
                             </div>
-                            <div className="text-sm text-gray-300">
+                            <div className={`${cookingCardSize.orderIdSize} text-gray-300`}>
                               Order #{order.id}
                             </div>
                           </div>
                         </div>
 
                         <div className="text-right">
-                          <div className="text-lg font-mono text-yellow-400">
+                          <div className={`${cookingCardSize.timeSize} font-mono text-yellow-400`}>
                             {new Date(order.created_at).toLocaleTimeString([], {
                               hour: '2-digit',
                               minute: '2-digit'
@@ -148,7 +181,7 @@ const CustomerDisplay = () => {
                       </div>
 
                       {/* Order items summary */}
-                      <div className="mt-2 text-sm text-gray-300">
+                      <div className={`mt-2 ${cookingCardSize.itemsSize} text-gray-300`}>
                         {order.items?.slice(0, 2).map((item: any, index: number) => (
                           <span key={index}>
                             {item.quantity}x {item.menuItem?.name || 'Item'}
@@ -196,7 +229,7 @@ const CustomerDisplay = () => {
                       return (
                         <div
                           key={order.id}
-                          className={`bg-gray-700 rounded-lg p-4 border-l-4 border-green-500 hover:bg-gray-650 transition-colors ${
+                          className={`bg-gray-700 rounded-lg ${readyCardSize.padding} border-l-4 border-green-500 hover:bg-gray-650 transition-colors ${
                             minutesReady > 10 ? 'animate-pulse bg-red-900 border-red-500' : ''
                           }`}
                         >
@@ -206,17 +239,17 @@ const CustomerDisplay = () => {
                               <Car className="w-6 h-6 text-blue-400" />
                             )}
                             <div>
-                              <div className="text-xl font-semibold text-white">
+                              <div className={`${readyCardSize.nameSize} font-semibold text-white`}>
                                 {formatCustomerName(order.first_name, order.last_name)}
                               </div>
-                              <div className="text-sm text-gray-300">
+                              <div className={`${readyCardSize.orderIdSize} text-gray-300`}>
                                 Order #{order.id}
                               </div>
                             </div>
                           </div>
 
                           <div className="text-right">
-                            <div className="text-lg font-mono text-green-400">
+                            <div className={`${readyCardSize.timeSize} font-mono text-green-400`}>
                               {readyTime.toLocaleTimeString([], {
                                 hour: '2-digit',
                                 minute: '2-digit'
@@ -236,7 +269,7 @@ const CustomerDisplay = () => {
                         </div>
 
                         {/* Order items summary */}
-                        <div className="mt-2 text-sm text-gray-300">
+                        <div className={`mt-2 ${readyCardSize.itemsSize} text-gray-300`}>
                           {order.items?.slice(0, 2).map((item: any, index: number) => (
                             <span key={index}>
                               {item.quantity}x {item.menuItem?.name || 'Item'}

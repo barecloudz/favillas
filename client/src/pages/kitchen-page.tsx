@@ -964,15 +964,18 @@ const KitchenPage = () => {
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
-      <div className="min-h-screen bg-gray-100 overflow-y-auto">
-        <header className="bg-[#d73a31] text-white p-3 md:p-4 shadow-md">
-          <div className="container mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
-            <h1 className="text-xl md:text-2xl font-bold">Favilla's Kitchen</h1>
-            <div className="flex items-center gap-2 md:gap-4 text-sm md:text-base">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 overflow-y-auto">
+        <header className="bg-gradient-to-r from-[#d73a31] via-[#c22d25] to-[#d73a31] text-white p-4 md:p-6 shadow-2xl border-b-4 border-red-700">
+          <div className="container mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight drop-shadow-lg">Favilla's Kitchen</h1>
+              <p className="text-red-100 text-sm mt-1 font-medium">Professional Order Management</p>
+            </div>
+            <div className="flex items-center gap-2 md:gap-3 text-sm md:text-base">
               <Button
                 variant="outline"
                 size="sm"
-                className="bg-white text-[#d73a31] border-white hover:bg-gray-100 font-medium"
+                className="bg-white/95 text-[#d73a31] border-2 border-white hover:bg-white hover:scale-105 font-semibold shadow-lg transition-all duration-200 backdrop-blur-sm"
                 onClick={() => {
                   const newMode = !isColumnMode;
                   setIsColumnMode(newMode);
@@ -986,7 +989,7 @@ const KitchenPage = () => {
               <Button
                 variant="outline"
                 size="sm"
-                className="bg-white text-[#d73a31] border-white hover:bg-gray-100 font-medium"
+                className="bg-white/95 text-[#d73a31] border-2 border-white hover:bg-white hover:scale-105 font-semibold shadow-lg transition-all duration-200 backdrop-blur-sm"
                 onClick={() => {
                   playTestSound();
                 }}
@@ -998,10 +1001,10 @@ const KitchenPage = () => {
               <Button
                 variant="outline"
                 size="sm"
-                className={`border-white hover:bg-gray-100 font-medium ${
+                className={`border-2 font-semibold shadow-lg transition-all duration-200 hover:scale-105 ${
                   isOrderingPaused
-                    ? 'bg-yellow-500 text-white hover:bg-yellow-600'
-                    : 'bg-white text-[#d73a31]'
+                    ? 'bg-yellow-500 text-white border-yellow-300 hover:bg-yellow-600'
+                    : 'bg-white/95 text-[#d73a31] border-white hover:bg-white backdrop-blur-sm'
                 }`}
                 onClick={handlePauseButtonClick}
                 disabled={isTogglingPause}
@@ -1021,7 +1024,7 @@ const KitchenPage = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="bg-white text-[#d73a31] border-white hover:bg-gray-100 font-medium"
+                    className="bg-white/95 text-[#d73a31] border-2 border-white hover:bg-white hover:scale-105 font-semibold shadow-lg transition-all duration-200 backdrop-blur-sm"
                   >
                     <User className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />
                     <span className="hidden sm:inline">{user?.firstName || 'Menu'}</span>
@@ -1033,11 +1036,17 @@ const KitchenPage = () => {
                     {user?.firstName} {user?.lastName}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/')}>
+                  <DropdownMenuItem onClick={() => {
+                    // Defer navigation to next tick to avoid state updates during cleanup
+                    setTimeout(() => navigate('/'), 0);
+                  }}>
                     <Home className="mr-2 h-4 w-4" />
                     <span>Home</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/admin/dashboard')}>
+                  <DropdownMenuItem onClick={() => {
+                    // Defer navigation to next tick to avoid state updates during cleanup
+                    setTimeout(() => navigate('/admin/dashboard'), 0);
+                  }}>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Admin Dashboard</span>
                   </DropdownMenuItem>
@@ -1059,8 +1068,11 @@ const KitchenPage = () => {
                     onClick={async () => {
                       try {
                         await apiRequest('POST', '/api/logout', {});
-                        navigate('/');
-                        window.location.reload();
+                        // Defer navigation to next tick to avoid state updates during cleanup
+                        setTimeout(() => {
+                          navigate('/');
+                          window.location.reload();
+                        }, 0);
                       } catch (error) {
                         console.error('Logout failed:', error);
                       }
@@ -1078,21 +1090,23 @@ const KitchenPage = () => {
 
         {/* Pause Status Banner */}
         {isOrderingPaused && (
-          <div className="bg-yellow-500 border-b-4 border-yellow-600 p-3 md:p-4">
-            <div className="container mx-auto flex items-center gap-3 text-white">
-              <PauseCircle className="h-8 w-8 flex-shrink-0" />
+          <div className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 border-b-4 border-yellow-700 p-4 md:p-6 shadow-xl">
+            <div className="container mx-auto flex items-center gap-4 text-white">
+              <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full">
+                <PauseCircle className="h-10 w-10 flex-shrink-0 drop-shadow-lg" />
+              </div>
               <div className="flex-1">
-                <p className="font-bold text-lg md:text-xl">
+                <p className="font-bold text-xl md:text-2xl drop-shadow-md">
                   ⏸️ Orders Temporarily Paused
                   {vacationMode?.reason && (
-                    <span className="font-normal text-base md:text-lg ml-2">
-                      - {vacationMode.reason}
+                    <span className="font-semibold text-base md:text-lg ml-2 bg-white/20 px-3 py-1 rounded-full">
+                      {vacationMode.reason}
                     </span>
                   )}
                 </p>
-                <p className="text-sm md:text-base">ASAP orders are currently paused. Scheduled orders will still come through.</p>
+                <p className="text-sm md:text-base mt-2 font-medium">ASAP orders are currently paused. Scheduled orders will still come through.</p>
                 {vacationMode?.message && (
-                  <p className="text-sm md:text-base mt-1 italic">
+                  <p className="text-sm md:text-base mt-2 italic bg-white/20 px-3 py-2 rounded-lg inline-block">
                     Customer message: "{vacationMode.message}"
                   </p>
                 )}
@@ -1105,37 +1119,41 @@ const KitchenPage = () => {
           {isColumnMode ? (
             // Column Mode - 3 Column Kanban View
             <>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-gray-700">Kitchen Display - Column View</h2>
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-1">Kitchen Display</h2>
+                  <p className="text-sm text-gray-600 font-medium">Column View - Real-time Order Management</p>
+                </div>
                 <Button
                   variant="outline"
                   size="sm"
+                  className="bg-white hover:bg-gray-50 border-2 border-gray-300 hover:border-gray-400 font-semibold shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105"
                   onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/kitchen/orders"] })}
                 >
                   🔄 Refresh
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-200px)]">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
                 {/* Column 1: Ready to Start */}
-                <div className="flex flex-col bg-white rounded-lg shadow-sm border-2 border-red-200 overflow-hidden">
-                  <div className="bg-red-500 text-white p-3 font-bold text-center flex items-center justify-center gap-2">
-                    <span>Ready to Start</span>
-                    <Badge className="bg-white text-red-500">
+                <div className="flex flex-col bg-white rounded-2xl shadow-2xl border-4 border-red-100 overflow-hidden transform transition-all duration-300 hover:scale-[1.02]">
+                  <div className="bg-gradient-to-r from-red-500 via-red-600 to-red-500 text-white p-4 font-bold text-center flex items-center justify-center gap-3 shadow-lg">
+                    <span className="text-lg">Ready to Start</span>
+                    <Badge className="bg-white text-red-600 font-bold text-base px-3 py-1 shadow-md">
                       {orders?.filter((o: any) => o.status === "pending" && (o.fulfillmentTime === 'asap' || isOrderReadyToStart(o))).length || 0}
                     </Badge>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-red-50/30 to-transparent">
                     {orders?.filter((o: any) => o.status === "pending" && (o.fulfillmentTime === 'asap' || isOrderReadyToStart(o))).map((order: any) => (
                       <Card
                         key={order.id}
-                        className="cursor-pointer hover:shadow-md transition-shadow border-red-200"
+                        className="cursor-pointer hover:shadow-2xl transition-all duration-300 border-2 border-red-200/50 hover:border-red-400 bg-gradient-to-br from-white to-red-50/20 hover:scale-[1.02]"
                         onClick={() => {
                           setSelectedOrder(order);
                           setShowOrderModal(true);
                         }}
                       >
-                        <CardContent className="p-4">
+                        <CardContent className="p-5">
                           <div className="flex justify-between items-start mb-3">
                             <div>
                               <p className="text-2xl font-bold text-gray-900">
@@ -1166,7 +1184,7 @@ const KitchenPage = () => {
                           </div>
 
                           <Button
-                            className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-medium"
+                            className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                             onClick={(e) => {
                               e.stopPropagation();
                               updateOrderStatus(order.id, 'cooking');
@@ -1181,24 +1199,24 @@ const KitchenPage = () => {
                 </div>
 
                 {/* Column 2: Cooking */}
-                <div className="flex flex-col bg-white rounded-lg shadow-sm border-2 border-yellow-200 overflow-hidden">
-                  <div className="bg-yellow-500 text-white p-3 font-bold text-center flex items-center justify-center gap-2">
-                    <span>Cooking</span>
-                    <Badge className="bg-white text-yellow-600">
+                <div className="flex flex-col bg-white rounded-2xl shadow-2xl border-4 border-yellow-100 overflow-hidden transform transition-all duration-300 hover:scale-[1.02]">
+                  <div className="bg-gradient-to-r from-yellow-500 via-yellow-600 to-yellow-500 text-white p-4 font-bold text-center flex items-center justify-center gap-3 shadow-lg">
+                    <span className="text-lg">Cooking</span>
+                    <Badge className="bg-white text-yellow-600 font-bold text-base px-3 py-1 shadow-md">
                       {orders?.filter((o: any) => o.status === "cooking").length || 0}
                     </Badge>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-yellow-50/30 to-transparent">
                     {orders?.filter((o: any) => o.status === "cooking").map((order: any) => (
                       <Card
                         key={order.id}
-                        className="cursor-pointer hover:shadow-md transition-shadow border-yellow-200"
+                        className="cursor-pointer hover:shadow-2xl transition-all duration-300 border-2 border-yellow-200/50 hover:border-yellow-400 bg-gradient-to-br from-white to-yellow-50/20 hover:scale-[1.02]"
                         onClick={() => {
                           setSelectedOrder(order);
                           setShowOrderModal(true);
                         }}
                       >
-                        <CardContent className="p-4">
+                        <CardContent className="p-5">
                           <div className="flex justify-between items-start mb-3">
                             <div>
                               <p className="text-2xl font-bold text-gray-900">
@@ -1229,7 +1247,7 @@ const KitchenPage = () => {
                           </div>
 
                           <Button
-                            className="w-full bg-green-500 hover:bg-green-600 text-white font-medium"
+                            className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                             onClick={(e) => {
                               e.stopPropagation();
                               updateOrderStatus(order.id, 'completed');
@@ -1244,24 +1262,24 @@ const KitchenPage = () => {
                 </div>
 
                 {/* Column 3: Ready for Pickup */}
-                <div className="flex flex-col bg-white rounded-lg shadow-sm border-2 border-green-200 overflow-hidden">
-                  <div className="bg-green-500 text-white p-3 font-bold text-center flex items-center justify-center gap-2">
-                    <span>Ready for Pickup</span>
-                    <Badge className="bg-white text-green-600">
+                <div className="flex flex-col bg-white rounded-2xl shadow-2xl border-4 border-green-100 overflow-hidden transform transition-all duration-300 hover:scale-[1.02]">
+                  <div className="bg-gradient-to-r from-green-500 via-green-600 to-green-500 text-white p-4 font-bold text-center flex items-center justify-center gap-3 shadow-lg">
+                    <span className="text-lg">Ready for Pickup</span>
+                    <Badge className="bg-white text-green-600 font-bold text-base px-3 py-1 shadow-md">
                       {orders?.filter((o: any) => o.status === "completed").length || 0}
                     </Badge>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-green-50/30 to-transparent">
                     {orders?.filter((o: any) => o.status === "completed").map((order: any) => (
                       <Card
                         key={order.id}
-                        className="cursor-pointer hover:shadow-md transition-shadow border-green-200"
+                        className="cursor-pointer hover:shadow-2xl transition-all duration-300 border-2 border-green-200/50 hover:border-green-400 bg-gradient-to-br from-white to-green-50/20 hover:scale-[1.02]"
                         onClick={() => {
                           setSelectedOrder(order);
                           setShowOrderModal(true);
                         }}
                       >
-                        <CardContent className="p-4">
+                        <CardContent className="p-5">
                           <div className="flex justify-between items-start mb-3">
                             <div>
                               <p className="text-2xl font-bold text-gray-900">
@@ -1292,7 +1310,7 @@ const KitchenPage = () => {
                           </div>
 
                           <Button
-                            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium"
+                            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                             onClick={(e) => {
                               e.stopPropagation();
                               updateOrderStatus(order.id, 'picked_up');
@@ -1309,8 +1327,8 @@ const KitchenPage = () => {
             </>
           ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 md:mb-6">
-              <TabsList className="w-full sm:w-auto overflow-x-auto flex-wrap sm:flex-nowrap text-xs sm:text-sm">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 md:mb-8">
+              <TabsList className="w-full sm:w-auto overflow-x-auto flex-wrap sm:flex-nowrap text-xs sm:text-sm bg-white shadow-lg border-2 border-gray-200 p-1">
                 <TabsTrigger value="pending" className="relative px-2 md:px-3">
                   <span className="hidden sm:inline">Ready to Start</span>
                   <span className="sm:hidden">Ready</span>
@@ -1348,7 +1366,7 @@ const KitchenPage = () => {
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto bg-white hover:bg-gray-50 border-2 border-gray-300 hover:border-gray-400 font-semibold shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105"
                 onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/kitchen/orders"] })}
               >
                 🔄 Refresh
@@ -1357,18 +1375,20 @@ const KitchenPage = () => {
             
             <TabsContent value={activeTab} className="mt-0">
               {filteredOrders.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-lg shadow">
-                  <p className="text-xl text-gray-500">No {activeTab === 'cooking' ? 'cooking' : activeTab} orders found</p>
+                <div className="text-center py-20 bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl border-2 border-gray-200">
+                  <div className="text-6xl mb-4 opacity-50">📋</div>
+                  <p className="text-2xl font-bold text-gray-700 mb-2">All Clear!</p>
+                  <p className="text-lg text-gray-500">No {activeTab === 'cooking' ? 'cooking' : activeTab} orders at the moment</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredOrders.map((order: any) => (
-                    <Card key={order.id} className="overflow-hidden">
+                    <Card key={order.id} className="overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] border-2">
                       <CardHeader className={`
-                        ${order.status === 'pending' ? 'bg-red-100' : ''}
-                        ${order.status === 'cooking' ? 'bg-yellow-100' : ''}
-                        ${order.status === 'completed' ? 'bg-green-100' : ''}
-                        ${order.status === 'picked_up' ? 'bg-gray-100' : ''}
+                        ${order.status === 'pending' ? 'bg-gradient-to-br from-red-100 to-red-50 border-b-4 border-red-300' : ''}
+                        ${order.status === 'cooking' ? 'bg-gradient-to-br from-yellow-100 to-yellow-50 border-b-4 border-yellow-300' : ''}
+                        ${order.status === 'completed' ? 'bg-gradient-to-br from-green-100 to-green-50 border-b-4 border-green-300' : ''}
+                        ${order.status === 'picked_up' ? 'bg-gradient-to-br from-gray-100 to-gray-50 border-b-4 border-gray-300' : ''}
                       `}>
                         <div className="flex justify-between items-start mb-2">
                           <div>
@@ -1410,25 +1430,73 @@ const KitchenPage = () => {
                                 <span>${formatPrice(item.price)}</span>
                               </div>
                               {/* Display detailed choices and addons */}
-                              {item.options && Array.isArray(item.options) && item.options.length > 0 && (
-                                <div className="text-sm text-gray-600 space-y-1">
-                                  {item.options.map((option: any, idx: number) => {
-                                    // Simplify group names for kitchen display
-                                    const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
-                                    // Don't show price for required size selections (it's the base price, not an add-on)
-                                    const isSize = option.groupName?.toLowerCase().includes('size');
-                                    const showPrice = option.price && option.price > 0 && !isSize;
+                              {item.halfAndHalf ? (
+                                /* Half-and-Half Pizza Display */
+                                <div className="text-sm grid grid-cols-2 gap-2 mt-2 border-t pt-2">
+                                  {/* First Half */}
+                                  <div className="border-r-2 border-orange-300 pr-2">
+                                    <div className="font-bold text-orange-600 mb-1">🍕 1st Half</div>
+                                    {item.halfAndHalf.firstHalf && item.halfAndHalf.firstHalf.length > 0 ? (
+                                      item.halfAndHalf.firstHalf.map((option: any, idx: number) => {
+                                        const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
+                                        const showPrice = option.price && option.price > 0;
+                                        return (
+                                          <div key={idx} className="flex justify-between items-start text-xs">
+                                            <span className="flex-1">{groupName}: {option.itemName}</span>
+                                            {showPrice && (
+                                              <span className="text-green-600 font-medium ml-1">+${option.price.toFixed(2)}</span>
+                                            )}
+                                          </div>
+                                        );
+                                      })
+                                    ) : (
+                                      <span className="text-gray-400 italic text-xs">Plain</span>
+                                    )}
+                                  </div>
 
-                                    return (
-                                      <div key={idx} className="flex justify-between items-center">
-                                        <span>{groupName}: {option.itemName}</span>
-                                        {showPrice && (
-                                          <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
+                                  {/* Second Half */}
+                                  <div className="pl-2">
+                                    <div className="font-bold text-blue-600 mb-1">🍕 2nd Half</div>
+                                    {item.halfAndHalf.secondHalf && item.halfAndHalf.secondHalf.length > 0 ? (
+                                      item.halfAndHalf.secondHalf.map((option: any, idx: number) => {
+                                        const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
+                                        const showPrice = option.price && option.price > 0;
+                                        return (
+                                          <div key={idx} className="flex justify-between items-start text-xs">
+                                            <span className="flex-1">{groupName}: {option.itemName}</span>
+                                            {showPrice && (
+                                              <span className="text-green-600 font-medium ml-1">+${option.price.toFixed(2)}</span>
+                                            )}
+                                          </div>
+                                        );
+                                      })
+                                    ) : (
+                                      <span className="text-gray-400 italic text-xs">Plain</span>
+                                    )}
+                                  </div>
                                 </div>
+                              ) : (
+                                /* Regular Options Display */
+                                item.options && Array.isArray(item.options) && item.options.length > 0 && (
+                                  <div className="text-sm text-gray-600 space-y-1">
+                                    {item.options.map((option: any, idx: number) => {
+                                      // Simplify group names for kitchen display
+                                      const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
+                                      // Don't show price for required size selections (it's the base price, not an add-on)
+                                      const isSize = option.groupName?.toLowerCase().includes('size');
+                                      const showPrice = option.price && option.price > 0 && !isSize;
+
+                                      return (
+                                        <div key={idx} className="flex justify-between items-center">
+                                          <span>{groupName}: {option.itemName}</span>
+                                          {showPrice && (
+                                            <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )
                               )}
 
                               {/* Legacy options support */}
@@ -1503,9 +1571,9 @@ const KitchenPage = () => {
 
                           {order.status === 'pending' && (
                             <Button
-                              className={`w-full sm:flex-1 h-12 text-base font-medium text-white ${
+                              className={`w-full sm:flex-1 h-12 text-base font-bold text-white shadow-lg hover:shadow-xl transition-all duration-300 ${
                                 isOrderReadyToStart(order)
-                                  ? "bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700"
+                                  ? "bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 hover:scale-105"
                                   : "bg-gray-400 cursor-not-allowed"
                               }`}
                               onClick={() => {
@@ -1528,7 +1596,7 @@ const KitchenPage = () => {
 
                           {order.status === 'cooking' && (
                             <Button
-                              className="w-full sm:flex-1 h-12 text-base font-medium text-white bg-green-500 hover:bg-green-600 active:bg-green-700"
+                              className="w-full sm:flex-1 h-12 text-base font-bold text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
                               onClick={() => {
                                 console.log('✅ Complete clicked for order:', order.id);
                                 updateOrderStatus(order.id, 'completed');
@@ -1541,7 +1609,7 @@ const KitchenPage = () => {
                           {order.status === 'completed' && (
                             <div className="flex flex-col gap-2 sm:flex-row sm:flex-1">
                               <Button
-                                className="w-full h-12 text-base font-medium text-white bg-blue-500 hover:bg-blue-600 active:bg-blue-700"
+                                className="w-full h-12 text-base font-bold text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
                                 onClick={() => {
                                   console.log('📦 Picked Up clicked for order:', order.id);
                                   updateOrderStatus(order.id, 'picked_up');
@@ -1550,7 +1618,7 @@ const KitchenPage = () => {
                                 📦 Picked Up
                               </Button>
                               <Button
-                                className="w-full h-12 text-base font-medium bg-gray-500 hover:bg-gray-600 active:bg-gray-700 text-white"
+                                className="w-full h-12 text-base font-bold bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
                                 onClick={() => {
                                   console.log('🔄 Reopen clicked for order:', order.id);
                                   updateOrderStatus(order.id, 'cooking');
@@ -1621,25 +1689,73 @@ const KitchenPage = () => {
                           <span>${formatPrice(item.price)}</span>
                         </div>
                         {/* Display detailed choices and addons */}
-                        {item.options && Array.isArray(item.options) && item.options.length > 0 && (
-                          <div className="text-sm text-gray-600 space-y-1 mt-1">
-                            {item.options.map((option: any, idx: number) => {
-                              // Simplify group names for kitchen display
-                              const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
-                              // Don't show price for required size selections (it's the base price, not an add-on)
-                              const isSize = option.groupName?.toLowerCase().includes('size');
-                              const showPrice = option.price && option.price > 0 && !isSize;
+                        {item.halfAndHalf ? (
+                          /* Half-and-Half Pizza Display */
+                          <div className="text-sm grid grid-cols-2 gap-3 mt-3 border-t pt-2">
+                            {/* First Half */}
+                            <div className="border-r-2 border-orange-300 pr-3">
+                              <div className="font-bold text-orange-600 mb-2">🍕 1st Half</div>
+                              {item.halfAndHalf.firstHalf && item.halfAndHalf.firstHalf.length > 0 ? (
+                                item.halfAndHalf.firstHalf.map((option: any, idx: number) => {
+                                  const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
+                                  const showPrice = option.price && option.price > 0;
+                                  return (
+                                    <div key={idx} className="flex justify-between items-start text-sm mb-1">
+                                      <span className="flex-1">{groupName}: {option.itemName}</span>
+                                      {showPrice && (
+                                        <span className="text-green-600 font-medium ml-2">+${option.price.toFixed(2)}</span>
+                                      )}
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <span className="text-gray-400 italic text-sm">Plain</span>
+                              )}
+                            </div>
 
-                              return (
-                                <div key={idx} className="flex justify-between items-center">
-                                  <span>{groupName}: {option.itemName}</span>
-                                  {showPrice && (
-                                    <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
-                                  )}
-                                </div>
-                              );
-                            })}
+                            {/* Second Half */}
+                            <div className="pl-3">
+                              <div className="font-bold text-blue-600 mb-2">🍕 2nd Half</div>
+                              {item.halfAndHalf.secondHalf && item.halfAndHalf.secondHalf.length > 0 ? (
+                                item.halfAndHalf.secondHalf.map((option: any, idx: number) => {
+                                  const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
+                                  const showPrice = option.price && option.price > 0;
+                                  return (
+                                    <div key={idx} className="flex justify-between items-start text-sm mb-1">
+                                      <span className="flex-1">{groupName}: {option.itemName}</span>
+                                      {showPrice && (
+                                        <span className="text-green-600 font-medium ml-2">+${option.price.toFixed(2)}</span>
+                                      )}
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <span className="text-gray-400 italic text-sm">Plain</span>
+                              )}
+                            </div>
                           </div>
+                        ) : (
+                          /* Regular Options Display */
+                          item.options && Array.isArray(item.options) && item.options.length > 0 && (
+                            <div className="text-sm text-gray-600 space-y-1 mt-1">
+                              {item.options.map((option: any, idx: number) => {
+                                // Simplify group names for kitchen display
+                                const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
+                                // Don't show price for required size selections (it's the base price, not an add-on)
+                                const isSize = option.groupName?.toLowerCase().includes('size');
+                                const showPrice = option.price && option.price > 0 && !isSize;
+
+                                return (
+                                  <div key={idx} className="flex justify-between items-center">
+                                    <span>{groupName}: {option.itemName}</span>
+                                    {showPrice && (
+                                      <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )
                         )}
                         {item.specialInstructions && (
                           <p className="text-sm text-gray-600 italic font-medium bg-yellow-100 px-2 py-1 rounded mt-2">

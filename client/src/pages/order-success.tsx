@@ -795,16 +795,64 @@ Thank you for choosing Favilla's NY Pizza!
                               </div>
                               <div className="flex-1">
                                 <h3 className="font-bold text-gray-900 text-lg">{item?.name || 'Unknown Item'}</h3>
-                                {item.options && Array.isArray(item.options) && item.options.length > 0 && (
-                                  <div className="mt-1 space-y-1">
-                                    {item.options.map((option: any, optIndex: number) => (
-                                      <p key={optIndex} className="text-sm text-gray-600">
-                                        • {option.itemName || option.name}
-                                        {option.price > 0 && ` (+${formatCurrency(option.price)})`}
-                                      </p>
-                                    ))}
+
+                                {/* Half-and-Half Pizza Display */}
+                                {item.halfAndHalf ? (
+                                  <div className="mt-2 grid grid-cols-2 gap-3">
+                                    {/* First Half */}
+                                    <div className="border-r-2 border-orange-200 pr-3">
+                                      <div className="flex items-center space-x-2 mb-2">
+                                        <span className="text-xl">🍕</span>
+                                        <span className="font-semibold text-orange-600 text-sm">1st Half</span>
+                                      </div>
+                                      {item.halfAndHalf.firstHalf && item.halfAndHalf.firstHalf.length > 0 ? (
+                                        <div className="space-y-1">
+                                          {item.halfAndHalf.firstHalf.map((option: any, optIndex: number) => (
+                                            <p key={optIndex} className="text-sm text-gray-600">
+                                              • {option.itemName || option.name}
+                                              {option.price > 0 && ` (+${formatCurrency(option.price)})`}
+                                            </p>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <p className="text-xs text-gray-400 italic">Plain</p>
+                                      )}
+                                    </div>
+
+                                    {/* Second Half */}
+                                    <div className="pl-3">
+                                      <div className="flex items-center space-x-2 mb-2">
+                                        <span className="text-xl">🍕</span>
+                                        <span className="font-semibold text-blue-600 text-sm">2nd Half</span>
+                                      </div>
+                                      {item.halfAndHalf.secondHalf && item.halfAndHalf.secondHalf.length > 0 ? (
+                                        <div className="space-y-1">
+                                          {item.halfAndHalf.secondHalf.map((option: any, optIndex: number) => (
+                                            <p key={optIndex} className="text-sm text-gray-600">
+                                              • {option.itemName || option.name}
+                                              {option.price > 0 && ` (+${formatCurrency(option.price)})`}
+                                            </p>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <p className="text-xs text-gray-400 italic">Plain</p>
+                                      )}
+                                    </div>
                                   </div>
+                                ) : (
+                                  /* Regular Options Display */
+                                  item.options && Array.isArray(item.options) && item.options.length > 0 && (
+                                    <div className="mt-1 space-y-1">
+                                      {item.options.map((option: any, optIndex: number) => (
+                                        <p key={optIndex} className="text-sm text-gray-600">
+                                          • {option.itemName || option.name}
+                                          {option.price > 0 && ` (+${formatCurrency(option.price)})`}
+                                        </p>
+                                      ))}
+                                    </div>
+                                  )
                                 )}
+
                                 {item.specialInstructions && (
                                   <p className="text-sm text-gray-500 mt-2 italic">
                                     Note: {item.specialInstructions}

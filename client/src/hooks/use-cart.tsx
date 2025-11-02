@@ -18,6 +18,16 @@ export interface CartItem {
     price: number;
   }>;
   specialInstructions?: string;
+  halfAndHalf?: {
+    firstHalf: Array<{
+      itemName: string;
+      price: number;
+    }>;
+    secondHalf: Array<{
+      itemName: string;
+      price: number;
+    }>;
+  };
 }
 
 // Cart context type
@@ -218,15 +228,29 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
   
-  // Check if items are equal (including selected options)
+  // Check if items are equal (including ALL selected options and customizations)
   const areItemsEqual = (a: CartItem, b: CartItem) => {
     if (a.id !== b.id) return false;
-    
+
+    // Compare special instructions
+    if (a.specialInstructions !== b.specialInstructions) return false;
+
     // Compare selectedOptions objects
-    const aOptions = JSON.stringify(a.selectedOptions || {});
-    const bOptions = JSON.stringify(b.selectedOptions || {});
-    
-    return aOptions === bOptions && a.specialInstructions === b.specialInstructions;
+    const aSelectedOptions = JSON.stringify(a.selectedOptions || {});
+    const bSelectedOptions = JSON.stringify(b.selectedOptions || {});
+    if (aSelectedOptions !== bSelectedOptions) return false;
+
+    // Compare options array (detailed toppings/choices)
+    const aOptions = JSON.stringify(a.options || []);
+    const bOptions = JSON.stringify(b.options || []);
+    if (aOptions !== bOptions) return false;
+
+    // Compare halfAndHalf data (for half-and-half pizzas)
+    const aHalfAndHalf = JSON.stringify(a.halfAndHalf || null);
+    const bHalfAndHalf = JSON.stringify(b.halfAndHalf || null);
+    if (aHalfAndHalf !== bHalfAndHalf) return false;
+
+    return true;
   };
   
   // Add item to cart

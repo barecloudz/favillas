@@ -1043,22 +1043,60 @@ const CheckoutPage = () => {
                             <p className="font-medium">{item.name}</p>
                             <p className="text-sm text-gray-500">
                               {item.selectedOptions?.size && `Size: ${item.selectedOptions.size}`}
-                              {/* Show add-ons */}
-                              {item.options && item.options.length > 0 && (
-                                <span className="block">
-                                  {item.options.map((opt, idx) => {
-                                    // Don't show sizes in add-ons list or price calculation
-                                    const isSize = opt.groupName?.toLowerCase().includes('size');
-                                    return isSize ? null : `${opt.itemName || opt.name}`;
-                                  }).filter(Boolean).join(', ') || 'No add-ons'}
-                                  {(() => {
-                                    // Calculate add-on price excluding sizes
-                                    const addOnPrice = item.options
-                                      .filter(opt => !opt.groupName?.toLowerCase().includes('size'))
-                                      .reduce((sum, opt) => sum + (opt.price || 0), 0);
-                                    return addOnPrice > 0 ? ` (+$${addOnPrice.toFixed(2)})` : '';
-                                  })()}
+                              {/* Show half-and-half pizza selections */}
+                              {item.halfAndHalf ? (
+                                <span className="block mt-2">
+                                  <div className="grid grid-cols-2 gap-2 bg-gradient-to-r from-orange-50 to-blue-50 p-2 rounded border border-orange-200">
+                                    <div className="border-r border-orange-300 pr-2">
+                                      <div className="font-semibold text-orange-600 text-xs mb-1">🍕 1st Half</div>
+                                      {item.halfAndHalf.firstHalf && item.halfAndHalf.firstHalf.length > 0 ? (
+                                        <div className="text-xs space-y-0.5">
+                                          {item.halfAndHalf.firstHalf.map((opt: any, idx: number) => (
+                                            <div key={idx}>
+                                              {opt.itemName} {opt.price > 0 && `(+$${opt.price.toFixed(2)})`}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <span className="text-xs italic text-gray-400">Plain</span>
+                                      )}
+                                    </div>
+                                    <div className="pl-2">
+                                      <div className="font-semibold text-blue-600 text-xs mb-1">🍕 2nd Half</div>
+                                      {item.halfAndHalf.secondHalf && item.halfAndHalf.secondHalf.length > 0 ? (
+                                        <div className="text-xs space-y-0.5">
+                                          {item.halfAndHalf.secondHalf.map((opt: any, idx: number) => (
+                                            <div key={idx}>
+                                              {opt.itemName} {opt.price > 0 && `(+$${opt.price.toFixed(2)})`}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <span className="text-xs italic text-gray-400">Plain</span>
+                                      )}
+                                    </div>
+                                  </div>
                                 </span>
+                              ) : (
+                                <>
+                                  {/* Show regular add-ons */}
+                                  {item.options && item.options.length > 0 && (
+                                    <span className="block">
+                                      {item.options.map((opt, idx) => {
+                                        // Don't show sizes in add-ons list or price calculation
+                                        const isSize = opt.groupName?.toLowerCase().includes('size');
+                                        return isSize ? null : `${opt.itemName || opt.name}`;
+                                      }).filter(Boolean).join(', ') || 'No add-ons'}
+                                      {(() => {
+                                        // Calculate add-on price excluding sizes
+                                        const addOnPrice = item.options
+                                          .filter(opt => !opt.groupName?.toLowerCase().includes('size'))
+                                          .reduce((sum, opt) => sum + (opt.price || 0), 0);
+                                        return addOnPrice > 0 ? ` (+$${addOnPrice.toFixed(2)})` : '';
+                                      })()}
+                                    </span>
+                                  )}
+                                </>
                               )}
                               {item.specialInstructions && (
                                 <span className="block italic">"{item.specialInstructions}"</span>

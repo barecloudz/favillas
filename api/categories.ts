@@ -71,7 +71,9 @@ export const handler: Handler = async (event, context) => {
         isTemporarilyUnavailable: cat.is_temporarily_unavailable || false,
         unavailabilityReason: cat.unavailability_reason,
         unavailableSince: cat.unavailable_since,
-        unavailableUntil: cat.unavailable_until
+        unavailableUntil: cat.unavailable_until,
+        // Add half-and-half feature flag
+        enableHalfAndHalf: cat.enable_half_and_half || false
       }));
 
       return {
@@ -117,7 +119,7 @@ export const handler: Handler = async (event, context) => {
       }
 
       const updateData = JSON.parse(event.body || '{}');
-      const { name, order, isActive, imageUrl } = updateData;
+      const { name, order, isActive, imageUrl, enableHalfAndHalf } = updateData;
 
       // First, get the current category to check if name is changing
       const currentCategory = await sql`
@@ -199,6 +201,16 @@ export const handler: Handler = async (event, context) => {
           result = await sql`
             UPDATE categories
             SET image_url = ${imageUrl || null}
+            WHERE id = ${parseInt(categoryId)}
+            RETURNING *
+          `;
+        }
+
+        // Update half-and-half feature flag if provided (separate query)
+        if (enableHalfAndHalf !== undefined && result.length > 0) {
+          result = await sql`
+            UPDATE categories
+            SET enable_half_and_half = ${enableHalfAndHalf}
             WHERE id = ${parseInt(categoryId)}
             RETURNING *
           `;

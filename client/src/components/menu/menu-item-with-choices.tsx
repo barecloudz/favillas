@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { ShoppingCart, Plus, Minus } from "lucide-react";
 
 // Primary choice groups that set the base price or are required selections
@@ -37,14 +38,96 @@ interface MenuItemProps {
   choiceItems?: any[];
   menuItemChoiceGroups?: any[];
   isOrderingPaused?: boolean;
+  categoryInfo?: any;
 }
+
+// Topping emoji mapping
+const TOPPING_EMOJIS: { [key: string]: string } = {
+  // Meats
+  'pepperoni': '🍕',
+  'sausage': '🌭',
+  'bacon': '🥓',
+  'ham': '🍖',
+  'meatball': '🧆',
+  'meatballs': '🧆',
+  'chicken': '🍗',
+  'ground beef': '🥩',
+  'beef': '🥩',
+  'steak': '🥩',
+  'anchovies': '🐟',
+
+  // Vegetables
+  'mushroom': '🍄',
+  'mushrooms': '🍄',
+  'onion': '🧅',
+  'onions': '🧅',
+  'pepper': '🫑',
+  'peppers': '🫑',
+  'bell pepper': '🫑',
+  'green pepper': '🫑',
+  'red pepper': '🌶️',
+  'hot pepper': '🌶️',
+  'jalapeno': '🌶️',
+  'jalapeños': '🌶️',
+  'olive': '🫒',
+  'olives': '🫒',
+  'black olive': '🫒',
+  'tomato': '🍅',
+  'tomatoes': '🍅',
+  'spinach': '🥬',
+  'broccoli': '🥦',
+  'garlic': '🧄',
+  'basil': '🌿',
+  'arugula': '🥗',
+  'artichoke': '🌿',
+  'eggplant': '🍆',
+  'zucchini': '🥒',
+
+  // Cheese
+  'cheese': '🧀',
+  'mozzarella': '🧀',
+  'ricotta': '🧀',
+  'parmesan': '🧀',
+  'feta': '🧀',
+  'cheddar': '🧀',
+  'provolone': '🧀',
+
+  // Other
+  'pineapple': '🍍',
+  'ranch': '🥛',
+  'bbq': '🍖',
+  'buffalo': '🔥',
+  'extra sauce': '🥫',
+  'sauce': '🥫'
+};
+
+// Get emoji for a topping name
+const getToppingEmoji = (toppingName: string): string => {
+  const normalized = toppingName.toLowerCase().trim();
+
+  // Check for exact matches first
+  if (TOPPING_EMOJIS[normalized]) {
+    return TOPPING_EMOJIS[normalized];
+  }
+
+  // Check for partial matches
+  for (const [key, emoji] of Object.entries(TOPPING_EMOJIS)) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return emoji;
+    }
+  }
+
+  // Default emoji if no match found
+  return '🍕';
+};
 
 const MenuItemWithChoices: React.FC<MenuItemProps> = ({
   item,
   choiceGroups = [],
   choiceItems = [],
   menuItemChoiceGroups = [],
-  isOrderingPaused = false
+  isOrderingPaused = false,
+  categoryInfo
 }) => {
   const { addItem, triggerPizzaAnimation } = useCart();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -54,6 +137,12 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
   const [triggerElement, setTriggerElement] = useState<HTMLElement | null>(null);
   const [sizeCollapsed, setSizeCollapsed] = useState(false);
 
+  // Half-and-half pizza state
+  const [halfAndHalfMode, setHalfAndHalfMode] = useState(false);
+  const [activeHalf, setActiveHalf] = useState<'first' | 'second'>('first');
+  const [firstHalfSelections, setFirstHalfSelections] = useState<{ [key: string]: string[] }>({});
+  const [secondHalfSelections, setSecondHalfSelections] = useState<{ [key: string]: string[] }>({});
+
   const formatPrice = (price: string | number) => {
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
     if (isNaN(numPrice) || numPrice === null || numPrice === undefined) {
@@ -61,6 +150,26 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
     }
     return numPrice.toFixed(2);
   };
+
+  // Get current selections based on half-and-half mode
+  const getCurrentSelections = () => {
+    if (!halfAndHalfMode) return selectedChoices;
+    return activeHalf === 'first' ? firstHalfSelections : secondHalfSelections;
+  };
+
+  // Set current selections based on half-and-half mode
+  const setCurrentSelections = (selections: { [key: string]: string[] }) => {
+    if (!halfAndHalfMode) {
+      setSelectedChoices(selections);
+    } else if (activeHalf === 'first') {
+      setFirstHalfSelections(selections);
+    } else {
+      setSecondHalfSelections(selections);
+    }
+  };
+
+  // Check if this category has half-and-half enabled
+  const canUseHalfAndHalf = categoryInfo?.enableHalfAndHalf === true;
 
   // Get choice groups for this menu item, sorted by order field
   const getItemChoiceGroups = () => {
@@ -122,9 +231,11 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       g.name === 'Traditional Pizza Size' ||
       g.name === 'Specialty Gourmet Pizza Size'
     );
-    if (!sizeGroup || !selectedChoices[sizeGroup.id]) return null;
+    // In half-and-half mode, size is always in selectedChoices (shared between halves)
+    const selections = halfAndHalfMode ? selectedChoices : getCurrentSelections();
+    if (!sizeGroup || !selections[sizeGroup.id]) return null;
 
-    const sizeChoiceId = selectedChoices[sizeGroup.id][0];
+    const sizeChoiceId = selections[sizeGroup.id][0];
     const sizeChoice = choiceItems.find(ci => ci.id === parseInt(sizeChoiceId));
     return sizeChoice?.name;
   };
@@ -154,43 +265,44 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       return [sizeGroup];
     }
 
-    // If size is selected for calzone/stromboli/pizza, filter topping groups by size
+    // If size is selected for calzone/stromboli/pizza, filter groups by size
     if (sizeGroup && selectedChoices[sizeGroup.id] && selectedChoices[sizeGroup.id].length > 0) {
       const selectedSizeId = selectedChoices[sizeGroup.id][0];
       const selectedSizeChoice = choiceItems.find(ci => ci.id === parseInt(selectedSizeId));
       const selectedSizeName = selectedSizeChoice?.name || '';
 
-      // Filter groups to show only size group and toppings that match the selected size
+      // Filter groups to show only size group and groups that match the selected size
       const filteredGroups = itemChoiceGroups.filter(g => {
         // Always show the size group
         if (g.id === sizeGroup.id) return true;
 
-        // For topping groups, check if they match the selected size
+        // Check if this group matches the selected size
         const groupName = g.name.toLowerCase();
         const sizeName = selectedSizeName.toLowerCase();
 
-        // Check if this is a topping group
-        if (groupName.includes('topping')) {
-          // Match size in group name with selected size
-          // Calzone/Stromboli sizes
-          if (sizeName.includes('small') && groupName.includes('small')) return true;
-          if (sizeName.includes('medium') && groupName.includes('medium')) return true;
-          if (sizeName.includes('large') && groupName.includes('large')) return true;
+        // Check if the group name contains the size (this covers both topping groups and other size-specific groups)
+        // Calzone/Stromboli sizes
+        if (sizeName.includes('small') && groupName.includes('small')) return true;
+        if (sizeName.includes('medium') && groupName.includes('medium')) return true;
+        if (sizeName.includes('large') && groupName.includes('large')) return true;
 
-          // Traditional Pizza sizes
-          if (sizeName.includes('personal') && groupName.includes('personal')) return true;
-          if (sizeName.includes('10') && groupName.includes('10')) return true;
-          if (sizeName.includes('12') && groupName.includes('12')) return true;
-          if (sizeName.includes('14') && groupName.includes('14')) return true;
-          if (sizeName.includes('16') && groupName.includes('16')) return true;
-          if (sizeName.toLowerCase().includes('sicilian') && groupName.includes('sicilian')) return true;
+        // Traditional Pizza sizes
+        if (sizeName.includes('personal') && groupName.includes('personal')) return true;
+        if (sizeName.includes('10') && groupName.includes('10')) return true;
+        if (sizeName.includes('12') && groupName.includes('12')) return true;
+        if (sizeName.includes('14') && groupName.includes('14')) return true;
+        if (sizeName.includes('16') && groupName.includes('16')) return true;
+        if (sizeName.toLowerCase().includes('sicilian') && groupName.includes('sicilian')) return true;
 
-          // Don't show toppings for other sizes
-          return false;
-        }
+        // If the group name doesn't contain any size indicator, show it (it's a generic group)
+        const hasSizeInName = groupName.includes('small') || groupName.includes('medium') || groupName.includes('large') ||
+                             groupName.includes('personal') || groupName.includes('10') || groupName.includes('12') ||
+                             groupName.includes('14') || groupName.includes('16') || groupName.includes('sicilian');
 
-        // Show all non-topping groups
-        return true;
+        if (!hasSizeInName) return true; // Show groups without size indicators
+
+        // Don't show groups for other sizes
+        return false;
       });
 
       return filteredGroups;
@@ -207,28 +319,48 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
     let total = 0;
     let hasPrimarySelection = false;
 
-    Object.entries(selectedChoices).forEach(([groupId, selections]) => {
-      const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
-      const isPrimaryGroup = group?.name ? isPrimaryChoiceGroup(group.name) : false;
+    // Helper function to process selections
+    const processSelections = (selections: { [key: string]: string[] }, applyHalfPrice: boolean) => {
+      Object.entries(selections).forEach(([groupId, items]) => {
+        const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
+        const isPrimaryGroup = group?.name ? isPrimaryChoiceGroup(group.name) : false;
+        const isToppingGroup = group?.name?.toLowerCase().includes('topping');
 
-      selections.forEach(selectionId => {
-        const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
-        if (choiceItem) {
-          // Use dynamic price if available, otherwise fall back to base price
-          const dynamicPrice = dynamicPrices[selectionId];
-          const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
+        items.forEach(selectionId => {
+          const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
+          if (choiceItem) {
+            // Use dynamic price if available, otherwise fall back to base price
+            const dynamicPrice = dynamicPrices[selectionId];
+            let price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
 
-          // For primary selections (size, flavors, etc.), this IS the base price (don't add basePrice separately)
-          if (isPrimaryGroup) {
-            total += price;
-            hasPrimarySelection = true;
-          } else {
-            // For toppings/add-ons, add to price
-            total += price;
+            // Apply half-price for toppings in half-and-half mode
+            if (applyHalfPrice && isToppingGroup) {
+              price = price / 2;
+            }
+
+            // For primary selections (size, flavors, etc.), this IS the base price
+            if (isPrimaryGroup) {
+              total += price;
+              hasPrimarySelection = true;
+            } else {
+              // For toppings/add-ons, add to price
+              total += price;
+            }
           }
-        }
+        });
       });
-    });
+    };
+
+    if (halfAndHalfMode) {
+      // Process size from regular selections
+      processSelections(selectedChoices, false);
+      // Process toppings from both halves with half-price
+      processSelections(firstHalfSelections, true);
+      processSelections(secondHalfSelections, true);
+    } else {
+      // Regular mode - process all selections normally
+      processSelections(selectedChoices, false);
+    }
 
     // If no primary selection was made, use the item's base price
     if (!hasPrimarySelection) {
@@ -263,44 +395,77 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
 
   // Handle choice selection with dynamic pricing
   const handleChoiceSelection = (groupId: string, itemId: string, isRadio: boolean) => {
-    setSelectedChoices(prev => {
-      // Check if this is a size selection
-      const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
-      const isSizeGroup = group?.name === 'Size' ||
-                          group?.name === 'Calzone Size' ||
-                          group?.name === 'Stromboli Size' ||
-                          group?.name === 'Traditional Pizza Size' ||
-                          group?.name === 'Specialty Gourmet Pizza Size' ||
-                          group?.name === 'Wing Flavors';
+    const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
+    const isSizeGroup = group?.name === 'Size' ||
+                        group?.name === 'Calzone Size' ||
+                        group?.name === 'Stromboli Size' ||
+                        group?.name === 'Traditional Pizza Size' ||
+                        group?.name === 'Specialty Gourmet Pizza Size' ||
+                        group?.name === 'Wing Flavors';
 
-      // If changing size, clear ALL selections and start fresh with just the new size
-      if (isSizeGroup && isRadio) {
-        setSizeCollapsed(true);
-        return { [groupId]: [itemId] };
+    // If changing size, clear ALL selections and start fresh with just the new size
+    if (isSizeGroup && isRadio) {
+      setSizeCollapsed(true);
+      setSelectedChoices({ [groupId]: [itemId] });
+      // Also clear half-and-half selections if active
+      if (halfAndHalfMode) {
+        setFirstHalfSelections({});
+        setSecondHalfSelections({});
       }
+      return;
+    }
 
-      // For non-size selections, keep existing behavior
+    // For topping selections, update the appropriate storage based on mode
+    if (halfAndHalfMode) {
+      // Update the current half's selections
+      const currentSelections = activeHalf === 'first' ? firstHalfSelections : secondHalfSelections;
+      const setter = activeHalf === 'first' ? setFirstHalfSelections : setSecondHalfSelections;
+
       const newChoices = isRadio
-        ? { ...prev, [groupId]: [itemId] }
+        ? { ...currentSelections, [groupId]: [itemId] }
         : {
-            ...prev,
+            ...currentSelections,
             [groupId]: (() => {
-              const currentSelections = prev[groupId] || [];
-              const isSelected = currentSelections.includes(itemId);
+              const current = currentSelections[groupId] || [];
+              const isSelected = current.includes(itemId);
               return isSelected
-                ? currentSelections.filter(id => id !== itemId)
-                : [...currentSelections, itemId];
+                ? current.filter(id => id !== itemId)
+                : [...current, itemId];
             })()
           };
 
-      // Fetch dynamic prices after selection change
+      setter(newChoices);
+
+      // Fetch dynamic prices
       const allSelected = Object.values(newChoices).flat();
       if (allSelected.length > 0) {
         fetchDynamicPrices(allSelected);
       }
+    } else {
+      // Regular mode - update selectedChoices
+      setSelectedChoices(prev => {
+        const newChoices = isRadio
+          ? { ...prev, [groupId]: [itemId] }
+          : {
+              ...prev,
+              [groupId]: (() => {
+                const currentSelections = prev[groupId] || [];
+                const isSelected = currentSelections.includes(itemId);
+                return isSelected
+                  ? currentSelections.filter(id => id !== itemId)
+                  : [...currentSelections, itemId];
+              })()
+            };
 
-      return newChoices;
-    });
+        // Fetch dynamic prices after selection change
+        const allSelected = Object.values(newChoices).flat();
+        if (allSelected.length > 0) {
+          fetchDynamicPrices(allSelected);
+        }
+
+        return newChoices;
+      });
+    }
   };
 
   // Simple add to cart without choices
@@ -349,25 +514,94 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
 
     // Build options array
     const options: any[] = [];
-    Object.entries(selectedChoices).forEach(([groupId, selections]) => {
-      const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
-      if (group) {
-        selections.forEach(selectionId => {
-          const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
-          if (choiceItem) {
-            // Use dynamic price if available, otherwise fall back to base price
-            const dynamicPrice = dynamicPrices[selectionId];
-            const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
+    let halfAndHalfData = null;
 
-            options.push({
-              groupName: group.name,
-              itemName: choiceItem.name,
-              price: price
-            });
-          }
-        });
-      }
-    });
+    if (halfAndHalfMode) {
+      // Store half-and-half data separately for special receipt rendering
+      const firstHalfOptions: any[] = [];
+      const secondHalfOptions: any[] = [];
+
+      // Process size from regular selections
+      Object.entries(selectedChoices).forEach(([groupId, selections]) => {
+        const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
+        if (group) {
+          selections.forEach(selectionId => {
+            const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
+            if (choiceItem) {
+              const dynamicPrice = dynamicPrices[selectionId];
+              const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
+              options.push({
+                groupName: group.name,
+                itemName: choiceItem.name,
+                price: price
+              });
+            }
+          });
+        }
+      });
+
+      // Process first half toppings
+      Object.entries(firstHalfSelections).forEach(([groupId, selections]) => {
+        const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
+        if (group) {
+          selections.forEach(selectionId => {
+            const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
+            if (choiceItem) {
+              const dynamicPrice = dynamicPrices[selectionId];
+              const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
+              firstHalfOptions.push({
+                groupName: group.name,
+                itemName: choiceItem.name,
+                price: price / 2 // Half price for toppings
+              });
+            }
+          });
+        }
+      });
+
+      // Process second half toppings
+      Object.entries(secondHalfSelections).forEach(([groupId, selections]) => {
+        const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
+        if (group) {
+          selections.forEach(selectionId => {
+            const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
+            if (choiceItem) {
+              const dynamicPrice = dynamicPrices[selectionId];
+              const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
+              secondHalfOptions.push({
+                groupName: group.name,
+                itemName: choiceItem.name,
+                price: price / 2 // Half price for toppings
+              });
+            }
+          });
+        }
+      });
+
+      halfAndHalfData = {
+        firstHalf: firstHalfOptions,
+        secondHalf: secondHalfOptions
+      };
+    } else {
+      // Regular mode - process all selections
+      Object.entries(selectedChoices).forEach(([groupId, selections]) => {
+        const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
+        if (group) {
+          selections.forEach(selectionId => {
+            const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
+            if (choiceItem) {
+              const dynamicPrice = dynamicPrices[selectionId];
+              const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
+              options.push({
+                groupName: group.name,
+                itemName: choiceItem.name,
+                price: price
+              });
+            }
+          });
+        }
+      });
+    }
 
     try {
       addItem({
@@ -377,7 +611,8 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
         quantity,
         options,
         selectedOptions: {},
-        specialInstructions: ''
+        specialInstructions: '',
+        halfAndHalf: halfAndHalfData // Add half-and-half data
       });
 
       // Trigger pizza animation from the original trigger element
@@ -387,6 +622,9 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
 
       setIsDialogOpen(false);
       setSelectedChoices({});
+      setFirstHalfSelections({});
+      setSecondHalfSelections({});
+      setHalfAndHalfMode(false);
       setQuantity(1);
       setTriggerElement(null);
       setSizeCollapsed(false);
@@ -470,7 +708,8 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                     const isSelected = selectedChoices[group.id] && selectedChoices[group.id].length > 0;
 
                     return (
-                    <div key={group.id} className={`space-y-4 p-4 rounded-xl border-2 transition-all ${
+                    <React.Fragment key={group.id}>
+                    <div className={`space-y-4 p-4 rounded-xl border-2 transition-all ${
                       isSelected
                         ? 'border-[#d73a31] bg-red-50/50 shadow-lg'
                         : 'border-gray-200 bg-white shadow-sm hover:shadow-md hover:border-gray-300'
@@ -499,7 +738,13 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                 if (!selectedItem) return null;
 
                                 const dynamicPrice = dynamicPrices[selectedItem.id];
-                                const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(selectedItem.price) || 0;
+                                let price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(selectedItem.price) || 0;
+
+                                // Apply 50% discount for toppings in half-and-half mode
+                                const isToppingGroup = group.name?.toLowerCase().includes('topping');
+                                if (halfAndHalfMode && isToppingGroup) {
+                                  price = price / 2;
+                                }
 
                                 return (
                                   <div className="flex items-center justify-between p-4 rounded-lg border-2 border-[#d73a31] bg-red-50 shadow-md">
@@ -542,32 +787,33 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                             >
                               {group.items.map(choiceItem => {
                                 const dynamicPrice = dynamicPrices[choiceItem.id];
-                                const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
-                                const isItemSelected = selectedChoices[group.id]?.includes(choiceItem.id.toString());
+                                let price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
+
+                                // Apply 50% discount for toppings in half-and-half mode
+                                const isToppingGroup = group.name?.toLowerCase().includes('topping');
+                                if (halfAndHalfMode && isToppingGroup) {
+                                  price = price / 2;
+                                }
+
+                                const currentSelections = halfAndHalfMode ? getCurrentSelections() : selectedChoices;
+                                const isItemSelected = currentSelections[group.id]?.includes(choiceItem.id.toString());
                                 const isUnavailable = choiceItem.isTemporarilyUnavailable || false;
 
                                 return (
                                 <div
                                   key={choiceItem.id}
-                                  className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all ${
-                                    isUnavailable
-                                      ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
-                                      : isItemSelected
-                                      ? 'border-[#d73a31] bg-red-50 shadow-md cursor-pointer hover:shadow-md'
-                                      : 'border-gray-200 bg-white hover:border-gray-300 cursor-pointer hover:shadow-md'
+                                  className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all cursor-pointer hover:shadow-md ${
+                                    isItemSelected
+                                      ? 'border-[#d73a31] bg-red-50 shadow-md'
+                                      : 'border-gray-200 bg-white hover:border-gray-300'
                                   }`}
-                                  onClick={() => !isUnavailable && handleChoiceSelection(group.id.toString(), choiceItem.id.toString(), true)}
+                                  onClick={() => handleChoiceSelection(group.id.toString(), choiceItem.id.toString(), true)}
                                 >
                                   <div className="flex items-center space-x-3">
-                                    <RadioGroupItem
-                                      value={choiceItem.id.toString()}
-                                      disabled={isUnavailable}
-                                      className="data-[state=checked]:bg-[#d73a31] data-[state=checked]:border-[#d73a31] pointer-events-none"
-                                    />
+                                    <RadioGroupItem value={choiceItem.id.toString()} className="data-[state=checked]:bg-[#d73a31] data-[state=checked]:border-[#d73a31] pointer-events-none" />
                                     <div className="flex-1">
-                                      <Label className={`font-medium ${
-                                        isUnavailable ? 'text-gray-400 cursor-not-allowed' :
-                                        isItemSelected ? 'text-[#d73a31] cursor-pointer' : 'text-gray-700 cursor-pointer'
+                                      <Label className={`font-medium cursor-pointer ${
+                                        isItemSelected ? 'text-[#d73a31]' : 'text-gray-700'
                                       }`}>
                                         {choiceItem.name}
                                       </Label>
@@ -576,11 +822,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                       )}
                                     </div>
                                   </div>
-                                  {isUnavailable ? (
-                                    <Badge variant="destructive" className="text-xs">
-                                      Out of Stock
-                                    </Badge>
-                                  ) : price > 0 ? (
+                                  {price > 0 && (
                                     <Badge className={`text-sm font-bold ${
                                       isItemSelected
                                         ? 'bg-[#d73a31] text-white'
@@ -588,7 +830,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                     }`}>
                                       {isPrimary ? '$' : '+$'}{formatPrice(price)}
                                     </Badge>
-                                  ) : null}
+                                  )}
                                 </div>
                                 );
                               })}
@@ -599,32 +841,36 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                         <div className="grid grid-cols-1 gap-3">
                           {group.items.map(choiceItem => {
                             const dynamicPrice = dynamicPrices[choiceItem.id];
-                            const price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
-                            const isItemSelected = selectedChoices[group.id]?.includes(choiceItem.id.toString());
+                            let price = dynamicPrice !== undefined ? dynamicPrice : parseFloat(choiceItem.price) || 0;
+
+                            // Apply 50% discount for toppings in half-and-half mode
+                            const isToppingGroup = group.name?.toLowerCase().includes('topping');
+                            if (halfAndHalfMode && isToppingGroup) {
+                              price = price / 2;
+                            }
+
+                            const currentSelections = halfAndHalfMode ? getCurrentSelections() : selectedChoices;
+                            const isItemSelected = currentSelections[group.id]?.includes(choiceItem.id.toString());
                             const isUnavailable = choiceItem.isTemporarilyUnavailable || false;
 
                             return (
                             <div
                               key={choiceItem.id}
-                              className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all ${
-                                isUnavailable
-                                  ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
-                                  : isItemSelected
-                                  ? 'border-green-400 bg-green-50 shadow-md cursor-pointer hover:shadow-md'
-                                  : 'border-gray-200 bg-white hover:border-gray-300 cursor-pointer hover:shadow-md'
+                              className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all cursor-pointer hover:shadow-md ${
+                                isItemSelected
+                                  ? 'border-green-400 bg-green-50 shadow-md'
+                                  : 'border-gray-200 bg-white hover:border-gray-300'
                               }`}
-                              onClick={() => !isUnavailable && handleChoiceSelection(group.id.toString(), choiceItem.id.toString(), false)}
+                              onClick={() => handleChoiceSelection(group.id.toString(), choiceItem.id.toString(), false)}
                             >
                               <div className="flex items-center space-x-3">
                                 <Checkbox
                                   checked={isItemSelected}
-                                  disabled={isUnavailable}
                                   className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 pointer-events-none"
                                 />
                                 <div className="flex-1">
-                                  <Label className={`font-medium ${
-                                    isUnavailable ? 'text-gray-400 cursor-not-allowed' :
-                                    isItemSelected ? 'text-green-700 cursor-pointer' : 'text-gray-700 cursor-pointer'
+                                  <Label className={`font-medium cursor-pointer ${
+                                    isItemSelected ? 'text-green-700' : 'text-gray-700'
                                   }`}>
                                     {choiceItem.name}
                                   </Label>
@@ -633,11 +879,7 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                   )}
                                 </div>
                               </div>
-                              {isUnavailable ? (
-                                <Badge variant="destructive" className="text-xs">
-                                  Out of Stock
-                                </Badge>
-                              ) : price > 0 ? (
+                              {price > 0 && (
                                 <Badge className={`text-sm font-bold ${
                                   isItemSelected
                                     ? 'bg-green-500 text-white'
@@ -645,13 +887,212 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                                 }`}>
                                   {isPrimary ? '$' : '+$'}{formatPrice(price)}
                                 </Badge>
-                              ) : null}
+                              )}
                             </div>
                             );
                           })}
                         </div>
                       )}
                     </div>
+
+                    {/* Half-and-Half Toggle - Render after size group */}
+                    {canUseHalfAndHalf && group.name === 'Traditional Pizza Size' && selectedChoices[group.id] && selectedChoices[group.id].length > 0 && (
+                      <div className="mt-6 px-6 py-4 bg-gradient-to-r from-orange-50 via-yellow-50 to-orange-50 border-2 border-orange-200 rounded-xl">
+                        {/* Toggle Switch */}
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="text-2xl">🍕</div>
+                            <div>
+                              <Label htmlFor="half-and-half-toggle" className="text-lg font-bold text-gray-800 cursor-pointer">
+                                Customize each half
+                              </Label>
+                              <p className="text-xs text-gray-600">Mix and match toppings on each side!</p>
+                            </div>
+                          </div>
+                          <Switch
+                            id="half-and-half-toggle"
+                            checked={halfAndHalfMode}
+                            onCheckedChange={(checked) => {
+                              setHalfAndHalfMode(checked);
+                              if (checked) {
+                                // Initialize both halves with current selections (excluding size)
+                                const sizeGroupId = group.id.toString();
+                                const nonSizeSelections = Object.entries(selectedChoices)
+                                  .filter(([groupId]) => groupId !== sizeGroupId)
+                                  .reduce((acc, [key, val]) => ({ ...acc, [key]: val }), {});
+                                setFirstHalfSelections(nonSizeSelections);
+                                setSecondHalfSelections({});
+                                setActiveHalf('first');
+                              } else {
+                                // Merge selections back to regular mode
+                                setSelectedChoices(prev => ({
+                                  ...prev,
+                                  ...firstHalfSelections
+                                }));
+                              }
+                            }}
+                            className="data-[state=checked]:bg-orange-500"
+                          />
+                        </div>
+
+                        {/* Visual Pizza Split & Half Selectors */}
+                        {halfAndHalfMode && (
+                          <div className="space-y-4">
+                            {/* Pizza Visual */}
+                            <div className="relative w-40 h-40 mx-auto">
+                              {/* Pizza base */}
+                              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-100 to-orange-100 border-4 border-yellow-600 shadow-lg">
+                                {/* Divider line */}
+                                <div className="absolute top-0 bottom-0 left-1/2 w-1 bg-yellow-700 transform -translate-x-1/2"></div>
+
+                                {/* Left half highlight */}
+                                <div
+                                  className={`absolute inset-0 rounded-l-full transition-all duration-300 ${
+                                    activeHalf === 'first'
+                                      ? 'bg-gradient-to-r from-orange-400/40 to-transparent animate-pulse'
+                                      : 'bg-transparent'
+                                  }`}
+                                  style={{ clipPath: 'polygon(0 0, 50% 0, 50% 100%, 0 100%)' }}
+                                />
+
+                                {/* Right half highlight */}
+                                <div
+                                  className={`absolute inset-0 rounded-r-full transition-all duration-300 ${
+                                    activeHalf === 'second'
+                                      ? 'bg-gradient-to-l from-blue-400/40 to-transparent animate-pulse'
+                                      : 'bg-transparent'
+                                  }`}
+                                  style={{ clipPath: 'polygon(50% 0, 100% 0, 100% 100%, 50% 100%)' }}
+                                />
+
+                                {/* Topping emojis on left half */}
+                                {(() => {
+                                  const toppingEmojis: string[] = [];
+                                  Object.entries(firstHalfSelections).forEach(([groupId, selections]) => {
+                                    const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
+                                    if (group) {
+                                      selections.forEach(selectionId => {
+                                        const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
+                                        if (choiceItem) {
+                                          toppingEmojis.push(getToppingEmoji(choiceItem.name));
+                                        }
+                                      });
+                                    }
+                                  });
+
+                                  return (
+                                    <>
+                                      {/* Outer left column (first 4) */}
+                                      <div className="absolute left-2 top-1/2 transform -translate-y-1/2 flex flex-col gap-0.5 text-lg">
+                                        {toppingEmojis.slice(0, 4).map((emoji, idx) => (
+                                          <span key={idx} className="drop-shadow-lg">{emoji}</span>
+                                        ))}
+                                      </div>
+                                      {/* Inner left column (next 4) */}
+                                      {toppingEmojis.length > 4 && (
+                                        <div className="absolute left-8 top-1/2 transform -translate-y-1/2 flex flex-col gap-0.5 text-lg">
+                                          {toppingEmojis.slice(4, 8).map((emoji, idx) => (
+                                            <span key={idx + 4} className="drop-shadow-lg">{emoji}</span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </>
+                                  );
+                                })()}
+
+                                {/* Topping emojis on right half */}
+                                {(() => {
+                                  const toppingEmojis: string[] = [];
+                                  Object.entries(secondHalfSelections).forEach(([groupId, selections]) => {
+                                    const group = itemChoiceGroups.find(g => g.id === parseInt(groupId));
+                                    if (group) {
+                                      selections.forEach(selectionId => {
+                                        const choiceItem = choiceItems.find(ci => ci.id === parseInt(selectionId));
+                                        if (choiceItem) {
+                                          toppingEmojis.push(getToppingEmoji(choiceItem.name));
+                                        }
+                                      });
+                                    }
+                                  });
+
+                                  return (
+                                    <>
+                                      {/* Outer right column (first 4) */}
+                                      <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex flex-col gap-0.5 text-lg">
+                                        {toppingEmojis.slice(0, 4).map((emoji, idx) => (
+                                          <span key={idx} className="drop-shadow-lg">{emoji}</span>
+                                        ))}
+                                      </div>
+                                      {/* Inner right column (next 4) */}
+                                      {toppingEmojis.length > 4 && (
+                                        <div className="absolute right-8 top-1/2 transform -translate-y-1/2 flex flex-col gap-0.5 text-lg">
+                                          {toppingEmojis.slice(4, 8).map((emoji, idx) => (
+                                            <span key={idx + 4} className="drop-shadow-lg">{emoji}</span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            </div>
+
+                            {/* Half Selector Buttons */}
+                            <div className="flex gap-3 justify-center">
+                              <button
+                                type="button"
+                                onClick={() => setActiveHalf('first')}
+                                className={`flex-1 py-3 px-4 rounded-full font-bold text-sm transition-all transform hover:scale-105 ${
+                                  activeHalf === 'first'
+                                    ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg ring-4 ring-orange-200'
+                                    : 'bg-white text-gray-700 border-2 border-orange-200 hover:border-orange-400'
+                                }`}
+                              >
+                                <div className="flex items-center justify-center space-x-2">
+                                  <span className="text-xl">🍕</span>
+                                  <span>1st Half</span>
+                                  {Object.values(firstHalfSelections).flat().length > 0 && (
+                                    <Badge className="ml-1 bg-white text-orange-600 text-xs">
+                                      {Object.values(firstHalfSelections).flat().length}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setActiveHalf('second')}
+                                className={`flex-1 py-3 px-4 rounded-full font-bold text-sm transition-all transform hover:scale-105 ${
+                                  activeHalf === 'second'
+                                    ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg ring-4 ring-blue-200'
+                                    : 'bg-white text-gray-700 border-2 border-blue-200 hover:border-blue-400'
+                                }`}
+                              >
+                                <div className="flex items-center justify-center space-x-2">
+                                  <span className="text-xl">🍕</span>
+                                  <span>2nd Half</span>
+                                  {Object.values(secondHalfSelections).flat().length > 0 && (
+                                    <Badge className="ml-1 bg-white text-blue-600 text-xs">
+                                      {Object.values(secondHalfSelections).flat().length}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </button>
+                            </div>
+
+                            {/* Active Half Indicator */}
+                            <div className="text-center">
+                              <p className="text-sm text-gray-600">
+                                Now customizing: <span className={`font-bold ${activeHalf === 'first' ? 'text-orange-600' : 'text-blue-600'}`}>
+                                  {activeHalf === 'first' ? '1st Half' : '2nd Half'}
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    </React.Fragment>
                     );
                   })}
 

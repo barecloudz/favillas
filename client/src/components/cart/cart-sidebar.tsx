@@ -442,42 +442,46 @@ const CartSidebar: React.FC = () => {
                       <h4 className="font-bold">{item?.name || 'Unknown Item'}</h4>
                       
                       {/* Half & Half Pizza Special Display */}
-                      {item?.selectedOptions?.halfAndHalf ? (
+                      {item?.halfAndHalf ? (
                         <div className="mt-2 space-y-2">
-                          <div className="bg-gradient-to-r from-red-50 to-blue-50 p-2 rounded-lg border">
+                          <div className="bg-gradient-to-r from-orange-50 via-yellow-50 to-blue-50 p-2 rounded-lg border-2 border-orange-200">
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="text-xs">🍕</span>
-                              <span className="text-xs font-semibold text-gray-700">Half & Half Pizza</span>
+                              <span className="text-base">🍕</span>
+                              <span className="text-xs font-bold text-gray-800">Half & Half Pizza</span>
                             </div>
-                            
+
                             <div className="grid grid-cols-2 gap-2 text-xs">
-                              <div className="bg-red-100 p-2 rounded border-l-2 border-red-400">
-                                <div className="font-medium text-red-700 mb-1">Left Half:</div>
-                                {item?.selectedOptions?.leftToppings && item.selectedOptions.leftToppings.length > 0 ? (
+                              <div className="bg-orange-50 p-2 rounded border-l-2 border-orange-500">
+                                <div className="font-bold text-orange-600 mb-1 flex items-center gap-1">
+                                  <span className="text-sm">🍕</span> 1st Half
+                                </div>
+                                {item?.halfAndHalf?.firstHalf && item.halfAndHalf.firstHalf.length > 0 ? (
                                   <ul className="space-y-1">
-                                    {item.selectedOptions.leftToppings.map((topping, idx) => (
-                                      <li key={idx} className="text-red-600">
-                                        • {topping.name} {topping.price > 0 && `(+$${formatPrice(topping.price)})`}
+                                    {item.halfAndHalf.firstHalf.map((topping: any, idx: number) => (
+                                      <li key={idx} className="text-gray-700">
+                                        • {topping.itemName} {topping.price > 0 && `(+$${formatPrice(topping.price)})`}
                                       </li>
                                     ))}
                                   </ul>
                                 ) : (
-                                  <span className="text-red-600">Plain</span>
+                                  <span className="text-gray-500 italic">Plain</span>
                                 )}
                               </div>
-                              
-                              <div className="bg-blue-100 p-2 rounded border-l-2 border-blue-400">
-                                <div className="font-medium text-blue-700 mb-1">Right Half:</div>
-                                {item?.selectedOptions?.rightToppings && item.selectedOptions.rightToppings.length > 0 ? (
+
+                              <div className="bg-blue-50 p-2 rounded border-l-2 border-blue-500">
+                                <div className="font-bold text-blue-600 mb-1 flex items-center gap-1">
+                                  <span className="text-sm">🍕</span> 2nd Half
+                                </div>
+                                {item?.halfAndHalf?.secondHalf && item.halfAndHalf.secondHalf.length > 0 ? (
                                   <ul className="space-y-1">
-                                    {item.selectedOptions.rightToppings.map((topping, idx) => (
-                                      <li key={idx} className="text-blue-600">
-                                        • {topping.name} {topping.price > 0 && `(+$${formatPrice(topping.price)})`}
+                                    {item.halfAndHalf.secondHalf.map((topping: any, idx: number) => (
+                                      <li key={idx} className="text-gray-700">
+                                        • {topping.itemName} {topping.price > 0 && `(+$${formatPrice(topping.price)})`}
                                       </li>
                                     ))}
                                   </ul>
                                 ) : (
-                                  <span className="text-blue-600">Plain</span>
+                                  <span className="text-gray-500 italic">Plain</span>
                                 )}
                               </div>
                             </div>
