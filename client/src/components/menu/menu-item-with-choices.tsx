@@ -185,43 +185,44 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
       return [sizeGroup];
     }
 
-    // If size is selected for calzone/stromboli/pizza, filter topping groups by size
+    // If size is selected for calzone/stromboli/pizza, filter groups by size
     if (sizeGroup && selectedChoices[sizeGroup.id] && selectedChoices[sizeGroup.id].length > 0) {
       const selectedSizeId = selectedChoices[sizeGroup.id][0];
       const selectedSizeChoice = choiceItems.find(ci => ci.id === parseInt(selectedSizeId));
       const selectedSizeName = selectedSizeChoice?.name || '';
 
-      // Filter groups to show only size group and toppings that match the selected size
+      // Filter groups to show only size group and groups that match the selected size
       const filteredGroups = itemChoiceGroups.filter(g => {
         // Always show the size group
         if (g.id === sizeGroup.id) return true;
 
-        // For topping groups, check if they match the selected size
+        // Check if this group matches the selected size
         const groupName = g.name.toLowerCase();
         const sizeName = selectedSizeName.toLowerCase();
 
-        // Check if this is a topping group
-        if (groupName.includes('topping')) {
-          // Match size in group name with selected size
-          // Calzone/Stromboli sizes
-          if (sizeName.includes('small') && groupName.includes('small')) return true;
-          if (sizeName.includes('medium') && groupName.includes('medium')) return true;
-          if (sizeName.includes('large') && groupName.includes('large')) return true;
+        // Check if the group name contains the size (this covers both topping groups and other size-specific groups)
+        // Calzone/Stromboli sizes
+        if (sizeName.includes('small') && groupName.includes('small')) return true;
+        if (sizeName.includes('medium') && groupName.includes('medium')) return true;
+        if (sizeName.includes('large') && groupName.includes('large')) return true;
 
-          // Traditional Pizza sizes
-          if (sizeName.includes('personal') && groupName.includes('personal')) return true;
-          if (sizeName.includes('10') && groupName.includes('10')) return true;
-          if (sizeName.includes('12') && groupName.includes('12')) return true;
-          if (sizeName.includes('14') && groupName.includes('14')) return true;
-          if (sizeName.includes('16') && groupName.includes('16')) return true;
-          if (sizeName.toLowerCase().includes('sicilian') && groupName.includes('sicilian')) return true;
+        // Traditional Pizza sizes
+        if (sizeName.includes('personal') && groupName.includes('personal')) return true;
+        if (sizeName.includes('10') && groupName.includes('10')) return true;
+        if (sizeName.includes('12') && groupName.includes('12')) return true;
+        if (sizeName.includes('14') && groupName.includes('14')) return true;
+        if (sizeName.includes('16') && groupName.includes('16')) return true;
+        if (sizeName.toLowerCase().includes('sicilian') && groupName.includes('sicilian')) return true;
 
-          // Don't show toppings for other sizes
-          return false;
-        }
+        // If the group name doesn't contain any size indicator, show it (it's a generic group)
+        const hasSizeInName = groupName.includes('small') || groupName.includes('medium') || groupName.includes('large') ||
+                             groupName.includes('personal') || groupName.includes('10') || groupName.includes('12') ||
+                             groupName.includes('14') || groupName.includes('16') || groupName.includes('sicilian');
 
-        // Show all non-topping groups
-        return true;
+        if (!hasSizeInName) return true; // Show groups without size indicators
+
+        // Don't show groups for other sizes
+        return false;
       });
 
       return filteredGroups;
@@ -611,153 +612,6 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                   </p>
                 </DialogHeader>
 
-                {/* Half-and-Half Toggle and Visual UI */}
-                {canUseHalfAndHalf && (() => {
-                  const sizeGroup = itemChoiceGroups.find(g =>
-                    g.name === 'Traditional Pizza Size' // Only for Traditional Pizzas for now
-                  );
-                  const hasSizeSelected = sizeGroup && selectedChoices[sizeGroup.id] && selectedChoices[sizeGroup.id].length > 0;
-
-                  if (!hasSizeSelected) return null;
-
-                  return (
-                    <div className="px-6 py-4 bg-gradient-to-r from-orange-50 via-yellow-50 to-orange-50 border-2 border-orange-200 rounded-xl">
-                      {/* Toggle Switch */}
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="text-2xl">🍕</div>
-                          <div>
-                            <Label htmlFor="half-and-half-toggle" className="text-lg font-bold text-gray-800 cursor-pointer">
-                              Customize each half
-                            </Label>
-                            <p className="text-xs text-gray-600">Mix and match toppings on each side!</p>
-                          </div>
-                        </div>
-                        <Switch
-                          id="half-and-half-toggle"
-                          checked={halfAndHalfMode}
-                          onCheckedChange={(checked) => {
-                            setHalfAndHalfMode(checked);
-                            if (checked) {
-                              // Initialize both halves with current selections (excluding size)
-                              const sizeGroupId = sizeGroup?.id.toString();
-                              const nonSizeSelections = Object.entries(selectedChoices)
-                                .filter(([groupId]) => groupId !== sizeGroupId)
-                                .reduce((acc, [key, val]) => ({ ...acc, [key]: val }), {});
-                              setFirstHalfSelections(nonSizeSelections);
-                              setSecondHalfSelections({});
-                              setActiveHalf('first');
-                            } else {
-                              // Merge selections back to regular mode
-                              setSelectedChoices(prev => ({
-                                ...prev,
-                                ...firstHalfSelections
-                              }));
-                            }
-                          }}
-                          className="data-[state=checked]:bg-orange-500"
-                        />
-                      </div>
-
-                      {/* Visual Pizza Split & Half Selectors */}
-                      {halfAndHalfMode && (
-                        <div className="space-y-4">
-                          {/* Pizza Visual */}
-                          <div className="relative w-40 h-40 mx-auto">
-                            {/* Pizza base */}
-                            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-100 to-orange-100 border-4 border-yellow-600 shadow-lg">
-                              {/* Divider line */}
-                              <div className="absolute top-0 bottom-0 left-1/2 w-1 bg-yellow-700 transform -translate-x-1/2"></div>
-
-                              {/* Left half highlight */}
-                              <div
-                                className={`absolute inset-0 rounded-l-full transition-all duration-300 ${
-                                  activeHalf === 'first'
-                                    ? 'bg-gradient-to-r from-orange-400/40 to-transparent animate-pulse'
-                                    : 'bg-transparent'
-                                }`}
-                                style={{ clipPath: 'polygon(0 0, 50% 0, 50% 100%, 0 100%)' }}
-                              />
-
-                              {/* Right half highlight */}
-                              <div
-                                className={`absolute inset-0 rounded-r-full transition-all duration-300 ${
-                                  activeHalf === 'second'
-                                    ? 'bg-gradient-to-l from-blue-400/40 to-transparent animate-pulse'
-                                    : 'bg-transparent'
-                                }`}
-                                style={{ clipPath: 'polygon(50% 0, 100% 0, 100% 100%, 50% 100%)' }}
-                              />
-
-                              {/* Topping emojis on left half */}
-                              <div className="absolute left-2 top-1/2 transform -translate-y-1/2 text-xl space-y-1">
-                                {Object.keys(firstHalfSelections).length > 0 && <span>🍅</span>}
-                              </div>
-
-                              {/* Topping emojis on right half */}
-                              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xl space-y-1">
-                                {Object.keys(secondHalfSelections).length > 0 && <span>🧀</span>}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Half Selector Buttons */}
-                          <div className="flex gap-3 justify-center">
-                            <button
-                              type="button"
-                              onClick={() => setActiveHalf('first')}
-                              className={`flex-1 py-3 px-4 rounded-full font-bold text-sm transition-all transform hover:scale-105 ${
-                                activeHalf === 'first'
-                                  ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg ring-4 ring-orange-200'
-                                  : 'bg-white text-gray-700 border-2 border-orange-200 hover:border-orange-400'
-                              }`}
-                            >
-                              <div className="flex items-center justify-center space-x-2">
-                                <span className="text-xl">🍕</span>
-                                <span>1st Half</span>
-                                {Object.keys(firstHalfSelections).length > 0 && (
-                                  <Badge className="ml-1 bg-white text-orange-600 text-xs">
-                                    {Object.values(firstHalfSelections).flat().length}
-                                  </Badge>
-                                )}
-                              </div>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => setActiveHalf('second')}
-                              className={`flex-1 py-3 px-4 rounded-full font-bold text-sm transition-all transform hover:scale-105 ${
-                                activeHalf === 'second'
-                                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg ring-4 ring-blue-200'
-                                  : 'bg-white text-gray-700 border-2 border-blue-200 hover:border-blue-400'
-                              }`}
-                            >
-                              <div className="flex items-center justify-center space-x-2">
-                                <span className="text-xl">🍕</span>
-                                <span>2nd Half</span>
-                                {Object.keys(secondHalfSelections).length > 0 && (
-                                  <Badge className="ml-1 bg-white text-blue-600 text-xs">
-                                    {Object.values(secondHalfSelections).flat().length}
-                                  </Badge>
-                                )}
-                              </div>
-                            </button>
-                          </div>
-
-                          {/* Active Half Indicator */}
-                          <div className="text-center">
-                            <p className="text-sm text-gray-600">
-                              Now customizing: <span className={`font-bold ${activeHalf === 'first' ? 'text-orange-600' : 'text-blue-600'}`}>
-                                {activeHalf === 'first' ? '1st Half' : '2nd Half'}
-                              </span>
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-
                 <div className="space-y-8 py-6">
                   {visibleChoiceGroups.map((group, index) => {
                     const isPrimary = isPrimaryChoiceGroup(group.name);
@@ -938,6 +792,149 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                           })}
                         </div>
                       )}
+                    </div>
+
+                    {/* Half-and-Half Toggle - Render after size group */}
+                    {canUseHalfAndHalf && group.name === 'Traditional Pizza Size' && selectedChoices[group.id] && selectedChoices[group.id].length > 0 && (
+                      <div className="mt-6 px-6 py-4 bg-gradient-to-r from-orange-50 via-yellow-50 to-orange-50 border-2 border-orange-200 rounded-xl">
+                        {/* Toggle Switch */}
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="text-2xl">🍕</div>
+                            <div>
+                              <Label htmlFor="half-and-half-toggle" className="text-lg font-bold text-gray-800 cursor-pointer">
+                                Customize each half
+                              </Label>
+                              <p className="text-xs text-gray-600">Mix and match toppings on each side!</p>
+                            </div>
+                          </div>
+                          <Switch
+                            id="half-and-half-toggle"
+                            checked={halfAndHalfMode}
+                            onCheckedChange={(checked) => {
+                              setHalfAndHalfMode(checked);
+                              if (checked) {
+                                // Initialize both halves with current selections (excluding size)
+                                const sizeGroupId = group.id.toString();
+                                const nonSizeSelections = Object.entries(selectedChoices)
+                                  .filter(([groupId]) => groupId !== sizeGroupId)
+                                  .reduce((acc, [key, val]) => ({ ...acc, [key]: val }), {});
+                                setFirstHalfSelections(nonSizeSelections);
+                                setSecondHalfSelections({});
+                                setActiveHalf('first');
+                              } else {
+                                // Merge selections back to regular mode
+                                setSelectedChoices(prev => ({
+                                  ...prev,
+                                  ...firstHalfSelections
+                                }));
+                              }
+                            }}
+                            className="data-[state=checked]:bg-orange-500"
+                          />
+                        </div>
+
+                        {/* Visual Pizza Split & Half Selectors */}
+                        {halfAndHalfMode && (
+                          <div className="space-y-4">
+                            {/* Pizza Visual */}
+                            <div className="relative w-40 h-40 mx-auto">
+                              {/* Pizza base */}
+                              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-100 to-orange-100 border-4 border-yellow-600 shadow-lg">
+                                {/* Divider line */}
+                                <div className="absolute top-0 bottom-0 left-1/2 w-1 bg-yellow-700 transform -translate-x-1/2"></div>
+
+                                {/* Left half highlight */}
+                                <div
+                                  className={`absolute inset-0 rounded-l-full transition-all duration-300 ${
+                                    activeHalf === 'first'
+                                      ? 'bg-gradient-to-r from-orange-400/40 to-transparent animate-pulse'
+                                      : 'bg-transparent'
+                                  }`}
+                                  style={{ clipPath: 'polygon(0 0, 50% 0, 50% 100%, 0 100%)' }}
+                                />
+
+                                {/* Right half highlight */}
+                                <div
+                                  className={`absolute inset-0 rounded-r-full transition-all duration-300 ${
+                                    activeHalf === 'second'
+                                      ? 'bg-gradient-to-l from-blue-400/40 to-transparent animate-pulse'
+                                      : 'bg-transparent'
+                                  }`}
+                                  style={{ clipPath: 'polygon(50% 0, 100% 0, 100% 100%, 50% 100%)' }}
+                                />
+
+                                {/* Topping count on left half */}
+                                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-orange-600">
+                                  {Object.values(firstHalfSelections).flat().length > 0 && (
+                                    <span>{Object.values(firstHalfSelections).flat().length}</span>
+                                  )}
+                                </div>
+
+                                {/* Topping count on right half */}
+                                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-blue-600">
+                                  {Object.values(secondHalfSelections).flat().length > 0 && (
+                                    <span>{Object.values(secondHalfSelections).flat().length}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Half Selector Buttons */}
+                            <div className="flex gap-3 justify-center">
+                              <button
+                                type="button"
+                                onClick={() => setActiveHalf('first')}
+                                className={`flex-1 py-3 px-4 rounded-full font-bold text-sm transition-all transform hover:scale-105 ${
+                                  activeHalf === 'first'
+                                    ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg ring-4 ring-orange-200'
+                                    : 'bg-white text-gray-700 border-2 border-orange-200 hover:border-orange-400'
+                                }`}
+                              >
+                                <div className="flex items-center justify-center space-x-2">
+                                  <span className="text-xl">🍕</span>
+                                  <span>1st Half</span>
+                                  {Object.values(firstHalfSelections).flat().length > 0 && (
+                                    <Badge className="ml-1 bg-white text-orange-600 text-xs">
+                                      {Object.values(firstHalfSelections).flat().length}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setActiveHalf('second')}
+                                className={`flex-1 py-3 px-4 rounded-full font-bold text-sm transition-all transform hover:scale-105 ${
+                                  activeHalf === 'second'
+                                    ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg ring-4 ring-blue-200'
+                                    : 'bg-white text-gray-700 border-2 border-blue-200 hover:border-blue-400'
+                                }`}
+                              >
+                                <div className="flex items-center justify-center space-x-2">
+                                  <span className="text-xl">🍕</span>
+                                  <span>2nd Half</span>
+                                  {Object.values(secondHalfSelections).flat().length > 0 && (
+                                    <Badge className="ml-1 bg-white text-blue-600 text-xs">
+                                      {Object.values(secondHalfSelections).flat().length}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </button>
+                            </div>
+
+                            {/* Active Half Indicator */}
+                            <div className="text-center">
+                              <p className="text-sm text-gray-600">
+                                Now customizing: <span className={`font-bold ${activeHalf === 'first' ? 'text-orange-600' : 'text-blue-600'}`}>
+                                  {activeHalf === 'first' ? '1st Half' : '2nd Half'}
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     </div>
                     );
                   })}
