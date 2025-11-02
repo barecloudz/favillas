@@ -869,11 +869,17 @@ const KitchenPage = () => {
                     {user?.firstName} {user?.lastName}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/')}>
+                  <DropdownMenuItem onClick={() => {
+                    // Defer navigation to next tick to avoid state updates during cleanup
+                    setTimeout(() => navigate('/'), 0);
+                  }}>
                     <Home className="mr-2 h-4 w-4" />
                     <span>Home</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/admin/dashboard')}>
+                  <DropdownMenuItem onClick={() => {
+                    // Defer navigation to next tick to avoid state updates during cleanup
+                    setTimeout(() => navigate('/admin/dashboard'), 0);
+                  }}>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Admin Dashboard</span>
                   </DropdownMenuItem>
@@ -889,8 +895,11 @@ const KitchenPage = () => {
                     onClick={async () => {
                       try {
                         await apiRequest('POST', '/api/logout', {});
-                        navigate('/');
-                        window.location.reload();
+                        // Defer navigation to next tick to avoid state updates during cleanup
+                        setTimeout(() => {
+                          navigate('/');
+                          window.location.reload();
+                        }, 0);
                       } catch (error) {
                         console.error('Logout failed:', error);
                       }
