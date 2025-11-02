@@ -480,7 +480,8 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
     return () => {
       disconnect();
     };
-  }, [user?.id, connect, disconnect, initAudioContext]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]); // Only re-run when user ID changes, not when callbacks change
 
   const retry = useCallback(() => {
     disconnect();
