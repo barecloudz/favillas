@@ -480,7 +480,7 @@ export const handler: Handler = async (event, context) => {
 
     // Send email via Resend
     const { data, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'noreply@favillaspizza.com',
+      from: process.env.RESEND_FROM_EMAIL || 'orders@favillaspizzeria.com',
       to: [orderData.customerEmail],
       subject: `Order Confirmation #${orderData.orderId} - Favilla's NY Pizza`,
       html: htmlContent,
