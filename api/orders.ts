@@ -1823,16 +1823,47 @@ export const handler: Handler = async (event, context) => {
                   deliveryInstructions: orderData.deliveryInstructions || undefined,
                   paymentMethod: orderData.paymentMethod === 'stripe' ? 'Credit Card' :
                                orderData.paymentMethod === 'cash' ? 'Cash' : 'Credit Card',
-                  items: transformedItems.map(item => ({
-                    name: item.name,
-                    quantity: item.quantity,
-                    price: parseFloat(item.basePrice || item.price || '0').toFixed(2),
-                    modifications: item.notes || (item.options ?
-                      Object.entries(item.options)
-                        .filter(([key, value]) => value && value !== 'none')
-                        .map(([key, value]) => `${key}: ${value}`)
-                        .join(', ') : undefined)
-                  })),
+                  items: transformedItems.map(item => {
+                    // Parse options if it's a JSON string
+                    let parsedOptions = item.options;
+                    if (typeof item.options === 'string') {
+                      try {
+                        parsedOptions = JSON.parse(item.options);
+                      } catch (e) {
+                        console.warn('Failed to parse item options:', e);
+                        parsedOptions = null;
+                      }
+                    }
+
+                    // Format modifications for email display
+                    let modifications = item.notes;
+                    if (!modifications && parsedOptions) {
+                      if (Array.isArray(parsedOptions)) {
+                        // Array format: [{groupName: "Size", itemName: "16\"", price: 16.99}, ...]
+                        modifications = parsedOptions
+                          .map(opt => {
+                            const name = opt.itemName || opt.name || '';
+                            const price = opt.price && parseFloat(opt.price) > 0 ? ` (+$${parseFloat(opt.price).toFixed(2)})` : '';
+                            return `${name}${price}`;
+                          })
+                          .filter(Boolean)
+                          .join(', ');
+                      } else if (typeof parsedOptions === 'object') {
+                        // Object format: {size: "16\"", topping: "pepperoni"}
+                        modifications = Object.entries(parsedOptions)
+                          .filter(([key, value]) => value && value !== 'none')
+                          .map(([key, value]) => `${key}: ${value}`)
+                          .join(', ');
+                      }
+                    }
+
+                    return {
+                      name: item.name,
+                      quantity: item.quantity,
+                      price: parseFloat(item.basePrice || item.price || '0').toFixed(2),
+                      modifications: modifications || undefined
+                    };
+                  }),
                   pointsEarned: pointsAwarded || undefined,
                   totalPoints: pointsAwarded || undefined,
                   voucherUsed: enhancedOrder.voucherUsed ? true : false,
@@ -1842,32 +1873,40 @@ export const handler: Handler = async (event, context) => {
                     enhancedOrder.voucherUsed.code : undefined
                 };
 
-                console.log('📧 Calling send-order-confirmation function...');
-                const emailResponse = await fetch(`${process.env.SITE_URL || process.env.URL || 'http://localhost:8888'}/.netlify/functions/send-order-confirmation`, {
+                console.log('📧 Sending order confirmation email (non-blocking)...');
+                // Fire-and-forget: Don't wait for email to complete
+                // This makes order confirmation instant for the customer
+                fetch(`${process.env.SITE_URL || process.env.URL || 'http://localhost:8888'}/.netlify/functions/send-order-confirmation`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(emailOrderData)
-                });
-
-                console.log('📧 Email API response status:', emailResponse.status);
-                if (emailResponse.ok) {
-                  const emailResult = await emailResponse.json();
-                  console.log('✅ Orders API: Order confirmation email sent successfully');
-                  console.log('✅ Email ID:', emailResult.emailId);
-                } else {
-                  const errorText = await emailResponse.text();
-                  console.error('❌ Orders API: Failed to send order confirmation email');
-                  console.error('❌ Status:', emailResponse.status);
-                  console.error('❌ Error:', errorText);
-                }
+                })
+                  .then(async (emailResponse) => {
+                    console.log('📧 Email API response status:', emailResponse.status);
+                    if (emailResponse.ok) {
+                      const emailResult = await emailResponse.json();
+                      console.log('✅ Orders API: Order confirmation email sent successfully');
+                      console.log('✅ Email ID:', emailResult.emailId);
+                    } else {
+                      const errorText = await emailResponse.text();
+                      console.error('❌ Orders API: Failed to send order confirmation email');
+                      console.error('❌ Status:', emailResponse.status);
+                      console.error('❌ Error:', errorText);
+                    }
+                  })
+                  .catch((emailError) => {
+                    console.error('❌ Orders API: Order confirmation email error:', emailError);
+                    console.error('❌ Error details:', {
+                      name: emailError?.name,
+                      message: emailError?.message,
+                      stack: emailError?.stack
+                    });
+                    // Email failed but order is still successful
+                  });
+                console.log('📧 Email request initiated, continuing without waiting...');
               } catch (emailError) {
-                console.error('❌ Orders API: Order confirmation email error:', emailError);
-                console.error('❌ Error details:', {
-                  name: (emailError as Error).name,
-                  message: (emailError as Error).message,
-                  stack: (emailError as Error).stack
-                });
-                // Don't fail the order if email fails
+                console.error('❌ Orders API: Failed to initiate email send:', emailError);
+                // Don't fail the order if email initiation fails
               }
             } else {
               console.log('⚠️ Orders API: No customer email provided - skipping email confirmation');

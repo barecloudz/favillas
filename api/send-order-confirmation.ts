@@ -353,6 +353,10 @@ const generateOrderConfirmationHTML = (data: OrderEmailData): string => {
         </div>
 
         <div class="content">
+            <p style="font-size: 18px; color: #333; text-align: center; margin: 0 0 30px 0;">
+                Thank you, <strong>${data.customerName}</strong>! 🙏
+            </p>
+
             <div class="order-status">
                 <div class="status-badge">✅ ${data.orderStatus}</div>
                 <p style="color: #666; margin: 0;">
