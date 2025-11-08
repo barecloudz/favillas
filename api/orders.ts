@@ -658,6 +658,9 @@ export const handler: Handler = async (event, context) => {
         });
 
         // Check if services are paused or in vacation mode before allowing orders
+        // Skip for admin users to allow testing
+        const isAdminUser = authPayload?.role === 'admin' || authPayload?.role === 'super_admin';
+
         console.log('🔍 Orders API: Checking service status...');
         const serviceSettings = await sql`
           SELECT setting_key as key, setting_value as value FROM system_settings
@@ -676,7 +679,7 @@ export const handler: Handler = async (event, context) => {
           if (setting.key === 'vacation_message') vacationMessage = setting.value || vacationMessage;
         });
 
-        if (isPaused || isVacation) {
+        if ((isPaused || isVacation) && !isAdminUser) {
           // Allow scheduled orders to proceed during pause, but block ASAP orders
           if (orderData.fulfillmentTime === 'scheduled' && orderData.scheduledTime) {
             console.log(`✅ Orders API: Allowing scheduled order during ${isPaused ? 'PAUSE' : 'VACATION'} mode`);
@@ -694,53 +697,63 @@ export const handler: Handler = async (event, context) => {
               })
             };
           }
+        } else if (isAdminUser && (isPaused || isVacation)) {
+          console.log(`✅ Orders API: Admin user bypassing ${isPaused ? 'PAUSE' : 'VACATION'} mode for testing`);
         }
 
         // Check store hours and cutoff time for ASAP orders
+        // Skip validation for admin test orders (isAdminUser already defined above)
+
         // Wrapped in try-catch in case store_hours table doesn't exist yet
         try {
           console.log('🕐 Orders API: Checking store hours and cutoff time...');
-          const storeHoursData = await sql`
-            SELECT * FROM store_hours ORDER BY day_of_week
-          `;
 
-          if (storeHoursData.length > 0) {
-            const storeStatus = checkStoreStatus(storeHoursData.map((h: any) => ({
-              dayOfWeek: h.day_of_week,
-              dayName: h.day_name,
-              isOpen: h.is_open,
-              openTime: h.open_time,
-              closeTime: h.close_time,
-              isBreakTime: h.is_break_time,
-              breakStartTime: h.break_start_time,
-              breakEndTime: h.break_end_time,
-            })));
-
-            // Only validate for ASAP orders, allow scheduled orders to proceed
-            if (orderData.fulfillmentTime !== 'scheduled') {
-              if (!storeStatus.isOpen || storeStatus.isPastCutoff) {
-                console.log(`❌ Orders API: ASAP orders not available - ${storeStatus.message}`);
-                return {
-                  statusCode: 503,
-                  headers,
-                  body: JSON.stringify({
-                    error: 'ASAP orders not available',
-                    message: storeStatus.message,
-                    reason: 'outside_hours',
-                    isPastCutoff: storeStatus.isPastCutoff,
-                    isOpen: storeStatus.isOpen,
-                    scheduledOrdersAllowed: true,
-                    currentTime: storeStatus.currentTime,
-                    storeHours: storeStatus.storeHours
-                  })
-                };
-              }
-              console.log(`✅ Orders API: Store is open and within cutoff time`);
-            } else {
-              console.log(`✅ Orders API: Allowing scheduled order (bypassing store hours check)`);
-            }
+          // Skip store hours check for admin users
+          if (isAdminUser) {
+            console.log('✅ Orders API: Admin user detected, bypassing store hours validation for testing');
           } else {
-            console.log('⚠️ Orders API: No store hours configured, allowing order to proceed');
+            const storeHoursData = await sql`
+              SELECT * FROM store_hours ORDER BY day_of_week
+            `;
+
+            if (storeHoursData.length > 0) {
+              const storeStatus = checkStoreStatus(storeHoursData.map((h: any) => ({
+                dayOfWeek: h.day_of_week,
+                dayName: h.day_name,
+                isOpen: h.is_open,
+                openTime: h.open_time,
+                closeTime: h.close_time,
+                isBreakTime: h.is_break_time,
+                breakStartTime: h.break_start_time,
+                breakEndTime: h.break_end_time,
+              })));
+
+              // Only validate for ASAP orders, allow scheduled orders to proceed
+              if (orderData.fulfillmentTime !== 'scheduled') {
+                if (!storeStatus.isOpen || storeStatus.isPastCutoff) {
+                  console.log(`❌ Orders API: ASAP orders not available - ${storeStatus.message}`);
+                  return {
+                    statusCode: 503,
+                    headers,
+                    body: JSON.stringify({
+                      error: 'ASAP orders not available',
+                      message: storeStatus.message,
+                      reason: 'outside_hours',
+                      isPastCutoff: storeStatus.isPastCutoff,
+                      isOpen: storeStatus.isOpen,
+                      scheduledOrdersAllowed: true,
+                      currentTime: storeStatus.currentTime,
+                      storeHours: storeStatus.storeHours
+                    })
+                  };
+                }
+                console.log(`✅ Orders API: Store is open and within cutoff time`);
+              } else {
+                console.log(`✅ Orders API: Allowing scheduled order (bypassing store hours check)`);
+              }
+            } else {
+              console.log('⚠️ Orders API: No store hours configured, allowing order to proceed');
+            }
           }
         } catch (storeHoursError) {
           console.log('⚠️ Orders API: Store hours check failed (table may not exist), allowing order to proceed');
