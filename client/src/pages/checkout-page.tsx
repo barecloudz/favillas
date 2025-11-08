@@ -79,10 +79,10 @@ const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, cust
 
       const pendingOrderData = JSON.parse(pendingOrderDataStr);
 
-      // Update order data to mark as confirmed (skip payment)
+      // Update order data to mark as pending (same as real orders, but skip payment)
       const testOrderData = {
         ...pendingOrderData,
-        status: "confirmed",
+        status: "pending",  // Kitchen display shows 'pending' orders
         paymentStatus: "test_order_admin_bypass",
         paymentIntentId: `test_order_${Date.now()}`,
       };
