@@ -31,7 +31,7 @@ console.log('🔑 Initializing Stripe with public key:', import.meta.env.VITE_ST
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 // CheckoutForm with Stripe integration
-const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, customerAddress, finalTotal }: {
+const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, customerAddress, finalTotal, user }: {
   orderId?: number | null,
   clientSecret: string,
   customerPhone?: string,
@@ -44,13 +44,95 @@ const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, cust
     postal_code?: string,
     country?: string
   },
-  finalTotal: number
+  finalTotal: number,
+  user: any
 }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [isLoading, setIsLoading] = useState(false);
+  const [isTestOrderLoading, setIsTestOrderLoading] = useState(false);
   const { toast } = useToast();
+  const { clearCart } = useCart();
   const [location, navigate] = useLocation();
+
+  // Admin test order handler - bypasses Stripe payment
+  const handleTestOrder = async () => {
+    if (!user?.isAdmin) {
+      toast({
+        title: "Unauthorized",
+        description: "Only admin users can place test orders.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsTestOrderLoading(true);
+
+    try {
+      console.log('🧪 Admin test order - bypassing payment...');
+
+      // Get pending order data from sessionStorage
+      const pendingOrderDataStr = sessionStorage.getItem('pendingOrderData');
+      if (!pendingOrderDataStr) {
+        throw new Error('No pending order data found');
+      }
+
+      const pendingOrderData = JSON.parse(pendingOrderDataStr);
+
+      // Update order data to mark as confirmed (skip payment)
+      const testOrderData = {
+        ...pendingOrderData,
+        status: "confirmed",
+        paymentStatus: "test_order_admin_bypass",
+        paymentIntentId: `test_order_${Date.now()}`,
+      };
+
+      console.log('📦 Creating test order:', testOrderData);
+
+      // Create order directly (bypass payment)
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(testOrderData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create test order');
+      }
+
+      const result = await response.json();
+      console.log('✅ Test order created:', result);
+
+      // Clear pending order data
+      sessionStorage.removeItem('pendingOrderData');
+
+      // Clear cart
+      clearCart();
+
+      // Show success message
+      toast({
+        title: "🧪 Test Order Created",
+        description: `Order #${result.orderId} created successfully (Admin Test Mode)`,
+      });
+
+      // Redirect to order success page
+      setTimeout(() => {
+        navigate(`/order-success?test_order=true&order_id=${result.orderId}`);
+      }, 500);
+
+    } catch (error: any) {
+      console.error('❌ Test order error:', error);
+      toast({
+        title: "Test Order Failed",
+        description: error.message || "Failed to create test order",
+        variant: "destructive",
+      });
+      setIsTestOrderLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,7 +204,28 @@ const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, cust
           }}
         />
       </div>
-      <div className="px-4 md:px-0">
+      <div className="px-4 md:px-0 space-y-3">
+        {/* ADMIN ONLY: Test Order Button - bypasses Stripe payment */}
+        {user?.isAdmin && (
+          <Button
+            type="button"
+            onClick={handleTestOrder}
+            className="w-full bg-orange-500 hover:bg-orange-600 h-14 text-lg font-semibold rounded-xl shadow-lg"
+            disabled={isTestOrderLoading}
+          >
+            {isTestOrderLoading ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                Creating Test Order...
+              </>
+            ) : (
+              <>
+                🧪 Test Order (Admin Only - No Payment)
+              </>
+            )}
+          </Button>
+        )}
+
         <Button
           type="submit"
           className="w-full bg-[#d73a31] hover:bg-[#c73128] h-14 text-lg font-semibold rounded-xl shadow-lg"
@@ -1836,6 +1939,7 @@ const CheckoutPage = () => {
                           country: 'US'
                         } : undefined}
                         finalTotal={totals.finalTotal}
+                        user={user}
                       />
                     </Elements>
                   ) : (
@@ -1882,6 +1986,7 @@ const CheckoutPage = () => {
                           country: 'US'
                         } : undefined}
                         finalTotal={totals.finalTotal}
+                        user={user}
                       />
                     </Elements>
                   </div>
