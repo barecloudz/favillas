@@ -105,9 +105,21 @@ export const handler: Handler = async (event, context) => {
             }
           }
 
+          // Parse half_and_half if it's a JSON string
+          let parsedHalfAndHalf = item.half_and_half;
+          if (typeof item.half_and_half === 'string' && item.half_and_half) {
+            try {
+              parsedHalfAndHalf = JSON.parse(item.half_and_half);
+            } catch (e) {
+              console.error(`Failed to parse half_and_half for item ${item.id}:`, e);
+              parsedHalfAndHalf = null;
+            }
+          }
+
           return {
             ...item,
             options: parsedOptions,
+            halfAndHalf: parsedHalfAndHalf,  // Add parsed half-and-half data
             menuItem: item.menu_item_name ? {
               name: item.menu_item_name,
               description: item.menu_item_description,
