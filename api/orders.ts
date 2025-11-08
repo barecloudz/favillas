@@ -1153,7 +1153,7 @@ export const handler: Handler = async (event, context) => {
             for (const item of validItems) {
               const insertResult = await sql`
                 INSERT INTO order_items (
-                  order_id, menu_item_id, quantity, price, options, special_instructions, created_at
+                  order_id, menu_item_id, quantity, price, options, special_instructions, half_and_half, created_at
                 ) VALUES (
                   ${newOrder.id},
                   ${item.menuItemId},
@@ -1161,6 +1161,7 @@ export const handler: Handler = async (event, context) => {
                   ${item.price},
                   ${item.options ? JSON.stringify(item.options) : null},
                   ${item.specialInstructions || ''},
+                  ${item.halfAndHalf ? JSON.stringify(item.halfAndHalf) : null},
                   NOW()
                 ) RETURNING *
               `;
@@ -1355,7 +1356,7 @@ export const handler: Handler = async (event, context) => {
                     // Add the free item to order_items with quantity 1 and price 0
                     await sql`
                       INSERT INTO order_items (
-                        order_id, menu_item_id, quantity, price, options, special_instructions, created_at
+                        order_id, menu_item_id, quantity, price, options, special_instructions, half_and_half, created_at
                       ) VALUES (
                         ${newOrder.id},
                         ${voucher.free_item_menu_id},
@@ -1363,6 +1364,7 @@ export const handler: Handler = async (event, context) => {
                         '0.00',
                         NULL,
                         'Free item from reward: ${voucher.reward_name}',
+                        NULL,
                         NOW()
                       )
                     `;

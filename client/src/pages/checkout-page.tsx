@@ -1036,6 +1036,7 @@ const CheckoutPage = () => {
           price: (item.price * item.quantity).toString(),
           options: item.options || item.selectedOptions || [],
           specialInstructions: item.specialInstructions || "",
+          halfAndHalf: item.halfAndHalf || null,  // Include half-and-half data for kitchen display
         };
       });
     
