@@ -1438,11 +1438,10 @@ const KitchenPage = () => {
                                     <div className="font-bold text-orange-600 mb-1">🍕 1st Half</div>
                                     {item.halfAndHalf.firstHalf && item.halfAndHalf.firstHalf.length > 0 ? (
                                       item.halfAndHalf.firstHalf.map((option: any, idx: number) => {
-                                        const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
                                         const showPrice = option.price && option.price > 0;
                                         return (
                                           <div key={idx} className="flex justify-between items-start text-xs">
-                                            <span className="flex-1">{groupName}: {option.itemName}</span>
+                                            <span className="flex-1">{option.itemName}</span>
                                             {showPrice && (
                                               <span className="text-green-600 font-medium ml-1">+${option.price.toFixed(2)}</span>
                                             )}
@@ -1459,11 +1458,10 @@ const KitchenPage = () => {
                                     <div className="font-bold text-blue-600 mb-1">🍕 2nd Half</div>
                                     {item.halfAndHalf.secondHalf && item.halfAndHalf.secondHalf.length > 0 ? (
                                       item.halfAndHalf.secondHalf.map((option: any, idx: number) => {
-                                        const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
                                         const showPrice = option.price && option.price > 0;
                                         return (
                                           <div key={idx} className="flex justify-between items-start text-xs">
-                                            <span className="flex-1">{groupName}: {option.itemName}</span>
+                                            <span className="flex-1">{option.itemName}</span>
                                             {showPrice && (
                                               <span className="text-green-600 font-medium ml-1">+${option.price.toFixed(2)}</span>
                                             )}
@@ -1697,11 +1695,10 @@ const KitchenPage = () => {
                               <div className="font-bold text-orange-600 mb-2">🍕 1st Half</div>
                               {item.halfAndHalf.firstHalf && item.halfAndHalf.firstHalf.length > 0 ? (
                                 item.halfAndHalf.firstHalf.map((option: any, idx: number) => {
-                                  const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
                                   const showPrice = option.price && option.price > 0;
                                   return (
                                     <div key={idx} className="flex justify-between items-start text-sm mb-1">
-                                      <span className="flex-1">{groupName}: {option.itemName}</span>
+                                      <span className="flex-1">{option.itemName}</span>
                                       {showPrice && (
                                         <span className="text-green-600 font-medium ml-2">+${option.price.toFixed(2)}</span>
                                       )}
@@ -1718,11 +1715,10 @@ const KitchenPage = () => {
                               <div className="font-bold text-blue-600 mb-2">🍕 2nd Half</div>
                               {item.halfAndHalf.secondHalf && item.halfAndHalf.secondHalf.length > 0 ? (
                                 item.halfAndHalf.secondHalf.map((option: any, idx: number) => {
-                                  const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
                                   const showPrice = option.price && option.price > 0;
                                   return (
                                     <div key={idx} className="flex justify-between items-start text-sm mb-1">
-                                      <span className="flex-1">{groupName}: {option.itemName}</span>
+                                      <span className="flex-1">{option.itemName}</span>
                                       {showPrice && (
                                         <span className="text-green-600 font-medium ml-2">+${option.price.toFixed(2)}</span>
                                       )}

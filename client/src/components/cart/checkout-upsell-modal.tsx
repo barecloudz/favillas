@@ -394,104 +394,93 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={() => handleProceedToCheckout()}>
-      <DialogContent className="max-w-6xl w-[95vw] max-h-[95vh] p-0 flex flex-col rounded-3xl overflow-hidden shadow-2xl">
-        {/* Header with modern gradient background and pattern */}
-        <DialogHeader className="relative bg-gradient-to-br from-[#d73a31] via-[#e84c3d] to-[#ff6b5b] text-white p-6 sm:p-10 pb-6 sm:pb-8">
-          {/* Animated gradient overlay */}
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDE4YzAtOS45NC04LjA2LTE4LTE4LTE4UzAgOC4wNiAwIDE4czguMDYgMTggMTggMTggMTgtOC4wNiAxOC0xOHoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30"></div>
+      <DialogContent className="max-w-6xl w-[95vw] max-h-[95vh] p-0 flex flex-col overflow-hidden bg-white">
+        {/* Premium Header with elegant design */}
+        <DialogHeader className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white px-6 sm:px-12 py-8 sm:py-12">
+          {/* Subtle texture overlay */}
+          <div className="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC04LjI4NC02LjcxNi0xNS0xNS0xNXMtMTUgNi43MTYtMTUgMTUgNi43MTYgMTUgMTUgMTUgMTUtNi43MTYgMTUtMTV6Ii8+PC9nPjwvZz48L3N2Zz4=')] pointer-events-none"></div>
 
-          <div className="relative z-10">
-            <div className="text-center">
-              {/* Icon/Emoji header */}
+          {/* Accent line */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#d73a31] to-transparent"></div>
+
+          <div className="relative z-10 text-center max-w-3xl mx-auto">
+            {!selectedCategory && (
               <div className="mb-4">
-                <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-white/20 backdrop-blur-sm rounded-full border-4 border-white/30 shadow-lg">
-                  <span className="text-3xl sm:text-4xl">{selectedCategory ? '✨' : '🎉'}</span>
-                </div>
+                <span className="inline-block px-4 py-1.5 bg-white/10 backdrop-blur-sm text-xs tracking-widest uppercase font-semibold text-white/90 rounded-full border border-white/20">
+                  Recommended For You
+                </span>
               </div>
+            )}
 
-              <DialogTitle className="text-2xl sm:text-5xl font-black mb-3 sm:mb-4 leading-tight tracking-tight drop-shadow-lg">
-                {selectedCategory ? `${selectedCategory} Selection` : 'Complete Your Feast!'}
-              </DialogTitle>
-              {!selectedCategory && (
-                <p className="text-white/95 text-lg sm:text-2xl font-semibold drop-shadow-md max-w-2xl mx-auto">
-                  Add the perfect sides to make your meal unforgettable! 🌟
-                </p>
+            <DialogTitle className="text-3xl sm:text-5xl font-serif font-light mb-3 sm:mb-4 leading-tight tracking-tight text-white">
+              {selectedCategory ? (
+                <span className="font-sans font-medium">{selectedCategory}</span>
+              ) : (
+                <>Perfect Your <span className="font-serif italic text-[#d73a31]">Experience</span></>
               )}
-            </div>
-          </div>
+            </DialogTitle>
 
-          {/* Decorative wave at bottom */}
-          <svg className="absolute bottom-0 left-0 right-0 w-full" viewBox="0 0 1440 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0 48h1440V0c-240 48-480 48-720 24C480 0 240 0 0 0v48z" fill="white"/>
-          </svg>
+            {!selectedCategory && (
+              <p className="text-white/70 text-base sm:text-lg font-light leading-relaxed max-w-2xl mx-auto">
+                Elevate your meal with our handpicked selections
+              </p>
+            )}
+          </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 sm:py-8 bg-gradient-to-b from-white to-gray-50">
+        <div className="flex-1 overflow-y-auto px-6 sm:px-12 py-8 sm:py-12 bg-gray-50">
           {!selectedCategory ? (
-            // Category selection view - modern mobile app design
-            <div className="space-y-8 max-w-5xl mx-auto">
-              <div className="text-center">
-                <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-full text-base font-bold shadow-lg">
-                  <span className="mr-2">⭐</span>
-                  Most Popular Add-Ons
-                  <span className="ml-2">⭐</span>
-                </div>
-                <p className="mt-4 text-gray-600 text-sm sm:text-base">Tap a category to see delicious options</p>
-              </div>
-
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            // Category selection view - premium design
+            <div className="max-w-6xl mx-auto">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
                 {missingCategories.map((category) => {
                   const IconComponent = getCategoryIcon(category);
                   const customImage = getCategoryImage(category.name);
-                  // Custom images from admin settings override category images from API
                   const displayImage = customImage || (category as any).imageUrl;
-                  const colors = getCategoryColors(category.name);
 
                   return (
                     <Card
                       key={category.id}
-                      className="group cursor-pointer hover:shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 border-0 bg-white rounded-3xl overflow-hidden relative"
+                      className="group cursor-pointer border border-gray-200/80 hover:border-[#d73a31] bg-white overflow-hidden transition-all duration-500 hover:shadow-xl hover:-translate-y-1"
                       onClick={() => setSelectedCategory(category.name)}
                     >
-                      {/* Gradient background effect */}
-                      <div className={`absolute inset-0 bg-gradient-to-br ${colors.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}></div>
-
-                      <CardContent className="relative p-4 sm:p-6 text-center">
-                        <div className="mb-3 sm:mb-4">
+                      <CardContent className="p-0">
+                        {/* Image Section */}
+                        <div className="relative h-40 sm:h-48 overflow-hidden bg-gradient-to-br from-gray-100 to-gray-50">
                           {displayImage ? (
-                            <div className="relative mx-auto w-20 h-20 sm:w-24 sm:h-24">
+                            <>
                               <img
                                 src={displayImage}
                                 alt={category.name}
-                                className="w-full h-full rounded-2xl object-cover shadow-lg ring-4 ring-white group-hover:ring-0 transition-all duration-300"
+                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                               />
-                              <div className="absolute -top-1 -right-1 bg-gradient-to-br from-orange-400 to-red-500 text-white text-xs font-black px-2 py-1 rounded-full shadow-md transform group-hover:scale-110 transition-transform">
-                                HOT
-                              </div>
-                            </div>
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                            </>
                           ) : (
-                            <div className="relative mx-auto w-20 h-20 sm:w-24 sm:h-24">
-                              <div className={`w-full h-full bg-gradient-to-br ${colors.gradient} rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 transform group-hover:rotate-3`}>
-                                <IconComponent className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
-                              </div>
-                              <div className="absolute -top-1 -right-1 bg-gradient-to-br from-yellow-400 to-orange-500 text-white text-xs font-black px-2 py-1 rounded-full shadow-md animate-pulse">
-                                NEW
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+                              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white shadow-lg flex items-center justify-center transition-transform duration-500 group-hover:scale-110">
+                                <IconComponent className="w-8 h-8 sm:w-10 sm:h-10 text-[#d73a31]" />
                               </div>
                             </div>
                           )}
                         </div>
 
-                        <h3 className="font-black text-base sm:text-lg text-gray-900 mb-1 sm:mb-2 group-hover:text-[#d73a31] transition-colors">
-                          {category.name}
-                        </h3>
+                        {/* Content Section */}
+                        <div className="p-5 text-center">
+                          <h3 className="font-semibold text-base sm:text-lg text-gray-900 mb-2 tracking-tight group-hover:text-[#d73a31] transition-colors duration-300">
+                            {category.name}
+                          </h3>
 
-                        <div className="flex items-center justify-center gap-1 text-xs text-gray-500 mb-3">
-                          <span>🔥</span>
-                          <span className="font-semibold">Popular Choice</span>
-                        </div>
+                          <div className="text-xs sm:text-sm text-gray-500 font-light mb-4">
+                            Premium Selection
+                          </div>
 
-                        <div className={`${colors.badge} text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-md group-hover:shadow-lg transition-all transform group-hover:-translate-y-0.5`}>
-                          Explore →
+                          <div className="inline-flex items-center text-[#d73a31] font-medium text-sm group-hover:gap-2 transition-all duration-300">
+                            <span>Explore</span>
+                            <svg className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -500,94 +489,81 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
               </div>
             </div>
           ) : (
-            // Items listing view - improved design with better back button
-            <div className="pb-6">
+            // Items listing view - premium design
+            <div className="max-w-5xl mx-auto">
               <Button
                 onClick={() => setSelectedCategory(null)}
-                className="mb-6 bg-white hover:bg-gray-50 text-[#d73a31] border-2 border-[#d73a31] rounded-xl shadow-md hover:shadow-lg transition-all duration-200 font-semibold px-6 py-2"
+                variant="ghost"
+                className="mb-8 text-gray-600 hover:text-gray-900 hover:bg-transparent font-medium px-0"
               >
-                <span className="flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Back to Categories
-                </span>
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Back to Categories
               </Button>
 
-              <div className="text-center mb-6">
-                <div className="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
-                  🔥 Handpicked favorites from our {selectedCategory} menu!
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {categoryItems.map((item) => (
-                  <Card key={item.id} className="group hover:shadow-xl transition-all duration-300 hover:scale-[1.02] border-2 hover:border-[#d73a31] overflow-hidden">
+                  <Card key={item.id} className="group border border-gray-200/80 hover:border-[#d73a31] bg-white overflow-hidden transition-all duration-500 hover:shadow-xl hover:-translate-y-1">
                     <CardContent className="p-0">
-                      <div className="relative">
-                        {/* Item image or placeholder */}
-                        <div className="relative h-32 bg-gradient-to-br from-gray-100 to-gray-200">
-                          {item.imageUrl ? (
+                      {/* Premium Image Section */}
+                      <div className="relative h-48 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+                        {item.imageUrl ? (
+                          <>
                             <img
                               src={item.imageUrl}
                               alt={item.name}
-                              className="w-full h-32 object-cover"
+                              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                             />
-                          ) : (
-                            <div className="w-full h-32 bg-gradient-to-br from-[#d73a31]/20 to-[#ff6b5b]/20 flex items-center justify-center">
-                              <div className="w-16 h-16 bg-[#d73a31] rounded-full flex items-center justify-center">
-                                <Utensils className="w-8 h-8 text-white" />
-                              </div>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                          </>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <div className="w-20 h-20 rounded-full bg-white shadow-lg flex items-center justify-center">
+                              <Utensils className="w-10 h-10 text-[#d73a31]" />
                             </div>
-                          )}
-
-                          {/* Price badge */}
-                          <div className="absolute top-3 right-3">
-                            <Badge className="bg-green-500 hover:bg-green-500 text-white font-bold text-sm shadow-lg">
-                              ${item.basePrice ? Number(item.basePrice).toFixed(2) : '0.00'}
-                            </Badge>
                           </div>
+                        )}
 
-                          {/* Popular badge for some items */}
-                          {item.basePrice && Number(item.basePrice) < 5 && (
-                            <div className="absolute top-3 left-3">
-                              <Badge className="bg-orange-500 hover:bg-orange-500 text-white font-bold text-xs">
-                                POPULAR
-                              </Badge>
+                        {/* Price Badge - Elegant Design */}
+                        <div className="absolute bottom-3 right-3">
+                          <div className="bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg">
+                            <span className="text-[#d73a31] font-semibold text-sm">
+                              ${item.basePrice ? Number(item.basePrice).toFixed(2) : '0.00'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Item Content */}
+                      <div className="p-5">
+                        <h4 className="font-semibold text-lg mb-2 text-gray-900 group-hover:text-[#d73a31] transition-colors duration-300 tracking-tight">
+                          {item.name}
+                        </h4>
+
+                        {item.description && (
+                          <p className="text-sm text-gray-500 mb-5 line-clamp-2 font-light leading-relaxed">
+                            {item.description}
+                          </p>
+                        )}
+
+                        <Button
+                          className="w-full bg-slate-900 hover:bg-[#d73a31] text-white font-medium py-2.5 transition-all duration-300 shadow-sm hover:shadow-md"
+                          onClick={(e) => handleAddItem(item, e)}
+                          disabled={isAddingItem}
+                        >
+                          {isAddingItem ? (
+                            <div className="flex items-center justify-center">
+                              <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                              <span>Adding...</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center">
+                              <Plus className="h-4 w-4 mr-2" />
+                              <span>Add to Cart</span>
                             </div>
                           )}
-                        </div>
-
-                        {/* Item details */}
-                        <div className="p-4">
-                          <h4 className="font-bold text-lg mb-2 text-gray-800 group-hover:text-[#d73a31] transition-colors">
-                            {item.name}
-                          </h4>
-
-                          {item.description && (
-                            <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                              {item.description}
-                            </p>
-                          )}
-
-                          <Button
-                            className="w-full bg-[#d73a31] hover:bg-[#c73128] text-white font-semibold py-3 text-sm group-hover:shadow-lg transition-all duration-300"
-                            onClick={(e) => handleAddItem(item, e)}
-                            disabled={isAddingItem}
-                          >
-                            {isAddingItem ? (
-                              <div className="flex items-center">
-                                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                                Adding...
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-center">
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add to Cart
-                              </div>
-                            )}
-                          </Button>
-                        </div>
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -595,18 +571,18 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
               </div>
 
               {categoryItems.length === 0 && (
-                <div className="text-center py-8 sm:py-12">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Coffee className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
+                <div className="text-center py-16">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Coffee className="w-8 h-8 text-gray-400" />
                   </div>
-                  <p className="text-gray-500 text-base sm:text-lg">No items available in this category right now.</p>
-                  <p className="text-gray-400 text-xs sm:text-sm mt-2">Check back soon for new additions!</p>
+                  <p className="text-gray-600 text-lg font-light mb-2">No items available</p>
+                  <p className="text-gray-400 text-sm mb-6">Check back soon for new additions</p>
                   <Button
                     variant="outline"
                     onClick={() => setSelectedCategory(null)}
-                    className="mt-4 text-sm"
+                    className="border-gray-300 text-gray-600 hover:border-gray-400 hover:text-gray-900"
                   >
-                    ← Browse Other Categories
+                    Browse Other Categories
                   </Button>
                 </div>
               )}
@@ -614,70 +590,70 @@ const CheckoutUpsellModal: React.FC<CheckoutUpsellModalProps> = ({
           )}
         </div>
 
-        {/* Footer with centered button - now fixed at bottom */}
-        <div className="border-t bg-gradient-to-r from-gray-50 to-white p-6 sm:p-8 flex-shrink-0">
-          <div className="text-center space-y-4">
-            <p className="text-xs sm:text-sm text-gray-600">
-              ✨ <span className="font-semibold">89% of customers</span> who add these items say it made their meal complete!
-            </p>
-
+        {/* Premium Footer */}
+        <div className="border-t border-gray-200 bg-white px-6 sm:px-12 py-6 sm:py-8 flex-shrink-0">
+          <div className="max-w-3xl mx-auto text-center space-y-5">
             <Button
               onClick={handleProceedToCheckout}
               variant="outline"
-              className="px-8 sm:px-12 py-3 border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 text-base font-medium rounded-full shadow-sm hover:shadow-md transition-all duration-200"
+              className="px-10 py-3 border border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 font-medium transition-all duration-300 hover:shadow-md"
             >
-              {hasAddedItems ? "Proceed to Checkout" : "No Thanks, Continue to Checkout"}
+              {hasAddedItems ? "Continue to Checkout" : "Skip and Continue"}
             </Button>
+
+            <p className="text-xs text-gray-500 font-light">
+              You can always add more items later
+            </p>
           </div>
         </div>
 
-        {/* Keep Looking Overlay Modal - Inside main dialog */}
+        {/* Premium Keep Looking Overlay Modal */}
         {showKeepLookingModal && (
           <div
-            className="absolute inset-0 bg-black/50 flex items-center justify-center z-50"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
                 setShowKeepLookingModal(false);
-                console.log('Backdrop clicked - closing overlay modal');
               }
             }}
           >
-            <div className="bg-white rounded-xl shadow-2xl p-6 sm:p-8 max-w-md w-[90vw] mx-4">
-              <div className="text-center space-y-4">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  </div>
+            <div className="bg-white shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+              <div className="p-8 text-center space-y-6">
+                {/* Success Icon */}
+                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto">
+                  <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
                 </div>
 
-                <h3 className="text-xl font-bold text-gray-900">Item Added!</h3>
-                <p className="text-gray-600">Would you like to keep looking for more items to add to your order?</p>
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-semibold text-gray-900">Added to Cart</h3>
+                  <p className="text-gray-600 font-light leading-relaxed">
+                    Continue browsing or proceed to checkout
+                  </p>
+                </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <div className="flex flex-col gap-3 pt-2">
                   <Button
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       setShowKeepLookingModal(false);
-                      console.log('Keep looking button clicked - modal should close');
                     }}
-                    className="flex-1 bg-[#d73a31] hover:bg-[#c73128] text-white font-semibold py-3"
+                    className="w-full bg-slate-900 hover:bg-[#d73a31] text-white font-medium py-3 transition-all duration-300"
                   >
-                    Yes Please!
+                    Keep Browsing
                   </Button>
 
                   <Button
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log('Proceed to checkout button clicked from overlay');
                       setShowKeepLookingModal(false);
                       handleProceedToCheckout();
                     }}
                     variant="outline"
-                    className="flex-1 border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold py-3"
+                    className="w-full border border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 font-medium py-3 transition-all duration-300"
                   >
                     Proceed to Checkout
                   </Button>

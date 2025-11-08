@@ -174,17 +174,44 @@ const CartSidebar: React.FC = () => {
   };
 
   // Handle opening edit modal
+  // For pizza items with complex customization (size filtering, half-and-half),
+  // navigate to menu page where the full customization modal is available
   const handleEditItem = (item: CartItem, event?: React.MouseEvent) => {
     if (event) {
       event.stopPropagation();
     }
+
+    // Check if this is a pizza item (has choice groups for customization)
+    const availableGroups = getItemChoiceGroups(item.id);
+    const isPizzaItem = availableGroups.some((g: any) =>
+      g.name?.toLowerCase().includes('size') ||
+      g.name?.toLowerCase().includes('topping') ||
+      g.name?.toLowerCase().includes('pizza')
+    );
+
+    if (isPizzaItem || item.halfAndHalf) {
+      // For pizza items, navigate to menu and open full customization modal
+      // Store the item to edit in sessionStorage
+      sessionStorage.setItem('editingCartItem', JSON.stringify({
+        ...item,
+        cartIndex: items.indexOf(item)
+      }));
+
+      // Close cart and navigate to menu
+      closeCart();
+      navigate(`/menu#item-${item.id}`);
+
+      // The menu page will detect the editingCartItem and open the modal automatically
+      return;
+    }
+
+    // For non-pizza items, use the simple edit modal
     setEditingItem(item);
     setEditedOptions(item.options || []);
     setEditedInstructions(item.specialInstructions || "");
 
     // Initialize selectedChoices from existing options
     const initialSelections: { [key: string]: string[] } = {};
-    const availableGroups = getItemChoiceGroups(item.id);
 
     if (item.options && item.options.length > 0) {
       item.options.forEach(option => {
