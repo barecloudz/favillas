@@ -966,8 +966,8 @@ const CheckoutPage = () => {
       return;
     }
     
-    // Validate fulfillment time
-    if (fulfillmentTime === "asap" && !isStoreOpen()) {
+    // Validate fulfillment time (skip for admin users who can test at any time)
+    if (fulfillmentTime === "asap" && !isStoreOpen() && !user?.isAdmin) {
       toast({
         title: "Store is Closed",
         description: "Please select a scheduled time or try again during business hours.",
@@ -985,8 +985,8 @@ const CheckoutPage = () => {
       return;
     }
 
-    // Validate scheduled time is within store hours
-    if (fulfillmentTime === "scheduled" && scheduledTime) {
+    // Validate scheduled time is within store hours (skip for admin users)
+    if (fulfillmentTime === "scheduled" && scheduledTime && !user?.isAdmin) {
       const selectedDate = new Date(scheduledTime);
       const day = selectedDate.getDay();
       const hour = selectedDate.getHours();
