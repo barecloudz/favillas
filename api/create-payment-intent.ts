@@ -1,6 +1,7 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
 import Stripe from 'stripe';
+import { authenticateToken } from './_shared/auth-utils';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
@@ -56,6 +57,10 @@ export const handler: Handler = async (event, context) => {
   }
 
   try {
+    // Authenticate user (optional - doesn't block payment, just checks if admin)
+    const authResult = await authenticateToken(event.headers, event);
+    const isAdmin = authResult?.user?.role === 'admin';
+
     const requestBody = JSON.parse(event.body || '{}');
     const { amount, orderId, orderData } = requestBody;
 
@@ -244,13 +249,37 @@ export const handler: Handler = async (event, context) => {
       console.warn('⚠️  No order data or order ID provided - cannot validate payment amount');
     }
 
+    // Admin bypass for Stripe minimum ($0.50)
+    // Stripe requires minimum 50 cents, but admins can test with any amount
+    let stripeAmount = validatedAmount;
+    const STRIPE_MINIMUM = 0.50;
+
+    if (validatedAmount < STRIPE_MINIMUM) {
+      if (isAdmin) {
+        console.log(`⚠️  Amount $${validatedAmount} is below Stripe minimum`);
+        console.log(`✅ Admin bypass: Using $${STRIPE_MINIMUM} for Stripe (test order)`);
+        stripeAmount = STRIPE_MINIMUM;
+      } else {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            error: `Minimum order amount is $${STRIPE_MINIMUM}. Your total is $${validatedAmount.toFixed(2)}.`
+          })
+        };
+      }
+    }
+
     // Create a PaymentIntent with the VALIDATED amount
-    console.log('💳 Creating payment intent with validated amount:', validatedAmount);
+    console.log('💳 Creating payment intent with amount:', stripeAmount);
 
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(validatedAmount * 100), // Convert to cents
-      currency: "usd"
-      // No metadata for now - will store order data in sessionStorage instead
+      amount: Math.round(stripeAmount * 100), // Convert to cents
+      currency: "usd",
+      metadata: isAdmin && stripeAmount !== validatedAmount ? {
+        test_order: 'true',
+        actual_amount: validatedAmount.toString()
+      } : {}
     });
 
     // Update the order with the payment intent ID (only if orderId exists - for old flow)
