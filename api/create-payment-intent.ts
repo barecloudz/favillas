@@ -1,7 +1,7 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
 import Stripe from 'stripe';
-import { authenticateToken } from './_shared/auth-utils';
+import { authenticateToken } from './utils/auth';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
