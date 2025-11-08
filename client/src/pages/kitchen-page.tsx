@@ -1423,11 +1423,26 @@ const KitchenPage = () => {
                       </CardHeader>
                       <CardContent className="p-4">
                         <div className="space-y-3">
-                          {order.items.map((item: any) => (
+                          {order.items.map((item: any) => {
+                            // Calculate total price including add-ons
+                            let totalPrice = parseFloat(item.price) || 0;
+
+                            if (item.halfAndHalf) {
+                              // Add half-and-half topping prices
+                              const firstHalfTotal = item.halfAndHalf.firstHalf?.reduce((sum: number, opt: any) => sum + (parseFloat(opt.price) || 0), 0) || 0;
+                              const secondHalfTotal = item.halfAndHalf.secondHalf?.reduce((sum: number, opt: any) => sum + (parseFloat(opt.price) || 0), 0) || 0;
+                              totalPrice += firstHalfTotal + secondHalfTotal;
+                            } else if (item.options && Array.isArray(item.options)) {
+                              // Add regular option prices
+                              const optionsTotal = item.options.reduce((sum: number, opt: any) => sum + (parseFloat(opt.price) || 0), 0);
+                              totalPrice += optionsTotal;
+                            }
+
+                            return (
                             <div key={item.id} className="border-b pb-2">
                               <div className="flex justify-between font-medium">
                                 <span>{item.quantity}x {item.menuItem?.name || 'Unknown Item'}</span>
-                                <span>${formatPrice(item.price)}</span>
+                                <span>${formatPrice(totalPrice)}</span>
                               </div>
                               {/* Display detailed choices and addons */}
                               {item.halfAndHalf ? (
@@ -1480,13 +1495,13 @@ const KitchenPage = () => {
                                     {item.options.map((option: any, idx: number) => {
                                       // Simplify group names for kitchen display
                                       const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
-                                      // Don't show price for required size selections (it's the base price, not an add-on)
                                       const isSize = option.groupName?.toLowerCase().includes('size');
                                       const showPrice = option.price && option.price > 0 && !isSize;
 
                                       return (
                                         <div key={idx} className="flex justify-between items-center">
-                                          <span>{groupName}: {option.itemName}</span>
+                                          {/* Show category label only for sizes, just the item name for add-ons */}
+                                          <span>{isSize ? `${groupName}: ${option.itemName}` : option.itemName}</span>
                                           {showPrice && (
                                             <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
                                           )}
@@ -1519,7 +1534,8 @@ const KitchenPage = () => {
                                 </p>
                               )}
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                         
                         {order.specialInstructions && (
@@ -1680,11 +1696,26 @@ const KitchenPage = () => {
                 <div>
                   <h3 className="font-semibold mb-2">Order Items</h3>
                   <div className="space-y-3 border rounded-lg p-4">
-                    {selectedOrder.items?.map((item: any) => (
+                    {selectedOrder.items?.map((item: any) => {
+                      // Calculate total price including add-ons
+                      let totalPrice = parseFloat(item.price) || 0;
+
+                      if (item.halfAndHalf) {
+                        // Add half-and-half topping prices
+                        const firstHalfTotal = item.halfAndHalf.firstHalf?.reduce((sum: number, opt: any) => sum + (parseFloat(opt.price) || 0), 0) || 0;
+                        const secondHalfTotal = item.halfAndHalf.secondHalf?.reduce((sum: number, opt: any) => sum + (parseFloat(opt.price) || 0), 0) || 0;
+                        totalPrice += firstHalfTotal + secondHalfTotal;
+                      } else if (item.options && Array.isArray(item.options)) {
+                        // Add regular option prices
+                        const optionsTotal = item.options.reduce((sum: number, opt: any) => sum + (parseFloat(opt.price) || 0), 0);
+                        totalPrice += optionsTotal;
+                      }
+
+                      return (
                       <div key={item.id} className="border-b pb-3 last:border-b-0">
                         <div className="flex justify-between font-medium">
                           <span>{item.quantity}x {item.menuItem?.name || 'Unknown Item'}</span>
-                          <span>${formatPrice(item.price)}</span>
+                          <span>${formatPrice(totalPrice)}</span>
                         </div>
                         {/* Display detailed choices and addons */}
                         {item.halfAndHalf ? (
@@ -1737,13 +1768,13 @@ const KitchenPage = () => {
                               {item.options.map((option: any, idx: number) => {
                                 // Simplify group names for kitchen display
                                 const groupName = (option.groupName || '').replace(/specialty|gourmet|pizza/gi, '').trim();
-                                // Don't show price for required size selections (it's the base price, not an add-on)
                                 const isSize = option.groupName?.toLowerCase().includes('size');
                                 const showPrice = option.price && option.price > 0 && !isSize;
 
                                 return (
                                   <div key={idx} className="flex justify-between items-center">
-                                    <span>{groupName}: {option.itemName}</span>
+                                    {/* Show category label only for sizes, just the item name for add-ons */}
+                                    <span>{isSize ? `${groupName}: ${option.itemName}` : option.itemName}</span>
                                     {showPrice && (
                                       <span className="text-green-600 font-medium">+${option.price.toFixed(2)}</span>
                                     )}
@@ -1753,13 +1784,15 @@ const KitchenPage = () => {
                             </div>
                           )
                         )}
+
                         {item.specialInstructions && (
                           <p className="text-sm text-gray-600 italic font-medium bg-yellow-100 px-2 py-1 rounded mt-2">
                             Special: "{item.specialInstructions}"
                           </p>
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
