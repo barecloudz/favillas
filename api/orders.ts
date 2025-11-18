@@ -941,7 +941,8 @@ export const handler: Handler = async (event, context) => {
             if (Math.abs(itemPrice - basePrice) < Math.abs(itemPrice - expectedTotalPrice)) {
               console.log(`   ➡️ Treating as INDIVIDUAL price (closer to base)`);
               // Price is close to base price - treat as individual price
-              if (itemPrice >= basePrice * 0.5 && itemPrice <= basePrice * 2) {
+              // Allow prices up to 5x base price to account for size upgrades and toppings
+              if (itemPrice >= basePrice * 0.5 && itemPrice <= basePrice * 5) {
                 finalItemPrice = itemPrice;
                 itemTotal = itemPrice * quantity;
                 console.log(`   ✅ Item ${item.menuItemId}: Individual price $${itemPrice} x ${quantity} = $${itemTotal.toFixed(2)}`);
@@ -953,7 +954,8 @@ export const handler: Handler = async (event, context) => {
             } else {
               console.log(`   ➡️ Treating as TOTAL price (closer to expected total)`);
               // Price looks like total price - divide by quantity to get individual price
-              if (individualPrice >= basePrice * 0.5 && individualPrice <= basePrice * 2) {
+              // Allow prices up to 5x base price to account for size upgrades and toppings
+              if (individualPrice >= basePrice * 0.5 && individualPrice <= basePrice * 5) {
                 finalItemPrice = individualPrice;
                 itemTotal = itemPrice; // Use the total that was sent
                 console.log(`   ✅ Item ${item.menuItemId}: Total price $${itemPrice} ÷ ${quantity} = $${individualPrice.toFixed(2)} each`);
