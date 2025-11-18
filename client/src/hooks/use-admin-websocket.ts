@@ -30,6 +30,12 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastCheckedOrderRef = useRef<string | null>(null);
 
+  // Store callbacks in refs to avoid recreating connect/disconnect on every render
+  const optionsRef = useRef(options);
+  useEffect(() => {
+    optionsRef.current = options;
+  }, [options]);
+
   // Initialize audio context for sound notifications
   const initAudioContext = useCallback(() => {
     if (!audioContextRef.current && typeof window !== 'undefined') {
@@ -69,7 +75,7 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
 
   // Play notification sound
   const playNotificationSound = useCallback(async () => {
-    if (!options.enableSounds || !audioContextRef.current) return;
+    if (!optionsRef.current.enableSounds || !audioContextRef.current) return;
 
     try {
       // Resume audio context if suspended (required by some browsers)
@@ -77,8 +83,8 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
         await audioContextRef.current.resume();
       }
 
-      const soundType = options.soundType || 'chime';
-      const volume = options.volume !== undefined ? options.volume : 0.3;
+      const soundType = optionsRef.current.soundType || 'chime';
+      const volume = optionsRef.current.volume !== undefined ? optionsRef.current.volume : 0.3;
       const gainNode = audioContextRef.current.createGain();
       gainNode.connect(audioContextRef.current.destination);
 
@@ -199,10 +205,10 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
         }
         return; // Exit early since we're using HTML5 Audio
 
-      } else if (soundType === 'custom' && options.customSoundUrl) {
+      } else if (soundType === 'custom' && optionsRef.current.customSoundUrl) {
         // Play custom uploaded audio file (base64 data URL)
         try {
-          const audio = new Audio(options.customSoundUrl);
+          const audio = new Audio(optionsRef.current.customSoundUrl);
           audio.volume = volume;
 
           // Ensure audio can load and play
@@ -236,7 +242,7 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
     } catch (error) {
       console.warn('Failed to play notification sound:', error);
     }
-  }, [options.enableSounds, options.soundType, options.volume, options.customSoundUrl]);
+  }, []); // No dependencies - uses optionsRef.current
 
   // Polling-based notifications for production (Netlify)
   const startPollingNotifications = useCallback(() => {
@@ -301,9 +307,9 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
               console.log('🔄 Invalidated order queries to refresh UI');
 
               // Call callback if provided
-              if (options.onNewOrder) {
+              if (optionsRef.current.onNewOrder) {
                 console.log('🖨️ Calling onNewOrder callback for auto-print...');
-                options.onNewOrder(latestOrder);
+                optionsRef.current.onNewOrder(latestOrder);
               } else {
                 console.warn('⚠️ No onNewOrder callback provided!');
               }
@@ -321,6 +327,8 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
         }
       } catch (error) {
         console.error('💥 Polling error:', error);
+        // HTTP2 errors are common on Safari/iOS - they're usually transient
+        // The next poll in 5 seconds will retry
       }
     };
 
@@ -329,7 +337,7 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
 
     // Check immediately
     checkForNewOrders();
-  }, [options.onNewOrder, playNotificationSound]);
+  }, [playNotificationSound, queryClient]); // Use ref for onNewOrder instead of dependency
 
   const stopPollingNotifications = useCallback(() => {
     if (pollingIntervalRef.current) {
@@ -401,14 +409,14 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
             // Play notification sound
             playNotificationSound();
             // Call callback if provided
-            if (options.onNewOrder) {
-              options.onNewOrder(message.order);
+            if (optionsRef.current.onNewOrder) {
+              optionsRef.current.onNewOrder(message.order);
             }
           } else if (message.type === 'orderStatusUpdate' || message.type === 'orderStatusChanged') {
             // console.log('Order status updated:', message.order);
             // Call callback if provided
-            if (options.onOrderUpdate) {
-              options.onOrderUpdate(message.order);
+            if (optionsRef.current.onOrderUpdate) {
+              optionsRef.current.onOrderUpdate(message.order);
             }
           }
         } catch (error) {
@@ -443,7 +451,7 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
         reconnectTimeoutRef.current = null;
       }
     }
-  }, [user?.id, options.onNewOrder, options.onOrderUpdate, playNotificationSound]);
+  }, [user?.id, playNotificationSound]); // Use optionsRef instead of options dependencies
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
