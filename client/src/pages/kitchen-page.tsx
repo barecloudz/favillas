@@ -458,11 +458,11 @@ const KitchenPage = () => {
     }
     return true;
   }).sort((a: any, b: any) => {
-    // Sort picked_up orders newest first
-    if (activeTab === "picked_up") {
+    // Sort by newest first for these tabs
+    if (activeTab === "today" || activeTab === "picked_up" || activeTab === "all") {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     }
-    // Default order for other tabs
+    // Default order for other tabs (pending, cooking, completed stay in order received)
     return 0;
   }) : [];
 
