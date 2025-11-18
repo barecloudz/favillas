@@ -870,11 +870,20 @@ export const handler: Handler = async (event, context) => {
             // CRITICAL FIX: datetime-local sends "2025-10-21T14:05" (2:05 PM local, no timezone)
             // Netlify servers run in UTC, but user is in ET (America/New_York)
             // We need to append ET timezone so PostgreSQL stores it correctly
-            // ET is UTC-4 (EDT) or UTC-5 (EST)
-            formattedScheduledTime = orderData.scheduledTime + '-04:00'; // EDT (Eastern Daylight Time)
+            // Dynamically detect EDT (UTC-4, Mar-Nov) vs EST (UTC-5, Nov-Mar)
+            const testDate = new Date(orderData.scheduledTime);
+            const jan = new Date(testDate.getFullYear(), 0, 1);
+            const jul = new Date(testDate.getFullYear(), 6, 1);
+            const stdOffset = Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset());
+            const isDST = testDate.getTimezoneOffset() < stdOffset;
+            const timezoneOffset = isDST ? '-04:00' : '-05:00'; // EDT or EST
+
+            formattedScheduledTime = orderData.scheduledTime + timezoneOffset;
 
             console.log('🛒 Orders API: Scheduled time with timezone:', {
               originalInput: orderData.scheduledTime,
+              isDST,
+              timezoneOffset,
               withTimezone: formattedScheduledTime
             });
           } catch (error) {
