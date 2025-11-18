@@ -361,13 +361,9 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
     if (isNetlifyProduction) {
       // console.log('Admin WebSocket disabled in production (Netlify deployment)');
 
-      // Only start polling if notifications are enabled
-      if (options.enableSounds) {
-        // console.log('🔄 Starting polling-based notifications for production...');
-        startPollingNotifications();
-      } else {
-        // console.log('🔇 Notifications disabled - skipping polling');
-      }
+      // Start polling for new orders (handles both sounds AND auto-print via onNewOrder callback)
+      // console.log('🔄 Starting polling-based notifications for production...');
+      startPollingNotifications();
       return;
     }
 
