@@ -273,7 +273,9 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
 
           // Filter for confirmed orders only (exclude pending orders that haven't been paid)
           const confirmedOrders = orders.filter((order: any) =>
-            order.status !== 'pending' || order.payment_status === 'succeeded'
+            order.status !== 'pending' ||
+            order.payment_status === 'succeeded' ||
+            order.payment_status === 'test_order_admin_bypass'
           );
 
           // console.log('✅ Confirmed orders:', confirmedOrders.length, 'of', orders.length, 'total orders');
