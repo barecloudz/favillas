@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
@@ -310,10 +310,16 @@ const KitchenPage = () => {
     };
   }, []);
 
+  // Use ref for printedOrders to avoid recreating callback when it changes
+  const printedOrdersRef = useRef(printedOrders);
+  useEffect(() => {
+    printedOrdersRef.current = printedOrders;
+  }, [printedOrders]);
+
   // Memoize the onNewOrder callback to prevent reconnecting websocket on every render
   const handleNewOrder = useCallback((order: any) => {
     // Check if already printed (deduplication)
-    if (printedOrders.has(order.id)) {
+    if (printedOrdersRef.current.has(order.id)) {
       console.log(`⏭️  Order #${order.id} already printed, skipping...`);
       return;
     }
@@ -373,7 +379,7 @@ const KitchenPage = () => {
         }
       });
     }
-  }, [printedOrders, setPrintedOrders]);
+  }, []); // Empty deps - uses refs and stable setState
 
   // Use admin websocket with notification sound settings
   const { playTestSound, sendMessage } = useAdminWebSocket({
