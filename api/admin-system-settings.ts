@@ -140,13 +140,14 @@ export const handler: Handler = async (event, context) => {
 
         // Upsert setting (update if exists, insert if not)
         const [updatedSetting] = await sql`
-          INSERT INTO system_settings (setting_key, setting_value, category, description, setting_type, updated_at)
+          INSERT INTO system_settings (setting_key, setting_value, category, description, setting_type, display_name, updated_at)
           VALUES (
             ${setting.setting_key},
             ${setting.setting_value},
             ${setting.category || 'general'},
             ${setting.description || ''},
             ${setting.setting_type || 'text'},
+            ${setting.display_name || setting.setting_key},
             NOW()
           )
           ON CONFLICT (setting_key)
@@ -155,6 +156,7 @@ export const handler: Handler = async (event, context) => {
             category = EXCLUDED.category,
             description = EXCLUDED.description,
             setting_type = EXCLUDED.setting_type,
+            display_name = EXCLUDED.display_name,
             updated_at = NOW()
           RETURNING *
         `;

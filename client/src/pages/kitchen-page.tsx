@@ -115,10 +115,10 @@ const KitchenPage = () => {
 
   // Fetch notification settings on mount
   useEffect(() => {
-    fetch('/api/admin/system-settings?category=notifications', { credentials: 'include' })
-      .then(res => res.json())
+    apiRequest('GET', '/api/admin/system-settings?category=notifications')
       .then(data => {
-        const settings = data.notifications || [];
+        // data is already an array from the API
+        const settings = Array.isArray(data) ? data : [];
         const enabled = settings.find((s: any) => s.setting_key === 'NOTIFICATION_SOUND_ENABLED');
         const type = settings.find((s: any) => s.setting_key === 'NOTIFICATION_SOUND_TYPE');
         const volume = settings.find((s: any) => s.setting_key === 'NOTIFICATION_SOUND_VOLUME');
@@ -132,10 +132,11 @@ const KitchenPage = () => {
 
   // Fetch order status mode on mount
   useEffect(() => {
-    fetch('/api/admin/system-settings?category=kitchen', { credentials: 'include' })
-      .then(res => res.json())
+    apiRequest('GET', '/api/admin/system-settings?category=kitchen')
       .then(data => {
-        const modeSetting = data.find((s: any) => s.setting_key === 'ORDER_STATUS_MODE');
+        // data is already an array from the API
+        const settings = Array.isArray(data) ? data : [];
+        const modeSetting = settings.find((s: any) => s.setting_key === 'ORDER_STATUS_MODE');
         if (modeSetting) {
           setOrderStatusMode(modeSetting.setting_value as 'manual' | 'automatic');
         }
@@ -788,7 +789,9 @@ const KitchenPage = () => {
             setting_key: 'ORDER_STATUS_MODE',
             setting_value: newMode,
             category: 'kitchen',
-            setting_type: 'select'
+            setting_type: 'select',
+            display_name: 'Order Status Mode',
+            description: 'Controls kitchen workflow mode'
           }
         ]
       });
