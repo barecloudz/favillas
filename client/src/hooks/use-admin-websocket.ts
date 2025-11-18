@@ -75,7 +75,21 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
 
   // Play notification sound
   const playNotificationSound = useCallback(async () => {
-    if (!optionsRef.current.enableSounds || !audioContextRef.current) return;
+    console.log('🔊 playNotificationSound called', {
+      enableSounds: optionsRef.current.enableSounds,
+      hasAudioContext: !!audioContextRef.current,
+      audioContextState: audioContextRef.current?.state
+    });
+
+    if (!optionsRef.current.enableSounds) {
+      console.warn('⚠️ Sounds disabled - skipping playback');
+      return;
+    }
+
+    if (!audioContextRef.current) {
+      console.error('❌ No audio context - cannot play sound');
+      return;
+    }
 
     try {
       // Resume audio context if suspended (required by some browsers)
