@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
@@ -310,74 +310,77 @@ const KitchenPage = () => {
     };
   }, []);
 
+  // Memoize the onNewOrder callback to prevent reconnecting websocket on every render
+  const handleNewOrder = useCallback((order: any) => {
+    // Check if already printed (deduplication)
+    if (printedOrders.has(order.id)) {
+      console.log(`⏭️  Order #${order.id} already printed, skipping...`);
+      return;
+    }
+
+    // Auto-print if enabled
+    const autoPrintEnabled = localStorage.getItem('autoPrintOrders') !== 'false';
+    if (autoPrintEnabled) {
+      console.log('🖨️  Auto-printing new order #' + order.id);
+      console.log('📦 Full order data:', JSON.stringify(order, null, 2));
+
+      // Detailed logging of each item's options
+      console.log('📋 Item details:');
+      order.items?.forEach((item: any, idx: number) => {
+        console.log(`  Item ${idx + 1}: ${item.menuItem?.name || item.name}`);
+        console.log(`    - Quantity: ${item.quantity}`);
+        console.log(`    - Base Price: $${item.price}`);
+        console.log(`    - Options:`, item.options);
+        if (item.options) {
+          console.log(`    - Options is Array: ${Array.isArray(item.options)}`);
+          console.log(`    - Options length: ${Array.isArray(item.options) ? item.options.length : 'N/A'}`);
+        }
+      });
+
+      // Mark as printed immediately to prevent duplicates
+      setPrintedOrders(prev => new Set(prev).add(order.id));
+
+      printToThermalPrinter(
+        {
+          id: order.id,
+          orderType: order.order_type || order.orderType,
+          customerName: order.customerName || order.customer_name,
+          phone: order.phone,
+          address: order.address,
+          items: order.items || [],
+          total: parseFloat(order.total || 0),
+          tax: parseFloat(order.tax || 0),
+          deliveryFee: parseFloat(order.delivery_fee || order.deliveryFee || 0),
+          serviceFee: parseFloat(order.service_fee || order.serviceFee || 0),
+          tip: parseFloat(order.tip || 0),
+          specialInstructions: order.special_instructions || order.specialInstructions,
+          createdAt: order.created_at || order.createdAt || new Date().toISOString(),
+          userId: order.user_id || order.userId,
+          pointsEarned: order.pointsEarned || order.points_earned || 0,
+          fulfillmentTime: order.fulfillmentTime || order.fulfillment_time,
+          scheduledTime: order.scheduledTime || order.scheduled_time
+        },
+        {
+          ipAddress: '192.168.1.18',
+          port: 3001,
+          name: 'Kitchen Printer'
+        }
+      ).then(result => {
+        if (result.success) {
+          console.log('✅ Auto-print successful');
+        } else {
+          console.error('❌ Auto-print failed:', result.message);
+        }
+      });
+    }
+  }, [printedOrders, setPrintedOrders]);
+
   // Use admin websocket with notification sound settings
   const { playTestSound, sendMessage } = useAdminWebSocket({
     enableSounds: soundEnabled,
     soundType: soundType,
     volume: soundVolume,
-    onNewOrder: (order) => {
-      // Check if already printed (deduplication)
-      if (printedOrders.has(order.id)) {
-        console.log(`⏭️  Order #${order.id} already printed, skipping...`);
-        return;
-      }
-
-      // Auto-print if enabled
-      const autoPrintEnabled = localStorage.getItem('autoPrintOrders') !== 'false';
-      if (autoPrintEnabled) {
-        console.log('🖨️  Auto-printing new order #' + order.id);
-        console.log('📦 Full order data:', JSON.stringify(order, null, 2));
-
-        // Detailed logging of each item's options
-        console.log('📋 Item details:');
-        order.items?.forEach((item: any, idx: number) => {
-          console.log(`  Item ${idx + 1}: ${item.menuItem?.name || item.name}`);
-          console.log(`    - Quantity: ${item.quantity}`);
-          console.log(`    - Base Price: $${item.price}`);
-          console.log(`    - Options:`, item.options);
-          if (item.options) {
-            console.log(`    - Options is Array: ${Array.isArray(item.options)}`);
-            console.log(`    - Options length: ${Array.isArray(item.options) ? item.options.length : 'N/A'}`);
-          }
-        });
-
-        // Mark as printed immediately to prevent duplicates
-        setPrintedOrders(prev => new Set(prev).add(order.id));
-
-        printToThermalPrinter(
-          {
-            id: order.id,
-            orderType: order.order_type || order.orderType,
-            customerName: order.customerName || order.customer_name,
-            phone: order.phone,
-            address: order.address,
-            items: order.items || [],
-            total: parseFloat(order.total || 0),
-            tax: parseFloat(order.tax || 0),
-            deliveryFee: parseFloat(order.delivery_fee || order.deliveryFee || 0),
-            serviceFee: parseFloat(order.service_fee || order.serviceFee || 0),
-            tip: parseFloat(order.tip || 0),
-            specialInstructions: order.special_instructions || order.specialInstructions,
-            createdAt: order.created_at || order.createdAt || new Date().toISOString(),
-            userId: order.user_id || order.userId,
-            pointsEarned: order.pointsEarned || order.points_earned || 0,
-            fulfillmentTime: order.fulfillmentTime || order.fulfillment_time,
-            scheduledTime: order.scheduledTime || order.scheduled_time
-          },
-          {
-            ipAddress: '192.168.1.18',
-            port: 3001,
-            name: 'Kitchen Printer'
-          }
-        ).then(result => {
-          if (result.success) {
-            console.log('✅ Auto-print successful');
-          } else {
-            console.error('❌ Auto-print failed:', result.message);
-          }
-        });
-      }
-    }
+    onNewOrder: handleNewOrder
   });
 
   const formatPrice = (price: string | number) => {
