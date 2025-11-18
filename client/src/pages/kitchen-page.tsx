@@ -54,8 +54,15 @@ const KitchenPage = () => {
   const [expandedItemCategories, setExpandedItemCategories] = useState<Set<string>>(new Set());
   const [expandedChoiceGroups, setExpandedChoiceGroups] = useState<Set<number>>(new Set());
 
-  // Order Status Mode State
-  const [orderStatusMode, setOrderStatusMode] = useState<'manual' | 'automatic'>('manual');
+  // Order Status Mode State - check localStorage first for immediate feedback
+  const [orderStatusMode, setOrderStatusMode] = useState<'manual' | 'automatic'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('orderStatusMode');
+      console.log('🔍 Initial orderStatusMode from localStorage:', saved || 'manual (default)');
+      return (saved as 'manual' | 'automatic') || 'manual';
+    }
+    return 'manual';
+  });
   const [showStatusModeModal, setShowStatusModeModal] = useState(false);
 
   // Switch to appropriate tab when mode changes
@@ -136,9 +143,15 @@ const KitchenPage = () => {
       .then(data => {
         // data is already an array from the API
         const settings = Array.isArray(data) ? data : [];
+        console.log('📊 Fetched kitchen settings:', settings);
         const modeSetting = settings.find((s: any) => s.setting_key === 'ORDER_STATUS_MODE');
         if (modeSetting) {
+          console.log('✅ Found ORDER_STATUS_MODE in database:', modeSetting.setting_value);
           setOrderStatusMode(modeSetting.setting_value as 'manual' | 'automatic');
+          localStorage.setItem('orderStatusMode', modeSetting.setting_value);
+        } else {
+          console.warn('⚠️ ORDER_STATUS_MODE not found in database, using localStorage value');
+          // Keep the localStorage value that was loaded in initial state
         }
       })
       .catch(err => console.warn('Failed to load order status mode:', err));
@@ -797,6 +810,7 @@ const KitchenPage = () => {
       });
 
       setOrderStatusMode(newMode);
+      localStorage.setItem('orderStatusMode', newMode);
       setShowStatusModeModal(false);
 
       toast({
