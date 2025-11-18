@@ -55,11 +55,13 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
-  if (authPayload.role !== 'admin' && authPayload.role !== 'super_admin') {
+  // Check role-based permissions
+  const allowedRoles = ['admin', 'super_admin', 'kitchen', 'manager'];
+  if (!allowedRoles.includes(authPayload.role)) {
     return {
       statusCode: 403,
       headers,
-      body: JSON.stringify({ error: 'Forbidden - Admin access required' })
+      body: JSON.stringify({ error: 'Forbidden - Insufficient permissions' })
     };
   }
 
@@ -68,6 +70,15 @@ export const handler: Handler = async (event, context) => {
 
     if (event.httpMethod === 'GET') {
       const { category } = event.queryStringParameters || {};
+
+      // Kitchen/manager can only view kitchen settings
+      if ((authPayload.role === 'kitchen' || authPayload.role === 'manager') && category && category !== 'kitchen') {
+        return {
+          statusCode: 403,
+          headers,
+          body: JSON.stringify({ error: 'Forbidden - Can only access kitchen settings' })
+        };
+      }
 
       if (category) {
         // Get settings by category
@@ -106,6 +117,18 @@ export const handler: Handler = async (event, context) => {
           headers,
           body: JSON.stringify({ error: 'Invalid settings data - expected array' })
         };
+      }
+
+      // Kitchen/manager can only modify kitchen settings
+      if (authPayload.role === 'kitchen' || authPayload.role === 'manager') {
+        const hasNonKitchenSetting = settings.some(s => s.category && s.category !== 'kitchen');
+        if (hasNonKitchenSetting) {
+          return {
+            statusCode: 403,
+            headers,
+            body: JSON.stringify({ error: 'Forbidden - Can only modify kitchen settings' })
+          };
+        }
       }
 
       const updatedSettings = [];

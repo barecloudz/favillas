@@ -782,27 +782,16 @@ const KitchenPage = () => {
   // Handle order status mode change
   const updateOrderStatusMode = async (newMode: 'manual' | 'automatic') => {
     try {
-      const response = await fetch('/api/admin/system-settings', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          settings: [
-            {
-              setting_key: 'ORDER_STATUS_MODE',
-              setting_value: newMode,
-              category: 'kitchen',
-              setting_type: 'select'
-            }
-          ]
-        })
+      await apiRequest('POST', '/api/admin/system-settings', {
+        settings: [
+          {
+            setting_key: 'ORDER_STATUS_MODE',
+            setting_value: newMode,
+            category: 'kitchen',
+            setting_type: 'select'
+          }
+        ]
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update order status mode');
-      }
 
       setOrderStatusMode(newMode);
       setShowStatusModeModal(false);
