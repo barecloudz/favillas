@@ -15,6 +15,7 @@ interface OrderConfirmationData {
   deliveryAddress?: string;
   estimatedTime: string;
   paymentMethod: string;
+  fulfillmentType?: string; // 'pickup' or 'delivery'
 }
 
 export function getOrderConfirmationTemplate(data: OrderConfirmationData): string {
@@ -47,7 +48,17 @@ export function getOrderConfirmationTemplate(data: OrderConfirmationData): strin
     <p>Hi <strong>${data.customerName}</strong>,</p>
     <p>Thank you for your order! We're preparing your delicious pizza order right now.</p>
     <p><strong>Order #${data.orderNumber}</strong></p>
+    ${data.fulfillmentType === 'delivery' ? `
+    <p style="background: #e8f5e8; padding: 10px; border-radius: 5px; border-left: 4px solid #2d7c2d;">
+      <strong>📍 Delivery Order:</strong><br>
+      You will receive a delivery tracking link 10 minutes after we start cooking your order.
+    </p>
+    ` : `
     <p><strong>Estimated ready time:</strong> ${data.estimatedTime}</p>
+    <p style="background: #fff3cd; padding: 10px; border-radius: 5px; border-left: 4px solid #856404;">
+      <strong>🏪 Pickup:</strong> Your order will be ready for pickup at the estimated time above.
+    </p>
+    `}
   </div>
 
   <div style="margin-bottom: 20px;">

@@ -74,7 +74,7 @@ export const handler: Handler = async (event, context) => {
         const settings = await sql`
           SELECT * FROM system_settings
           WHERE category = ${category}
-          ORDER BY sort_order, key
+          ORDER BY setting_key
         `;
 
         return {
@@ -86,7 +86,7 @@ export const handler: Handler = async (event, context) => {
         // Get all system settings
         const settings = await sql`
           SELECT * FROM system_settings
-          ORDER BY category, sort_order, key
+          ORDER BY category, setting_key
         `;
 
         return {
@@ -111,29 +111,27 @@ export const handler: Handler = async (event, context) => {
       const updatedSettings = [];
 
       for (const setting of settings) {
-        if (!setting.key || setting.value === undefined) {
+        if (!setting.setting_key || setting.setting_value === undefined) {
           continue; // Skip invalid settings
         }
 
         // Upsert setting (update if exists, insert if not)
         const [updatedSetting] = await sql`
-          INSERT INTO system_settings (key, value, category, description, data_type, sort_order, updated_at)
+          INSERT INTO system_settings (setting_key, setting_value, category, description, setting_type, updated_at)
           VALUES (
-            ${setting.key},
-            ${setting.value},
+            ${setting.setting_key},
+            ${setting.setting_value},
             ${setting.category || 'general'},
             ${setting.description || ''},
-            ${setting.data_type || 'string'},
-            ${setting.sort_order || 0},
+            ${setting.setting_type || 'text'},
             NOW()
           )
-          ON CONFLICT (key)
+          ON CONFLICT (setting_key)
           DO UPDATE SET
-            value = EXCLUDED.value,
+            setting_value = EXCLUDED.setting_value,
             category = EXCLUDED.category,
             description = EXCLUDED.description,
-            data_type = EXCLUDED.data_type,
-            sort_order = EXCLUDED.sort_order,
+            setting_type = EXCLUDED.setting_type,
             updated_at = NOW()
           RETURNING *
         `;
@@ -152,10 +150,10 @@ export const handler: Handler = async (event, context) => {
     } else if (event.httpMethod === 'PUT') {
       // Update single setting by key from URL path
       const pathParts = event.path.split('/');
-      const key = pathParts[pathParts.length - 1];
-      const { value, category, description, data_type, sort_order } = JSON.parse(event.body || '{}');
+      const settingKey = pathParts[pathParts.length - 1];
+      const { setting_value, category, description, setting_type } = JSON.parse(event.body || '{}');
 
-      if (!key || value === undefined) {
+      if (!settingKey || setting_value === undefined) {
         return {
           statusCode: 400,
           headers,
@@ -166,13 +164,12 @@ export const handler: Handler = async (event, context) => {
       const [updatedSetting] = await sql`
         UPDATE system_settings
         SET
-          value = ${value},
+          setting_value = ${setting_value},
           category = COALESCE(${category}, category),
           description = COALESCE(${description}, description),
-          data_type = COALESCE(${data_type}, data_type),
-          sort_order = COALESCE(${sort_order}, sort_order),
+          setting_type = COALESCE(${setting_type}, setting_type),
           updated_at = NOW()
-        WHERE key = ${key}
+        WHERE setting_key = ${settingKey}
         RETURNING *
       `;
 
@@ -205,32 +202,32 @@ export const handler: Handler = async (event, context) => {
     if (error instanceof Error && error.message.includes('does not exist')) {
       const defaultBrandingSettings = [
         {
-          key: 'company_name',
-          value: "Favilla's NY Pizza",
+          setting_key: 'company_name',
+          setting_value: "Favilla's NY Pizza",
           category: 'branding',
           description: 'Restaurant name',
-          data_type: 'string'
+          setting_type: 'text'
         },
         {
-          key: 'logo_url',
-          value: '',
+          setting_key: 'logo_url',
+          setting_value: '',
           category: 'branding',
           description: 'Company logo URL',
-          data_type: 'string'
+          setting_type: 'text'
         },
         {
-          key: 'primary_color',
-          value: '#d97706',
+          setting_key: 'primary_color',
+          setting_value: '#d97706',
           category: 'branding',
           description: 'Primary brand color',
-          data_type: 'string'
+          setting_type: 'text'
         },
         {
-          key: 'secondary_color',
-          value: '#ffffff',
+          setting_key: 'secondary_color',
+          setting_value: '#ffffff',
           category: 'branding',
           description: 'Secondary brand color',
-          data_type: 'string'
+          setting_type: 'text'
         }
       ];
 

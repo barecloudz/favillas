@@ -25,7 +25,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       total: orderData.total,
       deliveryAddress: orderData.deliveryAddress,
       estimatedTime: orderData.estimatedTime,
-      paymentMethod: orderData.paymentMethod
+      paymentMethod: orderData.paymentMethod,
+      fulfillmentType: orderData.orderType || orderData.type || 'pickup'
     });
 
     const emailConfig = getEmailConfig(EmailType.ORDER_CONFIRMATION);

@@ -2079,6 +2079,95 @@ export const handler: Handler = async (event, context) => {
 
         console.log('✅ Order updated successfully:', updatedOrder[0]);
 
+        // Handle point revocation when order is cancelled
+        if (requestData.status === 'cancelled') {
+          console.log('🔄 Order cancelled - revoking points for order:', orderId);
+
+          try {
+            // Find points transaction for this order
+            const pointsTransaction = await sql`
+              SELECT * FROM points_transactions
+              WHERE order_id = ${orderId} AND type = 'earned'
+            `;
+
+            if (pointsTransaction.length > 0) {
+              const transaction = pointsTransaction[0];
+              const pointsToRevoke = Math.abs(parseInt(transaction.points));
+
+              console.log('💰 Found points transaction:', {
+                id: transaction.id,
+                points: pointsToRevoke,
+                userId: transaction.user_id,
+                supabaseUserId: transaction.supabase_user_id
+              });
+
+              // Deduct points from user_points table
+              if (transaction.user_id) {
+                // Legacy user
+                await sql`
+                  UPDATE user_points
+                  SET points = GREATEST(0, points - ${pointsToRevoke}),
+                      total_redeemed = total_redeemed + ${pointsToRevoke},
+                      updated_at = NOW()
+                  WHERE user_id = ${transaction.user_id}
+                `;
+
+                // Update legacy rewards column
+                await sql`
+                  UPDATE users
+                  SET rewards = GREATEST(0, rewards - ${pointsToRevoke}),
+                      updated_at = NOW()
+                  WHERE id = ${transaction.user_id}
+                `;
+
+                console.log('✅ Points revoked for legacy user:', transaction.user_id);
+              } else if (transaction.supabase_user_id) {
+                // Supabase user
+                await sql`
+                  UPDATE user_points
+                  SET points = GREATEST(0, points - ${pointsToRevoke}),
+                      total_redeemed = total_redeemed + ${pointsToRevoke},
+                      updated_at = NOW()
+                  WHERE supabase_user_id = ${transaction.supabase_user_id}
+                `;
+
+                console.log('✅ Points revoked for Supabase user:', transaction.supabase_user_id);
+              }
+
+              // Create revocation transaction in audit log
+              await sql`
+                INSERT INTO points_transactions (
+                  user_id,
+                  supabase_user_id,
+                  order_id,
+                  type,
+                  points,
+                  description,
+                  order_amount,
+                  created_at
+                )
+                VALUES (
+                  ${transaction.user_id || null},
+                  ${transaction.supabase_user_id || null},
+                  ${orderId},
+                  'revoked',
+                  ${-pointsToRevoke},
+                  'Order cancelled - #' + ${orderId},
+                  ${currentOrder[0].total},
+                  NOW()
+                )
+              `;
+
+              console.log('✅ Revocation transaction recorded in audit log');
+            } else {
+              console.log('⚠️ No points transaction found for order:', orderId);
+            }
+          } catch (pointsError) {
+            console.error('❌ Error revoking points:', pointsError);
+            // Don't fail the cancellation if points revocation fails
+          }
+        }
+
         // SHIPDAY INTEGRATION: Dispatch to ShipDay when status changes to "cooking" for delivery orders
         console.log('🔍 ShipDay check:', {
           requestStatus: requestData.status,

@@ -28,6 +28,15 @@ const KitchenPage = () => {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState("pending");
+
+  // Switch to appropriate tab when mode changes
+  useEffect(() => {
+    if (orderStatusMode === 'automatic' && (activeTab === 'pending' || activeTab === 'cooking' || activeTab === 'completed' || activeTab === 'picked_up' || activeTab === 'cancelled')) {
+      setActiveTab('today');
+    } else if (orderStatusMode === 'manual' && activeTab === 'today') {
+      setActiveTab('pending');
+    }
+  }, [orderStatusMode]);
   const [isColumnMode, setIsColumnMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('kitchenColumnMode') === 'true';
@@ -53,6 +62,10 @@ const KitchenPage = () => {
   const [showItemManagementModal, setShowItemManagementModal] = useState(false);
   const [expandedItemCategories, setExpandedItemCategories] = useState<Set<string>>(new Set());
   const [expandedChoiceGroups, setExpandedChoiceGroups] = useState<Set<number>>(new Set());
+
+  // Order Status Mode State
+  const [orderStatusMode, setOrderStatusMode] = useState<'manual' | 'automatic'>('manual');
+  const [showStatusModeModal, setShowStatusModeModal] = useState(false);
   // Use localStorage to track printed orders across all browser tabs/devices
   const [printedOrders, setPrintedOrders] = useState<Set<number>>(() => {
     const stored = localStorage.getItem('printedOrders');
@@ -96,6 +109,10 @@ const KitchenPage = () => {
   const [soundType, setSoundType] = useState<'chime' | 'bell' | 'ding' | 'beep' | 'dingbell' | 'custom'>('dingbell');
   const [soundVolume, setSoundVolume] = useState(0.5);
 
+  // Cancel order confirmation dialog
+  const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState<any>(null);
+
   // Fetch notification settings on mount
   useEffect(() => {
     fetch('/api/admin/system-settings?category=notifications', { credentials: 'include' })
@@ -111,6 +128,19 @@ const KitchenPage = () => {
         if (volume) setSoundVolume(parseFloat(volume.setting_value));
       })
       .catch(err => console.warn('Failed to load notification settings:', err));
+  }, []);
+
+  // Fetch order status mode on mount
+  useEffect(() => {
+    fetch('/api/admin/system-settings?category=kitchen', { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => {
+        const modeSetting = data.find((s: any) => s.setting_key === 'ORDER_STATUS_MODE');
+        if (modeSetting) {
+          setOrderStatusMode(modeSetting.setting_value as 'manual' | 'automatic');
+        }
+      })
+      .catch(err => console.warn('Failed to load order status mode:', err));
   }, []);
 
   // Fetch store hours on mount
@@ -401,6 +431,14 @@ const KitchenPage = () => {
 
   // Filter orders based on active tab
   const filteredOrders = orders ? orders.filter((order: any) => {
+    if (activeTab === "today") {
+      // Show all today's orders except cancelled and scheduled (not yet ready)
+      const orderDate = new Date(order.created_at || order.createdAt).toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
+      return orderDate === today &&
+             order.status !== 'cancelled' &&
+             !(order.status === 'pending' && order.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(order));
+    }
     if (activeTab === "pending") {
       // Show only orders ready to start (ASAP or scheduled orders within 30 minutes)
       return order.status === "pending" && (
@@ -410,6 +448,7 @@ const KitchenPage = () => {
     if (activeTab === "cooking") return order.status === "cooking";
     if (activeTab === "completed") return order.status === "completed";
     if (activeTab === "picked_up") return order.status === "picked_up";
+    if (activeTab === "cancelled") return order.status === "cancelled";
     if (activeTab === "scheduled") {
       // Show only scheduled orders that are not ready to start yet
       return order.status === "pending" &&
@@ -502,6 +541,41 @@ const KitchenPage = () => {
       toast({
         title: "Print Error",
         description: error.message || "Could not connect to printer",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Cancel order with confirmation
+  const handleCancelOrder = (order: any) => {
+    setOrderToCancel(order);
+    setShowCancelConfirmation(true);
+  };
+
+  const confirmCancelOrder = async () => {
+    if (!orderToCancel) return;
+
+    try {
+      console.log(`❌ Cancelling order #${orderToCancel.id}`);
+      const response = await apiRequest("PATCH", `/api/orders/${orderToCancel.id}`, { status: 'cancelled' });
+      const responseData = await response.json();
+      console.log('📥 Cancel response data:', responseData);
+
+      queryClient.invalidateQueries({ queryKey: ["/api/kitchen/orders"] });
+
+      toast({
+        title: "Order Cancelled",
+        description: `Order #${orderToCancel.id} has been cancelled. Customer points have been revoked.`,
+      });
+
+      setShowCancelConfirmation(false);
+      setOrderToCancel(null);
+      setShowOrderModal(false);
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel order. Please try again.",
         variant: "destructive",
       });
     }
@@ -700,6 +774,49 @@ const KitchenPage = () => {
       toast({
         title: 'Error',
         description: error.message || 'Failed to update size availability',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // Handle order status mode change
+  const updateOrderStatusMode = async (newMode: 'manual' | 'automatic') => {
+    try {
+      const response = await fetch('/api/admin/system-settings', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          settings: [
+            {
+              setting_key: 'ORDER_STATUS_MODE',
+              setting_value: newMode,
+              category: 'kitchen',
+              setting_type: 'select'
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update order status mode');
+      }
+
+      setOrderStatusMode(newMode);
+      setShowStatusModeModal(false);
+
+      toast({
+        title: 'Order Status Mode Updated',
+        description: `Kitchen is now in ${newMode} mode`,
+        variant: 'default'
+      });
+    } catch (error) {
+      console.error('Error updating order status mode:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update order status mode',
         variant: 'destructive'
       });
     }
@@ -972,20 +1089,22 @@ const KitchenPage = () => {
               <p className="text-red-100 text-sm mt-1 font-medium">Professional Order Management</p>
             </div>
             <div className="flex items-center gap-2 md:gap-3 text-sm md:text-base">
-              <Button
-                variant="outline"
-                size="sm"
-                className="bg-white/95 text-[#d73a31] border-2 border-white hover:bg-white hover:scale-105 font-semibold shadow-lg transition-all duration-200 backdrop-blur-sm"
-                onClick={() => {
-                  const newMode = !isColumnMode;
-                  setIsColumnMode(newMode);
-                  localStorage.setItem('kitchenColumnMode', String(newMode));
-                }}
-              >
-                {isColumnMode ? <LayoutGrid className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" /> : <Columns3 className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />}
-                <span className="hidden sm:inline">{isColumnMode ? "Grid Mode" : "Column Mode"}</span>
-                <span className="sm:hidden">{isColumnMode ? "Grid" : "Columns"}</span>
-              </Button>
+              {orderStatusMode === 'manual' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-white/95 text-[#d73a31] border-2 border-white hover:bg-white hover:scale-105 font-semibold shadow-lg transition-all duration-200 backdrop-blur-sm"
+                  onClick={() => {
+                    const newMode = !isColumnMode;
+                    setIsColumnMode(newMode);
+                    localStorage.setItem('kitchenColumnMode', String(newMode));
+                  }}
+                >
+                  {isColumnMode ? <LayoutGrid className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" /> : <Columns3 className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />}
+                  <span className="hidden sm:inline">{isColumnMode ? "Grid Mode" : "Column Mode"}</span>
+                  <span className="sm:hidden">{isColumnMode ? "Grid" : "Columns"}</span>
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -1063,6 +1182,12 @@ const KitchenPage = () => {
                     <Package className="mr-2 h-4 w-4" />
                     <span>Item Management</span>
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setShowStatusModeModal(true)}
+                  >
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Order Status Mode</span>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={async () => {
@@ -1116,8 +1241,8 @@ const KitchenPage = () => {
         )}
 
         <main className="container mx-auto p-2 md:p-4">
-          {isColumnMode ? (
-            // Column Mode - 3 Column Kanban View
+          {isColumnMode && orderStatusMode === 'manual' ? (
+            // Column Mode - 3 Column Kanban View (only available in manual mode)
             <>
               <div className="flex justify-between items-center mb-6">
                 <div>
@@ -1329,30 +1454,57 @@ const KitchenPage = () => {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 md:mb-8">
               <TabsList className="w-full sm:w-auto overflow-x-auto flex-wrap sm:flex-nowrap text-xs sm:text-sm bg-white shadow-lg border-2 border-gray-200 p-1">
-                <TabsTrigger value="pending" className="relative px-2 md:px-3">
-                  <span className="hidden sm:inline">Ready to Start</span>
-                  <span className="sm:hidden">Ready</span>
-                  {orders?.filter((o: any) => o.status === "pending" && (o.fulfillmentTime === 'asap' || isOrderReadyToStart(o))).length > 0 && (
-                    <Badge className="ml-1 sm:ml-2 bg-red-500 text-xs">{orders.filter((o: any) => o.status === "pending" && (o.fulfillmentTime === 'asap' || isOrderReadyToStart(o))).length}</Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="cooking" className="px-2 md:px-3">
-                  Cooking
-                  {orders?.filter((o: any) => o.status === "cooking").length > 0 && (
-                    <Badge className="ml-1 sm:ml-2 bg-yellow-500 text-xs">{orders.filter((o: any) => o.status === "cooking").length}</Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="completed" className="px-2 md:px-3">
-                  <span className="hidden sm:inline">Ready for Pickup</span>
-                  <span className="sm:hidden">Ready</span>
-                </TabsTrigger>
-                <TabsTrigger value="picked_up" className="px-2 md:px-3">
-                  <span className="hidden sm:inline">Picked Up</span>
-                  <span className="sm:hidden">Done</span>
-                  {orders?.filter((o: any) => o.status === 'picked_up').length > 0 && (
-                    <Badge className="ml-1 sm:ml-2 bg-gray-500 text-xs">{orders.filter((o: any) => o.status === 'picked_up').length}</Badge>
-                  )}
-                </TabsTrigger>
+                {orderStatusMode === 'automatic' && (
+                  <TabsTrigger value="today" className="px-2 md:px-3">
+                    <span className="hidden sm:inline">Today's Orders</span>
+                    <span className="sm:hidden">Today</span>
+                    {orders?.filter((o: any) => {
+                      const orderDate = new Date(o.created_at || o.createdAt).toISOString().split('T')[0];
+                      const today = new Date().toISOString().split('T')[0];
+                      return orderDate === today && o.status !== 'cancelled' && !(o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o));
+                    }).length > 0 && (
+                      <Badge className="ml-1 sm:ml-2 bg-blue-500 text-xs">{orders.filter((o: any) => {
+                        const orderDate = new Date(o.created_at || o.createdAt).toISOString().split('T')[0];
+                        const today = new Date().toISOString().split('T')[0];
+                        return orderDate === today && o.status !== 'cancelled' && !(o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o));
+                      }).length}</Badge>
+                    )}
+                  </TabsTrigger>
+                )}
+                {orderStatusMode === 'manual' && (
+                  <>
+                    <TabsTrigger value="pending" className="relative px-2 md:px-3">
+                      <span className="hidden sm:inline">Ready to Start</span>
+                      <span className="sm:hidden">Ready</span>
+                      {orders?.filter((o: any) => o.status === "pending" && (o.fulfillmentTime === 'asap' || isOrderReadyToStart(o))).length > 0 && (
+                        <Badge className="ml-1 sm:ml-2 bg-red-500 text-xs">{orders.filter((o: any) => o.status === "pending" && (o.fulfillmentTime === 'asap' || isOrderReadyToStart(o))).length}</Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="cooking" className="px-2 md:px-3">
+                      Cooking
+                      {orders?.filter((o: any) => o.status === "cooking").length > 0 && (
+                        <Badge className="ml-1 sm:ml-2 bg-yellow-500 text-xs">{orders.filter((o: any) => o.status === "cooking").length}</Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="completed" className="px-2 md:px-3">
+                      <span className="hidden sm:inline">Ready for Pickup</span>
+                      <span className="sm:hidden">Ready</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="picked_up" className="px-2 md:px-3">
+                      <span className="hidden sm:inline">Picked Up</span>
+                      <span className="sm:hidden">Done</span>
+                      {orders?.filter((o: any) => o.status === 'picked_up').length > 0 && (
+                        <Badge className="ml-1 sm:ml-2 bg-gray-500 text-xs">{orders.filter((o: any) => o.status === 'picked_up').length}</Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="cancelled" className="px-2 md:px-3">
+                      Cancelled
+                      {orders?.filter((o: any) => o.status === 'cancelled').length > 0 && (
+                        <Badge className="ml-1 sm:ml-2 bg-red-500 text-xs">{orders.filter((o: any) => o.status === 'cancelled').length}</Badge>
+                      )}
+                    </TabsTrigger>
+                  </>
+                )}
                 <TabsTrigger value="scheduled" className="px-2 md:px-3">
                   <span className="hidden sm:inline">Scheduled Later</span>
                   <span className="sm:hidden">Scheduled</span>
@@ -1583,7 +1735,7 @@ const KitchenPage = () => {
                             Print
                           </Button>
 
-                          {order.status === 'pending' && (
+                          {orderStatusMode === 'manual' && order.status === 'pending' && (
                             <Button
                               className={`w-full sm:flex-1 h-12 text-base font-bold text-white shadow-lg hover:shadow-xl transition-all duration-300 ${
                                 isOrderReadyToStart(order)
@@ -1608,7 +1760,7 @@ const KitchenPage = () => {
                             </Button>
                           )}
 
-                          {order.status === 'cooking' && (
+                          {orderStatusMode === 'manual' && order.status === 'cooking' && (
                             <Button
                               className="w-full sm:flex-1 h-12 text-base font-bold text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
                               onClick={() => {
@@ -1620,7 +1772,7 @@ const KitchenPage = () => {
                             </Button>
                           )}
 
-                          {order.status === 'completed' && (
+                          {orderStatusMode === 'manual' && order.status === 'completed' && (
                             <div className="flex flex-col gap-2 sm:flex-row sm:flex-1">
                               <Button
                                 className="w-full h-12 text-base font-bold text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
@@ -1833,7 +1985,7 @@ const KitchenPage = () => {
                     Print Order
                   </Button>
 
-                  {selectedOrder.status === 'pending' && (
+                  {orderStatusMode === 'manual' && selectedOrder.status === 'pending' && (
                     <Button
                       className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white"
                       onClick={() => {
@@ -1845,7 +1997,7 @@ const KitchenPage = () => {
                     </Button>
                   )}
 
-                  {selectedOrder.status === 'cooking' && (
+                  {orderStatusMode === 'manual' && selectedOrder.status === 'cooking' && (
                     <Button
                       className="flex-1 bg-green-500 hover:bg-green-600 text-white"
                       onClick={() => {
@@ -1857,7 +2009,7 @@ const KitchenPage = () => {
                     </Button>
                   )}
 
-                  {selectedOrder.status === 'completed' && (
+                  {orderStatusMode === 'manual' && selectedOrder.status === 'completed' && (
                     <>
                       <Button
                         className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
@@ -1879,9 +2031,89 @@ const KitchenPage = () => {
                       </Button>
                     </>
                   )}
+
+                  {selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'picked_up' && (
+                    <Button
+                      className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                      onClick={() => handleCancelOrder(selectedOrder)}
+                    >
+                      ❌ Cancel Order
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Cancel Order Confirmation Dialog */}
+        <Dialog open={showCancelConfirmation} onOpenChange={setShowCancelConfirmation}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Cancel Order</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to cancel this order?
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 my-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-red-900 mb-1">
+                    Warning: This action cannot be undone
+                  </p>
+                  <p className="text-sm text-red-800">
+                    The customer will lose all points earned from this order.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {orderToCancel && (
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Order #</span>
+                  <span className="font-semibold">{orderToCancel.id}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Customer</span>
+                  <span className="font-semibold">{orderToCancel.customer_name || 'Guest'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Total</span>
+                  <span className="font-semibold">${formatPrice(Number(orderToCancel.total))}</span>
+                </div>
+                {orderToCancel.pointsEarned > 0 && (
+                  <div className="flex justify-between text-sm pt-2 border-t border-gray-200">
+                    <span className="text-red-600">Points to Revoke</span>
+                    <span className="font-semibold text-red-600">{orderToCancel.pointsEarned} points</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <DialogFooter className="gap-2 flex-col sm:flex-row">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => {
+                  setShowCancelConfirmation(false);
+                  setOrderToCancel(null);
+                }}
+              >
+                Keep Order
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                className="w-full sm:w-auto bg-red-500 hover:bg-red-600"
+                onClick={confirmCancelOrder}
+              >
+                Yes, Cancel Order
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -1912,6 +2144,54 @@ const KitchenPage = () => {
                 No, Maybe Later
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Order Status Mode Modal */}
+        <Dialog open={showStatusModeModal} onOpenChange={setShowStatusModeModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold">Order Status Mode</DialogTitle>
+              <DialogDescription>
+                Choose how orders progress through the kitchen workflow
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6 py-4">
+              <RadioGroup value={orderStatusMode} onValueChange={(value) => updateOrderStatusMode(value as 'manual' | 'automatic')}>
+                <div className="flex items-start space-x-3 space-y-0 rounded-md border border-gray-200 p-4 hover:bg-gray-50 cursor-pointer">
+                  <RadioGroupItem value="manual" id="manual" />
+                  <Label htmlFor="manual" className="font-normal cursor-pointer flex-1">
+                    <div className="font-semibold text-base mb-1">Manual Mode</div>
+                    <div className="text-sm text-gray-500">
+                      Staff must click through each status: Start Cooking → Mark Ready → Mark Picked Up.
+                      Best for experienced staff who want full control over order tracking.
+                    </div>
+                  </Label>
+                </div>
+
+                <div className="flex items-start space-x-3 space-y-0 rounded-md border border-gray-200 p-4 hover:bg-gray-50 cursor-pointer">
+                  <RadioGroupItem value="automatic" id="automatic" />
+                  <Label htmlFor="automatic" className="font-normal cursor-pointer flex-1">
+                    <div className="font-semibold text-base mb-1">Automatic Mode</div>
+                    <div className="text-sm text-gray-500">
+                      Simplified view with no status buttons. Orders appear in a clean list to prepare.
+                      Delivery orders automatically sent to ShipDay on payment. Best for new workers.
+                    </div>
+                  </Label>
+                </div>
+              </RadioGroup>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-blue-900">
+                    <strong>Current Mode: </strong>
+                    {orderStatusMode === 'manual' ? 'Manual' : 'Automatic'}
+                  </div>
+                </div>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
 

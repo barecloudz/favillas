@@ -261,11 +261,24 @@ export const handler: Handler = async (event, context) => {
 
         const updatedOrder = updatedOrders[0];
 
-        // ShipDay integration - trigger when order status changes to 'cooking' or 'preparing'
-        if (patchData.status === 'cooking' || patchData.status === 'preparing') {
+        // Fetch order status mode setting
+        let orderStatusMode = 'manual'; // default
+        try {
+          const modeSettings = await sql`
+            SELECT setting_value FROM system_settings WHERE setting_key = 'ORDER_STATUS_MODE'
+          `;
+          if (modeSettings.length > 0) {
+            orderStatusMode = modeSettings[0].setting_value;
+          }
+        } catch (err) {
+          console.warn('Could not fetch ORDER_STATUS_MODE, using default:', err);
+        }
+
+        // ShipDay integration - trigger when order status changes to 'cooking' or 'preparing' (manual mode only)
+        if ((patchData.status === 'cooking' || patchData.status === 'preparing') && orderStatusMode === 'manual') {
           if (updatedOrder.order_type === 'delivery' && !updatedOrder.shipday_order_id && process.env.SHIPDAY_API_KEY) {
             try {
-              console.log('📦 Triggering ShipDay integration for order starting to cook');
+              console.log('📦 Triggering ShipDay integration for order starting to cook (manual mode)');
               const { createShipDayOrder } = await import('../shipday-integration');
               const shipDayResult = await createShipDayOrder(orderId);
 
@@ -280,8 +293,8 @@ export const handler: Handler = async (event, context) => {
           }
         }
 
-        // ShipDay integration - also trigger when payment is confirmed (fallback)
-        if (patchData.paymentStatus === 'completed' || patchData.paymentStatus === 'succeeded') {
+        // ShipDay integration - also trigger when payment is confirmed (automatic mode only)
+        if ((patchData.paymentStatus === 'completed' || patchData.paymentStatus === 'succeeded') && orderStatusMode === 'automatic') {
           if (updatedOrder.order_type === 'delivery' && updatedOrder.address_data && process.env.SHIPDAY_API_KEY) {
             try {
               console.log('📦 Order Update API: Triggering ShipDay integration after payment confirmation');
