@@ -1795,7 +1795,7 @@ export const handler: Handler = async (event, context) => {
           });
 
           // Check ORDER_STATUS_MODE for automatic mode ASAP delivery dispatch
-          if (newOrder.order_type === 'delivery' && newOrder.fulfillment_time === 'asap' && newOrder.payment_status === 'succeeded') {
+          if (newOrder.order_type === 'delivery' && newOrder.fulfillment_time === 'asap' && (newOrder.payment_status === 'succeeded' || newOrder.payment_status === 'test_order_admin_bypass')) {
             let orderStatusMode = 'manual'; // default
             try {
               const modeSettings = await sql`
