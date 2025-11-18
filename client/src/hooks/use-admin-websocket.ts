@@ -287,29 +287,25 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
 
             // Check if this is a new confirmed order
             if (lastCheckedOrderRef.current !== latestOrderId) {
-              // console.log('🔔 NEW CONFIRMED ORDER DETECTED via polling!');
-              // console.log('📦 Order details:', latestOrder);
-              // console.log('💳 Payment status:', latestOrder.payment_status);
-              // console.log('👤 CUSTOMER NAME:', latestOrder.customerName || latestOrder.customer_name || 'UNDEFINED');
-              // console.log('🎁 POINTS EARNED:', latestOrder.pointsEarned || latestOrder.points_earned || 'UNDEFINED');
-              // console.log('📄 Full order object for debugging:', JSON.stringify(latestOrder, null, 2));
+              console.log('🔔 NEW CONFIRMED ORDER DETECTED via polling!');
+              console.log('📦 Order details:', latestOrder);
+              console.log('💳 Payment status:', latestOrder.payment_status);
 
               // Play notification sound
+              console.log('🔊 Playing notification sound...');
               playNotificationSound();
 
               // Invalidate all order-related queries to refresh the UI
               queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
               queryClient.invalidateQueries({ queryKey: ['/api/kitchen/orders'] });
-              // console.log('🔄 Invalidated order queries to refresh UI');
+              console.log('🔄 Invalidated order queries to refresh UI');
 
               // Call callback if provided
               if (options.onNewOrder) {
-                // console.log('🖨️ Calling onNewOrder callback with data:', {
-                //   orderId: latestOrder.id,
-                //   customerName: latestOrder.customerName || latestOrder.customer_name,
-                //   pointsEarned: latestOrder.pointsEarned || latestOrder.points_earned
-                // });
+                console.log('🖨️ Calling onNewOrder callback for auto-print...');
                 options.onNewOrder(latestOrder);
+              } else {
+                console.warn('⚠️ No onNewOrder callback provided!');
               }
 
               // Update the last checked order
@@ -359,10 +355,10 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
        process.env.NODE_ENV === 'production');
 
     if (isNetlifyProduction) {
-      // console.log('Admin WebSocket disabled in production (Netlify deployment)');
+      console.log('📡 Admin WebSocket disabled in production (Netlify deployment)');
 
       // Start polling for new orders (handles both sounds AND auto-print via onNewOrder callback)
-      // console.log('🔄 Starting polling-based notifications for production...');
+      console.log('🔄 Starting polling-based notifications for production...');
       startPollingNotifications();
       return;
     }
