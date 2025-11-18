@@ -1576,19 +1576,9 @@ const KitchenPage = () => {
                       <CardContent className="p-4">
                         <div className="space-y-3">
                           {order.items.map((item: any) => {
-                            // Calculate total price including add-ons
-                            let totalPrice = parseFloat(item.price) || 0;
-
-                            if (item.halfAndHalf) {
-                              // Add half-and-half topping prices
-                              const firstHalfTotal = item.halfAndHalf.firstHalf?.reduce((sum: number, opt: any) => sum + (parseFloat(opt.price) || 0), 0) || 0;
-                              const secondHalfTotal = item.halfAndHalf.secondHalf?.reduce((sum: number, opt: any) => sum + (parseFloat(opt.price) || 0), 0) || 0;
-                              totalPrice += firstHalfTotal + secondHalfTotal;
-                            } else if (item.options && Array.isArray(item.options)) {
-                              // Add regular option prices
-                              const optionsTotal = item.options.reduce((sum: number, opt: any) => sum + (parseFloat(opt.price) || 0), 0);
-                              totalPrice += optionsTotal;
-                            }
+                            // item.price already includes all options/toppings from checkout calculation
+                            // Do NOT add option prices again or we'll double-count
+                            const totalPrice = parseFloat(item.price) || 0;
 
                             return (
                             <div key={item.id} className="border-b pb-2">
@@ -1849,19 +1839,9 @@ const KitchenPage = () => {
                   <h3 className="font-semibold mb-2">Order Items</h3>
                   <div className="space-y-3 border rounded-lg p-4">
                     {selectedOrder.items?.map((item: any) => {
-                      // Calculate total price including add-ons
-                      let totalPrice = parseFloat(item.price) || 0;
-
-                      if (item.halfAndHalf) {
-                        // Add half-and-half topping prices
-                        const firstHalfTotal = item.halfAndHalf.firstHalf?.reduce((sum: number, opt: any) => sum + (parseFloat(opt.price) || 0), 0) || 0;
-                        const secondHalfTotal = item.halfAndHalf.secondHalf?.reduce((sum: number, opt: any) => sum + (parseFloat(opt.price) || 0), 0) || 0;
-                        totalPrice += firstHalfTotal + secondHalfTotal;
-                      } else if (item.options && Array.isArray(item.options)) {
-                        // Add regular option prices
-                        const optionsTotal = item.options.reduce((sum: number, opt: any) => sum + (parseFloat(opt.price) || 0), 0);
-                        totalPrice += optionsTotal;
-                      }
+                      // item.price already includes all options/toppings from checkout calculation
+                      // Do NOT add option prices again or we'll double-count
+                      const totalPrice = parseFloat(item.price) || 0;
 
                       return (
                       <div key={item.id} className="border-b pb-3 last:border-b-0">
