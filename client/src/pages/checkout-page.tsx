@@ -993,20 +993,20 @@ const CheckoutPage = () => {
       const minute = selectedDate.getMinutes();
 
       let isValidTime = false;
-      if (day === 0) { // Sunday: 12PM-8PM
-        isValidTime = (hour > 12 || (hour === 12 && minute >= 0)) && hour < 20;
+      if (day === 0) { // Sunday: 12:30PM-8PM (opens 12PM, orders start 12:30PM)
+        isValidTime = (hour > 12 || (hour === 12 && minute >= 30)) && hour < 20;
       } else if (day === 1) { // Monday - CLOSED
         isValidTime = false;
-      } else if (day >= 2 && day <= 4) { // Tuesday-Thursday: 11AM-8PM
-        isValidTime = (hour > 11 || (hour === 11 && minute >= 0)) && hour < 20;
-      } else if (day >= 5 && day <= 6) { // Friday-Saturday: 11AM-9PM
-        isValidTime = (hour > 11 || (hour === 11 && minute >= 0)) && hour < 21;
+      } else if (day >= 2 && day <= 4) { // Tuesday-Thursday: 11:30AM-8PM (opens 11AM, orders start 11:30AM)
+        isValidTime = (hour > 11 || (hour === 11 && minute >= 30)) && hour < 20;
+      } else if (day >= 5 && day <= 6) { // Friday-Saturday: 11:30AM-9PM (opens 11AM, orders start 11:30AM)
+        isValidTime = (hour > 11 || (hour === 11 && minute >= 30)) && hour < 21;
       }
 
       if (!isValidTime) {
         toast({
           title: "Outside Store Hours",
-          description: "Please select a time when we're open. Tues-Thurs: 11AM-8PM, Fri-Sat: 11AM-9PM, Sun: 12PM-8PM, Mon: CLOSED",
+          description: "Please select a time when we're open. Tues-Thurs: 11:30AM-8PM, Fri-Sat: 11:30AM-9PM, Sun: 12:30PM-8PM, Mon: CLOSED",
           variant: "destructive",
         });
         return;
@@ -1761,15 +1761,15 @@ const CheckoutPage = () => {
 
                             {/* Store Hours Info */}
                             <div className="mb-4 p-3 bg-white/80 rounded-lg border border-blue-200">
-                              <p className="text-sm font-semibold text-gray-700 mb-1">🕒 Store Hours:</p>
+                              <p className="text-sm font-semibold text-gray-700 mb-1">🕒 Scheduled Order Times:</p>
                               <ul className="text-sm text-gray-600 space-y-0.5 ml-1">
-                                <li>• Tuesday - Thursday: 11:00 AM - 8:00 PM</li>
-                                <li>• Friday - Saturday: 11:00 AM - 9:00 PM</li>
-                                <li>• Sunday: 12:00 PM - 8:00 PM</li>
+                                <li>• Tuesday - Thursday: 11:30 AM - 8:00 PM</li>
+                                <li>• Friday - Saturday: 11:30 AM - 9:00 PM</li>
+                                <li>• Sunday: 12:30 PM - 8:00 PM</li>
                                 <li>• Monday: CLOSED</li>
                               </ul>
                               <p className="text-xs text-blue-600 mt-2 font-medium">
-                                💡 Please select a time during our operating hours
+                                💡 Scheduled orders available 30 minutes after opening
                               </p>
                             </div>
 
@@ -1783,22 +1783,22 @@ const CheckoutPage = () => {
                                 const hour = selectedDate.getHours();
                                 const minute = selectedDate.getMinutes();
 
-                                // Check if selected time is within store hours
+                                // Check if selected time is within store hours (must be 30+ min after opening)
                                 let isValidTime = false;
-                                if (day === 0) { // Sunday: 12PM-8PM
-                                  isValidTime = (hour > 12 || (hour === 12 && minute >= 0)) && hour < 20;
+                                if (day === 0) { // Sunday: 12:30PM-8PM (opens 12PM, orders start 12:30PM)
+                                  isValidTime = (hour > 12 || (hour === 12 && minute >= 30)) && hour < 20;
                                 } else if (day === 1) { // Monday - CLOSED
                                   isValidTime = false;
-                                } else if (day >= 2 && day <= 4) { // Tuesday-Thursday: 11AM-8PM
-                                  isValidTime = (hour > 11 || (hour === 11 && minute >= 0)) && hour < 20;
-                                } else if (day >= 5 && day <= 6) { // Friday-Saturday: 11AM-9PM
-                                  isValidTime = (hour > 11 || (hour === 11 && minute >= 0)) && hour < 21;
+                                } else if (day >= 2 && day <= 4) { // Tuesday-Thursday: 11:30AM-8PM (opens 11AM, orders start 11:30AM)
+                                  isValidTime = (hour > 11 || (hour === 11 && minute >= 30)) && hour < 20;
+                                } else if (day >= 5 && day <= 6) { // Friday-Saturday: 11:30AM-9PM (opens 11AM, orders start 11:30AM)
+                                  isValidTime = (hour > 11 || (hour === 11 && minute >= 30)) && hour < 21;
                                 }
 
                                 if (!isValidTime) {
                                   toast({
                                     title: "Outside Store Hours",
-                                    description: "Please select a time when we're open. Tues-Thurs: 11AM-8PM, Fri-Sat: 11AM-9PM, Sun: 12PM-8PM, Mon: CLOSED",
+                                    description: "Please select a time when we're open. Tues-Thurs: 11:30AM-8PM, Fri-Sat: 11:30AM-9PM, Sun: 12:30PM-8PM, Mon: CLOSED",
                                     variant: "destructive"
                                   });
                                 }
