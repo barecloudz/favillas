@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { supabase } from "@/lib/supabase";
@@ -381,13 +381,16 @@ const KitchenPage = () => {
     }
   }, []); // Empty deps - uses refs and stable setState
 
-  // Use admin websocket with notification sound settings
-  const { playTestSound, sendMessage } = useAdminWebSocket({
+  // Memoize the websocket options to prevent reconnecting
+  const websocketOptions = useMemo(() => ({
     enableSounds: soundEnabled,
     soundType: soundType,
     volume: soundVolume,
     onNewOrder: handleNewOrder
-  });
+  }), [soundEnabled, soundType, soundVolume, handleNewOrder]);
+
+  // Use admin websocket with notification sound settings
+  const { playTestSound, sendMessage } = useAdminWebSocket(websocketOptions);
 
   const formatPrice = (price: string | number) => {
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
