@@ -109,7 +109,7 @@ export async function createShipDayOrder(orderId: number): Promise<{ success: bo
       SELECT * FROM orders
       WHERE id = ${orderId}
       AND order_type = 'delivery'
-      AND payment_status = 'completed'
+      AND (payment_status = 'completed' OR payment_status = 'succeeded' OR payment_status = 'test_order_admin_bypass')
       LIMIT 1
     `;
 
