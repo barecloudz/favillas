@@ -1788,16 +1788,73 @@ export const handler: Handler = async (event, context) => {
             }
           }
         } else {
-          console.log('ℹ️ SHIPDAY: Order is NOT a scheduled delivery, skipping immediate ShipDay dispatch', {
+          console.log('ℹ️ SHIPDAY: Order is NOT a scheduled delivery, checking if automatic mode for ASAP delivery', {
             orderId: newOrder.id,
             orderType: newOrder.order_type,
             fulfillmentTime: newOrder.fulfillment_time
           });
+
+          // Check ORDER_STATUS_MODE for automatic mode ASAP delivery dispatch
+          if (newOrder.order_type === 'delivery' && newOrder.fulfillment_time === 'asap' && newOrder.payment_status === 'succeeded') {
+            let orderStatusMode = 'manual'; // default
+            try {
+              const modeSettings = await sql`
+                SELECT setting_value FROM system_settings WHERE setting_key = 'ORDER_STATUS_MODE'
+              `;
+              if (modeSettings.length > 0) {
+                orderStatusMode = modeSettings[0].setting_value;
+              }
+            } catch (err) {
+              console.warn('Could not fetch ORDER_STATUS_MODE, using default:', err);
+            }
+
+            console.log('🔍 SHIPDAY: ORDER_STATUS_MODE =', orderStatusMode);
+
+            // In automatic mode, dispatch ASAP delivery orders immediately
+            if (orderStatusMode === 'automatic') {
+              if (!process.env.SHIPDAY_API_KEY) {
+                console.error('❌ SHIPDAY: SHIPDAY_API_KEY not configured - cannot dispatch ASAP delivery order to ShipDay for order', newOrder.id);
+              } else {
+                console.log('📦 SHIPDAY: Automatic mode enabled - dispatching ASAP delivery order immediately for order', newOrder.id);
+
+                try {
+                  const { createShipDayOrder } = await import('./shipday-integration');
+                  const shipDayResult = await createShipDayOrder(newOrder.id);
+
+                  if (shipDayResult.success) {
+                    console.log(`✅ SHIPDAY: ASAP delivery order dispatched successfully in automatic mode for order #${newOrder.id}`);
+                    enhancedOrder.shipdayDebug = {
+                      ...enhancedOrder.shipdayDebug,
+                      automaticModeDispatch: true,
+                      shipdayOrderId: shipDayResult.shipdayOrderId
+                    };
+                  } else {
+                    console.error('❌ SHIPDAY: Failed to dispatch ASAP delivery in automatic mode:', shipDayResult.error);
+                    enhancedOrder.shipdayDebug = {
+                      ...enhancedOrder.shipdayDebug,
+                      automaticModeDispatch: true,
+                      error: shipDayResult.error
+                    };
+                  }
+                } catch (shipdayError) {
+                  console.error('❌ SHIPDAY: Integration error for ASAP delivery in automatic mode:', shipdayError);
+                  enhancedOrder.shipdayDebug = {
+                    ...enhancedOrder.shipdayDebug,
+                    automaticModeDispatch: true,
+                    error: shipdayError.message
+                  };
+                }
+              }
+            } else {
+              console.log('ℹ️ SHIPDAY: Manual mode - ASAP delivery will be sent when kitchen clicks "Start Cooking"');
+            }
+          }
         }
 
         // CRITICAL FIX: Await email/print operations (serverless functions terminate on return)
-        // NOTE: ASAP delivery orders' ShipDay integration moved to status update (when kitchen clicks "Start Cooking")
-        // Scheduled delivery orders are sent to ShipDay immediately above
+        // NOTE: In manual mode, ASAP delivery orders' ShipDay integration happens on status update (when kitchen clicks "Start Cooking")
+        // In automatic mode, ASAP delivery orders are sent to ShipDay immediately above
+        // Scheduled delivery orders are sent to ShipDay immediately (before automatic mode check)
         try {
           // Auto-print order receipt to thermal printer
           try {

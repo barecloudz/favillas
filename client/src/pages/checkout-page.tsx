@@ -1033,7 +1033,7 @@ const CheckoutPage = () => {
         return {
           menuItemId: item.id,
           quantity: item.quantity,
-          price: (item.price * item.quantity).toString(),
+          price: item.price.toString(),  // Send individual price, backend will multiply by quantity
           options: item.options || item.selectedOptions || [],
           specialInstructions: item.specialInstructions || "",
           halfAndHalf: item.halfAndHalf || null,  // Include half-and-half data for kitchen display
