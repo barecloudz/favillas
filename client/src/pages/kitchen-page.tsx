@@ -28,15 +28,6 @@ const KitchenPage = () => {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState("pending");
-
-  // Switch to appropriate tab when mode changes
-  useEffect(() => {
-    if (orderStatusMode === 'automatic' && (activeTab === 'pending' || activeTab === 'cooking' || activeTab === 'completed' || activeTab === 'picked_up' || activeTab === 'cancelled')) {
-      setActiveTab('today');
-    } else if (orderStatusMode === 'manual' && activeTab === 'today') {
-      setActiveTab('pending');
-    }
-  }, [orderStatusMode]);
   const [isColumnMode, setIsColumnMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('kitchenColumnMode') === 'true';
@@ -66,6 +57,15 @@ const KitchenPage = () => {
   // Order Status Mode State
   const [orderStatusMode, setOrderStatusMode] = useState<'manual' | 'automatic'>('manual');
   const [showStatusModeModal, setShowStatusModeModal] = useState(false);
+
+  // Switch to appropriate tab when mode changes
+  useEffect(() => {
+    if (orderStatusMode === 'automatic' && (activeTab === 'pending' || activeTab === 'cooking' || activeTab === 'completed' || activeTab === 'picked_up' || activeTab === 'cancelled')) {
+      setActiveTab('today');
+    } else if (orderStatusMode === 'manual' && activeTab === 'today') {
+      setActiveTab('pending');
+    }
+  }, [orderStatusMode, activeTab]);
   // Use localStorage to track printed orders across all browser tabs/devices
   const [printedOrders, setPrintedOrders] = useState<Set<number>>(() => {
     const stored = localStorage.getItem('printedOrders');
