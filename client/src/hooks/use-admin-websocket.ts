@@ -63,9 +63,9 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
       }
     }
 
-    // Preload dingbell audio for iOS
+    // Preload dingbell audio for iOS (self-hosted to reduce Supabase storage egress)
     if (!dingbellAudioRef.current && typeof window !== 'undefined') {
-      const dingBellUrl = 'https://tamsxlebouauwiivoyxa.supabase.co/storage/v1/object/public/notification-sounds/bellsound.wav';
+      const dingBellUrl = '/sounds/bellsound.wav'; // Self-hosted in public/sounds/
       dingbellAudioRef.current = new Audio(dingBellUrl);
       dingbellAudioRef.current.preload = 'auto';
       dingbellAudioRef.current.load();
@@ -189,12 +189,12 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
         oscillator.stop(audioContextRef.current.currentTime + 0.15);
 
       } else if (soundType === 'dingbell') {
-        // Use preloaded bell sound from Supabase
+        // Use self-hosted bell sound (optimized to reduce Supabase storage egress)
         // console.log('🔔 Attempting to play dingbell sound');
         try {
           if (!dingbellAudioRef.current) {
             // If not preloaded, create new instance
-            const dingBellUrl = 'https://tamsxlebouauwiivoyxa.supabase.co/storage/v1/object/public/notification-sounds/bellsound.wav';
+            const dingBellUrl = '/sounds/bellsound.wav'; // Self-hosted in public/sounds/
             dingbellAudioRef.current = new Audio(dingBellUrl);
           }
 

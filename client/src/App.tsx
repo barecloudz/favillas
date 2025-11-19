@@ -11,7 +11,8 @@ import AuthCallback from "@/pages/auth-callback";
 import EmailConfirmedPage from "@/pages/email-confirmed";
 import MenuPage from "@/pages/menu-page";
 import CateringPage from "@/pages/catering-page";
-import CustomerDisplay from "@/pages/customer-display";
+// Disabled: Customer display not in use
+// import CustomerDisplay from "@/pages/customer-display";
 import CheckoutPage from "@/pages/checkout-page";
 import OrderSuccessPage from "@/pages/order-success";
 import OrderDetailsPage from "@/pages/order-details-page";
@@ -39,7 +40,7 @@ import LoginModalWrapper from "@/components/auth/login-modal-wrapper";
 import { UpdateBanner } from "@/components/update-banner";
 
 // Pages that should NOT show the main header (standalone full-screen pages)
-const STANDALONE_PAGES = ['/kitchen', '/display'];
+const STANDALONE_PAGES = ['/kitchen'];
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -62,7 +63,8 @@ function Router() {
         <Route path="/auth/confirm" component={EmailConfirmedPage} />
         <Route path="/menu" component={MenuPage} />
         <Route path="/catering" component={CateringPage} />
-        <Route path="/display" component={CustomerDisplay} />
+        {/* Disabled: Customer display not in use - was polling every 1 second causing high egress */}
+        {/* <Route path="/display" component={CustomerDisplay} /> */}
         <Route path="/test" component={TestPage} />
         <Route path="/fix-order" component={FixOrderPage} />
         <Route path="/debug-orders" component={DebugOrdersPage} />

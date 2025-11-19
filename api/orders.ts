@@ -480,7 +480,16 @@ export const handler: Handler = async (event, context) => {
             ORDER BY created_at DESC
           `;
         } else {
-          allOrders = await sql`SELECT * FROM orders ORDER BY created_at DESC`;
+          // Optimized: Select only needed columns to reduce database egress
+          allOrders = await sql`
+            SELECT id, user_id, supabase_user_id, status, total, tax, delivery_fee, tip,
+                   order_type, payment_status, special_instructions, address, address_data,
+                   fulfillment_time, scheduled_time, phone, email, customer_name,
+                   created_at, updated_at, payment_intent_id, shipday_order_id, shipday_status,
+                   promo_code_id, promo_code_discount
+            FROM orders
+            ORDER BY created_at DESC
+          `;
         }
       } else {
         // CRITICAL FIX: Customers can only see their own orders

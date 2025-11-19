@@ -8277,8 +8277,8 @@ const SettingsPanel = () => {
         oscillator.start(audioContext.currentTime);
         oscillator.stop(audioContext.currentTime + 0.15);
       } else if (soundType === 'dingbell') {
-        // Play uploaded bell sound from Supabase
-        const dingBellUrl = 'https://tamsxlebouauwiivoyxa.supabase.co/storage/v1/object/public/notification-sounds/bellsound.wav';
+        // Play self-hosted bell sound (optimized to reduce Supabase storage egress)
+        const dingBellUrl = '/sounds/bellsound.wav'; // Self-hosted in public/sounds/
         try {
           const audio = new Audio(dingBellUrl);
           audio.volume = volume;

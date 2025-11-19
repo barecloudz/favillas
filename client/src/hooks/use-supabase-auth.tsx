@@ -374,7 +374,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error('❌ Supabase registration failed:', error.message);
-        throw new Error(error.message);
+
+        // Provide user-friendly error messages
+        if (error.message.includes('rate limit') || error.status === 429) {
+          throw new Error('Too many signup attempts. Please wait a few minutes and try again, or try signing in if you already have an account.');
+        } else if (error.message.includes('already registered')) {
+          throw new Error('This email is already registered. Please sign in instead.');
+        } else {
+          throw new Error(error.message);
+        }
       }
 
       if (data.user) {

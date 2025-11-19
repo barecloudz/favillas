@@ -132,6 +132,12 @@ export async function createShipDayOrder(orderId: number): Promise<{ success: bo
       WHERE oi.order_id = ${orderId}
     `;
 
+    console.log(`📦 ShipDay: Retrieved ${orderItems.length} order items for order #${orderId}`);
+    if (orderItems.length === 0) {
+      console.error(`❌ ShipDay: No order items found for order #${orderId} - cannot send to ShipDay`);
+      return { success: false, error: 'No order items found for order' };
+    }
+
     // Get user info
     let userContactInfo = null;
     if (order.supabase_user_id) {
@@ -155,11 +161,13 @@ export async function createShipDayOrder(orderId: number): Promise<{ success: bo
       return { success: false, error: 'Incomplete delivery address' };
     }
 
-    const customerName = userContactInfo?.first_name && userContactInfo?.last_name
-      ? `${userContactInfo.first_name} ${userContactInfo.last_name}`.trim()
-      : (userContactInfo?.username || "Customer");
+    // Get customer name with priority: order.customer_name (from checkout) > user profile > "Customer"
+    const customerName = order.customer_name ||
+      (userContactInfo?.first_name && userContactInfo?.last_name
+        ? `${userContactInfo.first_name} ${userContactInfo.last_name}`.trim()
+        : (userContactInfo?.username || "Customer"));
 
-    const customerEmail = userContactInfo?.email || "";
+    const customerEmail = order.email || userContactInfo?.email || "";
     const customerPhone = order.phone || userContactInfo?.phone || "";
 
     // Format order items with detailed addons/choices

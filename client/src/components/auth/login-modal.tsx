@@ -66,7 +66,13 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // Prevent double-submission if mutation is already in progress
+    if (registerMutation.isPending) {
+      console.log('⏳ Registration already in progress, ignoring duplicate submission');
+      return;
+    }
+
     if (registerData.password !== registerData.confirmPassword) {
       toast({
         title: "Passwords don't match",
@@ -95,8 +101,16 @@ const LoginModal: React.FC<LoginModalProps> = ({
       });
       onSuccess?.();
       onClose();
-    } catch (error) {
-      // Error is handled by the mutation
+    } catch (error: any) {
+      // Enhanced error handling for rate limit
+      if (error?.message?.includes('rate limit') || error?.message?.includes('429')) {
+        toast({
+          title: "Too many attempts",
+          description: "Please wait a few minutes before trying again. You may already have an account - try signing in instead.",
+          variant: "destructive",
+        });
+      }
+      // Other errors are handled by the mutation
     }
   };
 
