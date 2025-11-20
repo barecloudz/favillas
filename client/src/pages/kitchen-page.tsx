@@ -115,6 +115,10 @@ const KitchenPage = () => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [soundType, setSoundType] = useState<'chime' | 'bell' | 'ding' | 'beep' | 'dingbell' | 'custom'>('dingbell');
   const [soundVolume, setSoundVolume] = useState(0.5);
+  const [audioActivated, setAudioActivated] = useState(() => {
+    // Check if user has already activated audio in this session
+    return sessionStorage.getItem('audioActivated') === 'true';
+  });
 
   // Cancel order confirmation dialog
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
@@ -1100,6 +1104,32 @@ const KitchenPage = () => {
       </Helmet>
 
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 overflow-y-auto">
+        {/* Audio Activation Banner - Shows until user clicks Test Sound */}
+        {!audioActivated && soundEnabled && (
+          <div className="bg-yellow-500 text-white px-4 py-3 shadow-lg border-b-4 border-yellow-600">
+            <div className="container mx-auto flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-6 w-6 flex-shrink-0 animate-pulse" />
+                <p className="font-semibold text-sm md:text-base">
+                  🔊 Click "Test Sound" to enable order notifications on iPad/Safari
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="bg-white text-yellow-700 hover:bg-yellow-50 border-2 border-white font-bold shadow-md flex-shrink-0"
+                onClick={() => {
+                  playTestSound();
+                  setAudioActivated(true);
+                  sessionStorage.setItem('audioActivated', 'true');
+                }}
+              >
+                <Volume2 className="mr-2 h-4 w-4" />
+                Test Sound
+              </Button>
+            </div>
+          </div>
+        )}
         <header className="bg-gradient-to-r from-[#d73a31] via-[#c22d25] to-[#d73a31] text-white p-4 md:p-6 shadow-2xl border-b-4 border-red-700">
           <div className="container mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
             <div>
@@ -1129,6 +1159,9 @@ const KitchenPage = () => {
                 className="bg-white/95 text-[#d73a31] border-2 border-white hover:bg-white hover:scale-105 font-semibold shadow-lg transition-all duration-200 backdrop-blur-sm"
                 onClick={() => {
                   playTestSound();
+                  // Mark audio as activated so banner doesn't show again
+                  setAudioActivated(true);
+                  sessionStorage.setItem('audioActivated', 'true');
                 }}
               >
                 <Volume2 className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />
