@@ -848,18 +848,28 @@ const KitchenPage = () => {
   const handlePrintDailySummary = async () => {
     try {
       console.log('Fetching today\'s orders for daily summary...');
+      console.log('Current user:', user);
+
+      // Get Supabase session token
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      console.log('Auth token available:', !!token);
 
       // Fetch from kitchen-orders endpoint which has the data we need
       const response = await fetch(`/api/kitchen/orders`, {
         method: 'GET',
         credentials: 'include',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
         }
       });
 
       if (!response.ok) {
-        throw new Error(`Kitchen orders API returned ${response.status}`);
+        const errorText = await response.text();
+        console.error('Kitchen orders API error:', response.status, errorText);
+        throw new Error(`Kitchen orders API returned ${response.status}: ${errorText}`);
       }
 
       const allOrders = await response.json();
@@ -966,11 +976,21 @@ const KitchenPage = () => {
 
     } catch (error: any) {
       console.error('Failed to print daily summary:', error);
-      toast({
-        title: "Print Failed",
-        description: error.message || "Could not print daily summary. Make sure the printer is connected.",
-        variant: "destructive",
-      });
+
+      // Check if it's an authentication error
+      if (error.message?.includes('401')) {
+        toast({
+          title: "Authentication Error",
+          description: "Your session may have expired. Please refresh the page and try again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Print Failed",
+          description: error.message || "Could not print daily summary. Make sure the printer is connected.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
