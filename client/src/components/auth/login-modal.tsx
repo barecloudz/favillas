@@ -170,31 +170,48 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] max-w-[95vw] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              ← Back
-            </Button>
-            <DialogTitle className="text-center text-2xl font-bold text-[#d73a31] flex-1">
-              Welcome
+      <DialogContent className="sm:max-w-[550px] max-w-[95vw] max-h-[90vh] overflow-y-auto p-0 gap-0 bg-gradient-to-br from-white via-gray-50 to-red-50">
+        {/* Premium Header with Gradient Background */}
+        <div className="relative bg-gradient-to-r from-[#d73a31] via-[#c22d25] to-[#d73a31] text-white px-6 py-8 rounded-t-lg">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="absolute top-4 left-4 text-white/80 hover:text-white hover:bg-white/10 transition-all"
+          >
+            ← Back
+          </Button>
+          <div className="text-center mt-2">
+            <DialogTitle className="text-3xl font-bold mb-2 drop-shadow-lg">
+              Welcome to Favilla's
             </DialogTitle>
-            <div className="w-12"></div> {/* Spacer for centering */}
+            <DialogDescription className="text-red-100 text-base font-medium">
+              Sign in to earn rewards on every order
+            </DialogDescription>
           </div>
-          <DialogDescription className="text-center">
-            Sign in to your account or continue as a guest
-          </DialogDescription>
-        </DialogHeader>
+          {/* Decorative pizza slice icon */}
+          <div className="absolute top-0 right-0 text-white/10 text-[120px] leading-none select-none">
+            🍕
+          </div>
+        </div>
+
+        {/* Main Content with Padding */}
+        <div className="px-8 py-6">
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Sign In</TabsTrigger>
-            <TabsTrigger value="register">Create Account</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 bg-white border-2 border-gray-200 p-1 shadow-sm">
+            <TabsTrigger
+              value="login"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#d73a31] data-[state=active]:to-[#c22d25] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
+            >
+              Sign In
+            </TabsTrigger>
+            <TabsTrigger
+              value="register"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#d73a31] data-[state=active]:to-[#c22d25] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
+            >
+              Create Account
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="login" className="space-y-4">
@@ -283,11 +300,11 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
                 <Button
                   type="submit"
-                  className="w-full bg-[#d73a31] hover:bg-[#c73128]"
+                  className="w-full bg-gradient-to-r from-[#d73a31] to-[#c22d25] hover:from-[#c22d25] hover:to-[#b21d15] text-white shadow-lg hover:shadow-xl transition-all duration-200 py-6 text-lg font-semibold"
                   disabled={loginMutation.isPending}
                 >
                   {loginMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
                   ) : null}
                   Sign In
                 </Button>
@@ -395,11 +412,11 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
               <Button
                 type="submit"
-                className="w-full bg-[#d73a31] hover:bg-[#c73128]"
+                className="w-full bg-gradient-to-r from-[#d73a31] to-[#c22d25] hover:from-[#c22d25] hover:to-[#b21d15] text-white shadow-lg hover:shadow-xl transition-all duration-200 py-6 text-lg font-semibold"
                 disabled={registerMutation.isPending}
               >
                 {registerMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
                 ) : null}
                 Create Account
               </Button>
@@ -407,13 +424,14 @@ const LoginModal: React.FC<LoginModalProps> = ({
           </TabsContent>
         </Tabs>
 
-        <DialogFooter className="flex-col space-y-3">
+        {/* Premium Footer Section */}
+        <div className="flex-col space-y-4 mt-6">
           <div className="relative w-full">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+              <span className="w-full border-t border-gray-300" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+            <div className="relative flex justify-center text-sm font-medium uppercase tracking-wide">
+              <span className="bg-gradient-to-br from-white via-gray-50 to-red-50 px-3 text-gray-500">Or continue with</span>
             </div>
           </div>
 
@@ -421,12 +439,12 @@ const LoginModal: React.FC<LoginModalProps> = ({
             variant="outline"
             onClick={handleGoogleSignIn}
             disabled={isGoogleLoading}
-            className="w-full border-gray-300 hover:bg-gray-50"
+            className="w-full border-2 border-gray-300 hover:border-gray-400 hover:bg-white shadow-sm hover:shadow-md transition-all duration-200 py-6 text-base font-semibold"
           >
             {isGoogleLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <Loader2 className="h-5 w-5 animate-spin mr-2" />
             ) : (
-              <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24">
+              <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -438,21 +456,23 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
           <div className="relative w-full">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+              <span className="w-full border-t border-gray-300" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or</span>
+            <div className="relative flex justify-center text-sm font-medium uppercase tracking-wide">
+              <span className="bg-gradient-to-br from-white via-gray-50 to-red-50 px-3 text-gray-500">Or</span>
             </div>
           </div>
 
           <Button
-            variant="ghost"
+            variant="outline"
             onClick={handleContinueAsGuest}
-            className="w-full text-gray-600 hover:text-gray-800"
+            className="w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200 py-5 text-base font-medium"
           >
             Continue as Guest
           </Button>
-        </DialogFooter>
+        </div>
+
+        </div> {/* Close main content div */}
       </DialogContent>
     </Dialog>
   );

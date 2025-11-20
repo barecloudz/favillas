@@ -21,22 +21,34 @@ const CheckoutPromptModal: React.FC<CheckoutPromptModalProps> = ({
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[480px] max-h-[90vh] flex flex-col">
-        <DialogHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#d73a31]/10">
-            <ShoppingCart className="h-8 w-8 text-[#d73a31]" />
+      <DialogContent className="sm:max-w-[520px] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+        {/* Premium Header with Gradient and Animation */}
+        <div className="relative bg-gradient-to-r from-[#d73a31] via-[#c22d25] to-[#d73a31] text-white px-8 py-10 text-center">
+          {/* Animated background pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-0 left-0 text-6xl animate-pulse">🍕</div>
+            <div className="absolute top-0 right-0 text-6xl animate-pulse delay-100">🍕</div>
+            <div className="absolute bottom-0 left-1/4 text-6xl animate-pulse delay-200">🍕</div>
+            <div className="absolute bottom-0 right-1/4 text-6xl animate-pulse delay-300">🍕</div>
           </div>
-          <DialogTitle className="text-2xl font-bold text-gray-900">
-            Ready to checkout?
-          </DialogTitle>
-          <DialogDescription className="text-base text-gray-600 mt-2">
-            Sign in or create an account to earn points and claim rewards on this order!
-          </DialogDescription>
-        </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto py-6">
+          <div className="relative z-10">
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm shadow-xl animate-bounce">
+              <ShoppingCart className="h-10 w-10 text-white drop-shadow-lg" />
+            </div>
+            <DialogTitle className="text-3xl font-bold text-white drop-shadow-lg mb-2">
+              Ready to Checkout?
+            </DialogTitle>
+            <DialogDescription className="text-lg text-red-100 font-medium">
+              🎉 Create an account & start earning rewards!
+            </DialogDescription>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="px-8 py-6 flex-1 overflow-y-auto">
           {/* Benefits section */}
-          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4 mb-6">
+          <div className="bg-gradient-to-r from-yellow-50 via-amber-50 to-orange-50 border-2 border-yellow-300 rounded-xl p-5 mb-6 shadow-md">
             <div className="flex items-center gap-2 mb-3">
               <Star className="h-5 w-5 text-yellow-600" />
               <span className="font-semibold text-yellow-800">Member Benefits</span>
@@ -68,43 +80,45 @@ const CheckoutPromptModal: React.FC<CheckoutPromptModalProps> = ({
           <div className="space-y-3">
             <Button
               onClick={onSignUp}
-              className="w-full bg-[#d73a31] hover:bg-[#c73128] text-white py-3"
+              className="w-full bg-gradient-to-r from-[#d73a31] to-[#c22d25] hover:from-[#c22d25] hover:to-[#b21d15] text-white shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-200 py-7 text-lg font-bold"
               size="lg"
             >
-              <UserPlus className="mr-2 h-4 w-4" />
+              <UserPlus className="mr-2 h-6 w-6" />
               Create Account & Earn Points
             </Button>
 
             <Button
               onClick={onSignIn}
               variant="outline"
-              className="w-full border-[#d73a31] text-[#d73a31] hover:bg-[#d73a31]/5 py-3"
+              className="w-full border-2 border-[#d73a31] text-[#d73a31] hover:bg-[#d73a31]/10 hover:border-[#c22d25] shadow-md hover:shadow-lg transition-all duration-200 py-6 text-base font-semibold"
               size="lg"
             >
-              <User className="mr-2 h-4 w-4" />
+              <User className="mr-2 h-5 w-5" />
               Sign In to Existing Account
             </Button>
           </div>
         </div>
+        </div>
 
-        <DialogFooter className="flex-col space-y-2 flex-shrink-0 border-t pt-4">
+        {/* Footer */}
+        <div className="flex-col space-y-3 flex-shrink-0 border-t-2 border-gray-200 bg-gray-50 px-8 py-5">
           <div className="relative w-full">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-gray-200" />
+              <span className="w-full border-t-2 border-gray-300" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-gray-500">Or</span>
+            <div className="relative flex justify-center text-sm font-medium uppercase tracking-wide">
+              <span className="bg-gray-50 px-3 text-gray-500">Or</span>
             </div>
           </div>
 
           <Button
-            variant="ghost"
+            variant="outline"
             onClick={onContinueAsGuest}
-            className="w-full text-gray-600 hover:text-gray-800"
+            className="w-full border-2 border-gray-300 text-gray-600 hover:text-gray-900 hover:bg-gray-100 hover:border-gray-400 transition-all duration-200 py-4 text-sm font-medium"
           >
             Continue as Guest (No Points Earned)
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
