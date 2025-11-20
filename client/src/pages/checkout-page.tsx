@@ -120,8 +120,8 @@ const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, cust
 
       // Redirect to order success page
       setTimeout(() => {
-        navigate(`/order-success?test_order=true&order_id=${result.orderId}`);
-      }, 500);
+        navigate(`/order-success?orderId=${result.orderId}&test_order=true`);
+      }, 1000); // Increased delay to let user see the toast
 
     } catch (error: any) {
       console.error('❌ Test order error:', error);

@@ -170,7 +170,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[550px] max-w-[95vw] max-h-[90vh] overflow-y-auto p-0 gap-0 bg-gradient-to-br from-white via-gray-50 to-red-50">
+      <DialogContent className="sm:max-w-[550px] max-w-[95vw] p-0 gap-0 bg-gradient-to-br from-white via-gray-50 to-red-50 overflow-hidden">
         {/* Premium Header with Gradient Background */}
         <div className="relative bg-gradient-to-r from-[#d73a31] via-[#c22d25] to-[#d73a31] text-white px-6 py-8 rounded-t-lg">
           <Button
