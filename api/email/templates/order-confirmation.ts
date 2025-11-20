@@ -95,10 +95,24 @@ export function getOrderConfirmationTemplate(data: OrderConfirmationData): strin
     <p style="margin: 0;">${data.paymentMethod}</p>
   </div>
 
+  <div style="text-align: center; margin-top: 30px; padding: 25px; background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-radius: 8px; border: 2px solid #ff9800; margin-bottom: 20px;">
+    <h3 style="color: #e65100; margin-top: 0; margin-bottom: 15px;">We hope you enjoyed your order! 🍕</h3>
+    <p style="margin: 10px 0 20px 0; color: #333; font-size: 16px; line-height: 1.6;">
+      Could you do us a huge favor and smash that 5 star button on Google? It really helps our local business grow!
+    </p>
+    <a href="https://g.page/r/CYxqsWclryrwEAE/review"
+       style="display: inline-block; background: #4285f4; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+      ⭐ Leave a Google Review
+    </a>
+    <p style="margin: 15px 0 0 0; color: #666; font-size: 16px; font-weight: 500;">
+      Can't wait to see you again next time! 😊
+    </p>
+  </div>
+
   <div style="text-align: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
     <p style="margin: 0; color: #666;">Questions about your order?</p>
-    <p style="margin: 5px 0;"><strong>Call us:</strong> (555) 123-PIZZA</p>
-    <p style="margin: 0;"><strong>Email:</strong> support@pizzaspinrewards.com</p>
+    <p style="margin: 5px 0;"><strong>Call us:</strong> (828) 225-2885</p>
+    <p style="margin: 0;"><strong>Email:</strong> favillaspizza@gmail.com</p>
   </div>
 
   <div style="text-align: center; margin-top: 20px; padding: 15px; color: #666; font-size: 12px;">
