@@ -98,7 +98,6 @@ const CheckoutPromptModal: React.FC<CheckoutPromptModalProps> = ({
             </Button>
           </div>
         </div>
-        </div>
 
         {/* Footer */}
         <div className="flex-col space-y-3 flex-shrink-0 border-t-2 border-gray-200 bg-gray-50 px-8 py-5">
