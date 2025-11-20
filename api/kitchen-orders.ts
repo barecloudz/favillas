@@ -62,8 +62,9 @@ export const handler: Handler = async (event, context) => {
   try {
     const sql = getDB();
     
-    // Get active kitchen orders with customer names (pending, cooking, completed)
+    // Get active kitchen orders with customer names (pending, cooking, completed, picked_up, cancelled)
     // Optimized: Select only needed columns to reduce database egress
+    // IMPORTANT: Must include 'cancelled' status for "Today's Orders" tab
     const kitchenOrders = await sql`
       SELECT
         o.id, o.user_id, o.supabase_user_id, o.status, o.total, o.tax,
@@ -75,7 +76,7 @@ export const handler: Handler = async (event, context) => {
         u.last_name
       FROM orders o
       LEFT JOIN users u ON (o.user_id = u.id OR o.supabase_user_id = u.supabase_user_id)
-      WHERE o.status IN ('pending', 'cooking', 'completed', 'picked_up')
+      WHERE o.status IN ('pending', 'cooking', 'completed', 'picked_up', 'cancelled')
       ORDER BY o.created_at ASC
     `;
     
