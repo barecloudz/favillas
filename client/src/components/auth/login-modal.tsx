@@ -216,83 +216,83 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
           <TabsContent value="login" className="space-y-4">
             {showForgotPassword ? (
-              <form onSubmit={handleForgotPassword} className="space-y-4">
+              <form onSubmit={handleForgotPassword} className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="reset-email">Email Address</Label>
+                  <Label htmlFor="reset-email" className="text-base font-semibold text-gray-700">Email Address</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Mail className="absolute left-4 top-4 h-5 w-5 text-gray-400" />
                     <Input
                       id="reset-email"
                       type="email"
-                      placeholder="Enter your email"
+                      placeholder="your.email@example.com"
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
-                      className="pl-10"
+                      className="pl-12 h-14 text-base border-2 border-gray-200 rounded-xl focus:border-[#d73a31] focus:ring-2 focus:ring-[#d73a31]/20 transition-all shadow-sm hover:border-gray-300"
                       required
                     />
                   </div>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-600 font-medium">
                     We'll send you a link to reset your password
                   </p>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => setShowForgotPassword(false)}
-                    className="flex-1"
+                    className="flex-1 border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 shadow-sm hover:shadow-md transition-all duration-200 h-12 text-base font-semibold"
                   >
                     Back to Login
                   </Button>
                   <Button
                     type="submit"
-                    className="flex-1 bg-[#d73a31] hover:bg-[#c73128]"
+                    className="flex-1 bg-gradient-to-r from-[#d73a31] to-[#c22d25] hover:from-[#c22d25] hover:to-[#b21d15] shadow-lg hover:shadow-xl transition-all duration-200 h-12 text-base font-semibold"
                     disabled={isResetting}
                   >
                     {isResetting ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
                     ) : null}
                     Send Reset Link
                   </Button>
                 </div>
               </form>
             ) : (
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
+                  <Label htmlFor="login-email" className="text-base font-semibold text-gray-700">Email</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Mail className="absolute left-4 top-4 h-5 w-5 text-gray-400" />
                     <Input
                       id="login-email"
                       type="email"
-                      placeholder="Enter your email"
+                      placeholder="your.email@example.com"
                       value={loginData.email}
                       onChange={(e) => setLoginData(prev => ({ ...prev, email: e.target.value }))}
-                      className="pl-10"
+                      className="pl-12 h-14 text-base border-2 border-gray-200 rounded-xl focus:border-[#d73a31] focus:ring-2 focus:ring-[#d73a31]/20 transition-all shadow-sm hover:border-gray-300"
                       required
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="login-password">Password</Label>
+                  <Label htmlFor="login-password" className="text-base font-semibold text-gray-700">Password</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Lock className="absolute left-4 top-4 h-5 w-5 text-gray-400" />
                     <Input
                       id="login-password"
                       type="password"
                       placeholder="Enter your password"
                       value={loginData.password}
                       onChange={(e) => setLoginData(prev => ({ ...prev, password: e.target.value }))}
-                      className="pl-10"
+                      className="pl-12 h-14 text-base border-2 border-gray-200 rounded-xl focus:border-[#d73a31] focus:ring-2 focus:ring-[#d73a31]/20 transition-all shadow-sm hover:border-gray-300"
                       required
                     />
                   </div>
                   <button
                     type="button"
                     onClick={() => setShowForgotPassword(true)}
-                    className="text-sm text-[#d73a31] hover:underline font-medium"
+                    className="text-sm text-[#d73a31] hover:text-[#c22d25] font-semibold hover:underline transition-colors"
                   >
                     Forgot password?
                   </button>
@@ -312,36 +312,36 @@ const LoginModal: React.FC<LoginModalProps> = ({
             )}
           </TabsContent>
 
-          <TabsContent value="register" className="space-y-4">
-            <form onSubmit={handleRegister} className="space-y-4">
+          <TabsContent value="register" className="space-y-5">
+            <form onSubmit={handleRegister} className="space-y-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="register-firstName">First Name</Label>
+                  <Label htmlFor="register-firstName" className="text-base font-semibold text-gray-700">First Name</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <User className="absolute left-4 top-4 h-5 w-5 text-gray-400" />
                     <Input
                       id="register-firstName"
                       type="text"
                       placeholder="First name"
                       value={registerData.firstName}
                       onChange={(e) => setRegisterData(prev => ({ ...prev, firstName: e.target.value }))}
-                      className="pl-10"
+                      className="pl-12 h-14 text-base border-2 border-gray-200 rounded-xl focus:border-[#d73a31] focus:ring-2 focus:ring-[#d73a31]/20 transition-all shadow-sm hover:border-gray-300"
                       required
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="register-lastName">Last Name</Label>
+                  <Label htmlFor="register-lastName" className="text-base font-semibold text-gray-700">Last Name</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <User className="absolute left-4 top-4 h-5 w-5 text-gray-400" />
                     <Input
                       id="register-lastName"
                       type="text"
                       placeholder="Last name"
                       value={registerData.lastName}
                       onChange={(e) => setRegisterData(prev => ({ ...prev, lastName: e.target.value }))}
-                      className="pl-10"
+                      className="pl-12 h-14 text-base border-2 border-gray-200 rounded-xl focus:border-[#d73a31] focus:ring-2 focus:ring-[#d73a31]/20 transition-all shadow-sm hover:border-gray-300"
                       required
                     />
                   </div>
@@ -349,49 +349,48 @@ const LoginModal: React.FC<LoginModalProps> = ({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="register-email">Email</Label>
+                <Label htmlFor="register-email" className="text-base font-semibold text-gray-700">Email</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-4 top-4 h-5 w-5 text-gray-400" />
                   <Input
                     id="register-email"
                     type="email"
-                    placeholder="Enter your email"
+                    placeholder="your.email@example.com"
                     value={registerData.email}
                     onChange={(e) => setRegisterData(prev => ({ ...prev, email: e.target.value }))}
-                    className="pl-10"
+                    className="pl-12 h-14 text-base border-2 border-gray-200 rounded-xl focus:border-[#d73a31] focus:ring-2 focus:ring-[#d73a31]/20 transition-all shadow-sm hover:border-gray-300"
                     required
                   />
                 </div>
               </div>
 
-
               <div className="space-y-2">
-                <Label htmlFor="register-password">Password</Label>
+                <Label htmlFor="register-password" className="text-base font-semibold text-gray-700">Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-4 top-4 h-5 w-5 text-gray-400" />
                   <Input
                     id="register-password"
                     type="password"
                     placeholder="Create a password"
                     value={registerData.password}
                     onChange={(e) => setRegisterData(prev => ({ ...prev, password: e.target.value }))}
-                    className="pl-10"
+                    className="pl-12 h-14 text-base border-2 border-gray-200 rounded-xl focus:border-[#d73a31] focus:ring-2 focus:ring-[#d73a31]/20 transition-all shadow-sm hover:border-gray-300"
                     required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="register-confirmPassword">Confirm Password</Label>
+                <Label htmlFor="register-confirmPassword" className="text-base font-semibold text-gray-700">Confirm Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-4 top-4 h-5 w-5 text-gray-400" />
                   <Input
                     id="register-confirmPassword"
                     type="password"
                     placeholder="Confirm your password"
                     value={registerData.confirmPassword}
                     onChange={(e) => setRegisterData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                    className="pl-10"
+                    className="pl-12 h-14 text-base border-2 border-gray-200 rounded-xl focus:border-[#d73a31] focus:ring-2 focus:ring-[#d73a31]/20 transition-all shadow-sm hover:border-gray-300"
                     required
                   />
                 </div>
