@@ -62,16 +62,10 @@ export const handler: Handler = async (event, context) => {
   try {
     const sql = getDB();
     
-    // Get active kitchen orders with customer names (pending, cooking, completed, picked_up, cancelled)
-    // Optimized: Select only needed columns to reduce database egress
-    // IMPORTANT: Must include 'cancelled' status for "Today's Orders" tab
+    // Get active kitchen orders with customer names (pending, cooking, completed)
     const kitchenOrders = await sql`
       SELECT
-        o.id, o.user_id, o.supabase_user_id, o.status, o.total, o.tax,
-        o.delivery_fee, o.tip, o.order_type, o.payment_status, o.special_instructions,
-        o.address, o.address_data, o.fulfillment_time, o.scheduled_time, o.phone,
-        o.email, o.customer_name, o.created_at, o.updated_at, o.shipday_order_id,
-        o.shipday_status,
+        o.*,
         u.first_name,
         u.last_name
       FROM orders o
