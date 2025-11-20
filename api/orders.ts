@@ -29,7 +29,7 @@ function getDB() {
 
 function isStaff(authPayload: any): boolean {
   if (!authPayload) return false;
-  return ['admin', 'kitchen', 'manager'].includes(authPayload.role);
+  return ['admin', 'kitchen', 'kitchen_admin', 'manager'].includes(authPayload.role);
 }
 
 // Helper function for legacy user points
