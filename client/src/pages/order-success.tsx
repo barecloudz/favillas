@@ -96,9 +96,25 @@ const OrderSuccessPage = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [orderCreationError, setOrderCreationError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  
+
   // Initialize WebSocket for real-time updates
   useWebSocket();
+
+  // CRITICAL: Hard timeout to prevent infinite loading - show page after 5 seconds NO MATTER WHAT
+  useEffect(() => {
+    const emergencyTimeout = setTimeout(() => {
+      if (isLoading) {
+        console.error('EMERGENCY TIMEOUT: Forcing page to display after 5 seconds');
+        setIsLoading(false);
+        if (!cartCleared) {
+          clearCart();
+          setCartCleared(true);
+        }
+      }
+    }, 5000); // Force display after 5 seconds maximum
+
+    return () => clearTimeout(emergencyTimeout);
+  }, []); // Only run once on mount
 
   // Get order ID from URL params or payment intent
   useEffect(() => {
@@ -189,7 +205,8 @@ const OrderSuccessPage = () => {
                 setCartCleared(true);
               }
 
-              // OPTIMIZED: Show UI immediately, don't wait for background operations
+              // CRITICAL: Show UI immediately - don't wait for anything
+              // This must happen synchronously to prevent infinite loading
               setIsLoading(false);
               isCreatingOrder.current = false;
 
@@ -272,7 +289,7 @@ const OrderSuccessPage = () => {
           });
         }
       }
-    }, user ? 3000 : 1500); // OPTIMIZED: Reduced timeout from 5s/2s to 3s/1.5s
+    }, user ? 1000 : 500); // OPTIMIZED: Reduced timeout dramatically - show success faster
 
     return () => clearTimeout(timeout);
   }, [isLoading, user, orderId, cartCleared, clearCart, toast]);
@@ -281,8 +298,8 @@ const OrderSuccessPage = () => {
   const { data: orderData, isLoading: orderLoading, error: orderError } = useQuery({
     queryKey: [`/api/orders/${orderId}`],
     enabled: !!orderId && !!user,
-    retry: 2, // Only retry twice
-    retryDelay: 500, // OPTIMIZED: Reduced from 1000ms to 500ms between retries
+    retry: 1, // OPTIMIZED: Only retry once instead of twice
+    retryDelay: 200, // OPTIMIZED: Reduced from 500ms to 200ms between retries
     staleTime: 0, // Always fetch fresh data
   });
 
