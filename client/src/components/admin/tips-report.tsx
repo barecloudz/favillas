@@ -63,7 +63,17 @@ export const TipsReport = ({ orders }: any) => {
       const dateValue = order.created_at || order.createdAt;
       if (!dateValue) return false;
 
-      const orderDate = new Date(dateValue);
+      // Parse timestamp - database is in EST, so treat as UTC then format to EST
+      // This ensures consistent parsing regardless of browser/system timezone
+      let orderDate: Date;
+      if (typeof dateValue === 'string') {
+        // Replace space with 'T' and add 'Z' to parse as UTC, since DB stores in EST
+        // Actually, since DB is now in EST, we need to append the timezone
+        const isoString = dateValue.replace(' ', 'T');
+        orderDate = new Date(isoString + (isoString.includes('Z') || isoString.includes('+') || isoString.includes('-0') ? '' : '-05:00'));
+      } else {
+        orderDate = new Date(dateValue);
+      }
       if (isNaN(orderDate.getTime())) return false;
 
       // Convert order timestamp to EST date string using formatter
