@@ -225,42 +225,6 @@ const KitchenPage = () => {
     fetchStoreHours();
   }, []);
 
-  // Auto-complete orders after 1 hour
-  useEffect(() => {
-    const autoCompleteOldOrders = async () => {
-      if (!orders || orders.length === 0) return;
-
-      const oneHourAgo = new Date();
-      oneHourAgo.setHours(oneHourAgo.getHours() - 1);
-
-      const ordersToComplete = orders.filter((order: any) => {
-        if (order.status !== 'cooking') return false;
-
-        const orderDate = new Date(order.created_at.replace(' ', 'T').split('.')[0] + '-05:00');
-        return orderDate < oneHourAgo;
-      });
-
-      for (const order of ordersToComplete) {
-        try {
-          console.log(`⏰ Auto-completing order ${order.id} (older than 1 hour)`);
-          await apiRequest('PATCH', `/api/orders/${order.id}`, { status: 'picked_up' });
-        } catch (error) {
-          console.error(`Failed to auto-complete order ${order.id}:`, error);
-        }
-      }
-
-      if (ordersToComplete.length > 0) {
-        queryClient.invalidateQueries({ queryKey: ['/api/kitchen/orders'] });
-      }
-    };
-
-    // Check every minute
-    const interval = setInterval(autoCompleteOldOrders, 60000);
-    autoCompleteOldOrders(); // Run immediately on mount
-
-    return () => clearInterval(interval);
-  }, [orders]);
-
   // Timer to check for daily summary prompt
   useEffect(() => {
     if (!closingTime) return;
@@ -520,6 +484,46 @@ const KitchenPage = () => {
     // Allow starting 30 minutes before scheduled time
     return minutesUntilScheduled <= 30;
   };
+
+  // Auto-complete orders after 1 hour
+  useEffect(() => {
+    const autoCompleteOldOrders = async () => {
+      if (!orders || orders.length === 0) return;
+
+      const oneHourAgo = new Date();
+      oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+
+      const ordersToComplete = orders.filter((order: any) => {
+        if (order.status !== 'cooking') return false;
+
+        const orderDate = new Date(order.created_at.replace(' ', 'T').split('.')[0] + '-05:00');
+        return orderDate < oneHourAgo;
+      });
+
+      for (const order of ordersToComplete) {
+        try {
+          console.log(`⏰ Auto-completing order ${order.id} (older than 1 hour)`);
+          await apiRequest('PATCH', `/api/orders/${order.id}`, { status: 'picked_up' });
+        } catch (error) {
+          console.error(`Failed to auto-complete order ${order.id}:`, error);
+        }
+      }
+
+      if (ordersToComplete.length > 0) {
+        queryClient.invalidateQueries({ queryKey: ['/api/kitchen/orders'] });
+      }
+    };
+
+    // Check every minute
+    const interval = setInterval(autoCompleteOldOrders, 60000);
+
+    // Run on mount only if orders exist
+    if (orders && orders.length > 0) {
+      autoCompleteOldOrders();
+    }
+
+    return () => clearInterval(interval);
+  }, [orders]);
 
   // Filter orders based on active tab
   const filteredOrders = orders ? orders.filter((order: any) => {
