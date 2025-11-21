@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -57,6 +58,13 @@ const KitchenPage = () => {
   // Order Status Mode State - automatic mode only (manual mode disabled)
   const [orderStatusMode, setOrderStatusMode] = useState<'manual' | 'automatic'>('automatic');
   const [showStatusModeModal, setShowStatusModeModal] = useState(false);
+
+  // Refund Modal State
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundOrder, setRefundOrder] = useState<any>(null);
+  const [refundType, setRefundType] = useState<'full' | 'partial'>('full');
+  const [refundAmount, setRefundAmount] = useState('');
+  const [refundReason, setRefundReason] = useState('');
 
   // Switch to appropriate tab when mode changes
   useEffect(() => {
@@ -1802,18 +1810,21 @@ const KitchenPage = () => {
                               <DropdownMenuLabel>Order Actions</DropdownMenuLabel>
                               <DropdownMenuSeparator />
 
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  // TODO: Implement refund
-                                  toast({
-                                    title: "Refund Order",
-                                    description: "Refund functionality coming soon",
-                                  });
-                                }}
-                              >
-                                <RefreshCcw className="mr-2 h-4 w-4" />
-                                Refund Order
-                              </DropdownMenuItem>
+                              {/* Only show refund for real orders (not test orders) */}
+                              {order.payment_status !== 'test_order_admin_bypass' && order.payment_intent_id && (
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setRefundOrder(order);
+                                    setRefundType('full');
+                                    setRefundAmount(order.total);
+                                    setRefundReason('');
+                                    setShowRefundModal(true);
+                                  }}
+                                >
+                                  <RefreshCcw className="mr-2 h-4 w-4" />
+                                  Refund Order
+                                </DropdownMenuItem>
+                              )}
 
                               {order.payment_status === 'test_order_admin_bypass' && (
                                 <DropdownMenuItem
@@ -2250,6 +2261,143 @@ const KitchenPage = () => {
                 onClick={() => setShowDailySummaryModal(false)}
               >
                 No, Maybe Later
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Refund Modal */}
+        <Dialog open={showRefundModal} onOpenChange={setShowRefundModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Refund Order #{refundOrder?.id}</DialogTitle>
+              <DialogDescription>
+                Process a full or partial refund for this order
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* Full or Partial Selection */}
+              <div>
+                <Label className="text-sm font-medium">Refund Type</Label>
+                <RadioGroup value={refundType} onValueChange={(value: 'full' | 'partial') => {
+                  setRefundType(value);
+                  if (value === 'full' && refundOrder) {
+                    setRefundAmount(refundOrder.total);
+                  }
+                }}>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="full" id="full" />
+                    <Label htmlFor="full" className="font-normal cursor-pointer">
+                      Full Refund (${refundOrder?.total || '0.00'})
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="partial" id="partial" />
+                    <Label htmlFor="partial" className="font-normal cursor-pointer">
+                      Partial Refund
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {/* Refund Amount (for partial) */}
+              {refundType === 'partial' && (
+                <div className="space-y-2">
+                  <Label htmlFor="refundAmount">Refund Amount</Label>
+                  <Input
+                    id="refundAmount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max={refundOrder?.total || 0}
+                    value={refundAmount}
+                    onChange={(e) => setRefundAmount(e.target.value)}
+                    placeholder="0.00"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Maximum: ${refundOrder?.total || '0.00'}
+                  </p>
+                </div>
+              )}
+
+              {/* Refund Reason */}
+              <div className="space-y-2">
+                <Label htmlFor="refundReason">Reason for Refund *</Label>
+                <Textarea
+                  id="refundReason"
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  placeholder="e.g., Customer complaint, wrong order, quality issue..."
+                  rows={3}
+                  required
+                />
+              </div>
+
+              {/* Warning */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                <p className="text-sm text-yellow-800">
+                  <strong>Warning:</strong> This will process a refund through Stripe and cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowRefundModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  if (!refundReason.trim()) {
+                    toast({
+                      title: "Reason Required",
+                      description: "Please provide a reason for the refund",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
+                  const amount = parseFloat(refundAmount);
+                  if (isNaN(amount) || amount <= 0) {
+                    toast({
+                      title: "Invalid Amount",
+                      description: "Please enter a valid refund amount",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
+                  if (amount > parseFloat(refundOrder?.total || '0')) {
+                    toast({
+                      title: "Amount Too High",
+                      description: "Refund amount cannot exceed order total",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
+                  try {
+                    // TODO: Implement Stripe refund API call
+                    toast({
+                      title: "Processing Refund",
+                      description: "Refund functionality coming soon",
+                    });
+                    setShowRefundModal(false);
+                  } catch (error) {
+                    console.error('Refund error:', error);
+                    toast({
+                      title: "Refund Failed",
+                      description: "Failed to process refund. Please try again.",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+              >
+                Process Refund
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -273,13 +273,35 @@ export const handler: Handler = async (event, context) => {
     // Create a PaymentIntent with the VALIDATED amount
     console.log('💳 Creating payment intent with amount:', stripeAmount);
 
+    // Build metadata object with customer info for Stripe dashboard
+    const metadata: any = {};
+
+    // Add test order metadata if admin is bypassing validation
+    if (isAdmin && stripeAmount !== validatedAmount) {
+      metadata.test_order = 'true';
+      metadata.actual_amount = validatedAmount.toString();
+    }
+
+    // Add customer name and contact info to Stripe metadata for dashboard visibility
+    if (orderData) {
+      if (orderData.customerName) {
+        metadata.customer_name = orderData.customerName;
+      }
+      if (orderData.phone) {
+        metadata.customer_phone = orderData.phone;
+      }
+      if (orderData.email) {
+        metadata.customer_email = orderData.email;
+      }
+      if (orderData.orderType) {
+        metadata.order_type = orderData.orderType;
+      }
+    }
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(stripeAmount * 100), // Convert to cents
       currency: "usd",
-      metadata: isAdmin && stripeAmount !== validatedAmount ? {
-        test_order: 'true',
-        actual_amount: validatedAmount.toString()
-      } : {}
+      metadata
     });
 
     // Update the order with the payment intent ID (only if orderId exists - for old flow)
