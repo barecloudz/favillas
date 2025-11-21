@@ -15,16 +15,19 @@ export const TipsReport = ({ orders }: any) => {
   // Note: Test order filtering is now applied system-wide in the parent component
   const safeOrders = Array.isArray(orders) ? orders : [];
 
-  // Get today's date in YYYY-MM-DD format
+  // Get today's date in YYYY-MM-DD format (EST timezone)
   const getTodayString = () => {
-    return new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const estDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    return estDate.toISOString().split('T')[0];
   };
 
-  // Get date one week ago
+  // Get date one week ago (EST timezone)
   const getWeekAgoString = () => {
-    const date = new Date();
-    date.setDate(date.getDate() - 7);
-    return date.toISOString().split('T')[0];
+    const now = new Date();
+    const estDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    estDate.setDate(estDate.getDate() - 7);
+    return estDate.toISOString().split('T')[0];
   };
 
   // Initialize dates
@@ -40,20 +43,25 @@ export const TipsReport = ({ orders }: any) => {
     let start: Date, end: Date;
 
     if (dateRange === 'today') {
-      start = new Date();
-      start.setHours(0, 0, 0, 0);
-      end = new Date();
-      end.setHours(23, 59, 59, 999);
+      // Get today's start/end in EST
+      const now = new Date();
+      const estNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      const todayStr = estNow.toISOString().split('T')[0];
+      start = new Date(todayStr + 'T00:00:00-05:00'); // EST midnight
+      end = new Date(todayStr + 'T23:59:59-05:00'); // EST end of day
     } else if (dateRange === 'week') {
-      start = new Date();
-      start.setDate(start.getDate() - 7);
-      start.setHours(0, 0, 0, 0);
-      end = new Date();
-      end.setHours(23, 59, 59, 999);
+      const now = new Date();
+      const estNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      const weekAgo = new Date(estNow);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const weekAgoStr = weekAgo.toISOString().split('T')[0];
+      const todayStr = estNow.toISOString().split('T')[0];
+      start = new Date(weekAgoStr + 'T00:00:00-05:00');
+      end = new Date(todayStr + 'T23:59:59-05:00');
     } else {
       if (!startDate || !endDate) return [];
-      start = new Date(startDate + 'T00:00:00');
-      end = new Date(endDate + 'T23:59:59');
+      start = new Date(startDate + 'T00:00:00-05:00');
+      end = new Date(endDate + 'T23:59:59-05:00');
     }
 
     return safeOrders.filter((order: any) => {
