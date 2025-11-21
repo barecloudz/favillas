@@ -1362,7 +1362,7 @@ const KitchenPage = () => {
                             </Badge>
                           </div>
                           <p className="text-xs text-gray-500 mb-3">
-                            {new Date(order.created_at).toLocaleTimeString()}
+                            {new Date(order.created_at).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true })}
                           </p>
 
                           {/* Order Items - Simplified for column view */}
@@ -1425,7 +1425,7 @@ const KitchenPage = () => {
                             </Badge>
                           </div>
                           <p className="text-xs text-gray-500 mb-3">
-                            {new Date(order.created_at).toLocaleTimeString()}
+                            {new Date(order.created_at).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true })}
                           </p>
 
                           {/* Order Items - Simplified for column view */}
@@ -1488,7 +1488,7 @@ const KitchenPage = () => {
                             </Badge>
                           </div>
                           <p className="text-xs text-gray-500 mb-3">
-                            {new Date(order.created_at).toLocaleTimeString()}
+                            {new Date(order.created_at).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true })}
                           </p>
 
                           {/* Order Items - Simplified for column view */}
@@ -1631,7 +1631,7 @@ const KitchenPage = () => {
                         </div>
                         <div className="text-sm text-gray-500">
                           <div className="flex justify-between">
-                            <span>{new Date(order.created_at).toLocaleTimeString()}</span>
+                            <span>{new Date(order.created_at).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true })}</span>
                             <Badge variant={order.payment_status === 'paid' ? 'default' : 'outline'}>
                               {order.payment_status?.toUpperCase() || 'UNKNOWN'}
                             </Badge>
@@ -1970,7 +1970,7 @@ const KitchenPage = () => {
                   {selectedOrder.address && (
                     <p className="text-sm"><strong>Address:</strong> {selectedOrder.address}</p>
                   )}
-                  <p className="text-sm"><strong>Order Time:</strong> {new Date(selectedOrder.created_at).toLocaleString()}</p>
+                  <p className="text-sm"><strong>Order Time:</strong> {new Date(selectedOrder.created_at).toLocaleString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true })}</p>
                 </div>
 
                 {/* Order Items */}
