@@ -1949,7 +1949,7 @@ const KitchenPage = () => {
                             </Button>
                           )}
 
-                          {orderStatusMode === 'manual' && order.status === 'cooking' && (
+                          {order.status === 'cooking' && (
                             <Button
                               className="w-full sm:flex-1 h-12 text-base font-bold text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2"
                               onClick={() => {
