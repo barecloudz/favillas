@@ -517,7 +517,8 @@ const KitchenPage = () => {
       oneHourAgo.setHours(oneHourAgo.getHours() - 1);
 
       const ordersToComplete = orders.filter((order: any) => {
-        if (order.status !== 'cooking') return false;
+        // Auto-complete both pending and cooking orders after 1 hour
+        if (order.status !== 'cooking' && order.status !== 'pending') return false;
 
         const orderDate = new Date(order.created_at.replace(' ', 'T').split('.')[0] + '-05:00');
         return orderDate < oneHourAgo;
@@ -574,12 +575,20 @@ const KitchenPage = () => {
       return !previousOrderIds.has(order.id);
     });
 
-    // Auto-print each new order
+    // Auto-print and play sound for each new order
     newOrders.forEach((order: any) => {
       console.log(`🆕 New order detected: #${order.id}`);
+
+      // Play notification sound if enabled
+      if (soundEnabled) {
+        console.log('🔊 Playing notification sound for new order');
+        playTestSound();
+      }
+
+      // Auto-print if enabled
       handleNewOrder(order);
     });
-  }, [orders, handleNewOrder]);
+  }, [orders, handleNewOrder, soundEnabled, playTestSound]);
 
   // Filter orders based on active tab
   const filteredOrders = orders ? orders.filter((order: any) => {
@@ -2008,7 +2017,7 @@ const KitchenPage = () => {
                             </Button>
                           )}
 
-                          {order.status === 'cooking' && (
+                          {(order.status === 'cooking' || order.status === 'pending') && (
                             <Button
                               className="w-full sm:flex-1 h-12 text-base font-bold text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2"
                               onClick={() => {
