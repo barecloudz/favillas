@@ -42,34 +42,35 @@ export const TipsReport = ({ orders }: any) => {
 
     let start: Date, end: Date;
 
-    if (dateRange === 'today') {
-      // Get today's start/end in EST
-      const now = new Date();
-      const estNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-      const todayStr = estNow.toISOString().split('T')[0];
-      start = new Date(todayStr + 'T00:00:00-05:00'); // EST midnight
-      end = new Date(todayStr + 'T23:59:59-05:00'); // EST end of day
-    } else if (dateRange === 'week') {
-      const now = new Date();
-      const estNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-      const weekAgo = new Date(estNow);
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      const weekAgoStr = weekAgo.toISOString().split('T')[0];
-      const todayStr = estNow.toISOString().split('T')[0];
-      start = new Date(weekAgoStr + 'T00:00:00-05:00');
-      end = new Date(todayStr + 'T23:59:59-05:00');
-    } else {
-      if (!startDate || !endDate) return [];
-      start = new Date(startDate + 'T00:00:00-05:00');
-      end = new Date(endDate + 'T23:59:59-05:00');
-    }
-
+    // Filter orders by comparing EST dates
     return safeOrders.filter((order: any) => {
       const dateValue = order.created_at || order.createdAt;
       if (!dateValue) return false;
+
       const orderDate = new Date(dateValue);
       if (isNaN(orderDate.getTime())) return false;
-      return orderDate >= start && orderDate <= end && order.status === 'picked_up';
+
+      // Convert order timestamp to EST date string
+      const orderESTDate = new Date(orderDate.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      const orderDateStr = orderESTDate.toISOString().split('T')[0];
+
+      if (dateRange === 'today') {
+        const now = new Date();
+        const estNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+        const todayStr = estNow.toISOString().split('T')[0];
+        return orderDateStr === todayStr && order.status === 'picked_up';
+      } else if (dateRange === 'week') {
+        const now = new Date();
+        const estNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+        const weekAgo = new Date(estNow);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const weekAgoStr = weekAgo.toISOString().split('T')[0];
+        const todayStr = estNow.toISOString().split('T')[0];
+        return orderDateStr >= weekAgoStr && orderDateStr <= todayStr && order.status === 'picked_up';
+      } else {
+        if (!startDate || !endDate) return false;
+        return orderDateStr >= startDate && orderDateStr <= endDate && order.status === 'picked_up';
+      }
     });
   };
 
