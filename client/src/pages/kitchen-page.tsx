@@ -49,6 +49,29 @@ const formatESTTime = (timestamp: string) => {
   }
 };
 
+// Helper function to format EST date from database
+const formatESTDate = (timestamp: string) => {
+  if (!timestamp) return 'Invalid Date';
+  try {
+    const cleanTimestamp = timestamp.replace(' ', 'T').split('.')[0];
+    const estDate = new Date(cleanTimestamp + '-05:00');
+
+    if (isNaN(estDate.getTime())) {
+      console.error('Invalid timestamp:', timestamp);
+      return 'Invalid Date';
+    }
+
+    return estDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  } catch (error) {
+    console.error('Error formatting date:', timestamp, error);
+    return 'Invalid Date';
+  }
+};
+
 const KitchenPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -1711,7 +1734,10 @@ const KitchenPage = () => {
                         </div>
                         <div className="text-sm text-gray-500">
                           <div className="flex justify-between">
-                            <span>{formatESTTime(order.created_at)}</span>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{formatESTDate(order.created_at)}</span>
+                              <span className="text-xs">{formatESTTime(order.created_at)}</span>
+                            </div>
                             <Badge variant={order.payment_status === 'paid' ? 'default' : 'outline'}>
                               {order.payment_status?.toUpperCase() || 'UNKNOWN'}
                             </Badge>
