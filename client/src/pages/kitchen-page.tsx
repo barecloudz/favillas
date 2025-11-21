@@ -525,6 +525,26 @@ const KitchenPage = () => {
     return () => clearInterval(interval);
   }, [orders]);
 
+  // Auto-print new orders (replaces WebSocket in production)
+  useEffect(() => {
+    if (!orders || orders.length === 0) return;
+
+    // Get previous order IDs from ref
+    const previousOrderIds = printedOrdersRef.current;
+
+    // Find new orders (orders that weren't in the previous list)
+    const newOrders = orders.filter((order: any) => {
+      // Only consider orders that haven't been printed yet
+      return !previousOrderIds.has(order.id);
+    });
+
+    // Auto-print each new order
+    newOrders.forEach((order: any) => {
+      console.log(`🆕 New order detected: #${order.id}`);
+      handleNewOrder(order);
+    });
+  }, [orders, handleNewOrder]);
+
   // Filter orders based on active tab
   const filteredOrders = orders ? orders.filter((order: any) => {
     if (activeTab === "today") {
