@@ -2603,8 +2603,27 @@ export const handler: Handler = async (event, context) => {
 
       try {
         let deletedCount = 0;
+        let skippedCount = 0;
 
         for (const orderId of orderIds) {
+          // CRITICAL: Only allow deleting test orders (payment_status = 'test_order_admin_bypass')
+          const orderCheck = await sql`
+            SELECT id, payment_status
+            FROM orders
+            WHERE id = ${orderId}
+          `;
+
+          if (orderCheck.length === 0) {
+            console.warn(`⚠️ Order ${orderId} not found`);
+            continue;
+          }
+
+          if (orderCheck[0].payment_status !== 'test_order_admin_bypass') {
+            console.warn(`⚠️ Order ${orderId} is not a test order - skipping deletion`);
+            skippedCount++;
+            continue;
+          }
+
           // Delete related records first to avoid foreign key constraints
           await sql`DELETE FROM order_items WHERE order_id = ${orderId}`;
 
@@ -2612,17 +2631,21 @@ export const handler: Handler = async (event, context) => {
           const deletedOrder = await sql`DELETE FROM orders WHERE id = ${orderId} RETURNING id`;
           if (deletedOrder.length > 0) {
             deletedCount++;
+            console.log(`✅ Deleted test order ${orderId}`);
           }
         }
 
-        console.log(`✅ Successfully deleted ${deletedCount} orders`);
+        console.log(`✅ Successfully deleted ${deletedCount} test orders (${skippedCount} skipped - not test orders)`);
 
         return {
           statusCode: 200,
           headers,
           body: JSON.stringify({
-            message: `Successfully deleted ${deletedCount} order(s)`,
-            deletedCount
+            message: skippedCount > 0
+              ? `Deleted ${deletedCount} test order(s). ${skippedCount} order(s) skipped (only test orders can be deleted).`
+              : `Successfully deleted ${deletedCount} test order(s)`,
+            deletedCount,
+            skippedCount
           })
         };
 

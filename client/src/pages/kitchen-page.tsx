@@ -13,7 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Loader2, Printer, Volume2, Columns3, LayoutGrid, User, Home, Settings, LogOut, PauseCircle, PlayCircle, Package, ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
+import { Loader2, Printer, Volume2, Columns3, LayoutGrid, User, Home, Settings, LogOut, PauseCircle, PlayCircle, Package, ChevronDown, ChevronRight, AlertTriangle, MoreVertical, Trash2, RefreshCcw } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -1787,6 +1787,71 @@ const KitchenPage = () => {
                             <Printer className="h-4 w-4 mr-2" />
                             Print
                           </Button>
+
+                          {/* More Options Dropdown */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                className="w-full sm:w-auto h-12 px-4"
+                                variant="outline"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Order Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  // TODO: Implement refund
+                                  toast({
+                                    title: "Refund Order",
+                                    description: "Refund functionality coming soon",
+                                  });
+                                }}
+                              >
+                                <RefreshCcw className="mr-2 h-4 w-4" />
+                                Refund Order
+                              </DropdownMenuItem>
+
+                              {order.payment_status === 'test_order_admin_bypass' && (
+                                <DropdownMenuItem
+                                  className="text-red-600 focus:text-red-600"
+                                  onClick={async () => {
+                                    if (!confirm(`Delete test order #${order.id}?\n\nThis action cannot be undone.`)) {
+                                      return;
+                                    }
+
+                                    try {
+                                      const response = await apiRequest('DELETE', '/api/orders', {
+                                        orderId: order.id
+                                      });
+                                      const result = await response.json();
+
+                                      toast({
+                                        title: "Order Deleted",
+                                        description: result.message || `Test order #${order.id} has been deleted`,
+                                      });
+
+                                      // Refresh orders
+                                      queryClient.invalidateQueries({ queryKey: ['/api/kitchen/orders'] });
+                                    } catch (error) {
+                                      console.error('Failed to delete order:', error);
+                                      toast({
+                                        title: "Delete Failed",
+                                        description: "Failed to delete order. Please try again.",
+                                        variant: "destructive",
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete Test Order
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
 
                           {orderStatusMode === 'manual' && order.status === 'pending' && (
                             <Button
