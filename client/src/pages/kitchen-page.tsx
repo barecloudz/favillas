@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Loader2, Printer, Volume2, Columns3, LayoutGrid, User, Home, Settings, LogOut, PauseCircle, PlayCircle, Package, ChevronDown, ChevronRight, AlertTriangle, MoreVertical, Trash2, RefreshCcw } from "lucide-react";
+import { Loader2, Printer, Volume2, Columns3, LayoutGrid, User, Home, Settings, LogOut, PauseCircle, PlayCircle, Package, ChevronDown, ChevronRight, AlertTriangle, MoreVertical, Trash2, RefreshCcw, CheckCircle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -224,6 +224,42 @@ const KitchenPage = () => {
 
     fetchStoreHours();
   }, []);
+
+  // Auto-complete orders after 1 hour
+  useEffect(() => {
+    const autoCompleteOldOrders = async () => {
+      if (!orders || orders.length === 0) return;
+
+      const oneHourAgo = new Date();
+      oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+
+      const ordersToComplete = orders.filter((order: any) => {
+        if (order.status !== 'cooking') return false;
+
+        const orderDate = new Date(order.created_at.replace(' ', 'T').split('.')[0] + '-05:00');
+        return orderDate < oneHourAgo;
+      });
+
+      for (const order of ordersToComplete) {
+        try {
+          console.log(`⏰ Auto-completing order ${order.id} (older than 1 hour)`);
+          await apiRequest('PATCH', `/api/orders/${order.id}`, { status: 'picked_up' });
+        } catch (error) {
+          console.error(`Failed to auto-complete order ${order.id}:`, error);
+        }
+      }
+
+      if (ordersToComplete.length > 0) {
+        queryClient.invalidateQueries({ queryKey: ['/api/kitchen/orders'] });
+      }
+    };
+
+    // Check every minute
+    const interval = setInterval(autoCompleteOldOrders, 60000);
+    autoCompleteOldOrders(); // Run immediately on mount
+
+    return () => clearInterval(interval);
+  }, [orders]);
 
   // Timer to check for daily summary prompt
   useEffect(() => {
@@ -1468,13 +1504,14 @@ const KitchenPage = () => {
                           </div>
 
                           <Button
-                            className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                            className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2"
                             onClick={(e) => {
                               e.stopPropagation();
-                              updateOrderStatus(order.id, 'completed');
+                              updateOrderStatus(order.id, 'picked_up');
                             }}
                           >
-                            ✅ Complete
+                            <CheckCircle className="h-5 w-5" />
+                            Picked Up
                           </Button>
                         </CardContent>
                       </Card>
@@ -1482,16 +1519,16 @@ const KitchenPage = () => {
                   </div>
                 </div>
 
-                {/* Column 3: Ready for Pickup */}
+                {/* Column 3: Picked Up */}
                 <div className="flex flex-col bg-white rounded-2xl shadow-2xl border-4 border-green-100 overflow-hidden transform transition-all duration-300 hover:scale-[1.02]">
                   <div className="bg-gradient-to-r from-green-500 via-green-600 to-green-500 text-white p-4 font-bold text-center flex items-center justify-center gap-3 shadow-lg">
-                    <span className="text-lg">Ready for Pickup</span>
+                    <span className="text-lg">Picked Up</span>
                     <Badge className="bg-white text-green-600 font-bold text-base px-3 py-1 shadow-md">
-                      {orders?.filter((o: any) => o.status === "completed").length || 0}
+                      {orders?.filter((o: any) => o.status === "picked_up").length || 0}
                     </Badge>
                   </div>
                   <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-green-50/30 to-transparent">
-                    {orders?.filter((o: any) => o.status === "completed").map((order: any) => (
+                    {orders?.filter((o: any) => o.status === "picked_up").map((order: any) => (
                       <Card
                         key={order.id}
                         className="cursor-pointer hover:shadow-2xl transition-all duration-300 border-2 border-green-200/50 hover:border-green-400 bg-gradient-to-br from-white to-green-50/20 hover:scale-[1.02]"
@@ -1517,7 +1554,7 @@ const KitchenPage = () => {
                           </p>
 
                           {/* Order Items - Simplified for column view */}
-                          <div className="space-y-2 mb-3">
+                          <div className="space-y-2">
                             {order.items?.map((item: any, idx: number) => (
                               <div key={idx} className="text-sm">
                                 <div className="font-medium text-gray-800">
@@ -1530,15 +1567,9 @@ const KitchenPage = () => {
                             ))}
                           </div>
 
-                          <Button
-                            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              updateOrderStatus(order.id, 'picked_up');
-                            }}
-                          >
-                            📦 Picked Up
-                          </Button>
+                          <div className="mt-3 text-center text-sm text-gray-500">
+                            ✅ Order Complete
+                          </div>
                         </CardContent>
                       </Card>
                     ))}
@@ -1916,13 +1947,14 @@ const KitchenPage = () => {
 
                           {orderStatusMode === 'manual' && order.status === 'cooking' && (
                             <Button
-                              className="w-full sm:flex-1 h-12 text-base font-bold text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                              className="w-full sm:flex-1 h-12 text-base font-bold text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2"
                               onClick={() => {
-                                console.log('✅ Complete clicked for order:', order.id);
-                                updateOrderStatus(order.id, 'completed');
+                                console.log('✅ Picked Up clicked for order:', order.id);
+                                updateOrderStatus(order.id, 'picked_up');
                               }}
                             >
-                              ✅ Complete
+                              <CheckCircle className="h-5 w-5" />
+                              Picked Up
                             </Button>
                           )}
 

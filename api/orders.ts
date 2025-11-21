@@ -1181,7 +1181,7 @@ export const handler: Handler = async (event, context) => {
             ) VALUES (
               ${finalUserId},
               ${finalSupabaseUserId},
-              ${orderData.status || 'picked_up'},
+              ${orderData.status || 'cooking'},
               ${serverCalculatedOrder.total},
               ${serverCalculatedOrder.tax},
               ${deliveryFee.toFixed(2)},
