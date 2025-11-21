@@ -549,8 +549,21 @@ const KitchenPage = () => {
   }, [orders]);
 
   // Auto-print new orders (replaces WebSocket in production)
+  const isInitialMount = useRef(true);
   useEffect(() => {
     if (!orders || orders.length === 0) return;
+
+    // On initial mount, just populate printedOrdersRef with existing order IDs
+    // Don't print anything - only print truly NEW orders that come in later
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      // Mark all existing orders as already seen/printed
+      const existingOrderIds = new Set(orders.map((order: any) => order.id));
+      existingOrderIds.forEach(id => printedOrdersRef.current.add(id));
+      setPrintedOrders(existingOrderIds);
+      console.log(`📋 Initial load: ${existingOrderIds.size} existing orders marked as seen (won't auto-print)`);
+      return;
+    }
 
     // Get previous order IDs from ref
     const previousOrderIds = printedOrdersRef.current;
