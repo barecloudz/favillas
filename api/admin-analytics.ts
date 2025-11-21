@@ -74,28 +74,10 @@ export const handler: Handler = async (event, context) => {
     let filterEndDate: string | null = null;
     let useExactDate: string | null = null;
 
-    // Business day logic: If before opening time, use previous calendar day
-    // Store hours: Tue-Sat 11AM, Sun 12PM, Mon closed
-    function getBusinessDay(date: Date): string {
-      const hours = date.getHours();
-      const dayOfWeek = date.getDay(); // 0=Sun, 1=Mon, 2=Tue, etc
-
-      // Opening time varies by day
-      const openingHour = dayOfWeek === 0 ? 12 : 11; // Sunday 12PM, others 11AM
-
-      // If before opening time, this is still previous business day
-      if (hours < openingHour) {
-        const previousDay = new Date(date);
-        previousDay.setDate(previousDay.getDate() - 1);
-        return previousDay.toISOString().split('T')[0];
-      }
-
-      return date.toISOString().split('T')[0];
-    }
-
     switch (period) {
       case 'today':
-        useExactDate = getBusinessDay(now);
+        // Use current calendar date (12:01 AM to 11:59 PM)
+        useExactDate = now.toISOString().split('T')[0];
         break;
       case 'week':
         filterStartDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
