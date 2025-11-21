@@ -68,6 +68,9 @@ export const handler: Handler = async (event, context) => {
     const startDate = urlParams.get('start');
     const endDate = urlParams.get('end');
 
+    // Helper function to convert timestamps to EST date for comparison
+    const toESTDate = (field: string) => `DATE((${field}) AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York')`;
+
     // Calculate date ranges securely
     const now = new Date();
     let filterStartDate: string | null = null;
@@ -76,8 +79,10 @@ export const handler: Handler = async (event, context) => {
 
     switch (period) {
       case 'today':
-        // Use current calendar date (12:01 AM to 11:59 PM)
-        useExactDate = now.toISOString().split('T')[0];
+        // Use current calendar date in EST timezone (12:01 AM to 11:59 PM EST)
+        // Convert UTC to EST (UTC-5)
+        const estDate = new Date(now.getTime() - (5 * 60 * 60 * 1000));
+        useExactDate = estDate.toISOString().split('T')[0];
         break;
       case 'week':
         filterStartDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -122,7 +127,7 @@ export const handler: Handler = async (event, context) => {
             COALESCE(AVG(CAST(total AS DECIMAL(10,2))), 0) as average_order_value
           FROM orders
           WHERE status != 'cancelled'
-          AND DATE(created_at) = ${useExactDate}
+          AND DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') = ${useExactDate}
         `
       : filterStartDate && filterEndDate
       ? await sql`
@@ -135,7 +140,7 @@ export const handler: Handler = async (event, context) => {
             COALESCE(AVG(CAST(total AS DECIMAL(10,2))), 0) as average_order_value
           FROM orders
           WHERE status != 'cancelled'
-          AND DATE(created_at) BETWEEN ${filterStartDate} AND ${filterEndDate}
+          AND DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') BETWEEN ${filterStartDate} AND ${filterEndDate}
         `
       : filterStartDate
       ? await sql`
@@ -148,7 +153,7 @@ export const handler: Handler = async (event, context) => {
             COALESCE(AVG(CAST(total AS DECIMAL(10,2))), 0) as average_order_value
           FROM orders
           WHERE status != 'cancelled'
-          AND DATE(created_at) >= ${filterStartDate}
+          AND DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') >= ${filterStartDate}
         `
       : await sql`
           SELECT
@@ -165,13 +170,13 @@ export const handler: Handler = async (event, context) => {
     // Daily Revenue Trend (last 30 days)
     const dailyRevenueQuery = await sql`
       SELECT
-        DATE(created_at) as date,
+        DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') as date,
         COUNT(*) as orders,
         COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue
       FROM orders
       WHERE status != 'cancelled'
-      AND DATE(created_at) >= CURRENT_DATE - INTERVAL '30 days'
-      GROUP BY DATE(created_at)
+      AND DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York')
       ORDER BY date DESC
       LIMIT 30
     `;
@@ -181,7 +186,7 @@ export const handler: Handler = async (event, context) => {
       ? await sql`
           SELECT status, COUNT(*) as count, COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue
           FROM orders
-          WHERE DATE(created_at) = ${useExactDate}
+          WHERE DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') = ${useExactDate}
           GROUP BY status
           ORDER BY count DESC
         `
@@ -189,7 +194,7 @@ export const handler: Handler = async (event, context) => {
       ? await sql`
           SELECT status, COUNT(*) as count, COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue
           FROM orders
-          WHERE DATE(created_at) BETWEEN ${filterStartDate} AND ${filterEndDate}
+          WHERE DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') BETWEEN ${filterStartDate} AND ${filterEndDate}
           GROUP BY status
           ORDER BY count DESC
         `
@@ -197,7 +202,7 @@ export const handler: Handler = async (event, context) => {
       ? await sql`
           SELECT status, COUNT(*) as count, COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue
           FROM orders
-          WHERE DATE(created_at) >= ${filterStartDate}
+          WHERE DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') >= ${filterStartDate}
           GROUP BY status
           ORDER BY count DESC
         `
@@ -268,7 +273,7 @@ export const handler: Handler = async (event, context) => {
                  COUNT(CASE WHEN user_id IS NOT NULL THEN 1 END) as legacy_customers,
                  COUNT(CASE WHEN supabase_user_id IS NOT NULL THEN 1 END) as google_customers
           FROM orders
-          WHERE status != 'cancelled' AND DATE(created_at) = ${useExactDate}
+          WHERE status != 'cancelled' AND DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') = ${useExactDate}
         `
       : filterStartDate && filterEndDate
       ? await sql`
@@ -276,7 +281,7 @@ export const handler: Handler = async (event, context) => {
                  COUNT(CASE WHEN user_id IS NOT NULL THEN 1 END) as legacy_customers,
                  COUNT(CASE WHEN supabase_user_id IS NOT NULL THEN 1 END) as google_customers
           FROM orders
-          WHERE status != 'cancelled' AND DATE(created_at) BETWEEN ${filterStartDate} AND ${filterEndDate}
+          WHERE status != 'cancelled' AND DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') BETWEEN ${filterStartDate} AND ${filterEndDate}
         `
       : filterStartDate
       ? await sql`
@@ -284,7 +289,7 @@ export const handler: Handler = async (event, context) => {
                  COUNT(CASE WHEN user_id IS NOT NULL THEN 1 END) as legacy_customers,
                  COUNT(CASE WHEN supabase_user_id IS NOT NULL THEN 1 END) as google_customers
           FROM orders
-          WHERE status != 'cancelled' AND DATE(created_at) >= ${filterStartDate}
+          WHERE status != 'cancelled' AND DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') >= ${filterStartDate}
         `
       : await sql`
           SELECT COUNT(DISTINCT COALESCE(user_id, supabase_user_id)) as unique_customers,
@@ -299,7 +304,7 @@ export const handler: Handler = async (event, context) => {
       ? await sql`
           SELECT payment_status, COUNT(*) as count, COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue
           FROM orders
-          WHERE status != 'cancelled' AND DATE(created_at) = ${useExactDate}
+          WHERE status != 'cancelled' AND DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') = ${useExactDate}
           GROUP BY payment_status
           ORDER BY count DESC
         `
@@ -307,7 +312,7 @@ export const handler: Handler = async (event, context) => {
       ? await sql`
           SELECT payment_status, COUNT(*) as count, COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue
           FROM orders
-          WHERE status != 'cancelled' AND DATE(created_at) BETWEEN ${filterStartDate} AND ${filterEndDate}
+          WHERE status != 'cancelled' AND DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') BETWEEN ${filterStartDate} AND ${filterEndDate}
           GROUP BY payment_status
           ORDER BY count DESC
         `
@@ -315,7 +320,7 @@ export const handler: Handler = async (event, context) => {
       ? await sql`
           SELECT payment_status, COUNT(*) as count, COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue
           FROM orders
-          WHERE status != 'cancelled' AND DATE(created_at) >= ${filterStartDate}
+          WHERE status != 'cancelled' AND DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') >= ${filterStartDate}
           GROUP BY payment_status
           ORDER BY count DESC
         `
@@ -334,7 +339,7 @@ export const handler: Handler = async (event, context) => {
                  COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue,
                  COALESCE(AVG(CAST(total AS DECIMAL(10,2))), 0) as avg_order_value
           FROM orders
-          WHERE status != 'cancelled' AND DATE(created_at) = ${useExactDate}
+          WHERE status != 'cancelled' AND DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') = ${useExactDate}
           GROUP BY order_type
           ORDER BY count DESC
         `
@@ -344,7 +349,7 @@ export const handler: Handler = async (event, context) => {
                  COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue,
                  COALESCE(AVG(CAST(total AS DECIMAL(10,2))), 0) as avg_order_value
           FROM orders
-          WHERE status != 'cancelled' AND DATE(created_at) BETWEEN ${filterStartDate} AND ${filterEndDate}
+          WHERE status != 'cancelled' AND DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') BETWEEN ${filterStartDate} AND ${filterEndDate}
           GROUP BY order_type
           ORDER BY count DESC
         `
@@ -354,7 +359,7 @@ export const handler: Handler = async (event, context) => {
                  COALESCE(SUM(CAST(total AS DECIMAL(10,2))), 0) as revenue,
                  COALESCE(AVG(CAST(total AS DECIMAL(10,2))), 0) as avg_order_value
           FROM orders
-          WHERE status != 'cancelled' AND DATE(created_at) >= ${filterStartDate}
+          WHERE status != 'cancelled' AND DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') >= ${filterStartDate}
           GROUP BY order_type
           ORDER BY count DESC
         `
