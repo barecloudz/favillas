@@ -937,7 +937,7 @@ const AdminDashboard = () => {
     // Define tabs inline to avoid dependency issues
     const primaryTabsHrefs = ["dashboard", "orders", "catering"];
     const categoryTabsHrefs = [
-      "analytics", "reports", "tips-report",
+      "analytics", "reports", "tips-report", "refunds",
       "menu-editor", "pricing", "out-of-stock", "multi-location", "experimental",
       "frontend", "qr-codes", "widget", "smart-links", "printer", "receipt-templates", "scheduling", "reservations", 
       "vacation-mode", "delivery", "taxation",
