@@ -1,0 +1,77 @@
+{
+  "type": "function",
+  "async": false,
+  "messages": [],
+  "function": {
+    "name": "submit_order",
+    "description": "Submit a pizza order to Favilla's ordering system. Call this function when you have collected all required order information from the customer.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "description": "List of order items. Each item should have: menuItemId (string), quantity (number), price (number), name (string), and optionally options (array of strings for toppings/modifications)",
+          "items": {
+            "type": "object",
+            "properties": {
+              "menuItemId": {
+                "type": "string",
+                "description": "Menu item identifier (use generic IDs like 'pizza-12', 'pizza-16', 'pizza-18' for different pizza sizes)"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the item (e.g., 'Large Pepperoni Pizza')"
+              },
+              "quantity": {
+                "type": "number",
+                "description": "Quantity of this item"
+              },
+              "price": {
+                "type": "number",
+                "description": "Price per item in dollars"
+              },
+              "options": {
+                "type": "array",
+                "description": "Toppings or modifications for this item",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["menuItemId", "name", "quantity", "price"]
+          }
+        },
+        "customer_name": {
+          "type": "string",
+          "description": "Customer's full name"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Customer's 10-digit phone number (accept any format, will be normalized)"
+        },
+        "order_type": {
+          "type": "string",
+          "description": "Type of order: either 'pickup' or 'delivery'",
+          "enum": ["pickup", "delivery"]
+        },
+        "total": {
+          "type": "number",
+          "description": "Total order amount in dollars (including delivery fee if applicable)"
+        },
+        "address": {
+          "type": "string",
+          "description": "Full delivery address in format: street, city, state, zipcode (REQUIRED if order_type is 'delivery')"
+        },
+        "special_instructions": {
+          "type": "string",
+          "description": "Any special instructions or notes for the order (optional)"
+        }
+      },
+      "required": ["items", "customer_name", "phone", "order_type", "total"]
+    }
+  },
+  "server": {
+    "url": "https://favillaspizzeria.com/.netlify/functions/vapi-submit-order",
+    "timeoutSeconds": 20
+  }
+}

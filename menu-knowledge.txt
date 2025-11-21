@@ -1,0 +1,107 @@
+MENU KNOWLEDGE BASE
+
+Appetizers:
+  - Chicken Fingers Appetizer: $9.99 - Served with French Fries.
+  - Jamaican Beef Patties: $5.50
+  - Pepperoni Pinwheel: $4.95 - Pepperonis and meatballs with ricotta and mozzarella cheese
+  - Spinach Pinwheels Appetizer: $4.95 - Spinach with ricotta and mozzarella cheese.
+  - Wings Appetizer: $11.99 - 6 wings with 7 flavours to choose from.
+
+Calzones:
+  - Cheese Calzone: $11.49 - Ricotta, Romano & mozzarella blend baked in a garlic parmesan crust Add additional ingredients for t (Sizes: Small $11.49, Medium $16.49, Large $21.49)
+
+Desserts:
+  - Blueberry Cheesecake Slice: $6.99 - Our Special Blueberry Cheesecake Slices
+  - Cannoli: $5.99
+  - Chocolate Cake: $6.99
+  - Mascarpone Limoncello Cake: $6.99
+  - New York Style Cheesecake: $6.99
+  - Tiramisu: $6.99
+
+Dough Balls:
+  - 10" Dough Ball: $3.00
+  - 14" Dough Ball: $6.00
+  - 16" Dough Ball: $8.00
+
+Drinks:
+  - Bottle of Cherry Coke 20oz: $2.29
+  - Bottle of Coke 20oz: $1.59
+  - Bottle of Diet Coke 20oz: $2.29
+  - Bottle of Dr Pibb Xtra 20oz: $2.29
+  - Bottle of Minute Maid Apple Juice: $2.29
+  - Bottle of Minute Maid Lemonade 20oz: $2.29
+  - Bottle of Snapple Apple 20oz: $2.29
+  - Bottle of Snapple Fruit Punch 20oz: $2.29
+  - Bottle of Sprite 20oz: $2.29
+  - Bottled Water: $1.59
+  - Can of Cherry Coke: $1.59
+  - Can of Coke: $1.59
+  - Can of Coke Zero: $1.59
+  - Can of Diet Coke: $1.59
+  - Can of Minute Maid Lemonade: $1.59
+  - Can of Sprite: $1.59
+  - Dunkin Donut: $3.00
+  - Manhattan Special: $3.50
+  - Monster Energy Mean Bean: $3.50
+  - Powerade: $2.50 - Bottle of Powerade
+  - San Pellegrino: $3.50 - Sparkling Water
+  - Sweet Tea: $2.49 - Bottle Of Tea Unsweet Or Sweet
+
+Gluten Free Crust 10" Specialty Gourmet Pizzas:
+  - Gluten Free Crust 10" BBQ Chicken Pizza: $16.49 - Tender chicken with a flavorful BBQ sauce, topped with a melted mozzarella& cheddar cheese blend
+  - Gluten Free Crust 10" Buffalo Chicken Pizza: $16.49 - Grilled diced chicken, homemade Buffalo sauce with a cheddar cheese, blue cheese & Mozzarella Blend
+  - Gluten Free Crust 10" CheeseBurger Pizza: $16.49 - Black angus ground beef, bacon, cheddar cheese with a tasty burger sauce. Available with lettuce, to
+  - Gluten Free Crust 10" Chicken Parmesan Pizza: $16.49 - Freshly made chicken cutlets with dinner sauce, melted mozzarella, a light ricotta topping with fres
+  - Gluten Free Crust 10" Cream Of Spinach Pizza: $16.49 - Homemade cream of spinach sauce with a sesame crust topped with melted mozzarella & Asiago Cheese
+  - Gluten Free Crust 10" Hidden Valley Pizza: $16.49 - Grilled chicken, cheddar cheese & bacon with a ranch dressing base
+  - Gluten Free Crust 10" Margherita Pizza: $16.49 - Fresh Tomato, Mozzarella, Basil & Olive Oil
+  - Gluten Free Crust 10" Pizza Fresco: $16.49 - Homemade marinara sauce, fresh mozzarella, basil, olive oil & diced tomato
+  - Gluten Free Crust 10" White Mediterranean Pizza: $16.49 - Fresh spinach, diced tomatoes, spinach, roasted peppers & roasted garlic
+
+Grandmas Style Pizzas:
+  - Grandma's Spinach Artichoke: $29.99 - Cream of Spinach, Artichoke, Asiago
+  - Grandmas Caprese: $29.99 - Fresh Mozzarella, Fresh Tomato, Basil, Olive Oil Balsamic Glaze, Salt & Pepper.
+  - Nonna's Pesto Chicken Grandma: $29.99 - Roasted Peppers, Tomatoes, Grilled Chicken & Pesto
+
+Salads:
+  - Antipasto Salad: $10.95 - Romaine, tomato, onion, Kalamata olives, ham, salami, capicola, roasted peppers & mozzarella with It
+  - Caesar Salad: $9.95 - Romaine, croutons, parmesan cheese, Caesar dressing on the side or tossed
+  - Caprese Salad: $10.45 - Tomato, fresh mozzarella, basil, olive oil & balsamic glaze
+  - Garden Side Salad: $4.45 - Romaine, onions, olives & tomato
+  - Greek Salad: $9.95 - Romaine, feta, red onions, Kalamata olives, cucumbers, pepperoncini & tomato with special Greek dres
+
+Sides:
+  - Garlic Rolls: $4.25
+  - Sausage Or Meatballs: $8.95
+  - Side Dressing: $1.00
+  - Side Marinara: $1.00
+  - Side Order Of French Fries: $3.99
+
+Specialty Gourmet Pizzas:
+  - Balsamic Chicken Pizza: $16.49 - Breaded chicken cutlets with diced tomato, fresh basil, mozzarella & balsamic glaze
+  - BBQ Chicken Pizza: $16.49 - Our BBQ Pizza features a tangy barbecue sauce base, topped with grilled chicken, red onions, and a b (Sizes: 10" $16.49, 14" $23.49, 16" $26.49, Sicilian $28.99)
+  - BBQ Chicken Pizza: $16.49 - Tender chicken with a flavorful BBQ sauce, topped with a melted mozzarella& cheddar cheese blend
+  - BBQ Delight Pizza: $16.49 - Tender chicken with a flavorful BBQ sauce, topped with a melted mozzarella & cheddar cheese blend, R
+  - Buffalo Chicken Pizza: $16.49 - Grilled diced chicken, homemade Buffalo sauce with a cheddar cheese, blue cheese & Mozzarella Blend
+  - CheeseBurger Pizza: $16.49 - Black angus ground beef, bacon, cheddar cheese with a tasty burger sauce. Available with lettuce, to
+  - Eggplant Parmesan Pizza: $16.49 - Lightly breaded eggplant with melted mozzarella, light ricotta, fresh basil & Romano
+  - Fresco Pizza: $16.49 - Homemade marinara sauce, fresh mozzarella, basil, olive oil & diced tomato
+  - Hidden Valley Pizza: $16.49 - Grilled chicken, cheddar cheese & bacon with a ranch dressing base
+  - House Special Pizza: $16.49 - Beef, pepperoni, sausage, bacon, mushrooms, onions & green peppers
+  - Lasagna Pizza: $16.49 - Two layers of pasta & ground beef, ricotta, mozzarella, dinner sauce & topped with fresh basil
+  - margherita pizza: $22.99
+  - Margherita Pizza: $16.49 - Fresh Tomato, Mozzarella, Basil & Olive Oil
+  - Meat Special Pizza: $16.49 - Ground beef, pepperoni, ham, sausage & bacon
+  - Meatball Parmesan Pizza: $16.49 - Homemade meatballs & dinner sauce with melted mozzarella, light ricotta, fresh basil & Romano cheese
+  - Steak Deluxe Pizza: $16.49 - Tender Sliced Steak with sautéed peppers, onions, mushrooms, mozzarella & cheddar cheese blend
+  - Veggie Special Pizza: $16.49 - Eggplant, green peppers, onions, garlic, tomato, mushrooms, spinach & black olives
+  - White Mediterranean Pizza: $16.49 - Fresh spinach, diced tomatoes, spinach, roasted peppers & roasted garlic
+
+Strombolis:
+  - Build Your Own Stromboli: $13.00 - Cheese Stromboli for you to build.
+  - Traditional Stromboli: $13.95 - Pepperoni, sausage, ham, salami, capicola, onions, mushrooms, two cheese blend of Romano & mozzarell
+
+Traditional Pizza:
+  - Traditional Pizza: $10.99 - Favilla's Pizza
+
+

@@ -1,0 +1,64 @@
+{
+  "type": "object",
+  "properties": {
+    "items": {
+      "type": "array",
+      "description": "List of order items with menuItemId, quantity, price, name, and optional toppings",
+      "items": {
+        "type": "object",
+        "properties": {
+          "menuItemId": {
+            "type": "string",
+            "description": "Menu item identifier"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the item"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Quantity of this item"
+          },
+          "price": {
+            "type": "number",
+            "description": "Price per item in dollars"
+          },
+          "options": {
+            "type": "array",
+            "description": "Toppings or modifications",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["menuItemId", "name", "quantity", "price"]
+      }
+    },
+    "customer_name": {
+      "type": "string",
+      "description": "Customer full name"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Customer 10-digit phone number"
+    },
+    "order_type": {
+      "type": "string",
+      "description": "Type of order pickup or delivery",
+      "enum": ["pickup", "delivery"]
+    },
+    "total": {
+      "type": "number",
+      "description": "Total order amount in dollars"
+    },
+    "address": {
+      "type": "string",
+      "description": "Full delivery address required for delivery"
+    },
+    "special_instructions": {
+      "type": "string",
+      "description": "Special instructions or notes"
+    }
+  },
+  "required": ["items", "customer_name", "phone", "order_type", "total"]
+}

@@ -54,15 +54,8 @@ const KitchenPage = () => {
   const [expandedItemCategories, setExpandedItemCategories] = useState<Set<string>>(new Set());
   const [expandedChoiceGroups, setExpandedChoiceGroups] = useState<Set<number>>(new Set());
 
-  // Order Status Mode State - check localStorage first for immediate feedback
-  const [orderStatusMode, setOrderStatusMode] = useState<'manual' | 'automatic'>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('orderStatusMode');
-      console.log('🔍 Initial orderStatusMode from localStorage:', saved || 'manual (default)');
-      return (saved as 'manual' | 'automatic') || 'manual';
-    }
-    return 'manual';
-  });
+  // Order Status Mode State - automatic mode only (manual mode disabled)
+  const [orderStatusMode, setOrderStatusMode] = useState<'manual' | 'automatic'>('automatic');
   const [showStatusModeModal, setShowStatusModeModal] = useState(false);
 
   // Switch to appropriate tab when mode changes
@@ -1258,12 +1251,6 @@ const KitchenPage = () => {
                     <Package className="mr-2 h-4 w-4" />
                     <span>Item Management</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setShowStatusModeModal(true)}
-                  >
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Order Status Mode</span>
-                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={async () => {
@@ -2200,54 +2187,6 @@ const KitchenPage = () => {
                 No, Maybe Later
               </Button>
             </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Order Status Mode Modal */}
-        <Dialog open={showStatusModeModal} onOpenChange={setShowStatusModeModal}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold">Order Status Mode</DialogTitle>
-              <DialogDescription>
-                Choose how orders progress through the kitchen workflow
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-6 py-4">
-              <RadioGroup value={orderStatusMode} onValueChange={(value) => updateOrderStatusMode(value as 'manual' | 'automatic')}>
-                <div className="flex items-start space-x-3 space-y-0 rounded-md border border-gray-200 p-4 hover:bg-gray-50 cursor-pointer">
-                  <RadioGroupItem value="manual" id="manual" />
-                  <Label htmlFor="manual" className="font-normal cursor-pointer flex-1">
-                    <div className="font-semibold text-base mb-1">Manual Mode</div>
-                    <div className="text-sm text-gray-500">
-                      Staff must click through each status: Start Cooking → Mark Ready → Mark Picked Up.
-                      Best for experienced staff who want full control over order tracking.
-                    </div>
-                  </Label>
-                </div>
-
-                <div className="flex items-start space-x-3 space-y-0 rounded-md border border-gray-200 p-4 hover:bg-gray-50 cursor-pointer">
-                  <RadioGroupItem value="automatic" id="automatic" />
-                  <Label htmlFor="automatic" className="font-normal cursor-pointer flex-1">
-                    <div className="font-semibold text-base mb-1">Automatic Mode</div>
-                    <div className="text-sm text-gray-500">
-                      Simplified view with no status buttons. Orders appear in a clean list to prepare.
-                      Delivery orders automatically sent to ShipDay on payment. Best for new workers.
-                    </div>
-                  </Label>
-                </div>
-              </RadioGroup>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-blue-900">
-                    <strong>Current Mode: </strong>
-                    {orderStatusMode === 'manual' ? 'Manual' : 'Automatic'}
-                  </div>
-                </div>
-              </div>
-            </div>
           </DialogContent>
         </Dialog>
 
