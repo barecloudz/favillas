@@ -61,6 +61,16 @@
   status = 200
 
 [[redirects]]
+  from = "/api/refunds"
+  to = "/.netlify/functions/refunds"
+  status = 200
+
+[[redirects]]
+  from = "/api/refund-order"
+  to = "/.netlify/functions/refund-order"
+  status = 200
+
+[[redirects]]
   from = "/api/tax-settings"
   to = "/.netlify/functions/tax-settings"
   status = 200
