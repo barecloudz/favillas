@@ -875,10 +875,15 @@ const KitchenPage = () => {
       const allOrders = await response.json();
       console.log('Daily Summary: Fetched orders:', allOrders.length);
 
-      // Filter to today's orders only
-      const today = new Date().toISOString().split('T')[0];
+      // Filter to today's orders only (using EST timezone)
+      const now = new Date();
+      const estDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      const today = estDate.toISOString().split('T')[0];
+
       const todaysOrders = allOrders.filter((order: any) => {
-        const orderDate = new Date(order.created_at || order.createdAt).toISOString().split('T')[0];
+        const orderTimestamp = new Date(order.created_at || order.createdAt);
+        const orderESTDate = new Date(orderTimestamp.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+        const orderDate = orderESTDate.toISOString().split('T')[0];
         return orderDate === today && order.status !== 'cancelled';
       });
 
