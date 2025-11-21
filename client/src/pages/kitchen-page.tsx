@@ -24,6 +24,31 @@ import { printToThermalPrinter, printDailySummary } from "@/utils/thermal-printe
 import { useLocation } from "wouter";
 import { useVacationMode } from "@/hooks/use-vacation-mode";
 
+// Helper function to format EST timestamps from database
+const formatESTTime = (timestamp: string) => {
+  if (!timestamp) return 'Invalid Date';
+  try {
+    // Database returns timestamps in EST without timezone info
+    // Format: "2025-11-21 11:19:10.999846" or "2025-11-21T11:19:10.999846"
+    const cleanTimestamp = timestamp.replace(' ', 'T').split('.')[0]; // Remove microseconds
+    const estDate = new Date(cleanTimestamp + '-05:00'); // Append EST timezone
+
+    if (isNaN(estDate.getTime())) {
+      console.error('Invalid timestamp:', timestamp);
+      return 'Invalid Date';
+    }
+
+    return estDate.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  } catch (error) {
+    console.error('Error formatting timestamp:', timestamp, error);
+    return 'Invalid Date';
+  }
+};
+
 const KitchenPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -1362,7 +1387,7 @@ const KitchenPage = () => {
                             </Badge>
                           </div>
                           <p className="text-xs text-gray-500 mb-3">
-                            {new Date(order.created_at.replace(' ', 'T') + '-05:00').toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                            {formatESTTime(order.created_at)}
                           </p>
 
                           {/* Order Items - Simplified for column view */}
@@ -1425,7 +1450,7 @@ const KitchenPage = () => {
                             </Badge>
                           </div>
                           <p className="text-xs text-gray-500 mb-3">
-                            {new Date(order.created_at.replace(' ', 'T') + '-05:00').toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                            {formatESTTime(order.created_at)}
                           </p>
 
                           {/* Order Items - Simplified for column view */}
@@ -1488,7 +1513,7 @@ const KitchenPage = () => {
                             </Badge>
                           </div>
                           <p className="text-xs text-gray-500 mb-3">
-                            {new Date(order.created_at.replace(' ', 'T') + '-05:00').toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                            {formatESTTime(order.created_at)}
                           </p>
 
                           {/* Order Items - Simplified for column view */}
@@ -1631,7 +1656,7 @@ const KitchenPage = () => {
                         </div>
                         <div className="text-sm text-gray-500">
                           <div className="flex justify-between">
-                            <span>{new Date(order.created_at.replace(' ', 'T') + '-05:00').toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
+                            <span>{formatESTTime(order.created_at)}</span>
                             <Badge variant={order.payment_status === 'paid' ? 'default' : 'outline'}>
                               {order.payment_status?.toUpperCase() || 'UNKNOWN'}
                             </Badge>
@@ -1970,7 +1995,7 @@ const KitchenPage = () => {
                   {selectedOrder.address && (
                     <p className="text-sm"><strong>Address:</strong> {selectedOrder.address}</p>
                   )}
-                  <p className="text-sm"><strong>Order Time:</strong> {new Date(selectedOrder.created_at.replace(' ', 'T') + '-05:00').toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</p>
+                  <p className="text-sm"><strong>Order Time:</strong> {formatESTTime(selectedOrder.created_at)}</p>
                 </div>
 
                 {/* Order Items */}
