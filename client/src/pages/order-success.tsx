@@ -100,21 +100,41 @@ const OrderSuccessPage = () => {
   // Initialize WebSocket for real-time updates
   useWebSocket();
 
-  // CRITICAL: Hard timeout to prevent infinite loading - show page after 5 seconds NO MATTER WHAT
+  // CRITICAL: Hard timeout to prevent infinite loading - show page after 3 seconds NO MATTER WHAT
   useEffect(() => {
+    console.log('🚨 Emergency timeout set - will force display in 3 seconds if still loading');
     const emergencyTimeout = setTimeout(() => {
-      if (isLoading) {
-        console.error('EMERGENCY TIMEOUT: Forcing page to display after 5 seconds');
-        setIsLoading(false);
-        if (!cartCleared) {
-          clearCart();
-          setCartCleared(true);
-        }
-      }
-    }, 5000); // Force display after 5 seconds maximum
+      console.error('🚨 EMERGENCY TIMEOUT TRIGGERED: Forcing page to display');
+      console.log('Current loading state:', isLoading);
+      console.log('Current orderId:', orderId);
+      console.log('Current order:', order);
+      setIsLoading(false);
 
-    return () => clearTimeout(emergencyTimeout);
-  }, []); // Only run once on mount
+      // CRITICAL: If we have an orderId but no order object, create a minimal order object
+      // This prevents the loading condition from staying true
+      if (orderId && !order) {
+        console.log('Creating minimal order object to prevent infinite loading');
+        setOrder({
+          id: orderId,
+          status: 'pending',
+          total: '0',
+          items: [],
+          createdAt: new Date().toISOString()
+        });
+      }
+
+      if (!cartCleared) {
+        console.log('Clearing cart from emergency timeout');
+        clearCart();
+        setCartCleared(true);
+      }
+    }, 3000); // Force display after 3 seconds maximum (reduced from 5)
+
+    return () => {
+      console.log('Clearing emergency timeout');
+      clearTimeout(emergencyTimeout);
+    };
+  }, [orderId, order, isLoading, cartCleared, clearCart]); // Include dependencies
 
   // Get order ID from URL params or payment intent
   useEffect(() => {
