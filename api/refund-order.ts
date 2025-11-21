@@ -152,12 +152,14 @@ export const handler: Handler = async (event, context) => {
       };
     }
 
+    const staffEmail = authPayload.email || authPayload.username || 'unknown';
+
     console.log(`💳 Processing ${refundType} refund for order ${orderId}`);
     console.log(`   Payment Intent: ${paymentIntentId}`);
     console.log(`   Amount: $${refundAmount} of $${orderTotal}`);
     console.log(`   Customer: ${order.customer_name}`);
     console.log(`   Reason: ${reason}`);
-    console.log(`   Staff: ${authPayload.user.email}`);
+    console.log(`   Staff: ${staffEmail}`);
 
     // CRITICAL: Process refund through Stripe
     const refund = await stripe.refunds.create({
@@ -168,7 +170,7 @@ export const handler: Handler = async (event, context) => {
         order_id: orderId.toString(),
         refund_reason: reason,
         refund_type: refundType,
-        processed_by: authPayload.user.email,
+        processed_by: staffEmail,
         customer_name: order.customer_name || 'Unknown',
         original_total: orderTotal.toString()
       }
@@ -201,7 +203,7 @@ export const handler: Handler = async (event, context) => {
         ${refundAmount},
         ${reason},
         ${refundType},
-        ${authPayload.user.email},
+        ${staffEmail},
         NOW()
       )
     `;
