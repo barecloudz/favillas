@@ -17,17 +17,26 @@ export const TipsReport = ({ orders }: any) => {
 
   // Get today's date in YYYY-MM-DD format (EST timezone)
   const getTodayString = () => {
-    const now = new Date();
-    const estDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-    return estDate.toISOString().split('T')[0];
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    return formatter.format(new Date());
   };
 
   // Get date one week ago (EST timezone)
   const getWeekAgoString = () => {
-    const now = new Date();
-    const estDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-    estDate.setDate(estDate.getDate() - 7);
-    return estDate.toISOString().split('T')[0];
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return formatter.format(weekAgo);
   };
 
   // Initialize dates
@@ -43,6 +52,13 @@ export const TipsReport = ({ orders }: any) => {
     let start: Date, end: Date;
 
     // Filter orders by comparing EST dates
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+
     return safeOrders.filter((order: any) => {
       const dateValue = order.created_at || order.createdAt;
       if (!dateValue) return false;
@@ -50,22 +66,18 @@ export const TipsReport = ({ orders }: any) => {
       const orderDate = new Date(dateValue);
       if (isNaN(orderDate.getTime())) return false;
 
-      // Convert order timestamp to EST date string
-      const orderESTDate = new Date(orderDate.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-      const orderDateStr = orderESTDate.toISOString().split('T')[0];
+      // Convert order timestamp to EST date string using formatter
+      const orderDateStr = formatter.format(orderDate);
 
       if (dateRange === 'today') {
-        const now = new Date();
-        const estNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-        const todayStr = estNow.toISOString().split('T')[0];
+        const todayStr = formatter.format(new Date());
         return orderDateStr === todayStr && order.status === 'picked_up';
       } else if (dateRange === 'week') {
-        const now = new Date();
-        const estNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-        const weekAgo = new Date(estNow);
+        const today = new Date();
+        const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);
-        const weekAgoStr = weekAgo.toISOString().split('T')[0];
-        const todayStr = estNow.toISOString().split('T')[0];
+        const weekAgoStr = formatter.format(weekAgo);
+        const todayStr = formatter.format(today);
         return orderDateStr >= weekAgoStr && orderDateStr <= todayStr && order.status === 'picked_up';
       } else {
         if (!startDate || !endDate) return false;
