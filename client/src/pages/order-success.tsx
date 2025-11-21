@@ -32,6 +32,27 @@ import {
   Calendar
 } from "lucide-react";
 
+// Helper function to parse EST timestamps from database
+const parseESTTimestamp = (timestamp: string): Date => {
+  if (!timestamp) return new Date();
+  try {
+    // Database returns timestamps in EST without timezone info
+    // Format: "2025-11-21 11:19:10.999846" or "2025-11-21T11:19:10.999846"
+    const cleanTimestamp = timestamp.replace(' ', 'T').split('.')[0]; // Remove microseconds
+    const estDate = new Date(cleanTimestamp + '-05:00'); // Append EST timezone
+
+    if (isNaN(estDate.getTime())) {
+      console.error('Invalid timestamp:', timestamp);
+      return new Date();
+    }
+
+    return estDate;
+  } catch (error) {
+    console.error('Error parsing timestamp:', timestamp, error);
+    return new Date();
+  }
+};
+
 // Fun loading messages with emojis to keep customers entertained
 const LOADING_MESSAGES = [
   "👨‍🍳 Sending your order to the kitchen...",
@@ -408,20 +429,20 @@ const OrderSuccessPage = () => {
 
     // If we have ShipDay estimated delivery time, use that
     if (order.estimated_delivery_time) {
-      const estimatedTime = new Date(order.estimated_delivery_time);
+      const estimatedTime = parseESTTimestamp(order.estimated_delivery_time);
       return estimatedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
     // If it's a scheduled order, show the scheduled time
     if (order.fulfillmentTime === "scheduled" && order.scheduledTime) {
-      const scheduledDate = new Date(order.scheduledTime);
+      const scheduledDate = parseESTTimestamp(order.scheduledTime);
       return scheduledDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
     // For ASAP orders, calculate based on order time
     const now = new Date();
     if (!order.createdAt) return null;
-    const orderTime = new Date(order.createdAt);
+    const orderTime = parseESTTimestamp(order.createdAt);
 
     if (order.orderType === 'pickup') {
       // Pickup: 15-25 minutes
@@ -1222,6 +1243,31 @@ Thank you for choosing Favilla's NY Pizza!
                       </span>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+
+              {/* Google Review Prompt */}
+              <Card className="border-2 border-orange-300 bg-gradient-to-br from-orange-50 to-amber-50">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg flex items-center gap-2 text-orange-800">
+                    <Star className="h-5 w-5 fill-orange-400 text-orange-400" />
+                    We hope you enjoyed your order! 🍕
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-gray-700 leading-relaxed">
+                    Could you do us a huge favor and smash that 5 star button on Google? It really helps our local business grow!
+                  </p>
+                  <Button
+                    onClick={() => window.open('https://g.page/r/CYxqsWclryrwEAE/review', '_blank')}
+                    className="w-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    <Star className="h-4 w-4 mr-2 fill-white" />
+                    Leave a Google Review
+                  </Button>
+                  <p className="text-sm text-gray-600 text-center">
+                    Can't wait to see you again next time! 😊
+                  </p>
                 </CardContent>
               </Card>
 
