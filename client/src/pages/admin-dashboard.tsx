@@ -1094,6 +1094,7 @@ const AdminDashboard = () => {
         { name: "Analytics", icon: BarChart3, href: "analytics" },
         { name: "Reports", icon: FileText, href: "reports" },
         { name: "Tips Report", icon: DollarSign, href: "tips-report" },
+        { name: "Refunds", icon: RefreshCw, href: "refunds" },
       ]
     },
     {
@@ -1432,6 +1433,10 @@ const AdminDashboard = () => {
 
             {activeTab === "tips-report" && (
               <TipsReport orders={orders} />
+            )}
+
+            {activeTab === "refunds" && (
+              <RefundsSection />
             )}
 
             {activeTab === "menu-editor" && (
@@ -18487,6 +18492,228 @@ const EditRateForm = ({ user, onSubmit, onCancel, isLoading }: {
         </Button>
       </DialogFooter>
     </form>
+  );
+};
+
+const RefundsSection = () => {
+  const { toast } = useToast();
+  const [dateFilter, setDateFilter] = useState("all");
+
+  // Fetch refunds data
+  const { data: refunds, isLoading, error } = useQuery({
+    queryKey: ["/api/refunds"],
+    enabled: true,
+  });
+
+  const formatCurrency = (amount: number | string) => {
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+  };
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Filter refunds by date
+  const filteredRefunds = useMemo(() => {
+    if (!refunds) return [];
+
+    const now = new Date();
+    const daysToShow = dateFilter === "7d" ? 7 : dateFilter === "30d" ? 30 : dateFilter === "90d" ? 90 : null;
+
+    if (!daysToShow) return refunds; // "all" selected
+
+    const cutoffDate = new Date(now);
+    cutoffDate.setDate(cutoffDate.getDate() - daysToShow);
+
+    return refunds.filter((refund: any) => {
+      const refundDate = new Date(refund.created_at);
+      return refundDate >= cutoffDate;
+    });
+  }, [refunds, dateFilter]);
+
+  // Calculate statistics
+  const totalRefunded = filteredRefunds.reduce((sum: number, refund: any) => {
+    return sum + parseFloat(refund.amount);
+  }, 0);
+
+  const fullRefunds = filteredRefunds.filter((r: any) => r.refund_type === 'full').length;
+  const partialRefunds = filteredRefunds.filter((r: any) => r.refund_type === 'partial').length;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold text-gray-900">Refund History</h1>
+        </div>
+        <Card>
+          <CardContent className="p-12 text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">Loading refund data...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold text-gray-900">Refund History</h1>
+        </div>
+        <Card>
+          <CardContent className="p-12 text-center">
+            <AlertTriangle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Refunds</h3>
+            <p className="text-gray-600">Failed to load refund data. Please try again later.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Refund History</h1>
+          <p className="text-gray-600 mt-1">View all refunded orders and their details</p>
+        </div>
+
+        {/* Date Filter */}
+        <Select value={dateFilter} onValueChange={setDateFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filter by date" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Time</SelectItem>
+            <SelectItem value="7d">Last 7 Days</SelectItem>
+            <SelectItem value="30d">Last 30 Days</SelectItem>
+            <SelectItem value="90d">Last 90 Days</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Refunded</p>
+                <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalRefunded)}</p>
+              </div>
+              <DollarSign className="h-8 w-8 text-red-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Full Refunds</p>
+                <p className="text-2xl font-bold text-gray-900">{fullRefunds}</p>
+              </div>
+              <RefreshCw className="h-8 w-8 text-orange-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Partial Refunds</p>
+                <p className="text-2xl font-bold text-gray-900">{partialRefunds}</p>
+              </div>
+              <RefreshCw className="h-8 w-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Refunds Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Refund Transactions</CardTitle>
+          <CardDescription>All refund transactions processed through Stripe</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {filteredRefunds.length === 0 ? (
+            <div className="text-center py-12">
+              <RefreshCw className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">No refunds found for the selected time period.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Date</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Order ID</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Customer</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Type</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Amount</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Reason</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Processed By</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Stripe ID</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRefunds.map((refund: any) => (
+                    <tr key={refund.id} className="border-b hover:bg-gray-50">
+                      <td className="py-3 px-4 text-sm text-gray-600">
+                        {formatDate(refund.created_at)}
+                      </td>
+                      <td className="py-3 px-4 text-sm font-medium text-gray-900">
+                        #{refund.order_id}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-900">
+                        <div>{refund.customer_name || 'Unknown'}</div>
+                        {refund.phone && (
+                          <div className="text-xs text-gray-500">{refund.phone}</div>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge variant={refund.refund_type === 'full' ? 'destructive' : 'default'}>
+                          {refund.refund_type === 'full' ? 'Full' : 'Partial'}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4 text-sm font-medium text-gray-900">
+                        {formatCurrency(refund.amount)}
+                        {refund.order_total && (
+                          <div className="text-xs text-gray-500">
+                            of {formatCurrency(refund.order_total)}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-600 max-w-xs truncate">
+                        {refund.reason}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-600">
+                        {refund.processed_by}
+                      </td>
+                      <td className="py-3 px-4 text-xs text-gray-500 font-mono">
+                        {refund.refund_id}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

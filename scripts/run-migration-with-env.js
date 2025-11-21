@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import postgres from 'postgres';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
@@ -10,6 +11,7 @@ async function runMigration() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     console.error('❌ DATABASE_URL environment variable is required');
+    console.error('Make sure .env file exists with DATABASE_URL');
     process.exit(1);
   }
 

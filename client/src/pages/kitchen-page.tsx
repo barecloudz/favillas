@@ -2380,18 +2380,62 @@ const KitchenPage = () => {
                     return;
                   }
 
+                  // CRITICAL: Final confirmation with order details
+                  const confirmMessage = `CONFIRM REFUND
+
+Order #${refundOrder.id}
+Customer: ${refundOrder.customer_name || 'Unknown'}
+Phone: ${refundOrder.phone || 'N/A'}
+Original Total: $${parseFloat(refundOrder.total).toFixed(2)}
+Refund Amount: $${amount.toFixed(2)}
+Type: ${refundType.toUpperCase()}
+
+Reason: ${refundReason}
+
+This will charge back $${amount.toFixed(2)} to the customer's card through Stripe.
+
+THIS CANNOT BE UNDONE. Are you absolutely sure?`;
+
+                  if (!confirm(confirmMessage)) {
+                    return;
+                  }
+
                   try {
-                    // TODO: Implement Stripe refund API call
-                    toast({
-                      title: "Processing Refund",
-                      description: "Refund functionality coming soon",
+                    console.log('🔄 Processing refund for order:', {
+                      orderId: refundOrder.id,
+                      paymentIntentId: refundOrder.payment_intent_id,
+                      amount: amount,
+                      refundType: refundType,
+                      reason: refundReason
                     });
-                    setShowRefundModal(false);
-                  } catch (error) {
-                    console.error('Refund error:', error);
+
+                    const response = await apiRequest('POST', '/api/refund-order', {
+                      orderId: refundOrder.id,
+                      paymentIntentId: refundOrder.payment_intent_id,
+                      amount: amount,
+                      refundType: refundType,
+                      reason: refundReason
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                      toast({
+                        title: "Refund Processed",
+                        description: result.message || `Successfully refunded $${amount.toFixed(2)}`,
+                      });
+
+                      // Refresh orders to show updated status
+                      queryClient.invalidateQueries({ queryKey: ['/api/kitchen/orders'] });
+                      setShowRefundModal(false);
+                    } else {
+                      throw new Error(result.error || 'Refund failed');
+                    }
+                  } catch (error: any) {
+                    console.error('❌ Refund error:', error);
                     toast({
                       title: "Refund Failed",
-                      description: "Failed to process refund. Please try again.",
+                      description: error.message || "Failed to process refund. Please try again.",
                       variant: "destructive",
                     });
                   }
