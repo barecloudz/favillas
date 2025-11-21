@@ -79,10 +79,9 @@ const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, cust
 
       const pendingOrderData = JSON.parse(pendingOrderDataStr);
 
-      // Update order data to mark as pending (same as real orders, but skip payment)
+      // Create test order data (status will default to 'cooking' on server)
       const testOrderData = {
         ...pendingOrderData,
-        status: "pending",  // Kitchen display shows 'pending' orders
         paymentStatus: "test_order_admin_bypass",
         paymentIntentId: `test_order_${Date.now()}`,
       };
@@ -1045,7 +1044,7 @@ const CheckoutPage = () => {
 
     // Store order data for after payment confirmation (don't create order yet)
     const pendingOrderData = {
-      status: "pending", // Will be updated to confirmed after payment processing
+      // status will default to 'cooking' on server
       total: totals.finalTotal.toString(),
       tax: tax.toString(),
       tip: totals.tip.toString(),
