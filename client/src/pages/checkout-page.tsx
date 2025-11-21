@@ -115,12 +115,12 @@ const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, cust
       // Show success message
       toast({
         title: "🧪 Test Order Created",
-        description: `Order #${result.orderId} created successfully (Admin Test Mode)`,
+        description: `Order #${result.id} created successfully (Admin Test Mode)`,
       });
 
       // Redirect to order success page
       setTimeout(() => {
-        navigate(`/order-success?orderId=${result.orderId}&test_order=true`);
+        navigate(`/order-success?orderId=${result.id}&test_order=true`);
       }, 1000); // Increased delay to let user see the toast
 
     } catch (error: any) {
