@@ -128,24 +128,26 @@ exports.handler = async (event, context) => {
     console.log('🚀 Submitting to orders API:', ordersApiUrl);
     console.log('📋 Payload:', JSON.stringify(orderPayload, null, 2));
 
-    // Submit to the Pizza Spin orders API
-    const response = await axios.post(ordersApiUrl, orderPayload, {
+    // Submit order in background without waiting for response
+    // This ensures VAPI gets a fast response (< 5 seconds)
+    axios.post(ordersApiUrl, orderPayload, {
       headers: {
         'Content-Type': 'application/json'
       },
       timeout: 15000
+    }).then(response => {
+      console.log('✅ Order submitted successfully! Order ID:', response.data.id);
+    }).catch(error => {
+      console.error('❌ Error submitting order (background):', error.response?.data || error.message);
     });
 
-    const result = response.data;
-    console.log('✅ Order submitted successfully! Order ID:', result.id);
-
-    // Return success response to Vapi
+    // Return immediate success response to VAPI
     // The "result" field will be spoken by the assistant to the customer
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        result: `Great! Your order has been placed successfully. Your order number is ${result.id}. We'll have that ready for you soon. Thank you for choosing Favilla's Pizzeria!`
+        result: `Great! Your order has been placed successfully. We'll have that ready for you soon. Thank you for choosing Favilla's Pizzeria!`
       })
     };
 
