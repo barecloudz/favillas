@@ -594,9 +594,19 @@ const KitchenPage = () => {
   const filteredOrders = orders ? orders.filter((order: any) => {
     if (activeTab === "today") {
       // Show all today's orders except cancelled and scheduled (not yet ready)
-      const orderDate = new Date(order.created_at || order.createdAt).toISOString().split('T')[0];
-      const today = new Date().toISOString().split('T')[0];
-      return orderDate === today &&
+      // Parse order timestamp as EST
+      const timestamp = order.created_at || order.createdAt;
+      const cleanTimestamp = timestamp.replace(' ', 'T').split('.')[0];
+      const orderDate = new Date(cleanTimestamp + '-05:00');
+
+      // Get today's date in EST
+      const nowEST = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+
+      // Compare dates (ignore time)
+      const orderDateStr = orderDate.toISOString().split('T')[0];
+      const todayStr = nowEST.toISOString().split('T')[0];
+
+      return orderDateStr === todayStr &&
              order.status !== 'cancelled' &&
              !(order.status === 'pending' && order.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(order));
     }
@@ -1655,14 +1665,22 @@ const KitchenPage = () => {
                     <span className="hidden sm:inline">Today's Orders</span>
                     <span className="sm:hidden">Today</span>
                     {orders?.filter((o: any) => {
-                      const orderDate = new Date(o.created_at || o.createdAt).toISOString().split('T')[0];
-                      const today = new Date().toISOString().split('T')[0];
-                      return orderDate === today && o.status !== 'cancelled' && !(o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o));
+                      const timestamp = o.created_at || o.createdAt;
+                      const cleanTimestamp = timestamp.replace(' ', 'T').split('.')[0];
+                      const orderDate = new Date(cleanTimestamp + '-05:00');
+                      const nowEST = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+                      const orderDateStr = orderDate.toISOString().split('T')[0];
+                      const todayStr = nowEST.toISOString().split('T')[0];
+                      return orderDateStr === todayStr && o.status !== 'cancelled' && !(o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o));
                     }).length > 0 && (
                       <Badge className="ml-1 sm:ml-2 bg-blue-500 text-xs">{orders.filter((o: any) => {
-                        const orderDate = new Date(o.created_at || o.createdAt).toISOString().split('T')[0];
-                        const today = new Date().toISOString().split('T')[0];
-                        return orderDate === today && o.status !== 'cancelled' && !(o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o));
+                        const timestamp = o.created_at || o.createdAt;
+                        const cleanTimestamp = timestamp.replace(' ', 'T').split('.')[0];
+                        const orderDate = new Date(cleanTimestamp + '-05:00');
+                        const nowEST = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+                        const orderDateStr = orderDate.toISOString().split('T')[0];
+                        const todayStr = nowEST.toISOString().split('T')[0];
+                        return orderDateStr === todayStr && o.status !== 'cancelled' && !(o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o));
                       }).length}</Badge>
                     )}
                   </TabsTrigger>
