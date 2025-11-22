@@ -13,6 +13,7 @@ import MenuPage from "@/pages/menu-page";
 import CateringPage from "@/pages/catering-page";
 import CustomerDisplay from "@/pages/customer-display";
 import CheckoutPage from "@/pages/checkout-page";
+import PayPage from "@/pages/pay-page";
 import OrderSuccessPage from "@/pages/order-success";
 import OrderDetailsPage from "@/pages/order-details-page";
 import OrdersPage from "@/pages/orders-page";
@@ -67,6 +68,7 @@ function Router() {
         <Route path="/fix-order" component={FixOrderPage} />
         <Route path="/debug-orders" component={DebugOrdersPage} />
         <Route path="/checkout" component={CheckoutPage} />
+        <Route path="/pay/:token" component={PayPage} />
         <Route path="/order-success" component={OrderSuccessPage} />
         <Route path="/order-details" component={OrderDetailsPage} />
         <Route path="/orders" component={OrdersPage} />

@@ -141,11 +141,45 @@ exports.handler = async (event, context) => {
         'Content-Type': 'application/json'
       },
       timeout: 15000
-    }).then(response => {
+    }).then(async response => {
       console.log('✅ Order submitted successfully! Order ID:', response.data.id);
+
+      // For delivery orders with pending_payment_link status, send payment link via SMS
+      if (order_type === 'delivery' && paymentStatus === 'pending_payment_link') {
+        try {
+          // Generate payment token
+          const tokenResponse = await axios.post(`${baseUrl}/api/generate-payment-link`, {
+            orderId: response.data.id
+          }, { timeout: 5000 });
+
+          const { paymentToken } = tokenResponse.data;
+
+          // Send SMS with payment link
+          await axios.post(`${baseUrl}/api/sms/send-payment-link`, {
+            phone: phone,
+            orderId: response.data.id,
+            paymentToken: paymentToken,
+            customerName: customer_name,
+            total: parseFloat(total)
+          }, { timeout: 5000 });
+
+          console.log('📱 Payment link SMS sent successfully');
+        } catch (smsError) {
+          console.error('❌ Failed to send payment link SMS:', smsError.message);
+          // Don't fail the order if SMS fails - continue processing
+        }
+      }
     }).catch(error => {
       console.error('❌ Error submitting order (background):', error.response?.data || error.message);
     });
+
+    // Customize response message based on order type and payment status
+    let responseMessage;
+    if (order_type === 'delivery' && paymentStatus === 'pending_payment_link') {
+      responseMessage = `Great! Your order has been placed. I'm texting you a secure payment link right now. Once you pay, we'll start preparing your order and get it delivered to you. Thank you for choosing Favilla's Pizzeria!`;
+    } else {
+      responseMessage = `Great! Your order has been placed successfully. We'll have that ready for you soon. Thank you for choosing Favilla's Pizzeria!`;
+    }
 
     // Return immediate success response to VAPI
     // The "result" field will be spoken by the assistant to the customer
@@ -153,7 +187,7 @@ exports.handler = async (event, context) => {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        result: `Great! Your order has been placed successfully. We'll have that ready for you soon. Thank you for choosing Favilla's Pizzeria!`
+        result: responseMessage
       })
     };
 
