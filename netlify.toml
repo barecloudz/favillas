@@ -56,6 +56,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/kitchen/current-date"
+  to = "/.netlify/functions/kitchen-current-date"
+  status = 200
+
+[[redirects]]
   from = "/api/orders/*/status"
   to = "/.netlify/functions/orders-status"
   status = 200
