@@ -453,12 +453,19 @@ const KitchenPage = () => {
     return numPrice.toFixed(2);
   };
 
-  
+
   // Query for active orders
   const { data: orders, isLoading, error } = useQuery({
     queryKey: ["/api/kitchen/orders"],
     refetchInterval: 5000, // Refetch every 5 seconds (optimized from 2s to reduce database egress)
     enabled: !!user, // Only fetch when user is authenticated
+  });
+
+  // Query for current EST date from database (reliable timezone source)
+  const { data: dbDate } = useQuery({
+    queryKey: ["/api/kitchen/current-date"],
+    refetchInterval: 60000, // Refetch every minute
+    enabled: !!user,
   });
 
   // Fetch menu items for item management modal
@@ -550,34 +557,41 @@ const KitchenPage = () => {
   }, [orders]);
 
   // Auto-print new orders (replaces WebSocket in production)
-  const isInitialMount = useRef(true);
+  const hasInitializedPrinting = useRef(false);
   useEffect(() => {
     if (!orders || orders.length === 0) return;
 
-    // On initial mount, just populate printedOrdersRef with existing order IDs
-    // Don't print anything - only print truly NEW orders that come in later
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      // Mark all existing orders as already seen/printed
-      const existingOrderIds = new Set(orders.map((order: any) => order.id));
-      existingOrderIds.forEach(id => printedOrdersRef.current.add(id));
-      setPrintedOrders(existingOrderIds);
-      console.log(`📋 Initial load: ${existingOrderIds.size} existing orders marked as seen (won't auto-print)`);
+    // On first run, mark existing orders as seen (read from localStorage)
+    if (!hasInitializedPrinting.current) {
+      hasInitializedPrinting.current = true;
+
+      // Get already-printed orders from localStorage (persists across deployments)
+      const alreadyPrintedIds = printedOrders; // Already loaded from localStorage
+
+      // Mark all existing orders as seen if they're not already in localStorage
+      orders.forEach((order: any) => {
+        if (!alreadyPrintedIds.has(order.id)) {
+          printedOrdersRef.current.add(order.id);
+          setPrintedOrders(prev => new Set([...prev, order.id]));
+        }
+      });
+
+      console.log(`📋 Auto-print initialized: ${printedOrdersRef.current.size} orders marked as seen (won't auto-print)`);
       return;
     }
 
-    // Get previous order IDs from ref
-    const previousOrderIds = printedOrdersRef.current;
+    // Find truly NEW orders (not in printedOrdersRef)
+    const newOrders = orders.filter((order: any) => !printedOrdersRef.current.has(order.id));
 
-    // Find new orders (orders that weren't in the previous list)
-    const newOrders = orders.filter((order: any) => {
-      // Only consider orders that haven't been printed yet
-      return !previousOrderIds.has(order.id);
-    });
+    if (newOrders.length === 0) return;
 
     // Auto-print and play sound for each new order
     newOrders.forEach((order: any) => {
-      console.log(`🆕 New order detected: #${order.id}`);
+      console.log(`🆕 New order detected: #${order.id} - Auto-printing`);
+
+      // Mark as printed immediately to prevent duplicates
+      printedOrdersRef.current.add(order.id);
+      setPrintedOrders(prev => new Set([...prev, order.id]));
 
       // Play notification sound if enabled
       if (soundEnabled) {
@@ -588,7 +602,7 @@ const KitchenPage = () => {
       // Auto-print if enabled
       handleNewOrder(order);
     });
-  }, [orders, handleNewOrder, soundEnabled, playTestSound]);
+  }, [orders, handleNewOrder, soundEnabled, playTestSound, printedOrders]);
 
   // Filter orders based on active tab
   const filteredOrders = orders ? orders.filter((order: any) => {
@@ -601,26 +615,8 @@ const KitchenPage = () => {
       // Don't convert timezones - the DB timestamp is already in EST
       const orderDateStr = timestamp.split(' ')[0]; // "2025-11-21"
 
-      // Get today's date in EST (format: "YYYY-MM-DD")
-      const nowUTC = new Date();
-      const estFormatter = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'America/New_York',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      });
-      const todayEST = estFormatter.format(nowUTC); // "2025-11-21"
-
-      // Debug logging (first order only to avoid spam)
-      if (order.id === orders?.[0]?.id) {
-        console.log('🔍 Today filter debug:', {
-          orderDate: orderDateStr,
-          todayEST: todayEST,
-          match: orderDateStr === todayEST,
-          timestamp: timestamp,
-          orderId: order.id
-        });
-      }
+      // Get today's date from database (EST timezone, reliable source)
+      const todayEST = dbDate?.currentDate || ''; // "2025-11-21"
 
       return orderDateStr === todayEST &&
              order.status !== 'cancelled' &&
@@ -1683,27 +1679,13 @@ const KitchenPage = () => {
                     {orders?.filter((o: any) => {
                       const timestamp = o.created_at || o.createdAt;
                       const orderDateStr = timestamp.split(' ')[0];
-                      const nowUTC = new Date();
-                      const estFormatter = new Intl.DateTimeFormat('en-CA', {
-                        timeZone: 'America/New_York',
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit'
-                      });
-                      const todayEST = estFormatter.format(nowUTC);
+                      const todayEST = dbDate?.currentDate || '';
                       return orderDateStr === todayEST && o.status !== 'cancelled' && !(o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o));
                     }).length > 0 && (
                       <Badge className="ml-1 sm:ml-2 bg-blue-500 text-xs">{orders.filter((o: any) => {
                         const timestamp = o.created_at || o.createdAt;
                         const orderDateStr = timestamp.split(' ')[0];
-                        const nowUTC = new Date();
-                        const estFormatter = new Intl.DateTimeFormat('en-CA', {
-                          timeZone: 'America/New_York',
-                          year: 'numeric',
-                          month: '2-digit',
-                          day: '2-digit'
-                        });
-                        const todayEST = estFormatter.format(nowUTC);
+                        const todayEST = dbDate?.currentDate || '';
                         return orderDateStr === todayEST && o.status !== 'cancelled' && !(o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o));
                       }).length}</Badge>
                     )}
