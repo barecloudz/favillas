@@ -63,6 +63,7 @@ export const handler: Handler = async (event, context) => {
     const sql = getDB();
     
     // Get active kitchen orders with customer names (pending, cooking, completed)
+    // Exclude orders awaiting payment (pending_payment_link)
     const kitchenOrders = await sql`
       SELECT
         o.*,
@@ -71,6 +72,7 @@ export const handler: Handler = async (event, context) => {
       FROM orders o
       LEFT JOIN users u ON (o.user_id = u.id OR o.supabase_user_id = u.supabase_user_id)
       WHERE o.status IN ('pending', 'cooking', 'completed', 'picked_up')
+        AND o.payment_status != 'pending_payment_link'
       ORDER BY o.created_at ASC
     `;
     
