@@ -4,6 +4,34 @@
  * Works with HTTPS sites by using ePOS-Print URL scheme supported by iOS Safari
  */
 
+// Helper function to format EST timestamps from database
+const formatESTDateTime = (timestamp: string) => {
+  if (!timestamp) return 'Invalid Date';
+  try {
+    // Database returns timestamps in EST without timezone info
+    // Format: "2025-11-21 11:19:10.999846" or "2025-11-21T11:19:10.999846"
+    const cleanTimestamp = timestamp.replace(' ', 'T').split('.')[0]; // Remove microseconds
+    const estDate = new Date(cleanTimestamp + '-05:00'); // Append EST timezone
+
+    if (isNaN(estDate.getTime())) {
+      console.error('Invalid timestamp:', timestamp);
+      return 'Invalid Date';
+    }
+
+    return estDate.toLocaleString('en-US', {
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  } catch (error) {
+    console.error('Error formatting timestamp:', timestamp, error);
+    return 'Invalid Date';
+  }
+};
+
 // Declare Epson SDK types
 declare global {
   interface Window {
@@ -100,7 +128,7 @@ function formatCustomerReceipt(order: OrderPrintData): string {
   // Order details - Left aligned
   receipt += `${ESC}a\x00`; // Left align
   receipt += `${order.orderType === 'delivery' ? 'DELIVERY' : 'PICKUP'}\n`;
-  receipt += `${new Date(order.createdAt).toLocaleString()}\n`;
+  receipt += `${formatESTDateTime(order.createdAt)}\n`;
   receipt += `--------------------------------\n`;
 
   // Customer info (show for all orders, not just delivery)
