@@ -611,6 +611,17 @@ const KitchenPage = () => {
       });
       const todayEST = estFormatter.format(nowUTC); // "2025-11-21"
 
+      // Debug logging (first order only to avoid spam)
+      if (order.id === orders?.[0]?.id) {
+        console.log('🔍 Today filter debug:', {
+          orderDate: orderDateStr,
+          todayEST: todayEST,
+          match: orderDateStr === todayEST,
+          timestamp: timestamp,
+          orderId: order.id
+        });
+      }
+
       return orderDateStr === todayEST &&
              order.status !== 'cancelled' &&
              !(order.status === 'pending' && order.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(order));
