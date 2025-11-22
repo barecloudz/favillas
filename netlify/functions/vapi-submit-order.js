@@ -98,50 +98,10 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Look up menu item IDs from the database based on item names
-    console.log('🔍 Looking up menu item IDs from names...');
-    const baseUrl = process.env.URL || 'https://pizzaspinrewards.netlify.app';
-    const menuApiUrl = `${baseUrl}/api/menu-items`;
-
-    // Fetch all menu items to build a name->ID mapping
-    let menuItemsMap = {};
-    try {
-      const menuResponse = await axios.get(menuApiUrl, { timeout: 5000 });
-      const menuItems = menuResponse.data;
-
-      // Create case-insensitive name mapping
-      menuItems.forEach(item => {
-        const normalizedName = item.name.toLowerCase().trim();
-        menuItemsMap[normalizedName] = item.id;
-      });
-      console.log('✅ Built menu items map with', Object.keys(menuItemsMap).length, 'items');
-    } catch (menuError) {
-      console.error('❌ Failed to fetch menu items:', menuError.message);
-      // Continue with generic IDs as fallback
-    }
-
-    // Transform items to include database IDs
-    const transformedItems = items.map(item => {
-      const itemName = item.menuItemId.toLowerCase().trim(); // menuItemId actually contains the name
-      const dbId = menuItemsMap[itemName];
-
-      if (!dbId) {
-        console.warn('⚠️ No database ID found for item:', item.menuItemId);
-        // Fallback: try to extract a generic ID or use item as-is
-        return item;
-      }
-
-      console.log(`✅ Mapped "${item.menuItemId}" to database ID ${dbId}`);
-      return {
-        ...item,
-        menuItemId: dbId, // Replace name with actual database ID
-      };
-    });
-
-    // Format the order for Pizza Spin API (same format as your LiveKit agent used)
-    // Note: deliveryFee will be calculated by the backend based on distance
+    // Format the order for Pizza Spin API
+    // Pass items as-is - the backend will handle menu item name/ID resolution
     const orderPayload = {
-      items: transformedItems,
+      items: items,
       phone: phone.replace(/\D/g, ''), // Remove non-digits from phone number
       customerName: customer_name,
       orderType: order_type,
