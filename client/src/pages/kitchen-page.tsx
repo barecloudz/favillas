@@ -608,28 +608,22 @@ const KitchenPage = () => {
   const filteredOrders = orders ? orders.filter((order: any) => {
     if (activeTab === "today") {
       // Show all today's orders except cancelled and scheduled (not yet ready)
-      // Database stores timestamps in EST format: "2025-11-21 14:30:00"
       const timestamp = order.created_at || order.createdAt;
 
-      // Extract just the date part (YYYY-MM-DD) from the database timestamp
-      // Don't convert timezones - the DB timestamp is already in EST
-      const orderDateStr = timestamp.split(' ')[0]; // "2025-11-21"
+      // Extract date part - handle both formats:
+      // Space format: "2025-11-21 14:30:00" -> split on space
+      // ISO format: "2025-10-05T16:38:24.452Z" -> split on 'T'
+      let orderDateStr: string;
+      if (timestamp.includes('T')) {
+        // ISO format
+        orderDateStr = timestamp.split('T')[0];
+      } else {
+        // Space format
+        orderDateStr = timestamp.split(' ')[0];
+      }
 
       // Get today's date from database (EST timezone, reliable source)
-      const todayEST = dbDate?.currentDate || ''; // "2025-11-21"
-
-      // Debug first 3 orders
-      if (orders.indexOf(order) < 3) {
-        console.log(`🔍 Today filter - Order #${order.id}:`, {
-          orderDateStr,
-          todayEST,
-          dbDate,
-          match: orderDateStr === todayEST,
-          timestamp,
-          status: order.status,
-          willShow: orderDateStr === todayEST && order.status !== 'cancelled' && !(order.status === 'pending' && order.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(order))
-        });
-      }
+      const todayEST = dbDate?.currentDate || '';
 
       return orderDateStr === todayEST &&
              order.status !== 'cancelled' &&
@@ -1691,13 +1685,23 @@ const KitchenPage = () => {
                     <span className="sm:hidden">Today</span>
                     {orders?.filter((o: any) => {
                       const timestamp = o.created_at || o.createdAt;
-                      const orderDateStr = timestamp.split(' ')[0];
+                      let orderDateStr: string;
+                      if (timestamp.includes('T')) {
+                        orderDateStr = timestamp.split('T')[0];
+                      } else {
+                        orderDateStr = timestamp.split(' ')[0];
+                      }
                       const todayEST = dbDate?.currentDate || '';
                       return orderDateStr === todayEST && o.status !== 'cancelled' && !(o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o));
                     }).length > 0 && (
                       <Badge className="ml-1 sm:ml-2 bg-blue-500 text-xs">{orders.filter((o: any) => {
                         const timestamp = o.created_at || o.createdAt;
-                        const orderDateStr = timestamp.split(' ')[0];
+                        let orderDateStr: string;
+                        if (timestamp.includes('T')) {
+                          orderDateStr = timestamp.split('T')[0];
+                        } else {
+                          orderDateStr = timestamp.split(' ')[0];
+                        }
                         const todayEST = dbDate?.currentDate || '';
                         return orderDateStr === todayEST && o.status !== 'cancelled' && !(o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o));
                       }).length}</Badge>
