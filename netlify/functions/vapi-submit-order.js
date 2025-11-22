@@ -150,7 +150,7 @@ exports.handler = async (event, context) => {
       tax: 0,
       deliveryFee: 0, // Backend will calculate based on distance
       tip: 0,
-      paymentStatus: 'pending',
+      paymentStatus: 'succeeded',
       specialInstructions: special_instructions || ''
     };
 
