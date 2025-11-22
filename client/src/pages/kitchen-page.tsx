@@ -618,6 +618,19 @@ const KitchenPage = () => {
       // Get today's date from database (EST timezone, reliable source)
       const todayEST = dbDate?.currentDate || ''; // "2025-11-21"
 
+      // Debug first 3 orders
+      if (orders.indexOf(order) < 3) {
+        console.log(`🔍 Today filter - Order #${order.id}:`, {
+          orderDateStr,
+          todayEST,
+          dbDate,
+          match: orderDateStr === todayEST,
+          timestamp,
+          status: order.status,
+          willShow: orderDateStr === todayEST && order.status !== 'cancelled' && !(order.status === 'pending' && order.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(order))
+        });
+      }
+
       return orderDateStr === todayEST &&
              order.status !== 'cancelled' &&
              !(order.status === 'pending' && order.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(order));
