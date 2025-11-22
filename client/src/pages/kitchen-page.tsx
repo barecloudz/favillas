@@ -988,9 +988,21 @@ const KitchenPage = () => {
                               </p>
                               <p className="text-sm font-bold text-black">Order #{order.id}</p>
                             </div>
-                            <Badge variant="outline" className="text-xs">
-                              {order.order_type?.toUpperCase()}
-                            </Badge>
+                            <div className="flex flex-col gap-1">
+                              <Badge variant="outline" className="text-xs">
+                                {order.order_type?.toUpperCase()}
+                              </Badge>
+                              {order.order_source === 'phone' && (
+                                <Badge className="bg-blue-500 text-white text-xs">
+                                  📞 PHONE
+                                </Badge>
+                              )}
+                              {(order.payment_status === 'unpaid' || order.payment_status === 'pending_payment_link') && (
+                                <Badge className="bg-red-500 text-white text-xs font-bold">
+                                  NOT PAID
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           <p className="text-xs text-gray-500 mb-3">
                             {new Date(order.created_at).toLocaleTimeString()}
@@ -1051,9 +1063,21 @@ const KitchenPage = () => {
                               </p>
                               <p className="text-sm font-bold text-black">Order #{order.id}</p>
                             </div>
-                            <Badge variant="outline" className="text-xs">
-                              {order.order_type?.toUpperCase()}
-                            </Badge>
+                            <div className="flex flex-col gap-1">
+                              <Badge variant="outline" className="text-xs">
+                                {order.order_type?.toUpperCase()}
+                              </Badge>
+                              {order.order_source === 'phone' && (
+                                <Badge className="bg-blue-500 text-white text-xs">
+                                  📞 PHONE
+                                </Badge>
+                              )}
+                              {(order.payment_status === 'unpaid' || order.payment_status === 'pending_payment_link') && (
+                                <Badge className="bg-red-500 text-white text-xs font-bold">
+                                  NOT PAID
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           <p className="text-xs text-gray-500 mb-3">
                             {new Date(order.created_at).toLocaleTimeString()}
@@ -1114,9 +1138,21 @@ const KitchenPage = () => {
                               </p>
                               <p className="text-sm font-bold text-black">Order #{order.id}</p>
                             </div>
-                            <Badge variant="outline" className="text-xs">
-                              {order.order_type?.toUpperCase()}
-                            </Badge>
+                            <div className="flex flex-col gap-1">
+                              <Badge variant="outline" className="text-xs">
+                                {order.order_type?.toUpperCase()}
+                              </Badge>
+                              {order.order_source === 'phone' && (
+                                <Badge className="bg-blue-500 text-white text-xs">
+                                  📞 PHONE
+                                </Badge>
+                              )}
+                              {(order.payment_status === 'unpaid' || order.payment_status === 'pending_payment_link') && (
+                                <Badge className="bg-red-500 text-white text-xs font-bold">
+                                  NOT PAID
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           <p className="text-xs text-gray-500 mb-3">
                             {new Date(order.created_at).toLocaleTimeString()}

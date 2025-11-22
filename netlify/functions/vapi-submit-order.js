@@ -98,6 +98,11 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // Determine payment status based on order type
+    // Pickup: unpaid (pay at store)
+    // Delivery: pending_payment_link (requires payment link)
+    const paymentStatus = order_type === 'pickup' ? 'unpaid' : 'pending_payment_link';
+
     // Format the order for Pizza Spin API
     // Pass items as-is - the backend will handle menu item name/ID resolution
     const orderPayload = {
@@ -110,7 +115,8 @@ exports.handler = async (event, context) => {
       tax: 0,
       deliveryFee: 0, // Backend will calculate based on distance
       tip: 0,
-      paymentStatus: 'succeeded',
+      paymentStatus: paymentStatus,
+      orderSource: 'phone', // Mark as phone order
       specialInstructions: special_instructions || ''
     };
 

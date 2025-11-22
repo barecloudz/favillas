@@ -65,6 +65,8 @@ export interface OrderPrintData {
   pointsEarned?: number;
   fulfillmentTime?: string;
   scheduledTime?: string;
+  paymentStatus?: string;
+  orderSource?: string;
 }
 
 /**
@@ -280,6 +282,19 @@ function formatCustomerReceipt(order: OrderPrintData): string {
   receipt += `TOTAL:           $${order.total.toFixed(2)}\n`;
   receipt += `${ESC}E\x00`; // Bold off
   receipt += `--------------------------------\n`;
+
+  // Payment status warning for unpaid orders
+  if (order.paymentStatus === 'unpaid' || order.paymentStatus === 'pending_payment_link') {
+    receipt += `\n`;
+    receipt += `${ESC}a\x01`; // Center align
+    receipt += `${ESC}E\x01`; // Bold on
+    receipt += `${GS}!\x22`; // Triple height and double width
+    receipt += `*** NOT PAID ***\n`;
+    receipt += `${GS}!\x00`; // Normal size
+    receipt += `${ESC}E\x00`; // Bold off
+    receipt += `${ESC}a\x00`; // Left align
+    receipt += `--------------------------------\n`;
+  }
 
   // Points section - show earned points OR potential points for guests
   receipt += `\n`;
@@ -816,6 +831,20 @@ function buildEposReceipt(builder: ePOSBuilder, order: OrderPrintData): string {
     .addText(`TOTAL:           $${order.total.toFixed(2)}\n`)
     .addTextStyle(false, false, false, 0)
     .addText('--------------------------------\n');
+
+  // Payment status warning for unpaid orders
+  if (order.paymentStatus === 'unpaid' || order.paymentStatus === 'pending_payment_link') {
+    builder
+      .addFeedLine(1)
+      .addTextAlign(1) // Center
+      .addTextSize(3, 3) // Triple size
+      .addTextStyle(false, false, true, 0) // Bold
+      .addText('*** NOT PAID ***\n')
+      .addTextSize(1, 1) // Normal size
+      .addTextStyle(false, false, false, 0) // Not bold
+      .addTextAlign(0) // Left align
+      .addText('--------------------------------\n');
+  }
 
   // Special instructions
   if (order.specialInstructions) {
