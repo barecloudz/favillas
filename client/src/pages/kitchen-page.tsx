@@ -594,10 +594,12 @@ const KitchenPage = () => {
   const filteredOrders = orders ? orders.filter((order: any) => {
     if (activeTab === "today") {
       // Show all today's orders except cancelled and scheduled (not yet ready)
-      // Parse order timestamp as EST
+      // Database stores timestamps in EST format: "2025-11-21 14:30:00"
       const timestamp = order.created_at || order.createdAt;
-      const cleanTimestamp = timestamp.replace(' ', 'T').split('.')[0];
-      const orderDate = new Date(cleanTimestamp + '-05:00');
+
+      // Extract just the date part (YYYY-MM-DD) from the database timestamp
+      // Don't convert timezones - the DB timestamp is already in EST
+      const orderDateStr = timestamp.split(' ')[0]; // "2025-11-21"
 
       // Get today's date in EST (format: "YYYY-MM-DD")
       const nowUTC = new Date();
@@ -607,10 +609,7 @@ const KitchenPage = () => {
         month: '2-digit',
         day: '2-digit'
       });
-      const todayEST = estFormatter.format(nowUTC); // Returns "YYYY-MM-DD"
-
-      // Compare dates (ignore time)
-      const orderDateStr = orderDate.toISOString().split('T')[0];
+      const todayEST = estFormatter.format(nowUTC); // "2025-11-21"
 
       return orderDateStr === todayEST &&
              order.status !== 'cancelled' &&
@@ -1672,8 +1671,7 @@ const KitchenPage = () => {
                     <span className="sm:hidden">Today</span>
                     {orders?.filter((o: any) => {
                       const timestamp = o.created_at || o.createdAt;
-                      const cleanTimestamp = timestamp.replace(' ', 'T').split('.')[0];
-                      const orderDate = new Date(cleanTimestamp + '-05:00');
+                      const orderDateStr = timestamp.split(' ')[0];
                       const nowUTC = new Date();
                       const estFormatter = new Intl.DateTimeFormat('en-CA', {
                         timeZone: 'America/New_York',
@@ -1682,13 +1680,11 @@ const KitchenPage = () => {
                         day: '2-digit'
                       });
                       const todayEST = estFormatter.format(nowUTC);
-                      const orderDateStr = orderDate.toISOString().split('T')[0];
                       return orderDateStr === todayEST && o.status !== 'cancelled' && !(o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o));
                     }).length > 0 && (
                       <Badge className="ml-1 sm:ml-2 bg-blue-500 text-xs">{orders.filter((o: any) => {
                         const timestamp = o.created_at || o.createdAt;
-                        const cleanTimestamp = timestamp.replace(' ', 'T').split('.')[0];
-                        const orderDate = new Date(cleanTimestamp + '-05:00');
+                        const orderDateStr = timestamp.split(' ')[0];
                         const nowUTC = new Date();
                         const estFormatter = new Intl.DateTimeFormat('en-CA', {
                           timeZone: 'America/New_York',
@@ -1697,7 +1693,6 @@ const KitchenPage = () => {
                           day: '2-digit'
                         });
                         const todayEST = estFormatter.format(nowUTC);
-                        const orderDateStr = orderDate.toISOString().split('T')[0];
                         return orderDateStr === todayEST && o.status !== 'cancelled' && !(o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o));
                       }).length}</Badge>
                     )}
