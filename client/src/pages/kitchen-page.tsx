@@ -431,8 +431,10 @@ const KitchenPage = () => {
           console.error('❌ Auto-print failed:', result.message);
         }
       });
+    } else {
+      console.log('⏭️  Auto-print disabled in settings');
     }
-  }, []); // Empty deps - uses refs and stable setState
+  }, []); // Empty deps - uses refs and stable localStorage check
 
   // Memoize the websocket options to prevent reconnecting
   const websocketOptions = useMemo(() => ({
@@ -602,7 +604,7 @@ const KitchenPage = () => {
       // Auto-print if enabled
       handleNewOrder(order);
     });
-  }, [orders, handleNewOrder, soundEnabled, playTestSound, printedOrders]);
+  }, [orders, handleNewOrder, soundEnabled, playTestSound]); // Removed printedOrders - it's managed by ref
 
   // Filter orders based on active tab
   const filteredOrders = orders ? orders.filter((order: any) => {
