@@ -703,11 +703,21 @@ const KitchenPage = () => {
     if (activeTab === "picked_up") return order.status === "picked_up";
     if (activeTab === "cancelled") return order.status === "cancelled";
     if (activeTab === "scheduled") {
-      // Show only scheduled orders that are not ready to start yet
+      // Show ALL scheduled orders until fulfilled (picked up or cancelled)
       const fulfillmentTime = order.fulfillmentTime || order.fulfillment_time;
-      return order.status === "pending" &&
-             fulfillmentTime === 'scheduled' &&
-             !isOrderReadyToStart(order);
+      const isScheduled = fulfillmentTime === 'scheduled';
+      const notFulfilled = order.status !== 'picked_up' && order.status !== 'cancelled';
+
+      console.log('🔍 Scheduled tab check:', {
+        orderId: order.id,
+        fulfillmentTime,
+        isScheduled,
+        status: order.status,
+        notFulfilled,
+        willShow: isScheduled && notFulfilled
+      });
+
+      return isScheduled && notFulfilled;
     }
     return true;
   }).sort((a: any, b: any) => {
@@ -730,9 +740,9 @@ const KitchenPage = () => {
 
   const scheduledLaterOrders = orders ? orders.filter((order: any) => {
     const fulfillmentTime = order.fulfillmentTime || order.fulfillment_time;
-    return order.status === "pending" &&
-           fulfillmentTime === 'scheduled' &&
-           !isOrderReadyToStart(order);
+    const isScheduled = fulfillmentTime === 'scheduled';
+    const notFulfilled = order.status !== 'picked_up' && order.status !== 'cancelled';
+    return isScheduled && notFulfilled;
   }) : [];
 
   // Print order receipt
@@ -1842,11 +1852,15 @@ const KitchenPage = () => {
                   <span className="sm:hidden">Scheduled</span>
                   {orders?.filter((o: any) => {
                     const fulfillmentTime = o.fulfillmentTime || o.fulfillment_time;
-                    return o.status === 'pending' && fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o);
+                    const isScheduled = fulfillmentTime === 'scheduled';
+                    const notFulfilled = o.status !== 'picked_up' && o.status !== 'cancelled';
+                    return isScheduled && notFulfilled;
                   }).length > 0 && (
                     <Badge className="ml-1 sm:ml-2 bg-blue-500 text-xs">{orders.filter((o: any) => {
                       const fulfillmentTime = o.fulfillmentTime || o.fulfillment_time;
-                      return o.status === 'pending' && fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o);
+                      const isScheduled = fulfillmentTime === 'scheduled';
+                      const notFulfilled = o.status !== 'picked_up' && o.status !== 'cancelled';
+                      return isScheduled && notFulfilled;
                     }).length}</Badge>
                   )}
                 </TabsTrigger>
