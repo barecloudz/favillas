@@ -599,17 +599,13 @@ const KitchenPage = () => {
       newOrders.forEach((order: any) => {
         console.log(`🆕 New order detected: #${order.id} - Auto-printing`);
 
-        // Mark as printed immediately to prevent duplicates
-        printedOrdersRef.current.add(order.id);
-        setPrintedOrders(prev => new Set([...prev, order.id]));
-
         // Play notification sound if enabled
         if (soundEnabled) {
           console.log('🔊 Playing notification sound for new order');
           playTestSound();
         }
 
-        // Auto-print if enabled
+        // Auto-print if enabled (handleNewOrder will mark as printed)
         handleNewOrder(order);
       });
     }
@@ -640,17 +636,13 @@ const KitchenPage = () => {
         if (minutesUntilPickup <= 25 && minutesUntilPickup > 24) {
           console.log(`⏰ Scheduled order #${order.id} is 25 min before pickup - Auto-printing now!`);
 
-          // Mark as printed
-          printedOrdersRef.current.add(order.id);
-          setPrintedOrders(prev => new Set([...prev, order.id]));
-
           // Play notification sound
           if (soundEnabled) {
             console.log('🔊 Playing notification sound for scheduled order');
             playTestSound();
           }
 
-          // Auto-print
+          // Auto-print (handleNewOrder will mark as printed)
           handleNewOrder(order);
         }
       });
