@@ -658,7 +658,7 @@ const KitchenPage = () => {
   // Filter orders based on active tab
   const filteredOrders = orders ? orders.filter((order: any) => {
     if (activeTab === "today") {
-      // Show all today's orders except cancelled and scheduled (not yet ready)
+      // Show all today's orders except cancelled (includes ALL scheduled orders)
       const timestamp = order.created_at || order.createdAt;
 
       // Extract date part - handle both formats:
@@ -676,9 +676,7 @@ const KitchenPage = () => {
       // Get today's date from database (EST timezone, reliable source)
       const todayEST = dbDate?.currentDate || '';
 
-      return orderDateStr === todayEST &&
-             order.status !== 'cancelled' &&
-             !(order.status === 'pending' && order.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(order));
+      return orderDateStr === todayEST && order.status !== 'cancelled';
     }
     if (activeTab === "pending") {
       // Show only orders ready to start (ASAP or scheduled orders within 30 minutes)
@@ -1760,7 +1758,7 @@ const KitchenPage = () => {
                         orderDateStr = timestamp.split(' ')[0];
                       }
                       const todayEST = dbDate?.currentDate || '';
-                      return orderDateStr === todayEST && o.status !== 'cancelled' && !(o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o));
+                      return orderDateStr === todayEST && o.status !== 'cancelled';
                     }).length > 0 && (
                       <Badge className="ml-1 sm:ml-2 bg-blue-500 text-xs">{orders.filter((o: any) => {
                         const timestamp = o.created_at || o.createdAt;
@@ -1771,7 +1769,7 @@ const KitchenPage = () => {
                           orderDateStr = timestamp.split(' ')[0];
                         }
                         const todayEST = dbDate?.currentDate || '';
-                        return orderDateStr === todayEST && o.status !== 'cancelled' && !(o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o));
+                        return orderDateStr === todayEST && o.status !== 'cancelled';
                       }).length}</Badge>
                     )}
                   </TabsTrigger>
