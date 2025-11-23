@@ -658,8 +658,20 @@ const KitchenPage = () => {
   // Filter orders based on active tab
   const filteredOrders = orders ? orders.filter((order: any) => {
     if (activeTab === "today") {
-      // Show all today's orders except cancelled (includes ALL scheduled orders)
-      const timestamp = order.created_at || order.createdAt;
+      // Show all today's orders except cancelled
+      // For scheduled orders, check the scheduled date instead of created date
+      // This ensures orders scheduled for today show up in Today tab (even if placed yesterday)
+      const isScheduled = order.fulfillmentTime === 'scheduled' || order.fulfillment_time === 'scheduled';
+      const hasScheduledTime = order.scheduledTime || order.scheduled_time;
+
+      let timestamp: string;
+      if (isScheduled && hasScheduledTime) {
+        // For scheduled orders, use the scheduled time to determine which day it belongs to
+        timestamp = order.scheduledTime || order.scheduled_time;
+      } else {
+        // For ASAP orders, use created time
+        timestamp = order.created_at || order.createdAt;
+      }
 
       // Extract date part - handle both formats:
       // Space format: "2025-11-21 14:30:00" -> split on space
