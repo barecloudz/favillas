@@ -3102,7 +3102,7 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
 
     // Calculate daily data from orders based on selected time range
     const now = new Date();
-    const daysToShow = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : timeRange === "90d" ? 90 : 7;
+    const daysToShow = timeRange === "1d" ? 1 : timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : timeRange === "90d" ? 90 : 7;
 
     // console.log('📅 AnalyticsDashboard filtering for:', timeRange, 'showing', daysToShow, 'days');
 
@@ -3360,7 +3360,7 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
           
           <Button variant="outline" onClick={() => {
             const cutoffDate = new Date();
-            cutoffDate.setDate(cutoffDate.getDate() - (timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : timeRange === "90d" ? 90 : 7));
+            cutoffDate.setDate(cutoffDate.getDate() - (timeRange === "1d" ? 1 : timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : timeRange === "90d" ? 90 : 7));
             const filteredForExport = orders.filter((order: any) => {
               const orderDate = new Date(order.createdAt || order.created_at);
               return orderDate >= cutoffDate;

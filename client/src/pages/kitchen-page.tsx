@@ -1038,15 +1038,32 @@ const KitchenPage = () => {
       console.log('Daily Summary: Fetched orders:', allOrders.length);
 
       // Filter to today's orders only (using EST timezone)
+      // Database returns timestamps in EST without timezone info
       const now = new Date();
-      const estDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-      const today = estDate.toISOString().split('T')[0];
+      const estFormatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      const todayParts = estFormatter.formatToParts(now);
+      const today = `${todayParts.find(p => p.type === 'year')!.value}-${todayParts.find(p => p.type === 'month')!.value}-${todayParts.find(p => p.type === 'day')!.value}`;
 
       const todaysOrders = allOrders.filter((order: any) => {
-        const orderTimestamp = new Date(order.created_at || order.createdAt);
-        const orderESTDate = new Date(orderTimestamp.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-        const orderDate = orderESTDate.toISOString().split('T')[0];
-        return orderDate === today && order.status !== 'cancelled';
+        const timestamp = order.created_at || order.createdAt;
+        if (!timestamp) return false;
+
+        // Extract date part - handle both formats
+        let orderDateStr: string;
+        if (timestamp.includes('T')) {
+          // ISO format: "2025-11-22T16:38:24.452Z"
+          orderDateStr = timestamp.split('T')[0];
+        } else {
+          // Space format: "2025-11-22 16:38:24"
+          orderDateStr = timestamp.split(' ')[0];
+        }
+
+        return orderDateStr === today && order.status !== 'cancelled';
       });
 
       console.log(`Daily Summary: ${todaysOrders.length} orders today`);
