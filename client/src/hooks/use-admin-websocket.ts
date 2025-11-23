@@ -92,9 +92,12 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
     }
 
     try {
-      // Resume audio context if suspended (required by some browsers)
+      // Resume audio context if suspended (CRITICAL for iOS/iPad)
+      // iOS Safari suspends audio context aggressively, must resume before every playback
       if (audioContextRef.current.state === 'suspended') {
+        console.log('🔄 Audio context suspended, resuming...');
         await audioContextRef.current.resume();
+        console.log('✅ Audio context resumed, state:', audioContextRef.current.state);
       }
 
       const soundType = optionsRef.current.soundType || 'chime';

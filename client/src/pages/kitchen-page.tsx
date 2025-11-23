@@ -583,28 +583,85 @@ const KitchenPage = () => {
     }
 
     // Find truly NEW orders (not in printedOrdersRef)
-    const newOrders = orders.filter((order: any) => !printedOrdersRef.current.has(order.id));
-
-    if (newOrders.length === 0) return;
-
-    // Auto-print and play sound for each new order
-    newOrders.forEach((order: any) => {
-      console.log(`🆕 New order detected: #${order.id} - Auto-printing`);
-
-      // Mark as printed immediately to prevent duplicates
-      printedOrdersRef.current.add(order.id);
-      setPrintedOrders(prev => new Set([...prev, order.id]));
-
-      // Play notification sound if enabled
-      if (soundEnabled) {
-        console.log('🔊 Playing notification sound for new order');
-        playTestSound();
+    // Don't auto-print scheduled orders when first created - wait until 25 min before pickup
+    const newOrders = orders.filter((order: any) => {
+      if (printedOrdersRef.current.has(order.id)) return false;
+      // Skip scheduled orders on initial detection - they'll print at 25 min before pickup
+      if (order.fulfillmentTime === 'scheduled' || order.fulfillment_time === 'scheduled') {
+        console.log(`📅 Scheduled order #${order.id} detected, will auto-print 25 min before pickup`);
+        return false;
       }
-
-      // Auto-print if enabled
-      handleNewOrder(order);
+      return true;
     });
+
+    if (newOrders.length > 0) {
+      // Auto-print and play sound for each new order
+      newOrders.forEach((order: any) => {
+        console.log(`🆕 New order detected: #${order.id} - Auto-printing`);
+
+        // Mark as printed immediately to prevent duplicates
+        printedOrdersRef.current.add(order.id);
+        setPrintedOrders(prev => new Set([...prev, order.id]));
+
+        // Play notification sound if enabled
+        if (soundEnabled) {
+          console.log('🔊 Playing notification sound for new order');
+          playTestSound();
+        }
+
+        // Auto-print if enabled
+        handleNewOrder(order);
+      });
+    }
   }, [orders, handleNewOrder, soundEnabled, playTestSound]); // Removed printedOrders - it's managed by ref
+
+  // Auto-print scheduled orders 25 minutes before pickup time
+  useEffect(() => {
+    if (!orders || orders.length === 0) return;
+
+    const checkScheduledOrders = () => {
+      const now = new Date();
+
+      orders.forEach((order: any) => {
+        // Only check scheduled orders that haven't been printed yet
+        if ((order.fulfillmentTime !== 'scheduled' && order.fulfillment_time !== 'scheduled') ||
+            (!order.scheduledTime && !order.scheduled_time)) {
+          return;
+        }
+
+        if (printedOrdersRef.current.has(order.id)) {
+          return; // Already printed
+        }
+
+        const scheduledTime = new Date(order.scheduledTime || order.scheduled_time);
+        const minutesUntilPickup = (scheduledTime.getTime() - now.getTime()) / (1000 * 60);
+
+        // Auto-print at exactly 25 minutes before pickup (with 1 minute tolerance)
+        if (minutesUntilPickup <= 25 && minutesUntilPickup > 24) {
+          console.log(`⏰ Scheduled order #${order.id} is 25 min before pickup - Auto-printing now!`);
+
+          // Mark as printed
+          printedOrdersRef.current.add(order.id);
+          setPrintedOrders(prev => new Set([...prev, order.id]));
+
+          // Play notification sound
+          if (soundEnabled) {
+            console.log('🔊 Playing notification sound for scheduled order');
+            playTestSound();
+          }
+
+          // Auto-print
+          handleNewOrder(order);
+        }
+      });
+    };
+
+    // Check every 30 seconds for scheduled orders ready to print
+    const interval = setInterval(checkScheduledOrders, 30000);
+    checkScheduledOrders(); // Check immediately
+
+    return () => clearInterval(interval);
+  }, [orders, handleNewOrder, soundEnabled, playTestSound]);
 
   // Filter orders based on active tab
   const filteredOrders = orders ? orders.filter((order: any) => {
