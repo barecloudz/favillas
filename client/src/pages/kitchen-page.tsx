@@ -505,11 +505,13 @@ const KitchenPage = () => {
 
   // Helper function to check if order is ready to start (for scheduled orders)
   const isOrderReadyToStart = (order: any) => {
-    if (order.fulfillmentTime !== 'scheduled' || !order.scheduledTime) {
+    const fulfillmentTime = order.fulfillmentTime || order.fulfillment_time;
+    const scheduledTimeStr = order.scheduledTime || order.scheduled_time;
+    if (fulfillmentTime !== 'scheduled' || !scheduledTimeStr) {
       return true; // ASAP orders are always ready
     }
 
-    const scheduledTime = new Date(order.scheduledTime);
+    const scheduledTime = new Date(scheduledTimeStr);
     const now = new Date();
     const minutesUntilScheduled = (scheduledTime.getTime() - now.getTime()) / (1000 * 60);
 
@@ -702,8 +704,9 @@ const KitchenPage = () => {
     if (activeTab === "cancelled") return order.status === "cancelled";
     if (activeTab === "scheduled") {
       // Show only scheduled orders that are not ready to start yet
+      const fulfillmentTime = order.fulfillmentTime || order.fulfillment_time;
       return order.status === "pending" &&
-             order.fulfillmentTime === 'scheduled' &&
+             fulfillmentTime === 'scheduled' &&
              !isOrderReadyToStart(order);
     }
     return true;
@@ -718,15 +721,17 @@ const KitchenPage = () => {
 
   // Separate pending orders into ready-to-start and scheduled-for-later
   const pendingOrders = orders ? orders.filter((order: any) => {
+    const fulfillmentTime = order.fulfillmentTime || order.fulfillment_time;
     return order.status === "pending" && (
-      order.fulfillmentTime === 'asap' ||
+      fulfillmentTime === 'asap' ||
       isOrderReadyToStart(order)
     );
   }) : [];
 
   const scheduledLaterOrders = orders ? orders.filter((order: any) => {
+    const fulfillmentTime = order.fulfillmentTime || order.fulfillment_time;
     return order.status === "pending" &&
-           order.fulfillmentTime === 'scheduled' &&
+           fulfillmentTime === 'scheduled' &&
            !isOrderReadyToStart(order);
   }) : [];
 
@@ -1573,11 +1578,17 @@ const KitchenPage = () => {
                   <div className="bg-gradient-to-r from-red-500 via-red-600 to-red-500 text-white p-4 font-bold text-center flex items-center justify-center gap-3 shadow-lg">
                     <span className="text-lg">Ready to Start</span>
                     <Badge className="bg-white text-red-600 font-bold text-base px-3 py-1 shadow-md">
-                      {orders?.filter((o: any) => o.status === "pending" && (o.fulfillmentTime === 'asap' || isOrderReadyToStart(o))).length || 0}
+                      {orders?.filter((o: any) => {
+                        const fulfillmentTime = o.fulfillmentTime || o.fulfillment_time;
+                        return o.status === "pending" && (fulfillmentTime === 'asap' || isOrderReadyToStart(o));
+                      }).length || 0}
                     </Badge>
                   </div>
                   <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-red-50/30 to-transparent">
-                    {orders?.filter((o: any) => o.status === "pending" && (o.fulfillmentTime === 'asap' || isOrderReadyToStart(o))).map((order: any) => (
+                    {orders?.filter((o: any) => {
+                      const fulfillmentTime = o.fulfillmentTime || o.fulfillment_time;
+                      return o.status === "pending" && (fulfillmentTime === 'asap' || isOrderReadyToStart(o));
+                    }).map((order: any) => (
                       <Card
                         key={order.id}
                         className="cursor-pointer hover:shadow-2xl transition-all duration-300 border-2 border-red-200/50 hover:border-red-400 bg-gradient-to-br from-white to-red-50/20 hover:scale-[1.02]"
@@ -1791,8 +1802,14 @@ const KitchenPage = () => {
                     <TabsTrigger value="pending" className="relative px-2 md:px-3">
                       <span className="hidden sm:inline">Ready to Start</span>
                       <span className="sm:hidden">Ready</span>
-                      {orders?.filter((o: any) => o.status === "pending" && (o.fulfillmentTime === 'asap' || isOrderReadyToStart(o))).length > 0 && (
-                        <Badge className="ml-1 sm:ml-2 bg-red-500 text-xs">{orders.filter((o: any) => o.status === "pending" && (o.fulfillmentTime === 'asap' || isOrderReadyToStart(o))).length}</Badge>
+                      {orders?.filter((o: any) => {
+                        const fulfillmentTime = o.fulfillmentTime || o.fulfillment_time;
+                        return o.status === "pending" && (fulfillmentTime === 'asap' || isOrderReadyToStart(o));
+                      }).length > 0 && (
+                        <Badge className="ml-1 sm:ml-2 bg-red-500 text-xs">{orders.filter((o: any) => {
+                          const fulfillmentTime = o.fulfillmentTime || o.fulfillment_time;
+                          return o.status === "pending" && (fulfillmentTime === 'asap' || isOrderReadyToStart(o));
+                        }).length}</Badge>
                       )}
                     </TabsTrigger>
                     <TabsTrigger value="cooking" className="px-2 md:px-3">
@@ -1823,8 +1840,14 @@ const KitchenPage = () => {
                 <TabsTrigger value="scheduled" className="px-2 md:px-3">
                   <span className="hidden sm:inline">Scheduled Later</span>
                   <span className="sm:hidden">Scheduled</span>
-                  {orders?.filter((o: any) => o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o)).length > 0 && (
-                    <Badge className="ml-1 sm:ml-2 bg-blue-500 text-xs">{orders.filter((o: any) => o.status === 'pending' && o.fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o)).length}</Badge>
+                  {orders?.filter((o: any) => {
+                    const fulfillmentTime = o.fulfillmentTime || o.fulfillment_time;
+                    return o.status === 'pending' && fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o);
+                  }).length > 0 && (
+                    <Badge className="ml-1 sm:ml-2 bg-blue-500 text-xs">{orders.filter((o: any) => {
+                      const fulfillmentTime = o.fulfillmentTime || o.fulfillment_time;
+                      return o.status === 'pending' && fulfillmentTime === 'scheduled' && !isOrderReadyToStart(o);
+                    }).length}</Badge>
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="all" className="px-2 md:px-3">All</TabsTrigger>
@@ -2012,15 +2035,15 @@ const KitchenPage = () => {
                           </div>
                         )}
 
-                        {order.fulfillmentTime === 'scheduled' && order.scheduledTime && (
+                        {((order.fulfillmentTime === 'scheduled' || order.fulfillment_time === 'scheduled') && (order.scheduledTime || order.scheduled_time)) && (
                           <div className="mt-4 p-3 bg-purple-50 rounded-md">
                             <p className="font-medium text-sm">Scheduled Time:</p>
                             <p className="text-sm font-mono">
-                              {new Date(order.scheduledTime).toLocaleString()}
+                              {new Date(order.scheduledTime || order.scheduled_time).toLocaleString()}
                             </p>
                             {!isOrderReadyToStart(order) && (
                               <p className="text-xs text-purple-600 mt-1">
-                                Can start in {Math.ceil((new Date(order.scheduledTime).getTime() - Date.now()) / (1000 * 60) - 30)} minutes
+                                Can start in {Math.ceil((new Date(order.scheduledTime || order.scheduled_time).getTime() - Date.now()) / (1000 * 60) - 30)} minutes
                               </p>
                             )}
                           </div>
@@ -2324,11 +2347,11 @@ const KitchenPage = () => {
                 )}
 
                 {/* Scheduled Time */}
-                {selectedOrder.fulfillmentTime === 'scheduled' && selectedOrder.scheduledTime && (
+                {((selectedOrder.fulfillmentTime === 'scheduled' || selectedOrder.fulfillment_time === 'scheduled') && (selectedOrder.scheduledTime || selectedOrder.scheduled_time)) && (
                   <div className="bg-purple-50 p-4 rounded-lg">
                     <h3 className="font-semibold mb-2">Scheduled Time</h3>
                     <p className="text-sm font-mono">
-                      {new Date(selectedOrder.scheduledTime).toLocaleString()}
+                      {new Date(selectedOrder.scheduledTime || selectedOrder.scheduled_time).toLocaleString()}
                     </p>
                   </div>
                 )}
