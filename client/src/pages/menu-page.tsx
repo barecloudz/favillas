@@ -218,7 +218,12 @@ const MenuPage = () => {
     const matchesCategory = !selectedCategory || item.category === selectedCategory;
     const matchesSearch = item?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesCategory && matchesSearch && item.isAvailable !== false;
+
+    // Check if the item's category is marked as out of stock
+    const itemCategory = categoriesData?.categories?.find((cat: any) => cat.name === item.category);
+    const categoryUnavailable = itemCategory?.isTemporarilyUnavailable || false;
+
+    return matchesCategory && matchesSearch && item.isAvailable !== false && !categoryUnavailable;
   });
 
   // Group items by category for display
@@ -526,16 +531,23 @@ const MenuPage = () => {
                   .map((category: any) => {
                     const itemCount = (menuItems || []).filter((item: any) => item.category === category.name).length;
                     const isExpanded = expandedCategories.has(category.name);
+                    const isUnavailable = category.isTemporarilyUnavailable;
 
                     if (itemCount === 0) return null;
 
                     return (
                       <Card
                         key={category.id}
-                        className={`cursor-pointer transition-all duration-200 hover:shadow-lg border-2 ${
-                          isExpanded ? 'border-red-500 shadow-md' : 'border-transparent'
+                        className={`transition-all duration-200 border-2 ${
+                          isUnavailable
+                            ? 'opacity-60 cursor-not-allowed bg-gray-100 border-gray-300'
+                            : isExpanded
+                              ? 'border-red-500 shadow-md cursor-pointer hover:shadow-lg'
+                              : 'border-transparent cursor-pointer hover:shadow-lg'
                         }`}
                         onClick={() => {
+                          if (isUnavailable) return; // Don't allow clicking if unavailable
+
                           const newExpanded = new Set(expandedCategories);
                           if (isExpanded) {
                             newExpanded.delete(category.name);
@@ -555,25 +567,44 @@ const MenuPage = () => {
                       >
                         <CardContent className="p-4">
                           {category.imageUrl || category.image_url ? (
-                            <div className="aspect-square rounded-lg overflow-hidden mb-3">
+                            <div className="aspect-square rounded-lg overflow-hidden mb-3 relative">
                               <img
                                 src={category.imageUrl || category.image_url}
                                 alt={category.name}
                                 className={`w-full h-full object-cover transition-all duration-200 ${
-                                  !['Specialty Gourmet Pizzas', 'Salads', 'Drinks'].includes(category.name)
-                                    ? 'brightness-110 hover:brightness-125'
-                                    : 'hover:brightness-110'
+                                  isUnavailable
+                                    ? 'grayscale'
+                                    : !['Specialty Gourmet Pizzas', 'Salads', 'Drinks'].includes(category.name)
+                                      ? 'brightness-110 hover:brightness-125'
+                                      : 'hover:brightness-110'
                                 }`}
                               />
+                              {isUnavailable && (
+                                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                                  <span className="text-white font-bold text-sm">OUT OF STOCK</span>
+                                </div>
+                              )}
                             </div>
                           ) : (
-                            <div className="aspect-square rounded-lg bg-gradient-to-br from-red-100 to-red-200 flex items-center justify-center mb-3">
-                              <ChevronDown className={`h-12 w-12 text-red-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                            <div className={`aspect-square rounded-lg flex items-center justify-center mb-3 relative ${
+                              isUnavailable
+                                ? 'bg-gray-200'
+                                : 'bg-gradient-to-br from-red-100 to-red-200'
+                            }`}>
+                              {isUnavailable ? (
+                                <span className="text-gray-600 font-bold text-sm text-center px-2">OUT OF STOCK</span>
+                              ) : (
+                                <ChevronDown className={`h-12 w-12 text-red-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                              )}
                             </div>
                           )}
-                          <h3 className="font-semibold text-center text-sm mb-1">{category.name}</h3>
-                          <p className="text-xs text-gray-500 text-center">{itemCount} items</p>
-                          {isExpanded && (
+                          <h3 className={`font-semibold text-center text-sm mb-1 ${isUnavailable ? 'text-gray-500' : ''}`}>
+                            {category.name}
+                          </h3>
+                          <p className="text-xs text-gray-500 text-center">
+                            {isUnavailable ? 'Temporarily Unavailable' : `${itemCount} items`}
+                          </p>
+                          {!isUnavailable && isExpanded && (
                             <Badge className="mt-2 w-full justify-center bg-red-600">
                               Viewing
                             </Badge>
