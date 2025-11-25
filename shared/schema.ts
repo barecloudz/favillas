@@ -470,6 +470,8 @@ export const choiceItems = pgTable("choice_items", {
   order: integer("order").notNull().default(0),
   isActive: boolean("is_active").default(true).notNull(),
   isDefault: boolean("is_default").default(false).notNull(),
+  isTemporarilyUnavailable: boolean("is_temporarily_unavailable").default(false).notNull(),
+  unavailableReason: text("unavailable_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

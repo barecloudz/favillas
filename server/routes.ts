@@ -3259,14 +3259,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const deleted = await storage.deleteChoiceItem(id);
-      
+
       if (!deleted) {
         return res.status(404).json({ message: "Choice item not found" });
       }
-      
+
       res.json({ message: "Choice item deleted successfully" });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Bulk update choice item availability (for marking sizes out of stock)
+  app.post("/api/admin-choice-item-availability", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user.isAdmin) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const { choiceItemIds, isTemporarilyUnavailable, reason } = req.body;
+
+      if (!Array.isArray(choiceItemIds) || choiceItemIds.length === 0) {
+        return res.status(400).json({ message: "choiceItemIds must be a non-empty array" });
+      }
+
+      // Update each choice item
+      const updatePromises = choiceItemIds.map(async (id: number) => {
+        return await storage.updateChoiceItem(id, {
+          isTemporarilyUnavailable: isTemporarilyUnavailable || false,
+          unavailableReason: reason || null
+        });
+      });
+
+      const results = await Promise.all(updatePromises);
+
+      res.json({
+        message: `Successfully updated ${results.length} choice item(s)`,
+        updated: results
+      });
+    } catch (error: any) {
+      console.error('Error updating choice item availability:', error);
+      res.status(500).json({ message: error.message || "Failed to update choice item availability" });
     }
   });
 
