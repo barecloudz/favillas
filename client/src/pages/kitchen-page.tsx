@@ -587,8 +587,13 @@ const KitchenPage = () => {
     }
 
     // Find truly NEW orders (not in printedOrdersRef)
-    // Don't auto-print scheduled orders when first created - wait until 25 min before pickup
+    // Only auto-print PENDING orders - don't reprint completed/picked_up/cancelled orders
     const newOrders = orders.filter((order: any) => {
+      // CRITICAL: Only auto-print pending orders
+      if (order.status !== 'pending') {
+        return false;
+      }
+
       if (printedOrdersRef.current.has(order.id)) {
         // Debug: Log if we're skipping an order that's already been printed
         // console.log(`⏭️  Skipping order #${order.id} - already in printedOrdersRef`);
@@ -599,7 +604,7 @@ const KitchenPage = () => {
         console.log(`📅 Scheduled order #${order.id} detected, will auto-print 25 min before pickup`);
         return false;
       }
-      console.log(`🆕 Found new order #${order.id} (status: ${order.status})`);
+      console.log(`🆕 Found new PENDING order #${order.id}`);
       return true;
     });
 
