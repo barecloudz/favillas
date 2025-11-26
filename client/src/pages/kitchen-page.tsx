@@ -397,6 +397,8 @@ const KitchenPage = () => {
       });
 
       // Mark as printed immediately to prevent duplicates
+      // CRITICAL: Update BOTH ref and state to prevent re-printing
+      printedOrdersRef.current.add(order.id);
       setPrintedOrders(prev => new Set(prev).add(order.id));
 
       printToThermalPrinter(
@@ -587,12 +589,17 @@ const KitchenPage = () => {
     // Find truly NEW orders (not in printedOrdersRef)
     // Don't auto-print scheduled orders when first created - wait until 25 min before pickup
     const newOrders = orders.filter((order: any) => {
-      if (printedOrdersRef.current.has(order.id)) return false;
+      if (printedOrdersRef.current.has(order.id)) {
+        // Debug: Log if we're skipping an order that's already been printed
+        // console.log(`⏭️  Skipping order #${order.id} - already in printedOrdersRef`);
+        return false;
+      }
       // Skip scheduled orders on initial detection - they'll print at 25 min before pickup
       if (order.fulfillmentTime === 'scheduled' || order.fulfillment_time === 'scheduled') {
         console.log(`📅 Scheduled order #${order.id} detected, will auto-print 25 min before pickup`);
         return false;
       }
+      console.log(`🆕 Found new order #${order.id} (status: ${order.status})`);
       return true;
     });
 
