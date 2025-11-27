@@ -18,7 +18,35 @@ interface OrderConfirmationData {
   fulfillmentType?: string; // 'pickup' or 'delivery'
 }
 
+// Helper function to ensure time is formatted in EST
+function formatTimeEST(timeString: string): string {
+  try {
+    // If it's already a formatted string, return as is
+    if (!timeString) return 'ASAP';
+
+    // If it's a date/timestamp, convert to EST
+    const date = new Date(timeString);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleString('en-US', {
+        timeZone: 'America/New_York',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        month: 'numeric',
+        day: 'numeric'
+      });
+    }
+
+    // Return as is if not a valid date
+    return timeString;
+  } catch (error) {
+    return timeString;
+  }
+}
+
 export function getOrderConfirmationTemplate(data: OrderConfirmationData): string {
+  // Ensure time is in EST format
+  const estimatedTime = formatTimeEST(data.estimatedTime);
   const itemsHtml = data.items.map(item => `
     <tr>
       <td style="padding: 8px; border-bottom: 1px solid #eee;">
@@ -50,13 +78,14 @@ export function getOrderConfirmationTemplate(data: OrderConfirmationData): strin
     <p><strong>Order #${data.orderNumber}</strong></p>
     ${data.fulfillmentType === 'delivery' ? `
     <p style="background: #e8f5e8; padding: 10px; border-radius: 5px; border-left: 4px solid #2d7c2d;">
-      <strong>📍 Delivery Order:</strong><br>
-      You will receive a delivery tracking link 10 minutes after we start cooking your order.
+      <strong>🚚 Delivery Order:</strong><br>
+      Your delivery is expected to arrive by <strong>${estimatedTime} EST</strong><br>
+      <small style="color: #666;">You will receive a delivery tracking link shortly.</small>
     </p>
     ` : `
-    <p><strong>Estimated ready time:</strong> ${data.estimatedTime}</p>
     <p style="background: #fff3cd; padding: 10px; border-radius: 5px; border-left: 4px solid #856404;">
-      <strong>🏪 Pickup:</strong> Your order will be ready for pickup at the estimated time above.
+      <strong>🏪 Pickup Order:</strong><br>
+      Your order will be ready for pickup at <strong>${estimatedTime} EST</strong>
     </p>
     `}
   </div>
