@@ -94,12 +94,6 @@
     position: relative;
     /* Allow touch gestures but prevent page dragging */
     touch-action: pan-y;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
     /* Enable smooth scrolling */
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
@@ -163,8 +157,16 @@
   }
 }
 
-/* Re-enable text selection for interactive elements */
-input, textarea, button, select, [role="button"], [role="menuitem"], [data-radix-collection-item] {
+/* Ensure text content is selectable for SEO and user experience */
+p, h1, h2, h3, h4, h5, h6, span, div, li, td, th, label, a {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* Enable text selection for interactive text elements */
+input, textarea, select, [data-radix-collection-item] {
   -webkit-user-select: text !important;
   -moz-user-select: text !important;
   -ms-user-select: text !important;
