@@ -364,10 +364,9 @@ const KitchenPage = () => {
   }, []);
 
   // Use ref for printedOrders to avoid recreating callback when it changes
+  // CRITICAL: Initialize ref from localStorage, but NEVER sync it back from state
+  // The ref is the source of truth, state is only for localStorage persistence
   const printedOrdersRef = useRef(printedOrders);
-  useEffect(() => {
-    printedOrdersRef.current = printedOrders;
-  }, [printedOrders]);
 
   // Memoize the onNewOrder callback to prevent reconnecting websocket on every render
   const handleNewOrder = useCallback((order: any) => {
@@ -567,22 +566,18 @@ const KitchenPage = () => {
   useEffect(() => {
     if (!orders || orders.length === 0) return;
 
-    // On first run, mark existing orders as seen (read from localStorage)
+    // On first run, mark ALL existing pending orders as seen to prevent reprinting them
     if (!hasInitializedPrinting.current) {
       hasInitializedPrinting.current = true;
 
-      // Get already-printed orders from localStorage (persists across deployments)
-      const alreadyPrintedIds = printedOrders; // Already loaded from localStorage
-
-      // Mark all existing orders as seen if they're not already in localStorage
-      orders.forEach((order: any) => {
-        if (!alreadyPrintedIds.has(order.id)) {
-          printedOrdersRef.current.add(order.id);
-          setPrintedOrders(prev => new Set([...prev, order.id]));
-        }
+      // Mark ALL existing pending orders as already printed (don't reprint on page load)
+      const existingPendingOrders = orders.filter((o: any) => o.status === 'pending');
+      existingPendingOrders.forEach((order: any) => {
+        printedOrdersRef.current.add(order.id);
+        setPrintedOrders(prev => new Set([...prev, order.id]));
       });
 
-      console.log(`📋 Auto-print initialized: ${printedOrdersRef.current.size} orders marked as seen (won't auto-print)`);
+      console.log(`📋 Auto-print initialized: ${printedOrdersRef.current.size} existing pending orders marked as seen (won't auto-print)`);
       return;
     }
 
