@@ -24,9 +24,9 @@ const HeroSection: React.FC = () => {
       <div className="absolute inset-0 bg-black bg-opacity-50"></div>
       <div className="container mx-auto px-4 h-full flex flex-col justify-center items-center relative z-10 text-center">
         <img src="/images/logopng.png" alt="Favilla's Pizza Logo" className="w-[160px] md:w-[190px] mb-6" loading="eager" fetchpriority="high" />
-        <h1 className="text-4xl md:text-6xl font-display text-white font-bold mb-4">AUTHENTIC ITALIAN PIZZA</h1>
+        <h1 className="text-4xl md:text-6xl font-display text-white font-bold mb-4">AUTHENTIC NEW YORK PIZZA</h1>
         <p className="text-lg md:text-xl text-white mb-8 max-w-2xl">
-          At Favilla's, every pizza is a masterpiece of authentic Italian taste, made with love by a real Italian family in Asheville.
+          Since 2013, Favilla's has been bringing authentic New York pizza to Asheville. Our pizzas, calzones, and strombolis are made with fresh dough, handmade every day using Italian family recipes perfected in Brooklyn.
         </p>
         <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6">
           <Link href="/menu">

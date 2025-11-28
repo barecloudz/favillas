@@ -34,13 +34,13 @@ const SeoContentSection: React.FC = () => {
             }`}
           >
             <h1 className="text-4xl md:text-5xl font-bold text-center mb-8 text-[#d73a31]">
-              Best Pizza in Asheville, NC - Authentic Italian Cuisine
+              Best Pizza in Asheville, NC - Authentic NY Pizza
             </h1>
 
           <div className="prose prose-lg max-w-none">
             <h2 className="text-3xl font-bold mb-4 text-gray-900">Voted Best Pizza in Asheville</h2>
             <p className="text-lg text-gray-700 mb-6 leading-relaxed">
-              Welcome to <strong>Favilla's NY Pizza</strong>, Asheville's premier destination for <strong>authentic Italian pizza</strong> and cuisine.
+              Welcome to <strong>Favilla's NY Pizza</strong>, Asheville's premier destination for <strong>authentic NY pizza</strong> and Italian cuisine.
               As a family-owned restaurant since 1969, we've been serving the <strong>best pizza in Asheville</strong> for over 50 years.
               Our commitment to traditional recipes and fresh, quality ingredients has made us a beloved staple in the Asheville community.
             </p>
@@ -83,7 +83,7 @@ const SeoContentSection: React.FC = () => {
             <h2 className="text-3xl font-bold mb-4 text-gray-900">Family-Owned Italian Restaurant Since 1969</h2>
             <p className="text-lg text-gray-700 mb-6 leading-relaxed">
               As a <strong>family-owned pizza restaurant in Asheville</strong>, we take pride in treating every customer like family.
-              Our recipes have been perfected over generations, bringing true <strong>authentic Italian cuisine</strong> to North Carolina.
+              Our recipes have been perfected over generations, bringing true <strong>authentic NY pizza and Italian specialties</strong> to North Carolina.
               When you dine with us, you're not just getting great food - you're experiencing the warmth and tradition of
               Italian hospitality that has made Favilla's a cornerstone of the Asheville dining scene.
             </p>

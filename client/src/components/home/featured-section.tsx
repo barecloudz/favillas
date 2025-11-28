@@ -24,8 +24,7 @@ const FeaturedSection: React.FC<FeaturedSectionProps> = ({ menuItems }) => {
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-display font-bold mb-6 text-[#d73a31]">CUSTOMER FAVORITES</h2>
           <p className="text-xl text-gray-700 max-w-3xl mx-auto">
-            Voted the best pizza in Asheville, our authentic Italian recipes have been passed down through generations.
-            Experience the taste that has the whole community talking!
+            Voted the best pizza in Asheville! Our authentic New York style pizzas are made with Italian family recipes passed down since 1969. Experience the perfect blend of Brooklyn tradition and Italian heritage.
           </p>
         </div>
         
