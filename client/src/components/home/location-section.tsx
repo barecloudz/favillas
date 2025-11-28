@@ -10,7 +10,7 @@ const LocationSection: React.FC = () => {
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-display font-bold mb-6 text-[#d73a31]">VISIT US</h2>
           <p className="text-xl text-gray-700 max-w-3xl mx-auto">
-            Experience our authentic Italian cuisine at our convenient Asheville location.
+            Experience our authentic Italian cuisine at our convenient Asheville location - right next to Sam's Club on Regent Park Blvd!
             We're open Tuesday through Sunday to serve you the best NY style pizza in town!
           </p>
         </div>
@@ -43,6 +43,7 @@ const LocationSection: React.FC = () => {
                       <address className="not-italic text-gray-700">
                         <p>5 Regent Park Blvd</p>
                         <p>Asheville, NC 28806</p>
+                        <p className="text-sm mt-1 text-gray-600">(Next to Sam's Club)</p>
                       </address>
                     </div>
                   </div>

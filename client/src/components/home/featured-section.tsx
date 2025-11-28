@@ -24,7 +24,7 @@ const FeaturedSection: React.FC<FeaturedSectionProps> = ({ menuItems }) => {
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-display font-bold mb-6 text-[#d73a31]">CUSTOMER FAVORITES</h2>
           <p className="text-xl text-gray-700 max-w-3xl mx-auto">
-            Voted the best pizza in Asheville! Our authentic New York style pizzas are made with Italian family recipes passed down since 1969. Experience the perfect blend of Brooklyn tradition and Italian heritage.
+            ⭐ 4.5 Stars from 1,081+ Reviews! Voted the best pizza delivery in Asheville! Our authentic New York style pizzas are made with Italian family recipes passed down since 1969. Order online for delivery or stop by for pizza by the slice. Experience the perfect blend of Brooklyn tradition and Italian heritage.
           </p>
         </div>
         

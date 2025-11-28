@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Helmet } from "react-helmet";
 import HeroSection from "@/components/home/hero-section";
 import FeaturedSection from "@/components/home/featured-section";
+import WhyFavillasSection from "@/components/home/why-favilias-section";
 import RewardsSection from "@/components/home/rewards-section";
 import LocationSection from "@/components/home/location-section";
 import SeoContentSection from "@/components/home/seo-content-section";
@@ -17,9 +18,9 @@ const HomePage = () => {
   return (
     <>
       <Helmet>
-        <title>Best NY Pizza in Asheville NC | Favilla's - Authentic New York Style Pizza</title>
-        <meta name="description" content="Voted Best Pizza in Asheville! Favilla's serves authentic New York style pizza, calzones, and stromboli with Brooklyn family recipes since 1969. Order online for pickup & delivery in Asheville, NC." />
-        <meta name="keywords" content="ny pizza asheville, best pizza in asheville, new york pizza asheville, brooklyn pizza asheville, pizza asheville, authentic ny pizza, calzones asheville, stromboli asheville, pizza delivery asheville, pizza near me asheville" />
+        <title>Best Pizza Delivery Asheville NC | Favilla's NY Pizza - Pizza by the Slice</title>
+        <meta name="description" content="⭐ 4.5 Stars from 1,081+ Reviews! Best pizza delivery in Asheville. Favilla's serves authentic NY pizza by the slice & whole pies with Brooklyn family recipes since 1969. Order online now!" />
+        <meta name="keywords" content="pizza delivery asheville, best pizza delivery asheville, pizza by the slice asheville, ny pizza asheville, best pizza in asheville, new york pizza asheville, brooklyn pizza asheville, pizza asheville, authentic ny pizza, pizza near me asheville, pizza near me, best pizza near me, food near me, pizza delivery near me" />
         <link rel="canonical" href="https://favillaspizzeria.com/" />
       </Helmet>
 
@@ -29,6 +30,9 @@ const HomePage = () => {
 
         {/* Featured Section */}
         <FeaturedSection menuItems={featuredItems} />
+
+        {/* Why Favilla's Section - Competitive advantages */}
+        <WhyFavillasSection />
 
         {/* SEO Content Section - Rich keyword content for search engines */}
         <SeoContentSection />
