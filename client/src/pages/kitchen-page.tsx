@@ -1486,57 +1486,84 @@ const KitchenPage = () => {
                     <span className="sm:hidden">Menu</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuLabel>
-                    {user?.firstName} {user?.lastName}
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => {
-                    // Defer navigation to next tick to avoid state updates during cleanup
-                    setTimeout(() => navigate('/'), 0);
-                  }}>
-                    <Home className="mr-2 h-4 w-4" />
-                    <span>Home</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    // Defer navigation to next tick to avoid state updates during cleanup
-                    setTimeout(() => navigate('/admin/dashboard'), 0);
-                  }}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Admin Dashboard</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => setShowDailySummaryModal(true)}
-                  >
-                    <Printer className="mr-2 h-4 w-4" />
-                    <span>Print Daily Summary</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setShowItemManagementModal(true)}
-                  >
-                    <Package className="mr-2 h-4 w-4" />
-                    <span>Item Management</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={async () => {
-                      try {
-                        await apiRequest('POST', '/api/logout', {});
+                <DropdownMenuContent align="end" className="w-72 p-3 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 shadow-2xl">
+                  <div className="mb-3 px-2">
+                    <p className="font-bold text-gray-900 text-base">{user?.firstName} {user?.lastName}</p>
+                    <p className="text-sm text-gray-600">{user?.email}</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => {
                         // Defer navigation to next tick to avoid state updates during cleanup
-                        setTimeout(() => {
-                          navigate('/');
-                          window.location.reload();
-                        }, 0);
-                      } catch (error) {
-                        console.error('Logout failed:', error);
-                      }
-                    }}
-                    className="text-red-600 focus:text-red-600"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Logout</span>
-                  </DropdownMenuItem>
+                        setTimeout(() => navigate('/'), 0);
+                      }}
+                      className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                    >
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                        <Home className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <span className="font-semibold text-gray-900 text-base">Home</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        // Defer navigation to next tick to avoid state updates during cleanup
+                        setTimeout(() => navigate('/admin/dashboard'), 0);
+                      }}
+                      className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-red-100 to-red-200 hover:from-red-200 hover:to-red-300 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                    >
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                        <Settings className="h-5 w-5 text-red-600" />
+                      </div>
+                      <span className="font-semibold text-gray-900 text-base">Admin Dashboard</span>
+                    </button>
+
+                    <div className="h-px bg-gray-300 my-3"></div>
+
+                    <button
+                      onClick={() => setShowDailySummaryModal(true)}
+                      className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                    >
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                        <Printer className="h-5 w-5 text-purple-600" />
+                      </div>
+                      <span className="font-semibold text-gray-900 text-base">Print Daily Summary</span>
+                    </button>
+
+                    <button
+                      onClick={() => setShowItemManagementModal(true)}
+                      className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                    >
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                        <Package className="h-5 w-5 text-orange-600" />
+                      </div>
+                      <span className="font-semibold text-gray-900 text-base">Item Management</span>
+                    </button>
+
+                    <div className="h-px bg-gray-300 my-3"></div>
+
+                    <button
+                      onClick={async () => {
+                        try {
+                          await apiRequest('POST', '/api/logout', {});
+                          // Defer navigation to next tick to avoid state updates during cleanup
+                          setTimeout(() => {
+                            navigate('/');
+                            window.location.reload();
+                          }, 0);
+                        } catch (error) {
+                          console.error('Logout failed:', error);
+                        }
+                      }}
+                      className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 hover:from-red-100 hover:to-red-200 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                    >
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                        <LogOut className="h-5 w-5 text-red-600" />
+                      </div>
+                      <span className="font-semibold text-red-600 text-base">Logout</span>
+                    </button>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
