@@ -17,9 +17,9 @@ const HomePage = () => {
   return (
     <>
       <Helmet>
-        <title>Best Pizza in Asheville NC | Favilla's NY Pizza - Authentic Italian Restaurant</title>
-        <meta name="description" content="Voted Best Pizza in Asheville! Favilla's serves authentic Italian pizza, calzones, and stromboli. Family-owned since 1969. Order online for pickup & delivery in Asheville, NC." />
-        <meta name="keywords" content="pizza asheville, best pizza in asheville, asheville pizza, italian restaurant asheville, ny pizza asheville, calzones asheville, stromboli asheville, pizza delivery asheville" />
+        <title>Best NY Pizza in Asheville NC | Favilla's - Authentic New York Style Pizza</title>
+        <meta name="description" content="Voted Best Pizza in Asheville! Favilla's serves authentic New York style pizza, calzones, and stromboli with Brooklyn family recipes since 1969. Order online for pickup & delivery in Asheville, NC." />
+        <meta name="keywords" content="ny pizza asheville, best pizza in asheville, new york pizza asheville, brooklyn pizza asheville, pizza asheville, authentic ny pizza, calzones asheville, stromboli asheville, pizza delivery asheville, pizza near me asheville" />
         <link rel="canonical" href="https://favillaspizzeria.com/" />
       </Helmet>
 
