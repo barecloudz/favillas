@@ -165,48 +165,92 @@ const Header = () => {
                         <span className="hidden sm:inline">{user.firstName}</span>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuItem onClick={() => navigate("/profile")}>
-                        <User className="mr-2 h-4 w-4" />
-                        <span>My Profile</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/orders")}>
-                        <ShoppingBag className="mr-2 h-4 w-4" />
-                        <span>My Orders</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/rewards")}>
-                        <Star className="mr-2 h-4 w-4" />
-                        <span>Rewards</span>
-                      </DropdownMenuItem>
-                      {(user.role === "employee" || user.isAdmin) && (
-                        <DropdownMenuItem onClick={() => navigate("/employee/clock")}>
-                          <Clock className="mr-2 h-4 w-4" />
-                          <span>Clock In/Out</span>
-                        </DropdownMenuItem>
-                      )}
-                      {user.isAdmin && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => navigate("/admin/dashboard")}>
-                            <BarChart3 className="mr-2 h-4 w-4" />
-                            <span>Admin Dashboard</span>
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                      {(user.isAdmin || user.role === "employee" || user.role === "kitchen" || user.role === "manager") && (
-                        <>
-                          {!user.isAdmin && <DropdownMenuSeparator />}
-                          <DropdownMenuItem onClick={() => navigate("/kitchen")}>
-                            <ChefHat className="mr-2 h-4 w-4" />
-                            <span>Kitchen Display</span>
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleLogout}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        <span>Log out</span>
-                      </DropdownMenuItem>
+                    <DropdownMenuContent align="end" className="w-72 p-3 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 shadow-2xl">
+                      <div className="space-y-2">
+                        <button
+                          onClick={() => navigate("/profile")}
+                          className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                        >
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                            <User className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <span className="font-semibold text-gray-900 text-base">My Profile</span>
+                        </button>
+
+                        <button
+                          onClick={() => navigate("/orders")}
+                          className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                        >
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                            <ShoppingBag className="h-5 w-5 text-green-600" />
+                          </div>
+                          <span className="font-semibold text-gray-900 text-base">My Orders</span>
+                        </button>
+
+                        <button
+                          onClick={() => navigate("/rewards")}
+                          className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                        >
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                            <Star className="h-5 w-5 text-yellow-600" />
+                          </div>
+                          <span className="font-semibold text-gray-900 text-base">Rewards</span>
+                        </button>
+
+                        {(user.role === "employee" || user.isAdmin) && (
+                          <button
+                            onClick={() => navigate("/employee/clock")}
+                            className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                          >
+                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                              <Clock className="h-5 w-5 text-purple-600" />
+                            </div>
+                            <span className="font-semibold text-gray-900 text-base">Clock In/Out</span>
+                          </button>
+                        )}
+
+                        {user.isAdmin && (
+                          <>
+                            <div className="h-px bg-gray-300 my-3"></div>
+                            <button
+                              onClick={() => navigate("/admin/dashboard")}
+                              className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-red-100 to-red-200 hover:from-red-200 hover:to-red-300 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                            >
+                              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                                <BarChart3 className="h-5 w-5 text-red-600" />
+                              </div>
+                              <span className="font-semibold text-gray-900 text-base">Admin Dashboard</span>
+                            </button>
+                          </>
+                        )}
+
+                        {(user.isAdmin || user.role === "employee" || user.role === "kitchen" || user.role === "manager") && (
+                          <>
+                            {!user.isAdmin && <div className="h-px bg-gray-300 my-3"></div>}
+                            <button
+                              onClick={() => navigate("/kitchen")}
+                              className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-orange-100 to-orange-200 hover:from-orange-200 hover:to-orange-300 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                            >
+                              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                                <ChefHat className="h-5 w-5 text-orange-600" />
+                              </div>
+                              <span className="font-semibold text-gray-900 text-base">Kitchen Display</span>
+                            </button>
+                          </>
+                        )}
+
+                        <div className="h-px bg-gray-300 my-3"></div>
+
+                        <button
+                          onClick={handleLogout}
+                          className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 hover:from-red-100 hover:to-red-200 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                        >
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                            <LogOut className="h-5 w-5 text-red-600" />
+                          </div>
+                          <span className="font-semibold text-red-600 text-base">Log Out</span>
+                        </button>
+                      </div>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : (
@@ -473,11 +517,16 @@ const Header = () => {
                 {user.firstName}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
+            <DropdownMenuContent align="end" className="w-64 p-3 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 shadow-2xl">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 hover:from-red-100 hover:to-red-200 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+              >
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                  <LogOut className="h-5 w-5 text-red-600" />
+                </div>
+                <span className="font-semibold text-red-600 text-base">Log Out</span>
+              </button>
             </DropdownMenuContent>
           </DropdownMenu>
         )}
