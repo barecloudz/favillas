@@ -23,14 +23,11 @@ const HeroSection: React.FC = () => {
     <section className="relative h-screen lg:h-[600px] bg-cover bg-center -mt-20 lg:-mt-20" style={{ backgroundImage: "url('/images/hero-bg.jpg')" }}>
       <div className="absolute inset-0 bg-black bg-opacity-50"></div>
       <div className="container mx-auto px-4 h-full flex flex-col justify-center items-center relative z-10 text-center">
-        <img src="/images/logopng.png" alt="Favilla's Pizza Logo" className="w-[160px] md:w-[190px] mb-6" loading="eager" fetchpriority="high" />
-        <div className="mb-4">
-          <div className="text-yellow-400 text-2xl md:text-3xl mb-2">⭐⭐⭐⭐⭐</div>
-          <p className="text-white text-sm md:text-base font-semibold">4.5 Stars from 1,081+ Happy Customers</p>
-        </div>
-        <h1 className="text-4xl md:text-6xl font-display text-white font-bold mb-4">AUTHENTIC NEW YORK PIZZA</h1>
-        <h2 className="text-2xl md:text-3xl text-yellow-400 font-bold mb-6">By the Slice & Whole Pies</h2>
-        <p className="text-lg md:text-xl text-white mb-8 max-w-2xl">
+        <img src="/images/logopng.png" alt="Favilla's Pizza Logo" className="w-[140px] md:w-[170px] mb-4" loading="eager" fetchpriority="high" />
+        <div className="text-yellow-400 text-xl md:text-2xl mb-3">⭐⭐⭐⭐⭐ <span className="text-white text-sm md:text-base ml-2">4.5 / 1,081+ Reviews</span></div>
+        <h1 className="text-3xl md:text-5xl font-display text-white font-bold mb-3">AUTHENTIC NEW YORK PIZZA</h1>
+        <h2 className="text-xl md:text-2xl text-yellow-400 font-bold mb-4">By the Slice & Whole Pies</h2>
+        <p className="text-base md:text-lg text-white mb-6 max-w-2xl">
           Since 2013, Favilla's has been bringing authentic New York pizza to Asheville. Our pizzas, calzones, and strombolis are made with fresh dough, handmade every day using Italian family recipes perfected in Brooklyn since 1969.
         </p>
         <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6">
