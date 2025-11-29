@@ -38,7 +38,7 @@ export const swannanoaData: NeighborhoodData = {
     {
       name: "Linda M.",
       location: "Swannanoa",
-      text": "Authentic NY pizza delivered to our door in Swannanoa! The crust is perfect and the toppings are always fresh. Highly recommend!",
+      text: "Authentic NY pizza delivered to our door in Swannanoa! The crust is perfect and the toppings are always fresh. Highly recommend!",
       rating: 5
     }
   ],
