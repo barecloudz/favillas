@@ -446,6 +446,132 @@ const MenuPage = () => {
         <title>Menu - Order Pizza Online in Asheville NC | Favilla's NY Pizza</title>
         <meta name="description" content="Order authentic NY style pizza online in Asheville, NC. Browse our menu of pizzas, calzones, stromboli & more. Fast delivery & pickup available. Order now!" />
         <meta name="keywords" content="pizza menu asheville, order pizza online asheville, ny pizza delivery asheville, pizza pickup asheville nc, italian food menu asheville" />
+        <link rel="canonical" href="https://favillaspizzeria.com/menu" />
+
+        {/* Open Graph Tags */}
+        <meta property="og:title" content="Menu - Order Pizza Online | Favilla's NY Pizza" />
+        <meta property="og:description" content="Order authentic NY style pizza online in Asheville, NC. Browse our menu of pizzas, calzones, stromboli & more." />
+        <meta property="og:url" content="https://favillaspizzeria.com/menu" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://favillaspizzeria.com/images/hero-bg.jpg" />
+
+        {/* Restaurant Schema with Menu Focus */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Restaurant",
+            "name": "Favilla's NY Pizza",
+            "description": "Authentic New York-style pizza menu in Asheville, NC",
+            "url": "https://favillaspizzeria.com/menu",
+            "menu": "https://favillaspizzeria.com/menu",
+            "telephone": "+1-828-225-2885",
+            "address": {
+              "@type": "PostalAddress",
+              "streetAddress": "5 Regent Park Blvd",
+              "addressLocality": "Asheville",
+              "addressRegion": "NC",
+              "postalCode": "28806",
+              "addressCountry": "US"
+            },
+            "servesCuisine": ["Pizza", "Italian", "New York Style Pizza"],
+            "priceRange": "$$"
+          })}
+        </script>
+
+        {/* Menu/ItemList Schema */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Menu",
+            "name": "Favilla's NY Pizza Menu",
+            "description": "Complete menu featuring authentic New York-style pizzas, calzones, stromboli, and Italian classics",
+            "hasMenuSection": [
+              {
+                "@type": "MenuSection",
+                "name": "Pizza by the Slice",
+                "description": "Authentic NY-style pizza sold by the slice",
+                "hasMenuItem": [
+                  {
+                    "@type": "MenuItem",
+                    "name": "Cheese Pizza Slice",
+                    "description": "Classic NY cheese pizza slice"
+                  },
+                  {
+                    "@type": "MenuItem",
+                    "name": "Pepperoni Pizza Slice",
+                    "description": "NY pizza slice with pepperoni"
+                  }
+                ]
+              },
+              {
+                "@type": "MenuSection",
+                "name": "Whole Pies",
+                "description": "NY-style whole pizzas",
+                "hasMenuItem": [
+                  {
+                    "@type": "MenuItem",
+                    "name": "Cheese Pizza",
+                    "description": "Classic New York-style cheese pizza"
+                  },
+                  {
+                    "@type": "MenuItem",
+                    "name": "Pepperoni Pizza",
+                    "description": "NY-style pizza with pepperoni"
+                  },
+                  {
+                    "@type": "MenuItem",
+                    "name": "Supreme Pizza",
+                    "description": "Loaded with premium toppings"
+                  }
+                ]
+              },
+              {
+                "@type": "MenuSection",
+                "name": "Calzones",
+                "description": "Fresh baked calzones",
+                "hasMenuItem": [
+                  {
+                    "@type": "MenuItem",
+                    "name": "Cheese Calzone",
+                    "description": "Ricotta and mozzarella calzone"
+                  },
+                  {
+                    "@type": "MenuItem",
+                    "name": "Meat Calzone",
+                    "description": "Calzone with Italian meats"
+                  }
+                ]
+              },
+              {
+                "@type": "MenuSection",
+                "name": "Italian Classics",
+                "description": "Authentic Italian dishes"
+              }
+            ]
+          })}
+        </script>
+
+        {/* Breadcrumb Schema */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://favillaspizzeria.com/"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Menu",
+                "item": "https://favillaspizzeria.com/menu"
+              }
+            ]
+          })}
+        </script>
       </Helmet>
 
       <div className="min-h-screen bg-gray-50 lg:pt-20 pt-0">

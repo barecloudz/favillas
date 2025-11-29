@@ -27,14 +27,21 @@ const NeighborhoodPageTemplate: React.FC<NeighborhoodPageTemplateProps> = ({ dat
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://favillaspizzeria.com/images/hero-bg.jpg" />
 
-        {/* Local Business Schema */}
+        {/* Enhanced Local Business Schema */}
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Restaurant",
-            "name": `Favilla's NY Pizza - ${data.name}`,
+            "name": "Favilla's NY Pizza",
+            "alternateName": `Favilla's Pizzeria ${data.name}`,
             "description": data.metaDescription,
-            "servesCuisine": ["Pizza", "Italian"],
+            "image": [
+              "https://favillaspizzeria.com/images/hero-bg.jpg",
+              "https://favillaspizzeria.com/images/lineup.jpg"
+            ],
+            "logo": "https://favillaspizzeria.com/logo.png",
+            "servesCuisine": ["Pizza", "Italian", "New York Style Pizza"],
+            "priceRange": "$$",
             "address": {
               "@type": "PostalAddress",
               "streetAddress": "5 Regent Park Blvd",
@@ -43,10 +50,81 @@ const NeighborhoodPageTemplate: React.FC<NeighborhoodPageTemplateProps> = ({ dat
               "postalCode": "28806",
               "addressCountry": "US"
             },
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": "35.5793183",
+              "longitude": "-82.5967883"
+            },
             "telephone": "+1-828-225-2885",
+            "email": "info@favillaspizzeria.com",
             "url": `https://favillaspizzeria.com/${data.slug}`,
-            "areaServed": data.areasServed,
-            "priceRange": "$$"
+            "menu": "https://favillaspizzeria.com/menu",
+            "acceptsReservations": false,
+            "paymentAccepted": ["Cash", "Credit Card", "Debit Card"],
+            "currenciesAccepted": "USD",
+            "openingHoursSpecification": [
+              {
+                "@type": "OpeningHoursSpecification",
+                "dayOfWeek": ["Tuesday", "Wednesday", "Thursday"],
+                "opens": "11:00",
+                "closes": "20:00"
+              },
+              {
+                "@type": "OpeningHoursSpecification",
+                "dayOfWeek": ["Friday", "Saturday"],
+                "opens": "11:00",
+                "closes": "21:00"
+              },
+              {
+                "@type": "OpeningHoursSpecification",
+                "dayOfWeek": "Sunday",
+                "opens": "12:00",
+                "closes": "20:00"
+              }
+            ],
+            "areaServed": data.areasServed.map(area => ({
+              "@type": "City",
+              "name": area
+            })),
+            "hasOfferCatalog": {
+              "@type": "OfferCatalog",
+              "name": "Pizza Menu",
+              "itemListElement": [
+                {
+                  "@type": "Offer",
+                  "itemOffered": {
+                    "@type": "MenuItem",
+                    "name": "NY Style Pizza",
+                    "description": "Authentic New York style pizza"
+                  }
+                }
+              ]
+            },
+            "aggregateRating": {
+              "@type": "AggregateRating",
+              "ratingValue": "4.8",
+              "reviewCount": "500",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "review": data.testimonials.map(testimonial => ({
+              "@type": "Review",
+              "author": {
+                "@type": "Person",
+                "name": testimonial.name
+              },
+              "reviewRating": {
+                "@type": "Rating",
+                "ratingValue": testimonial.rating,
+                "bestRating": "5",
+                "worstRating": "1"
+              },
+              "reviewBody": testimonial.text,
+              "publisher": {
+                "@type": "Organization",
+                "name": "Favilla's NY Pizza"
+              }
+            }))
           })}
         </script>
       </Helmet>
