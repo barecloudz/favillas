@@ -30,6 +30,29 @@ import EmployeeClockPage from "@/pages/employee-clock";
 import FixPointsPage from "@/pages/fix-points-page";
 import TermsPage from "@/pages/terms-page";
 import PrivacyPage from "@/pages/privacy-page";
+
+// Neighborhood pages
+import SouthAshevillePage from "@/pages/South-Asheville";
+import ArdenPage from "@/pages/Arden";
+import DowntownAshevillePage from "@/pages/Downtown-Asheville";
+import BiltmoreVillagePage from "@/pages/Biltmore-Village";
+import KenilworthPage from "@/pages/Kenilworth";
+import WestAshevillePage from "@/pages/West-Asheville";
+import NorthAshevillePage from "@/pages/North-Asheville";
+import EastAshevillePage from "@/pages/East-Asheville";
+import BiltmoreParkPage from "@/pages/Biltmore-Park";
+import OakleyPage from "@/pages/Oakley";
+import CandlerPage from "@/pages/Candler";
+import SwannanoaPage from "@/pages/Swannanoa";
+import FairviewPage from "@/pages/Fairview";
+import SkylandPage from "@/pages/Skyland";
+import FletcherPage from "@/pages/Fletcher";
+import MontfordPage from "@/pages/Montford";
+import RiverArtsDistrictPage from "@/pages/River-Arts-District";
+import HawCreekPage from "@/pages/Haw-Creek";
+import EnkaPage from "@/pages/Enka";
+import WoodfinPage from "@/pages/Woodfin";
+
 import { AuthProvider } from "@/hooks/use-supabase-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { AdminProtectedRoute } from "@/lib/admin-protected-route";
@@ -76,6 +99,29 @@ function Router() {
         <Route path="/profile" component={ProfilePage} />
         <Route path="/terms" component={TermsPage} />
         <Route path="/privacy" component={PrivacyPage} />
+
+        {/* Neighborhood Pages */}
+        <Route path="/South-Asheville" component={SouthAshevillePage} />
+        <Route path="/Arden" component={ArdenPage} />
+        <Route path="/Downtown-Asheville" component={DowntownAshevillePage} />
+        <Route path="/Biltmore-Village" component={BiltmoreVillagePage} />
+        <Route path="/Kenilworth" component={KenilworthPage} />
+        <Route path="/West-Asheville" component={WestAshevillePage} />
+        <Route path="/North-Asheville" component={NorthAshevillePage} />
+        <Route path="/East-Asheville" component={EastAshevillePage} />
+        <Route path="/Biltmore-Park" component={BiltmoreParkPage} />
+        <Route path="/Oakley" component={OakleyPage} />
+        <Route path="/Candler" component={CandlerPage} />
+        <Route path="/Swannanoa" component={SwannanoaPage} />
+        <Route path="/Fairview" component={FairviewPage} />
+        <Route path="/Skyland" component={SkylandPage} />
+        <Route path="/Fletcher" component={FletcherPage} />
+        <Route path="/Montford" component={MontfordPage} />
+        <Route path="/River-Arts-District" component={RiverArtsDistrictPage} />
+        <Route path="/Haw-Creek" component={HawCreekPage} />
+        <Route path="/Enka" component={EnkaPage} />
+        <Route path="/Woodfin" component={WoodfinPage} />
+
         <ProtectedRoute path="/kitchen" component={KitchenPage} />
         <AdminProtectedRoute path="/admin/dashboard" component={AdminDashboard} />
         <AdminProtectedRoute path="/admin/faqs" component={AdminFAQsPage} />
