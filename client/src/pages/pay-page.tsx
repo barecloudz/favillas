@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useRoute, useLocation } from 'wouter';
 import { apiRequest } from '@/lib/api';
 import { Loader2 } from 'lucide-react';
 
 export default function PayPage() {
-  const { token } = useParams<{ token: string }>();
-  const navigate = useNavigate();
+  const [, params] = useRoute('/pay/:token');
+  const token = params?.token;
+  const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,7 +57,7 @@ export default function PayPage() {
         }));
 
         // Redirect to checkout page
-        navigate('/checkout?source=phone_order');
+        setLocation('/checkout?source=phone_order');
 
       } catch (err: any) {
         console.error('Error fetching order:', err);
