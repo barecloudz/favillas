@@ -33,26 +33,13 @@ export const handler: Handler = async (event, context) => {
     return { statusCode: 200, headers, body: '' };
   }
 
-  // Authenticate user
-  const authResult = await authenticateToken(
-    event.headers.authorization || event.headers.Authorization,
-    event.headers.cookie || event.headers.Cookie
-  );
-
-  if (!authResult.success || !authResult.user) {
+  // Authenticate user - kitchen staff should be authenticated
+  const authPayload = await authenticateToken(event);
+  if (!authPayload || !isStaff(authPayload)) {
     return {
       statusCode: 401,
       headers,
-      body: JSON.stringify({ error: 'Unauthorized' })
-    };
-  }
-
-  // Check if user is staff (admin, manager, or kitchen staff)
-  if (!isStaff(authResult.user)) {
-    return {
-      statusCode: 403,
-      headers,
-      body: JSON.stringify({ error: 'Forbidden - Staff access required' })
+      body: JSON.stringify({ error: 'Unauthorized - Kitchen access required' })
     };
   }
 
