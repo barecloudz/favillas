@@ -51,7 +51,8 @@ exports.handler = async (event, context) => {
       order_type,
       total,
       address,
-      special_instructions
+      special_instructions,
+      payment_preference
     } = orderData;
 
     console.log('📦 Order details:', {
@@ -59,11 +60,12 @@ exports.handler = async (event, context) => {
       phone,
       order_type,
       total,
+      payment_preference,
       items: items?.length || 0
     });
 
     // Validate required fields
-    if (!items || !customer_name || !phone || !order_type || total === undefined) {
+    if (!items || !customer_name || !phone || !order_type || total === undefined || !payment_preference) {
       console.error('❌ Missing required fields');
       return {
         statusCode: 400,
@@ -98,7 +100,18 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Format the order for Pizza Spin API (same format as your LiveKit agent used)
+    // Determine payment status based on payment preference
+    // payment_link: Order will be sent to kitchen AFTER payment
+    // pay_at_store: Order goes to kitchen immediately as unpaid
+    const paymentStatus = payment_preference === 'pay_at_store' ? 'unpaid' : 'pending_payment_link';
+
+    // Should this order go to kitchen immediately?
+    // YES: pay_at_store (pickup orders paid at store)
+    // NO: payment_link (must pay first, then goes to kitchen)
+    const sendToKitchen = payment_preference === 'pay_at_store';
+
+    // Format the order for Pizza Spin API
+    // Pass items as-is - the backend will handle menu item name/ID resolution
     const orderPayload = {
       items: items,
       phone: phone.replace(/\D/g, ''), // Remove non-digits from phone number
@@ -107,9 +120,10 @@ exports.handler = async (event, context) => {
       fulfillmentTime: 'asap',
       total: parseFloat(total),
       tax: 0,
-      deliveryFee: order_type === 'delivery' ? 3.00 : 0,
+      deliveryFee: 0, // Backend will calculate based on distance
       tip: 0,
-      paymentStatus: 'pending',
+      paymentStatus: paymentStatus,
+      orderSource: 'phone', // Mark as phone order
       specialInstructions: special_instructions || ''
     };
 
@@ -127,24 +141,60 @@ exports.handler = async (event, context) => {
     console.log('🚀 Submitting to orders API:', ordersApiUrl);
     console.log('📋 Payload:', JSON.stringify(orderPayload, null, 2));
 
-    // Submit to the Pizza Spin orders API
-    const response = await axios.post(ordersApiUrl, orderPayload, {
+    // Submit order in background without waiting for response
+    // This ensures VAPI gets a fast response (< 5 seconds)
+    axios.post(ordersApiUrl, orderPayload, {
       headers: {
         'Content-Type': 'application/json'
       },
       timeout: 15000
+    }).then(async response => {
+      console.log('✅ Order submitted successfully! Order ID:', response.data.id);
+
+      // For payment_link orders, send SMS with payment link
+      if (paymentStatus === 'pending_payment_link') {
+        try {
+          // Generate payment token
+          const tokenResponse = await axios.post(`${baseUrl}/api/generate-payment-link`, {
+            orderId: response.data.id
+          }, { timeout: 5000 });
+
+          const { paymentToken } = tokenResponse.data;
+
+          // Send SMS with payment link
+          await axios.post(`${baseUrl}/api/sms/send-payment-link`, {
+            phone: phone,
+            orderId: response.data.id,
+            paymentToken: paymentToken,
+            customerName: customer_name,
+            total: parseFloat(total)
+          }, { timeout: 5000 });
+
+          console.log('📱 Payment link SMS sent successfully');
+        } catch (smsError) {
+          console.error('❌ Failed to send payment link SMS:', smsError.message);
+          // Don't fail the order if SMS fails - continue processing
+        }
+      }
+    }).catch(error => {
+      console.error('❌ Error submitting order (background):', error.response?.data || error.message);
     });
 
-    const result = response.data;
-    console.log('✅ Order submitted successfully! Order ID:', result.id);
+    // Customize response message based on payment preference
+    let responseMessage;
+    if (payment_preference === 'payment_link') {
+      responseMessage = `Great! Your order has been placed. I'm texting you a secure payment link right now. Once you complete payment, we'll start preparing your order. Thank you for choosing Favilla's Pizzeria!`;
+    } else {
+      responseMessage = `Great! Your order is confirmed. You can pay when you pick up. We'll have it ready for you soon. Thank you for choosing Favilla's Pizzeria!`;
+    }
 
-    // Return success response to Vapi
+    // Return immediate success response to VAPI
     // The "result" field will be spoken by the assistant to the customer
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        result: `Great! Your order has been placed successfully. Your order number is ${result.id}. We'll have that ready for you soon. Thank you for choosing Favilla's Pizzeria!`
+        result: responseMessage
       })
     };
 

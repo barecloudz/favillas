@@ -146,6 +146,9 @@ export const orders = pgTable("orders", {
   orderType: text("order_type").notNull(), // delivery, pickup
   paymentStatus: text("payment_status").notNull().default("pending"),
   paymentIntentId: text("payment_intent_id"),
+  paymentToken: text("payment_token"), // Secure token for payment link
+  paymentTokenExpires: timestamp("payment_token_expires"), // Token expiration
+  orderSource: text("order_source").default("web"), // web, phone, pos
   specialInstructions: text("special_instructions"),
   address: text("address"),
   addressData: jsonb("address_data"), // Store parsed address components and coordinates

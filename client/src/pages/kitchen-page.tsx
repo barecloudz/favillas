@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Loader2, Printer, Volume2, Columns3, LayoutGrid, User, Home, Settings, LogOut, PauseCircle, PlayCircle, Package, ChevronDown, ChevronRight, AlertTriangle, MoreVertical, Trash2, RefreshCcw, CheckCircle } from "lucide-react";
+import { Loader2, Printer, Volume2, Columns3, LayoutGrid, User, Home, Settings, LogOut, PauseCircle, PlayCircle, Package, ChevronDown, ChevronRight, AlertTriangle, MoreVertical, Trash2, RefreshCcw, CheckCircle, Pizza } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -96,6 +96,9 @@ const KitchenPage = () => {
   // Daily Summary Modal State
   const [showDailySummaryModal, setShowDailySummaryModal] = useState(false);
   const [storeHours, setStoreHours] = useState<any[]>([]);
+
+  // Pizza by the Slice Modal State
+  const [showSlicesModal, setShowSlicesModal] = useState(false);
   const [closingTime, setClosingTime] = useState<string | null>(null);
 
   // Item Management Modal State
@@ -504,6 +507,12 @@ const KitchenPage = () => {
     enabled: showItemManagementModal,
   });
 
+  // Query for Pizza by the Slice items
+  const { data: slices, isLoading: slicesLoading } = useQuery({
+    queryKey: ["/api/kitchen-slices"],
+    enabled: !!user && showSlicesModal, // Only fetch when modal is open
+  });
+
   // Helper function to check if order is ready to start (for scheduled orders)
   const isOrderReadyToStart = (order: any) => {
     const fulfillmentTime = order.fulfillmentTime || order.fulfillment_time;
@@ -814,6 +823,31 @@ const KitchenPage = () => {
       toast({
         title: "Print Error",
         description: error.message || "Could not connect to printer",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Toggle Pizza by the Slice availability
+  const toggleSliceAvailability = async (sliceId: number, isAvailable: boolean) => {
+    try {
+      await apiRequest('PATCH', '/api/kitchen-slices', {
+        sliceId,
+        isAvailable
+      });
+
+      // Refresh slices data
+      queryClient.invalidateQueries({ queryKey: ['/api/kitchen-slices'] });
+
+      toast({
+        title: isAvailable ? "Slice Available" : "Slice Unavailable",
+        description: `Updated slice availability`,
+      });
+    } catch (error) {
+      console.error('Failed to toggle slice:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update slice availability",
         variant: "destructive",
       });
     }
@@ -1517,6 +1551,16 @@ const KitchenPage = () => {
                         <Settings className="h-5 w-5 text-red-600" />
                       </div>
                       <span className="font-semibold text-gray-900 text-base">Admin Dashboard</span>
+                    </button>
+
+                    <button
+                      onClick={() => setShowSlicesModal(true)}
+                      className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-yellow-100 to-yellow-200 hover:from-yellow-200 hover:to-yellow-300 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                    >
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                        <Pizza className="h-5 w-5 text-yellow-600" />
+                      </div>
+                      <span className="font-semibold text-gray-900 text-base">Pizza by the Slice</span>
                     </button>
 
                     <div className="h-px bg-gray-300 my-3"></div>
@@ -2761,6 +2805,69 @@ THIS CANNOT BE UNDONE. Are you absolutely sure?`;
                 }}
               >
                 Process Refund
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Pizza by the Slice Modal */}
+        <Dialog open={showSlicesModal} onOpenChange={setShowSlicesModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl flex items-center gap-2">
+                <Pizza className="h-5 w-5 text-[#d73a31]" />
+                Pizza by the Slice
+              </DialogTitle>
+              <DialogDescription className="pt-2">
+                Toggle slices on/off based on what's available in the display case today.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-4">
+              {slicesLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-[#d73a31]" />
+                </div>
+              ) : slices && slices.length > 0 ? (
+                <div className="space-y-4">
+                  {slices.map((slice: any) => (
+                    <div
+                      key={slice.id}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border-2 border-gray-200 hover:border-[#d73a31] transition-colors"
+                    >
+                      <div className="flex-1">
+                        <h3 className="font-bold text-gray-900">{slice.name}</h3>
+                        <p className="text-sm text-gray-600">${parseFloat(slice.base_price).toFixed(2)}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-sm font-medium ${slice.is_available ? 'text-green-600' : 'text-gray-400'}`}>
+                          {slice.is_available ? 'Available' : 'Unavailable'}
+                        </span>
+                        <Switch
+                          checked={slice.is_available}
+                          onCheckedChange={(checked) => toggleSliceAvailability(slice.id, checked)}
+                          className="data-[state=checked]:bg-green-500"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Pizza className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p>No slices found. Add them in the Menu Editor first.</p>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowSlicesModal(false)}
+                className="w-full"
+              >
+                Close
               </Button>
             </DialogFooter>
           </DialogContent>

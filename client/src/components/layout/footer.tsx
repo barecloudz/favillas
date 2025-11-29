@@ -2,10 +2,37 @@ import { Link } from "wouter";
 import { Facebook, Instagram, Phone, MapPin, Mail, Clock } from "lucide-react";
 import { useBranding } from "@/hooks/use-branding";
 import { useRestaurantSettings } from "@/hooks/use-restaurant-settings";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 const Footer = () => {
   const { companyName, companyTagline, logoUrl } = useBranding();
   const { address, phone, email } = useRestaurantSettings();
+  const [showNeighborhoodModal, setShowNeighborhoodModal] = useState(false);
+
+  const neighborhoods = [
+    { name: "South Asheville", slug: "South-Asheville" },
+    { name: "Arden", slug: "Arden" },
+    { name: "Downtown Asheville", slug: "Downtown-Asheville" },
+    { name: "Biltmore Village", slug: "Biltmore-Village" },
+    { name: "Kenilworth", slug: "Kenilworth" },
+    { name: "West Asheville", slug: "West-Asheville" },
+    { name: "North Asheville", slug: "North-Asheville" },
+    { name: "East Asheville", slug: "East-Asheville" },
+    { name: "Biltmore Park", slug: "Biltmore-Park" },
+    { name: "Oakley", slug: "Oakley" },
+    { name: "Candler", slug: "Candler" },
+    { name: "Swannanoa", slug: "Swannanoa" },
+    { name: "Fairview", slug: "Fairview" },
+    { name: "Skyland", slug: "Skyland" },
+    { name: "Fletcher", slug: "Fletcher" },
+    { name: "Montford", slug: "Montford" },
+    { name: "River Arts District", slug: "River-Arts-District" },
+    { name: "Haw Creek", slug: "Haw-Creek" },
+    { name: "Enka", slug: "Enka" },
+    { name: "Woodfin", slug: "Woodfin" },
+  ];
   
   return (
     <footer className="bg-[#222] text-white pt-16 pb-8">
@@ -106,6 +133,14 @@ const Footer = () => {
                   <div className="text-gray-300 hover:text-white hover:underline transition-colors cursor-pointer">Login / Register</div>
                 </Link>
               </li>
+              <li>
+                <div
+                  onClick={() => setShowNeighborhoodModal(true)}
+                  className="text-gray-300 hover:text-white hover:underline transition-colors cursor-pointer"
+                >
+                  The Neighborhood
+                </div>
+              </li>
             </ul>
           </div>
           
@@ -204,6 +239,37 @@ const Footer = () => {
           </div>
         </div>
       </div>
+
+      {/* Neighborhood Modal */}
+      <Dialog open={showNeighborhoodModal} onOpenChange={setShowNeighborhoodModal}>
+        <DialogContent className="sm:max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-[#d73a31]">
+              Welcome to the neighborhood — pick your area
+            </DialogTitle>
+            <DialogDescription className="text-lg pt-2">
+              We deliver authentic NY-style pizza to neighborhoods across Asheville!
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-4">
+            {neighborhoods.map((neighborhood) => (
+              <Link key={neighborhood.slug} href={`/${neighborhood.slug}`}>
+                <Button
+                  onClick={() => setShowNeighborhoodModal(false)}
+                  variant="outline"
+                  className="w-full h-auto py-4 px-4 text-left border-2 border-gray-200 hover:border-[#d73a31] hover:bg-[#f9f5f0] transition-all"
+                >
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-[#d73a31] flex-shrink-0" />
+                    <span className="font-semibold text-gray-900">{neighborhood.name}</span>
+                  </div>
+                </Button>
+              </Link>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </footer>
   );
 };

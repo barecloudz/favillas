@@ -670,6 +670,14 @@
   memory = 512
   timeout = 30
 
+# Scheduled Functions
+# Run cleanup-unpaid-orders every hour to delete abandoned payment-link orders
+[functions."cleanup-unpaid-orders"]
+  schedule = "@hourly"  # Runs every hour
+  # Alternative schedules:
+  # "@daily" = Once per day at midnight UTC
+  # "0 */6 * * *" = Every 6 hours (cron format)
+
 [dev]
   command = "npm run dev:client"
   port = 8888
