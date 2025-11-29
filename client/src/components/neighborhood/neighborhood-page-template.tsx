@@ -102,8 +102,8 @@ const NeighborhoodPageTemplate: React.FC<NeighborhoodPageTemplateProps> = ({ dat
             },
             "aggregateRating": {
               "@type": "AggregateRating",
-              "ratingValue": "4.8",
-              "reviewCount": "500",
+              "ratingValue": "4.5",
+              "reviewCount": "1081",
               "bestRating": "5",
               "worstRating": "1"
             },
