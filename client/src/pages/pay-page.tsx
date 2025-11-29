@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRoute, useLocation } from 'wouter';
-import { apiRequest } from '@/lib/api';
+import { apiRequest } from '@/lib/queryClient';
 import { Loader2 } from 'lucide-react';
 
 export default function PayPage() {
