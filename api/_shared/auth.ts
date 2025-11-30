@@ -215,6 +215,16 @@ export function hasRequiredRole(authPayload: AuthPayload | null, requiredRoles: 
 }
 
 /**
+ * Checks if user is an admin
+ * @param authPayload - Authentication payload from authenticateToken
+ * @returns true if user is admin/super_admin, false otherwise
+ */
+export function isAdmin(authPayload: AuthPayload | null): boolean {
+  if (!authPayload) return false;
+  return ['admin', 'super_admin'].includes(authPayload.role);
+}
+
+/**
  * Checks if user is admin or has staff privileges
  * @param authPayload - Authentication payload from authenticateToken
  * @returns true if user is admin/staff, false otherwise
