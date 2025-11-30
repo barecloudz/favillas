@@ -151,13 +151,10 @@ function App() {
             {!isStandalonePage && <Header />}
             {!isStandalonePage && <CartSidebar />}
             <LoginModalWrapper />
-            {/* Christmas Decorations - skip on kitchen page */}
-            {!isStandalonePage && (
-              <>
-                <ChristmasDecor />
-                <SnowFall />
-              </>
-            )}
+            {/* Christmas Snow - show everywhere */}
+            <SnowFall />
+            {/* Christmas Tree Decorations - skip on kitchen page */}
+            {!isStandalonePage && <ChristmasDecor />}
             <Router />
           </TooltipProvider>
         </CartProvider>
