@@ -23,7 +23,7 @@ function getDB() {
 export const handler: Handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': event.headers.origin || '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, PUT, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json',
@@ -118,43 +118,102 @@ export const handler: Handler = async (event, context) => {
       };
     }
 
-    // POST - Toggle multiple slices at once
+    // POST - Create new slice
     if (event.httpMethod === 'POST') {
       const body = JSON.parse(event.body || '{}');
-      const { slices } = body; // Array of { sliceId, isAvailable }
+      const { name, description, base_price, image_url, category, is_available } = body;
 
-      if (!slices || !Array.isArray(slices)) {
+      if (!name || !base_price) {
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ error: 'slices array is required' })
+          body: JSON.stringify({ error: 'name and base_price are required' })
         };
       }
 
-      console.log(`🍕 Kitchen Slices: Batch updating ${slices.length} slices`);
+      console.log(`🍕 Kitchen Slices: Creating new slice: ${name}`);
 
-      const results = [];
-      for (const slice of slices) {
-        const result = await sql`
-          UPDATE menu_items
-          SET is_available = ${slice.isAvailable}
-          WHERE id = ${slice.sliceId} AND category = 'Pizza by the Slice'
-          RETURNING id, name, is_available
-        `;
-        if (result.length > 0) {
-          results.push(result[0]);
-        }
+      const result = await sql`
+        INSERT INTO menu_items (
+          name,
+          description,
+          base_price,
+          image_url,
+          category,
+          is_available,
+          is_featured,
+          created_at,
+          updated_at
+        )
+        VALUES (
+          ${name},
+          ${description || ''},
+          ${base_price},
+          ${image_url || ''},
+          ${category || 'Pizza by the Slice'},
+          ${is_available !== undefined ? is_available : true},
+          false,
+          NOW(),
+          NOW()
+        )
+        RETURNING id, name, description, base_price, image_url, is_available
+      `;
+
+      console.log(`✅ Created slice: ${result[0].name}`);
+
+      return {
+        statusCode: 201,
+        headers,
+        body: JSON.stringify({
+          success: true,
+          slice: result[0]
+        })
+      };
+    }
+
+    // PUT - Update existing slice
+    if (event.httpMethod === 'PUT') {
+      const body = JSON.parse(event.body || '{}');
+      const { sliceId, name, description, base_price, image_url } = body;
+
+      if (!sliceId) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'sliceId is required' })
+        };
       }
 
-      console.log(`✅ Updated ${results.length} slices`);
+      console.log(`🍕 Kitchen Slices: Updating slice ${sliceId}`);
+
+      const result = await sql`
+        UPDATE menu_items
+        SET
+          name = ${name},
+          description = ${description || ''},
+          base_price = ${base_price},
+          image_url = ${image_url || ''},
+          updated_at = NOW()
+        WHERE id = ${sliceId} AND category = 'Pizza by the Slice'
+        RETURNING id, name, description, base_price, image_url, is_available
+      `;
+
+      if (result.length === 0) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ error: 'Slice not found' })
+        };
+      }
+
+      console.log(`✅ Updated slice: ${result[0].name}`);
 
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           success: true,
-          updated: results.length,
-          slices: results
+          slice: result[0]
         })
       };
     }

@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Loader2, Printer, Volume2, Columns3, LayoutGrid, User, Home, Settings, LogOut, PauseCircle, PlayCircle, Package, ChevronDown, ChevronRight, AlertTriangle, MoreVertical, Trash2, RefreshCcw, CheckCircle, Pizza } from "lucide-react";
+import { Loader2, Printer, Volume2, Columns3, LayoutGrid, User, Home, Settings, LogOut, PauseCircle, PlayCircle, Package, ChevronDown, ChevronRight, AlertTriangle, MoreVertical, Trash2, RefreshCcw, CheckCircle, Pizza, Edit, Plus } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { printToThermalPrinter, printDailySummary } from "@/utils/thermal-printer";
 import { useLocation } from "wouter";
 import { useVacationMode } from "@/hooks/use-vacation-mode";
+import { ImageUpload } from "@/components/ui/image-upload";
 
 // Helper function to format EST timestamps from database
 const formatESTTime = (timestamp: string) => {
@@ -100,6 +101,17 @@ const KitchenPage = () => {
   // Pizza by the Slice Modal State
   const [showSlicesModal, setShowSlicesModal] = useState(false);
   const [closingTime, setClosingTime] = useState<string | null>(null);
+
+  // Slice Editor Modal State
+  const [showSliceEditorModal, setShowSliceEditorModal] = useState(false);
+  const [sliceEditorMode, setSliceEditorMode] = useState<'add' | 'edit'>('add');
+  const [editingSlice, setEditingSlice] = useState<any>(null);
+  const [sliceFormData, setSliceFormData] = useState({
+    name: '',
+    description: '',
+    base_price: '',
+    image_url: ''
+  });
 
   // Item Management Modal State
   const [showItemManagementModal, setShowItemManagementModal] = useState(false);
@@ -848,6 +860,100 @@ const KitchenPage = () => {
       toast({
         title: "Error",
         description: "Failed to update slice availability",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Open slice editor for adding new slice
+  const handleAddNewSlice = () => {
+    setSliceEditorMode('add');
+    setEditingSlice(null);
+    setSliceFormData({
+      name: '',
+      description: '',
+      base_price: '',
+      image_url: ''
+    });
+    setShowSliceEditorModal(true);
+  };
+
+  // Open slice editor for editing existing slice
+  const handleEditSlice = (slice: any) => {
+    setSliceEditorMode('edit');
+    setEditingSlice(slice);
+    setSliceFormData({
+      name: slice.name,
+      description: slice.description || '',
+      base_price: slice.base_price,
+      image_url: slice.image_url || ''
+    });
+    setShowSliceEditorModal(true);
+  };
+
+  // Save slice (add or update)
+  const handleSaveSlice = async () => {
+    try {
+      // Validation
+      if (!sliceFormData.name.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Please enter a slice name",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!sliceFormData.base_price || parseFloat(sliceFormData.base_price) <= 0) {
+        toast({
+          title: "Validation Error",
+          description: "Please enter a valid price",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (sliceEditorMode === 'add') {
+        // Create new slice
+        await apiRequest('POST', '/api/kitchen-slices', {
+          name: sliceFormData.name.trim(),
+          description: sliceFormData.description.trim(),
+          base_price: parseFloat(sliceFormData.base_price),
+          image_url: sliceFormData.image_url,
+          category: 'Pizza by the Slice',
+          is_available: true
+        });
+
+        toast({
+          title: "Success",
+          description: "Slice added successfully",
+        });
+      } else {
+        // Update existing slice
+        await apiRequest('PUT', '/api/kitchen-slices', {
+          sliceId: editingSlice.id,
+          name: sliceFormData.name.trim(),
+          description: sliceFormData.description.trim(),
+          base_price: parseFloat(sliceFormData.base_price),
+          image_url: sliceFormData.image_url
+        });
+
+        toast({
+          title: "Success",
+          description: "Slice updated successfully",
+        });
+      }
+
+      // Refresh slices data
+      queryClient.invalidateQueries({ queryKey: ['/api/kitchen-slices'] });
+
+      // Close modal
+      setShowSliceEditorModal(false);
+    } catch (error: any) {
+      console.error('Failed to save slice:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save slice",
         variant: "destructive",
       });
     }
@@ -2824,6 +2930,17 @@ THIS CANNOT BE UNDONE. Are you absolutely sure?`;
             </DialogHeader>
 
             <div className="py-4">
+              {/* Add New Slice Button */}
+              <div className="mb-4">
+                <Button
+                  onClick={handleAddNewSlice}
+                  className="w-full bg-[#d73a31] hover:bg-[#c73128]"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add New Slice
+                </Button>
+              </div>
+
               {slicesLoading ? (
                 <div className="flex justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-[#d73a31]" />
@@ -2840,6 +2957,14 @@ THIS CANNOT BE UNDONE. Are you absolutely sure?`;
                         <p className="text-sm text-gray-600">${parseFloat(slice.base_price).toFixed(2)}</p>
                       </div>
                       <div className="flex items-center gap-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditSlice(slice)}
+                          className="h-8 px-2"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
                         <span className={`text-sm font-medium ${slice.is_available ? 'text-green-600' : 'text-gray-400'}`}>
                           {slice.is_available ? 'Available' : 'Unavailable'}
                         </span>
@@ -2855,7 +2980,7 @@ THIS CANNOT BE UNDONE. Are you absolutely sure?`;
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <Pizza className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p>No slices found. Add them in the Menu Editor first.</p>
+                  <p>No slices found. Click "Add New Slice" to get started.</p>
                 </div>
               )}
             </div>
@@ -2868,6 +2993,85 @@ THIS CANNOT BE UNDONE. Are you absolutely sure?`;
                 className="w-full"
               >
                 Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Slice Editor Modal (Add/Edit) */}
+        <Dialog open={showSliceEditorModal} onOpenChange={setShowSliceEditorModal}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-xl flex items-center gap-2">
+                <Pizza className="h-5 w-5 text-[#d73a31]" />
+                {sliceEditorMode === 'add' ? 'Add New Slice' : 'Edit Slice'}
+              </DialogTitle>
+              <DialogDescription>
+                {sliceEditorMode === 'add'
+                  ? 'Add a new pizza slice to your menu'
+                  : 'Edit the details of this pizza slice'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              {/* Slice Name */}
+              <div className="space-y-2">
+                <Label htmlFor="slice-name">Slice Name *</Label>
+                <Input
+                  id="slice-name"
+                  placeholder="e.g., Pepperoni Pizza Slice"
+                  value={sliceFormData.name}
+                  onChange={(e) => setSliceFormData({ ...sliceFormData, name: e.target.value })}
+                />
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <Label htmlFor="slice-description">Description</Label>
+                <Textarea
+                  id="slice-description"
+                  placeholder="e.g., Classic NY-style pepperoni pizza slice"
+                  value={sliceFormData.description}
+                  onChange={(e) => setSliceFormData({ ...sliceFormData, description: e.target.value })}
+                  rows={3}
+                />
+              </div>
+
+              {/* Price */}
+              <div className="space-y-2">
+                <Label htmlFor="slice-price">Price *</Label>
+                <Input
+                  id="slice-price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={sliceFormData.base_price}
+                  onChange={(e) => setSliceFormData({ ...sliceFormData, base_price: e.target.value })}
+                />
+              </div>
+
+              {/* Image Upload */}
+              <ImageUpload
+                value={sliceFormData.image_url}
+                onChange={(url) => setSliceFormData({ ...sliceFormData, image_url: url })}
+                label="Slice Image"
+              />
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowSliceEditorModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveSlice}
+                className="bg-[#d73a31] hover:bg-[#c73128]"
+              >
+                {sliceEditorMode === 'add' ? 'Add Slice' : 'Save Changes'}
               </Button>
             </DialogFooter>
           </DialogContent>
