@@ -8,7 +8,11 @@ interface Snowflake {
   drift: number;
 }
 
-const SnowFall: React.FC = () => {
+interface SnowFallProps {
+  zIndex?: number;
+}
+
+const SnowFall: React.FC<SnowFallProps> = ({ zIndex = 50 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -101,7 +105,7 @@ const SnowFall: React.FC = () => {
         width: '100%',
         height: '100%',
         pointerEvents: 'none', // Don't block clicks
-        zIndex: 0, // Behind all content (cards will be on top)
+        zIndex: zIndex, // Configurable based on page
       }}
       aria-hidden="true"
     />
