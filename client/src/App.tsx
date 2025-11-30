@@ -62,6 +62,8 @@ import CartSidebar from "@/components/cart/cart-sidebar";
 import Header from "@/components/layout/header";
 import LoginModalWrapper from "@/components/auth/login-modal-wrapper";
 import { UpdateBanner } from "@/components/update-banner";
+import SnowFall from "@/components/animations/SnowFall";
+import ChristmasDecor from "@/components/animations/ChristmasDecor";
 
 // Pages that should NOT show the main header (standalone full-screen pages)
 const STANDALONE_PAGES = ['/kitchen'];
@@ -149,6 +151,13 @@ function App() {
             {!isStandalonePage && <Header />}
             {!isStandalonePage && <CartSidebar />}
             <LoginModalWrapper />
+            {/* Christmas Decorations - skip on kitchen page */}
+            {!isStandalonePage && (
+              <>
+                <ChristmasDecor />
+                <SnowFall />
+              </>
+            )}
             <Router />
           </TooltipProvider>
         </CartProvider>
