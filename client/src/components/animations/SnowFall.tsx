@@ -101,7 +101,7 @@ const SnowFall: React.FC = () => {
         width: '100%',
         height: '100%',
         pointerEvents: 'none', // Don't block clicks
-        zIndex: 1, // Behind cards (cards typically have z-index > 1)
+        zIndex: 0, // Behind all content (cards will be on top)
       }}
       aria-hidden="true"
     />
