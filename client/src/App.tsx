@@ -137,24 +137,32 @@ function Router() {
   );
 }
 
-function App() {
+function AppContent() {
   const [location] = useLocation();
   const isStandalonePage = STANDALONE_PAGES.includes(location);
   const { snowEnabled } = useAnimations();
 
   return (
+    <>
+      <Toaster />
+      <UpdateBanner />
+      {!isStandalonePage && <Header />}
+      {!isStandalonePage && <CartSidebar />}
+      <LoginModalWrapper />
+      {/* Christmas Snow - controlled by admin */}
+      {snowEnabled && <SnowFall />}
+      <Router />
+    </>
+  );
+}
+
+function App() {
+  return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CartProvider>
           <TooltipProvider>
-            <Toaster />
-            <UpdateBanner />
-            {!isStandalonePage && <Header />}
-            {!isStandalonePage && <CartSidebar />}
-            <LoginModalWrapper />
-            {/* Christmas Snow - controlled by admin */}
-            {snowEnabled && <SnowFall />}
-            <Router />
+            <AppContent />
           </TooltipProvider>
         </CartProvider>
       </AuthProvider>
