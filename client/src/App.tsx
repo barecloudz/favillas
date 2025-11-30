@@ -63,6 +63,7 @@ import Header from "@/components/layout/header";
 import LoginModalWrapper from "@/components/auth/login-modal-wrapper";
 import { UpdateBanner } from "@/components/update-banner";
 import SnowFall from "@/components/animations/SnowFall";
+import { useAnimations } from "@/hooks/use-animations";
 
 // Pages that should NOT show the main header (standalone full-screen pages)
 const STANDALONE_PAGES = ['/kitchen'];
@@ -139,6 +140,7 @@ function Router() {
 function App() {
   const [location] = useLocation();
   const isStandalonePage = STANDALONE_PAGES.includes(location);
+  const { snowEnabled } = useAnimations();
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -150,8 +152,8 @@ function App() {
             {!isStandalonePage && <Header />}
             {!isStandalonePage && <CartSidebar />}
             <LoginModalWrapper />
-            {/* Christmas Snow - show everywhere */}
-            <SnowFall />
+            {/* Christmas Snow - controlled by admin */}
+            {snowEnabled && <SnowFall />}
             <Router />
           </TooltipProvider>
         </CartProvider>

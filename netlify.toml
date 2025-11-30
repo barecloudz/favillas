@@ -66,6 +66,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/animations"
+  to = "/.netlify/functions/animations"
+  status = 200
+
+[[redirects]]
   from = "/api/orders/*/status"
   to = "/.netlify/functions/orders-status"
   status = 200

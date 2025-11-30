@@ -109,9 +109,11 @@ import {
   Wifi,
   ArrowLeft,
   Pause,
-  Percent as PercentIcon
+  Percent as PercentIcon,
+  Sparkles
 } from "lucide-react";
 import PayrollDashboard from "@/components/admin/payroll-dashboard";
+import { AnimationsTab } from "@/components/admin/animations-tab";
 import ScheduleCreator from "@/components/admin/schedule-creator";
 import { TemplateEditor } from "@/components/admin/template-editor";
 import { RestaurantSettings } from "@/components/admin/restaurant-settings";
@@ -1136,6 +1138,7 @@ const AdminDashboard = () => {
         { name: "Email Campaigns", icon: Mail, href: "email-campaigns" },
         { name: "SMS Marketing", icon: MessageSquare, href: "sms-marketing" },
         { name: "Local SEO Tools", icon: Search, href: "local-seo" },
+        { name: "Animations", icon: Sparkles, href: "animations" },
       ]
     },
     {
@@ -1539,6 +1542,10 @@ const AdminDashboard = () => {
             
             {activeTab === "local-seo" && (
               <LocalSEOToolsTab />
+            )}
+
+            {activeTab === "animations" && (
+              <AnimationsTab />
             )}
             
             {activeTab === "reviews" && (
