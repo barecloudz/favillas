@@ -141,9 +141,7 @@ export const handler: Handler = async (event, context) => {
           image_url,
           category,
           is_available,
-          is_featured,
-          created_at,
-          updated_at
+          is_featured
         )
         VALUES (
           ${name},
@@ -152,9 +150,7 @@ export const handler: Handler = async (event, context) => {
           ${image_url || ''},
           ${category || 'Pizza by the Slice'},
           ${is_available !== undefined ? is_available : true},
-          false,
-          NOW(),
-          NOW()
+          false
         )
         RETURNING id, name, description, base_price, image_url, is_available
       `;
@@ -192,8 +188,7 @@ export const handler: Handler = async (event, context) => {
           name = ${name},
           description = ${description || ''},
           base_price = ${base_price},
-          image_url = ${image_url || ''},
-          updated_at = NOW()
+          image_url = ${image_url || ''}
         WHERE id = ${sliceId} AND category = 'Pizza by the Slice'
         RETURNING id, name, description, base_price, image_url, is_available
       `;
