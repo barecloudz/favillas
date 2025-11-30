@@ -142,8 +142,8 @@ function AppContent() {
   const isStandalonePage = STANDALONE_PAGES.includes(location);
   const { snowEnabled } = useAnimations();
 
-  // Snow should be behind items on menu page, on top everywhere else
-  const snowZIndex = location === '/menu' ? 0 : 50;
+  // Don't show snow on menu page
+  const showSnow = snowEnabled && location !== '/menu';
 
   return (
     <>
@@ -152,8 +152,8 @@ function AppContent() {
       {!isStandalonePage && <Header />}
       {!isStandalonePage && <CartSidebar />}
       <LoginModalWrapper />
-      {/* Christmas Snow - controlled by admin */}
-      {snowEnabled && <SnowFall zIndex={snowZIndex} />}
+      {/* Christmas Snow - controlled by admin (not on menu page) */}
+      {showSnow && <SnowFall />}
       <Router />
     </>
   );
