@@ -63,7 +63,6 @@ import Header from "@/components/layout/header";
 import LoginModalWrapper from "@/components/auth/login-modal-wrapper";
 import { UpdateBanner } from "@/components/update-banner";
 import SnowFall from "@/components/animations/SnowFall";
-import ChristmasDecor from "@/components/animations/ChristmasDecor";
 
 // Pages that should NOT show the main header (standalone full-screen pages)
 const STANDALONE_PAGES = ['/kitchen'];
@@ -153,8 +152,6 @@ function App() {
             <LoginModalWrapper />
             {/* Christmas Snow - show everywhere */}
             <SnowFall />
-            {/* Christmas Tree Decorations - skip on kitchen page */}
-            {!isStandalonePage && <ChristmasDecor />}
             <Router />
           </TooltipProvider>
         </CartProvider>
