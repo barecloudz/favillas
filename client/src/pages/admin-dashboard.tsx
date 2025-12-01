@@ -942,9 +942,9 @@ const AdminDashboard = () => {
     const categoryTabsHrefs = [
       "analytics", "reports", "tips-report", "refunds",
       "menu-editor", "pricing", "out-of-stock", "multi-location", "experimental",
-      "frontend", "qr-codes", "widget", "smart-links", "printer", "receipt-templates", "scheduling", "reservations", 
+      "frontend", "qr-codes", "widget", "smart-links", "printer", "receipt-templates", "scheduling", "reservations",
       "vacation-mode", "delivery", "taxation",
-      "promo-codes", "rewards", "subscribed-users", "kickstarter", "email-campaigns", "sms-marketing", "local-seo",
+      "promo-codes", "rewards", "subscribed-users", "kickstarter", "email-campaigns", "sms-marketing", "local-seo", "animations", "christmas",
       "customers", "users", "reviews",
       "employee-schedules", "payroll", "tip-settings",
       "api", "pos-integration", "integrations", "webhooks",
