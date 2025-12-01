@@ -33,8 +33,15 @@ const Present: React.FC<{ day: number; onClick: () => void; disabled: boolean; c
     <div
       onClick={!disabled ? onClick : undefined}
       className={`relative cursor-pointer transform transition-all duration-300 ${
-        disabled || claimed ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 animate-bounce'
+        disabled || claimed ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'
       }`}
+      style={
+        !disabled && !claimed
+          ? {
+              animation: 'presentShake 4s ease-in-out infinite',
+            }
+          : {}
+      }
     >
       {/* SVG Present box */}
       <div className="relative w-20 h-20">

@@ -237,6 +237,9 @@ export const handler: Handler = async (event, context) => {
         };
       }
 
+      // Generate voucher code if reward doesn't have one
+      const voucherCode = reward.voucher_code || `XMAS${currentYear}-DAY${day}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
       // Create voucher for user
       const [voucher] = await sql`
         INSERT INTO user_vouchers (
@@ -250,7 +253,7 @@ export const handler: Handler = async (event, context) => {
           ${userId || null},
           ${supabaseUserId || null},
           ${reward.id},
-          ${reward.voucher_code},
+          ${voucherCode},
           ${new Date(currentYear, 11, 26).toISOString()} -- Expires Dec 26
         )
         RETURNING id

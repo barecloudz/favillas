@@ -265,3 +265,28 @@ button, [role="button"] {
 .cart-shake {
   animation: cart-shake 0.3s ease-in-out;
 }
+
+/* Christmas present shake animation - bounces up/down twice, then left/right twice */
+@keyframes presentShake {
+  /* First vertical bounce */
+  0%, 6.25% { transform: translateY(0); }
+  3.125% { transform: translateY(-8px); }
+
+  /* Second vertical bounce */
+  6.25%, 12.5% { transform: translateY(0); }
+  9.375% { transform: translateY(-8px); }
+
+  /* Pause */
+  12.5%, 37.5% { transform: translate(0, 0); }
+
+  /* First horizontal shake */
+  37.5%, 43.75% { transform: translateX(0); }
+  40.625% { transform: translateX(-6px); }
+
+  /* Second horizontal shake */
+  43.75%, 50% { transform: translateX(0); }
+  46.875% { transform: translateX(-6px); }
+
+  /* Long pause before repeating */
+  50%, 100% { transform: translate(0, 0); }
+}
