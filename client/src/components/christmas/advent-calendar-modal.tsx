@@ -247,7 +247,7 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
   return (
     <>
       {/* Main calendar modal */}
-      <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <Dialog open={open && !showRewardAnimation} onOpenChange={(isOpen) => !isOpen && onClose()}>
         <DialogContent
           className="max-w-2xl"
           onTouchStart={onTouchStart}
