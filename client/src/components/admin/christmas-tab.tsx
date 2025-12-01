@@ -22,6 +22,12 @@ export const ChristmasTab = () => {
     pointsRequired: '0',
     voucher_code: '',
     image_url: '',
+    rewardType: 'discount',
+    discount: '',
+    discountType: 'percentage',
+    maxDiscountAmount: '',
+    freeItem: '',
+    minOrderAmount: '',
   });
 
   // Fetch animation settings (to get advent calendar toggle)
@@ -145,6 +151,12 @@ export const ChristmasTab = () => {
         pointsRequired: '0',
         voucher_code: '',
         image_url: '',
+        rewardType: 'discount',
+        discount: '',
+        discountType: 'percentage',
+        maxDiscountAmount: '',
+        freeItem: '',
+        minOrderAmount: '',
       });
       toast({
         title: 'Success',
@@ -278,12 +290,91 @@ export const ChristmasTab = () => {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Reward Type</Label>
+                  <Select
+                    value={rewardForm.rewardType}
+                    onValueChange={(value) => setRewardForm({ ...rewardForm, rewardType: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="discount">Discount</SelectItem>
+                      <SelectItem value="free_item">Free Item</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Points Cost (use 0 for free)</Label>
+                  <Input
+                    type="number"
+                    value={rewardForm.pointsRequired}
+                    onChange={(e) => setRewardForm({ ...rewardForm, pointsRequired: e.target.value })}
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              {rewardForm.rewardType === 'discount' && (
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label>Discount Amount</Label>
+                    <Input
+                      type="number"
+                      value={rewardForm.discount}
+                      onChange={(e) => setRewardForm({ ...rewardForm, discount: e.target.value })}
+                      placeholder="10"
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <Label>Discount Type</Label>
+                    <Select
+                      value={rewardForm.discountType}
+                      onValueChange={(value) => setRewardForm({ ...rewardForm, discountType: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percentage">Percentage (%)</SelectItem>
+                        <SelectItem value="fixed">Fixed Amount ($)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Max Discount ($)</Label>
+                    <Input
+                      type="number"
+                      value={rewardForm.maxDiscountAmount}
+                      onChange={(e) => setRewardForm({ ...rewardForm, maxDiscountAmount: e.target.value })}
+                      placeholder="Optional"
+                      min="0"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {rewardForm.rewardType === 'free_item' && (
+                <div>
+                  <Label>Free Item Name</Label>
+                  <Input
+                    value={rewardForm.freeItem}
+                    onChange={(e) => setRewardForm({ ...rewardForm, freeItem: e.target.value })}
+                    placeholder="e.g., Large Pepperoni Pizza"
+                  />
+                </div>
+              )}
+
               <div>
-                <Label>Points Cost (use 0 for free)</Label>
+                <Label>Minimum Order Amount ($)</Label>
                 <Input
                   type="number"
-                  value={rewardForm.pointsRequired}
-                  onChange={(e) => setRewardForm({ ...rewardForm, pointsRequired: e.target.value })}
+                  value={rewardForm.minOrderAmount}
+                  onChange={(e) => setRewardForm({ ...rewardForm, minOrderAmount: e.target.value })}
+                  placeholder="Optional - e.g., 25"
                   min="0"
                 />
               </div>
@@ -306,6 +397,12 @@ export const ChristmasTab = () => {
                       pointsRequired: parseInt(rewardForm.pointsRequired) || 0,
                       voucher_code: rewardForm.voucher_code,
                       image_url: rewardForm.image_url,
+                      rewardType: rewardForm.rewardType,
+                      discount: rewardForm.discount ? parseFloat(rewardForm.discount) : null,
+                      discountType: rewardForm.discountType,
+                      maxDiscountAmount: rewardForm.maxDiscountAmount ? parseFloat(rewardForm.maxDiscountAmount) : null,
+                      freeItem: rewardForm.freeItem || null,
+                      minOrderAmount: rewardForm.minOrderAmount ? parseFloat(rewardForm.minOrderAmount) : null,
                     });
                   }}
                   disabled={!rewardForm.name || !rewardForm.voucher_code || createRewardMutation.isPending}
@@ -323,6 +420,12 @@ export const ChristmasTab = () => {
                       pointsRequired: '0',
                       voucher_code: '',
                       image_url: '',
+                      rewardType: 'discount',
+                      discount: '',
+                      discountType: 'percentage',
+                      maxDiscountAmount: '',
+                      freeItem: '',
+                      minOrderAmount: '',
                     });
                   }}
                 >
