@@ -35,9 +35,16 @@ export const handler: Handler = async (event, context) => {
 
   try {
     const sql = getDB();
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1; // 1-12
-    const currentDay = new Date().getDate(); // 1-31
+
+    // Get current time in EST
+    const now = new Date();
+    const estOffset = -5; // EST is UTC-5 (note: this doesn't account for DST)
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const estTime = new Date(utc + (3600000 * estOffset));
+
+    const currentYear = estTime.getFullYear();
+    const currentMonth = estTime.getMonth() + 1; // 1-12
+    const currentDay = estTime.getDate(); // 1-31
 
     // GET - Fetch advent calendar status (public)
     if (event.httpMethod === 'GET') {

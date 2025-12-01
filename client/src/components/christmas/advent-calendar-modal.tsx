@@ -87,13 +87,21 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
     queryKey: ['/api/advent-calendar'],
     queryFn: async () => {
       const response = await fetch('/api/advent-calendar', {
+        method: 'GET',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
       });
-      if (!response.ok) throw new Error('Failed to fetch advent calendar');
-      return response.json();
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Advent calendar fetch error:', errorText);
+        throw new Error('Failed to fetch advent calendar');
+      }
+      const data = await response.json();
+      console.log('Advent calendar data:', data);
+      return data;
     },
     enabled: open,
   });
@@ -273,7 +281,7 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
           </DialogHeader>
 
           {/* Present carousel */}
-          <div className="relative py-8 px-4">
+          <div className="relative py-8 px-4 transition-all duration-500 ease-in-out">
             {/* Navigation arrows */}
             <button
               onClick={handlePrevDay}
@@ -292,7 +300,7 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
             </button>
 
             {/* Current present */}
-            <div className="flex flex-col items-center justify-center space-y-6">
+            <div key={currentDay.day} className="flex flex-col items-center justify-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="text-center">
                 <h3 className="text-3xl font-bold text-[#d73a31]">December {currentDay.day}</h3>
                 {currentDay.day === todayEST && (
