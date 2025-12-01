@@ -221,9 +221,17 @@ export const handler: Handler = async (event, context) => {
         };
       }
 
-      // Get reward details
+      // Get reward details with all fields needed for voucher
       const [reward] = await sql`
-        SELECT id, name, description, voucher_code
+        SELECT
+          id,
+          name,
+          description,
+          voucher_code,
+          discount_amount,
+          discount_type,
+          min_order_amount,
+          points_required
         FROM rewards
         WHERE id = ${calendarEntry.reward_id}
         LIMIT 1
@@ -240,13 +248,19 @@ export const handler: Handler = async (event, context) => {
       // Generate voucher code if reward doesn't have one
       const voucherCode = reward.voucher_code || `XMAS${currentYear}-DAY${day}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
-      // Create voucher for user
+      // Create voucher for user with all required fields
       const [voucher] = await sql`
         INSERT INTO user_vouchers (
           user_id,
           supabase_user_id,
           reward_id,
           voucher_code,
+          discount_amount,
+          discount_type,
+          min_order_amount,
+          points_used,
+          title,
+          description,
           expires_at
         )
         VALUES (
@@ -254,6 +268,12 @@ export const handler: Handler = async (event, context) => {
           ${supabaseUserId || null},
           ${reward.id},
           ${voucherCode},
+          ${reward.discount_amount || 0},
+          ${reward.discount_type || 'fixed'},
+          ${reward.min_order_amount || 0},
+          0,
+          ${reward.name},
+          ${reward.description},
           ${new Date(currentYear, 11, 26).toISOString()} -- Expires Dec 26
         )
         RETURNING id

@@ -12,11 +12,12 @@ interface AdventCalendarModalProps {
 }
 
 // Animated present component using SVG giftboxes
-const Present: React.FC<{ day: number; onClick: () => void; disabled: boolean; claimed: boolean }> = ({
+const Present: React.FC<{ day: number; onClick: () => void; disabled: boolean; claimed: boolean; isOpening?: boolean }> = ({
   day,
   onClick,
   disabled,
-  claimed
+  claimed,
+  isOpening = false
 }) => {
   // Cycle through 9 giftbox variations (3 columns x 3 rows)
   const giftVariation = ((day - 1) % 9);
@@ -36,7 +37,11 @@ const Present: React.FC<{ day: number; onClick: () => void; disabled: boolean; c
         disabled || claimed ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'
       }`}
       style={
-        !disabled && !claimed
+        isOpening
+          ? {
+              animation: 'presentOpening 1.5s ease-in-out forwards',
+            }
+          : !disabled && !claimed
           ? {
               animation: 'presentShake 4s ease-in-out infinite',
             }
@@ -89,6 +94,7 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
   const [currentDayIndex, setCurrentDayIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [isOpening, setIsOpening] = useState(false);
 
   const { data: adventData, isLoading } = useQuery({
     queryKey: ['/api/advent-calendar'],
@@ -140,7 +146,14 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
     if (open && todayEST > 0 && todayEST <= 25) {
       setCurrentDayIndex(todayEST - 1);
     }
+    // Reset opening animation when modal opens/closes
+    setIsOpening(false);
   }, [open, todayEST]);
+
+  // Reset opening animation when switching days
+  useEffect(() => {
+    setIsOpening(false);
+  }, [currentDayIndex]);
 
   // Swipe handlers
   const minSwipeDistance = 50;
@@ -188,6 +201,19 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
 
   const handleClaim = (day: number) => {
     claimMutation.mutate(day);
+  };
+
+  const handlePresentClick = (day: number, canClaim: boolean) => {
+    if (!canClaim || isOpening || claimMutation.isPending) return;
+
+    // Start opening animation
+    setIsOpening(true);
+
+    // After animation, claim the reward
+    setTimeout(() => {
+      handleClaim(day);
+      setIsOpening(false);
+    }, 1500); // Animation duration
   };
 
   if (!adventData || !adventData.enabled) {
@@ -296,9 +322,10 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
               <div className="scale-150 my-8">
                 <Present
                   day={currentDay.day}
-                  onClick={() => {}}
+                  onClick={() => handlePresentClick(currentDay.day, currentDay.canClaim)}
                   disabled={!currentDay.canClaim}
                   claimed={currentDay.isClaimed}
+                  isOpening={isOpening}
                 />
               </div>
 
