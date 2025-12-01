@@ -3,10 +3,10 @@ import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useCart } from "@/hooks/use-cart";
 import { useBranding } from "@/hooks/use-branding";
-import { 
-  Home, 
-  Menu as MenuIcon, 
-  ShoppingBag, 
+import {
+  Home,
+  Menu as MenuIcon,
+  ShoppingBag,
   User,
   MapPin,
   Phone,
@@ -27,6 +27,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ChristmasCountdownButton } from "@/components/christmas/christmas-countdown-button";
+import { AdventCalendarModal } from "@/components/christmas/advent-calendar-modal";
 
 const Header = () => {
   const [location, navigate] = useLocation();
@@ -38,6 +40,7 @@ const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileProfileMenuOpen, setMobileProfileMenuOpen] = useState(false);
+  const [adventCalendarOpen, setAdventCalendarOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -300,7 +303,7 @@ const Header = () => {
 
         {/* Mobile Bottom Navigation */}
         <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white shadow-lg border-t-2 border-[#d73a31] lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-          <div className="flex justify-around items-center h-16 px-4">
+          <div className="flex justify-around items-center h-16 px-2">
             <Link href="/">
               <div className={`flex flex-col items-center space-y-1 transition-colors ${
                 location === "/" ? "text-[#d73a31]" : "text-gray-600 hover:text-[#d73a31]"
@@ -309,7 +312,7 @@ const Header = () => {
                 <span className="text-xs font-semibold">Home</span>
               </div>
             </Link>
-            
+
             <Link href="/menu">
               <div className={`flex flex-col items-center space-y-1 transition-colors ${
                 location === "/menu" ? "text-[#d73a31]" : "text-gray-600 hover:text-[#d73a31]"
@@ -318,7 +321,10 @@ const Header = () => {
                 <span className="text-xs font-semibold">Menu</span>
               </div>
             </Link>
-            
+
+            {/* Christmas Countdown Button */}
+            <ChristmasCountdownButton onClick={() => setAdventCalendarOpen(true)} />
+
             <div
               className={`flex flex-col items-center space-y-1 relative transition-colors cursor-pointer ${
                 location === "/checkout" ? "text-[#d73a31]" : "text-gray-600 hover:text-[#d73a31]"
@@ -336,7 +342,7 @@ const Header = () => {
               )}
               <span className="text-xs font-semibold">Cart</span>
             </div>
-            
+
             <div className="flex flex-col items-center space-y-1">
               {user ? (
                 <div
@@ -359,6 +365,12 @@ const Header = () => {
             </div>
           </div>
         </nav>
+
+        {/* Advent Calendar Modal */}
+        <AdventCalendarModal
+          open={adventCalendarOpen}
+          onClose={() => setAdventCalendarOpen(false)}
+        />
 
         {/* Full-Screen Mobile Profile Menu Overlay */}
         {mobileProfileMenuOpen && (

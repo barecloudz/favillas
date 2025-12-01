@@ -71,6 +71,16 @@
   status = 200
 
 [[redirects]]
+  from = "/api/advent-calendar"
+  to = "/.netlify/functions/advent-calendar"
+  status = 200
+
+[[redirects]]
+  from = "/api/admin/advent-calendar"
+  to = "/.netlify/functions/admin-advent-calendar"
+  status = 200
+
+[[redirects]]
   from = "/api/orders/*/status"
   to = "/.netlify/functions/orders-status"
   status = 200

@@ -114,6 +114,7 @@ import {
 } from "lucide-react";
 import PayrollDashboard from "@/components/admin/payroll-dashboard";
 import { AnimationsTab } from "@/components/admin/animations-tab";
+import { ChristmasTab } from "@/components/admin/christmas-tab";
 import ScheduleCreator from "@/components/admin/schedule-creator";
 import { TemplateEditor } from "@/components/admin/template-editor";
 import { RestaurantSettings } from "@/components/admin/restaurant-settings";
@@ -1139,6 +1140,7 @@ const AdminDashboard = () => {
         { name: "SMS Marketing", icon: MessageSquare, href: "sms-marketing" },
         { name: "Local SEO Tools", icon: Search, href: "local-seo" },
         { name: "Animations", icon: Sparkles, href: "animations" },
+        { name: "Christmas Calendar", icon: Gift, href: "christmas" },
       ]
     },
     {
@@ -1547,7 +1549,11 @@ const AdminDashboard = () => {
             {activeTab === "animations" && (
               <AnimationsTab />
             )}
-            
+
+            {activeTab === "christmas" && (
+              <ChristmasTab />
+            )}
+
             {activeTab === "reviews" && (
               <ReviewsTab />
             )}
