@@ -13,6 +13,16 @@ interface AdventCalendarModalProps {
   onClose: () => void;
 }
 
+// Separate component for the gift opening animation - this ensures it remounts and plays fresh each time
+const GiftOpeningAnimation: React.FC = () => {
+  const { View } = useLottie({
+    animationData: giftRewardAnimation,
+    loop: false,
+    autoplay: true,
+  });
+  return <>{View}</>;
+};
+
 // Animated present component using Lottie gift animation
 const Present: React.FC<{ day: number; onClick: () => void; disabled: boolean; claimed: boolean; isOpening?: boolean }> = ({
   day,
@@ -77,13 +87,6 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
   const [showRewardAnimation, setShowRewardAnimation] = useState(false);
   const [showRewardReveal, setShowRewardReveal] = useState(false);
   const [revealedReward, setRevealedReward] = useState<{ name: string; description?: string } | null>(null);
-
-  // Lottie animation hook
-  const lottieOptions = {
-    animationData: giftRewardAnimation,
-    loop: false,
-  };
-  const { View: LottieView } = useLottie(lottieOptions);
 
   const { data: adventData, isLoading } = useQuery({
     queryKey: ['/api/advent-calendar'],
@@ -439,12 +442,12 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
       {showRewardAnimation && (
         <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center">
           <div className="relative flex flex-col items-center justify-center">
-            {/* Lottie Animation */}
+            {/* Lottie Animation - separate component to force re-mount */}
             <div
               className={`transition-opacity duration-500 ${showRewardReveal ? 'opacity-0' : 'opacity-100'}`}
               style={{ width: 300, height: 300 }}
             >
-              {LottieView}
+              <GiftOpeningAnimation />
             </div>
 
             {/* Reward Reveal */}
