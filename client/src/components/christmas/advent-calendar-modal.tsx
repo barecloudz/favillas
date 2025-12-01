@@ -18,8 +18,16 @@ const Present: React.FC<{ day: number; onClick: () => void; disabled: boolean; c
   disabled,
   claimed
 }) => {
-  // Cycle through 9 giftbox variations
-  const giftVariation = ((day - 1) % 9) + 1;
+  // Cycle through 9 giftbox variations (3 columns x 3 rows)
+  const giftVariation = ((day - 1) % 9);
+  const col = giftVariation % 3;
+  const row = Math.floor(giftVariation / 3);
+
+  // SVG viewBox is 0 0 76306 89187, boxes are in 3x3 grid
+  const boxWidth = 76306 / 3;
+  const boxHeight = 89187 / 3;
+  const viewBoxX = col * boxWidth;
+  const viewBoxY = row * boxHeight;
 
   return (
     <div
@@ -33,7 +41,7 @@ const Present: React.FC<{ day: number; onClick: () => void; disabled: boolean; c
         <svg
           width="80"
           height="80"
-          viewBox={`${(giftVariation - 1) * 100} 0 100 100`}
+          viewBox={`${viewBoxX} ${viewBoxY} ${boxWidth} ${boxHeight}`}
           className={`w-full h-full ${claimed ? 'opacity-60 grayscale' : ''}`}
           style={{
             filter: claimed ? 'grayscale(100%)' : 'none',
@@ -41,9 +49,9 @@ const Present: React.FC<{ day: number; onClick: () => void; disabled: boolean; c
         >
           <image
             href="/images/giftboxes.svg"
-            width="900"
-            height="100"
-            x={-((giftVariation - 1) * 100)}
+            width="76306"
+            height="89187"
+            x="0"
             y="0"
           />
         </svg>
