@@ -188,19 +188,38 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-center flex items-center justify-center gap-2">
               <Gift className="w-6 h-6 text-red-500" />
-              🎄 Christmas Advent Calendar 🎄
+              🎄 Christmas Presents 🎄
               <Gift className="w-6 h-6 text-red-500" />
             </DialogTitle>
             <p className="text-center text-gray-600">
-              {adventData.daysUntilChristmas > 0
-                ? `${adventData.daysUntilChristmas} days until Christmas!`
-                : "Merry Christmas! 🎅"}
+              Open it to receive rewards!
             </p>
             {!adventData.isAuthenticated && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-2">
-                <p className="text-sm text-yellow-800 text-center">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-2 space-y-3">
+                <p className="text-sm text-yellow-800 text-center font-semibold">
                   🔐 Log in to claim your daily rewards!
                 </p>
+                <div className="flex gap-2 justify-center">
+                  <Button
+                    onClick={() => {
+                      onClose();
+                      window.location.href = '/auth?mode=login';
+                    }}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    Log In
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      onClose();
+                      window.location.href = '/auth?mode=signup';
+                    }}
+                    variant="outline"
+                    className="border-red-600 text-red-600 hover:bg-red-50"
+                  >
+                    Sign Up
+                  </Button>
+                </div>
               </div>
             )}
           </DialogHeader>
@@ -255,14 +274,21 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
             </div>
 
             {selectedDay?.canClaim ? (
-              <Button
-                onClick={handleClaim}
-                disabled={claimMutation.isPending}
-                className="w-full bg-red-600 hover:bg-red-700 text-white"
-                size="lg"
-              >
-                {claimMutation.isPending ? 'Claiming...' : '🎁 Claim Reward!'}
-              </Button>
+              <>
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                  <p className="text-sm text-orange-800 text-center">
+                    ⚠️ <strong>Use it today!</strong> This reward expires at midnight if not claimed.
+                  </p>
+                </div>
+                <Button
+                  onClick={handleClaim}
+                  disabled={claimMutation.isPending}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white"
+                  size="lg"
+                >
+                  {claimMutation.isPending ? 'Unwrapping...' : '🎁 Unwrap & Claim Reward!'}
+                </Button>
+              </>
             ) : selectedDay?.isClaimed ? (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
                 <Check className="w-8 h-8 text-green-600 mx-auto mb-2" />
