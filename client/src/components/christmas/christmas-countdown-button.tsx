@@ -34,11 +34,11 @@ export const ChristmasCountdownButton: React.FC<ChristmasCountdownButtonProps> =
       >
         <div className="relative">
           <div className="w-14 h-14 rounded-full border-3 border-[#d73a31] bg-white flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all group-hover:scale-110 animate-pulse">
-            <div className="text-center flex items-baseline gap-0.5">
+            <div className="text-center flex flex-col items-center justify-center">
               <div className="text-2xl font-bold text-[#d73a31] leading-none">
                 {daysUntilChristmas}
               </div>
-              <span className="text-[10px] font-medium text-gray-600 leading-none">Days</span>
+              <span className="text-[9px] font-medium text-gray-600 leading-none mt-0.5">Days Left</span>
             </div>
           </div>
 
@@ -65,7 +65,7 @@ export const ChristmasCountdownButton: React.FC<ChristmasCountdownButtonProps> =
               {daysUntilChristmas}
             </div>
             <span className="text-xs font-semibold text-gray-600 mt-1">
-              Days
+              Days Left
             </span>
           </div>
 
