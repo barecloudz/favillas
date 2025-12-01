@@ -84,7 +84,12 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
   const { data: adventData, isLoading } = useQuery({
     queryKey: ['/api/advent-calendar'],
     queryFn: async () => {
-      const response = await fetch('/api/advent-calendar');
+      const response = await fetch('/api/advent-calendar', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       if (!response.ok) throw new Error('Failed to fetch advent calendar');
       return response.json();
     },
