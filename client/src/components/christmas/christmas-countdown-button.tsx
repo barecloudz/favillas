@@ -34,10 +34,11 @@ export const ChristmasCountdownButton: React.FC<ChristmasCountdownButtonProps> =
       >
         <div className="relative">
           <div className="w-14 h-14 rounded-full border-3 border-[#d73a31] bg-white flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all group-hover:scale-110 animate-pulse">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-[#d73a31]">
+            <div className="text-center flex items-baseline gap-0.5">
+              <div className="text-2xl font-bold text-[#d73a31] leading-none">
                 {daysUntilChristmas}
               </div>
+              <span className="text-[10px] font-medium text-gray-600 leading-none">Days</span>
             </div>
           </div>
 
@@ -49,8 +50,6 @@ export const ChristmasCountdownButton: React.FC<ChristmasCountdownButtonProps> =
             <div className="absolute -top-1 -left-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-bounce" />
           )}
         </div>
-
-        <span className="text-xs font-medium text-gray-600 mt-1">Days</span>
       </button>
 
       {/* Desktop version (floating bottom right) */}
