@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation } from '@tantml:parameter>
-<parameter name="queryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Gift, Lock, Check, Calendar as CalendarIcon, X } from 'lucide-react';
