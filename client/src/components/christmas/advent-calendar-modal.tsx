@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Gift, Lock, Check, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { queryClient } from '@/lib/queryClient';
+import { queryClient, apiRequest } from '@/lib/queryClient';
 
 interface AdventCalendarModalProps {
   open: boolean;
@@ -86,19 +86,7 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
   const { data: adventData, isLoading } = useQuery({
     queryKey: ['/api/advent-calendar'],
     queryFn: async () => {
-      const response = await fetch('/api/advent-calendar', {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Advent calendar fetch error:', errorText);
-        throw new Error('Failed to fetch advent calendar');
-      }
+      const response = await apiRequest('GET', '/api/advent-calendar');
       const data = await response.json();
       console.log('Advent calendar data:', data);
       return data;
@@ -108,18 +96,7 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
 
   const claimMutation = useMutation({
     mutationFn: async (day: number) => {
-      const response = await fetch('/api/advent-calendar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ day }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to claim reward');
-      }
-
+      const response = await apiRequest('POST', '/api/advent-calendar', { day });
       return response.json();
     },
     onSuccess: (data) => {
@@ -130,8 +107,6 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
         title: '🎁 Reward Claimed!',
         description: data.message || 'Check your vouchers to use your reward!',
       });
-
-      setSelectedDay(null);
     },
     onError: (error: any) => {
       toast({
