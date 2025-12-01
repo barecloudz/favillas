@@ -73,6 +73,7 @@ export const handler: Handler = async (event, context) => {
           ac.day,
           ac.reward_id,
           ac.is_active,
+          ac.is_closed,
           r.name as reward_name,
           r.description as reward_description,
           r.image_url as reward_image
@@ -113,6 +114,7 @@ export const handler: Handler = async (event, context) => {
         const isPastDay = currentMonth === 12 && currentDay > entry.day;
         const isFutureDay = currentMonth < 12 || (currentMonth === 12 && currentDay < entry.day);
         const isClaimed = claimedDays.has(entry.day);
+        const isClosed = entry.is_closed || false;
 
         return {
           day: entry.day,
@@ -124,7 +126,8 @@ export const handler: Handler = async (event, context) => {
           isPastDay,
           isFutureDay,
           isClaimed,
-          canClaim: isCurrentDay && !isClaimed && !!authPayload,
+          isClosed,
+          canClaim: isCurrentDay && !isClaimed && !isClosed && !!authPayload,
         };
       });
 

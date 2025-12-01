@@ -33,7 +33,7 @@ const Present: React.FC<{ day: number; onClick: () => void; disabled: boolean; c
     <div
       onClick={!disabled ? onClick : undefined}
       className={`relative cursor-pointer transform transition-all duration-300 ${
-        disabled ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 animate-bounce'
+        disabled || claimed ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 animate-bounce'
       }`}
     >
       {/* SVG Present box */}
@@ -128,26 +128,22 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
   });
 
   const handleDayClick = (dayData: any) => {
+    // Check if day is marked as closed
+    if (dayData.isClosed) {
+      toast({
+        title: "We're Closed Today",
+        description: "Come back tomorrow for your reward!",
+        variant: 'default',
+      });
+      return;
+    }
+
     // Check if user is logged in
     if (!adventData?.isAuthenticated) {
       toast({
         title: 'Login Required',
         description: 'You must be logged in to receive Christmas rewards',
         variant: 'destructive',
-      });
-      return;
-    }
-
-    // Check if it's a closed day (Monday)
-    const date = new Date();
-    date.setDate(dayData.day);
-    const dayOfWeek = date.getDay();
-
-    if (dayOfWeek === 1) { // Monday
-      toast({
-        title: "We're Closed Today",
-        description: "Come back tomorrow for your reward!",
-        variant: 'default',
       });
       return;
     }
@@ -175,6 +171,7 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
       isPastDay: false,
       isCurrentDay: false,
       isClaimed: false,
+      isClosed: false,
       canClaim: false,
       rewardName: 'Mystery Reward',
     };
@@ -231,16 +228,17 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
                 <Present
                   day={dayData.day}
                   onClick={() => handleDayClick(dayData)}
-                  disabled={!dayData.canClaim && !dayData.isClaimed}
+                  disabled={(!dayData.canClaim && !dayData.isClaimed) || dayData.isClosed}
                   claimed={dayData.isClaimed}
                 />
                 <div className="text-xs text-center">
-                  {dayData.isClaimed && <span className="text-green-600 font-semibold">Claimed!</span>}
-                  {dayData.isCurrentDay && !dayData.isClaimed && (
+                  {dayData.isClosed && <span className="text-gray-500 font-semibold">Closed</span>}
+                  {!dayData.isClosed && dayData.isClaimed && <span className="text-green-600 font-semibold">Claimed!</span>}
+                  {!dayData.isClosed && dayData.isCurrentDay && !dayData.isClaimed && (
                     <span className="text-red-600 font-semibold">Today!</span>
                   )}
-                  {dayData.isFutureDay && <span className="text-gray-400">Coming</span>}
-                  {dayData.isPastDay && !dayData.isClaimed && (
+                  {!dayData.isClosed && dayData.isFutureDay && <span className="text-gray-400">Coming</span>}
+                  {!dayData.isClosed && dayData.isPastDay && !dayData.isClaimed && (
                     <span className="text-gray-500">Expired</span>
                   )}
                 </div>

@@ -56,6 +56,7 @@ export const handler: Handler = async (event, context) => {
           ac.reward_id,
           ac.year,
           ac.is_active,
+          ac.is_closed,
           r.name as reward_name,
           r.description as reward_description,
           r.points_required,
@@ -105,7 +106,7 @@ export const handler: Handler = async (event, context) => {
     // POST - Create or update advent calendar entry
     if (event.httpMethod === 'POST') {
       const body = JSON.parse(event.body || '{}');
-      const { day, rewardId, isActive } = body;
+      const { day, rewardId, isActive, isClosed } = body;
 
       if (!day || day < 1 || day > 25) {
         return {
@@ -117,12 +118,13 @@ export const handler: Handler = async (event, context) => {
 
       // Upsert entry
       const [entry] = await sql`
-        INSERT INTO advent_calendar (day, reward_id, year, is_active)
-        VALUES (${day}, ${rewardId || null}, ${currentYear}, ${isActive !== false})
+        INSERT INTO advent_calendar (day, reward_id, year, is_active, is_closed)
+        VALUES (${day}, ${rewardId || null}, ${currentYear}, ${isActive !== false}, ${isClosed || false})
         ON CONFLICT (day, year)
         DO UPDATE SET
           reward_id = ${rewardId || null},
           is_active = ${isActive !== false},
+          is_closed = ${isClosed || false},
           updated_at = NOW()
         RETURNING *
       `;

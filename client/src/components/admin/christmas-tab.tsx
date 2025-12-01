@@ -82,11 +82,12 @@ export const ChristmasTab = () => {
 
   // Assign reward to a day
   const assignRewardMutation = useMutation({
-    mutationFn: async ({ day, rewardId }: { day: number; rewardId: string }) => {
+    mutationFn: async ({ day, rewardId, isClosed }: { day: number; rewardId: string; isClosed?: boolean }) => {
       const response = await apiRequest('POST', '/api/admin/advent-calendar', {
         day,
-        rewardId: rewardId ? parseInt(rewardId) : null,
+        rewardId: rewardId && rewardId !== 'closed' ? parseInt(rewardId) : null,
         isActive: true,
+        isClosed: isClosed || rewardId === 'closed',
       });
       if (!response.ok) throw new Error('Failed to assign reward');
       return response.json();
@@ -190,6 +191,7 @@ export const ChristmasTab = () => {
       rewardName: entry?.reward_name || null,
       claimCount: entry?.claimCount || 0,
       hasReward: !!entry?.reward_id,
+      isClosed: entry?.is_closed || false,
     };
   });
 
@@ -454,7 +456,9 @@ export const ChristmasTab = () => {
               <div
                 key={dayData.day}
                 className={`p-3 rounded-lg border-2 ${
-                  dayData.hasReward
+                  dayData.isClosed
+                    ? 'border-gray-400 bg-gray-200'
+                    : dayData.hasReward
                     ? 'border-green-500 bg-green-50'
                     : 'border-gray-300 bg-gray-50'
                 }`}
@@ -466,7 +470,23 @@ export const ChristmasTab = () => {
                   <div className="text-xs text-gray-500">Dec {dayData.day}</div>
                 </div>
 
-                {dayData.hasReward ? (
+                {dayData.isClosed ? (
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-gray-600 text-center">
+                      Closed
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full text-xs"
+                        onClick={() => setEditingDay(dayData.day)}
+                      >
+                        Change
+                      </Button>
+                    </div>
+                  </div>
+                ) : dayData.hasReward ? (
                   <div className="space-y-2">
                     <div className="text-xs font-medium text-gray-900 line-clamp-2">
                       {dayData.rewardName}
@@ -529,6 +549,7 @@ export const ChristmasTab = () => {
                     assignRewardMutation.mutate({
                       day: editingDay,
                       rewardId: value,
+                      isClosed: value === 'closed',
                     });
                   }}
                 >
@@ -536,6 +557,9 @@ export const ChristmasTab = () => {
                     <SelectValue placeholder="Choose a reward..." />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="closed">
+                      🚫 Mark as Closed
+                    </SelectItem>
                     {calendarData?.rewards?.map((reward: any) => (
                       <SelectItem key={reward.id} value={reward.id.toString()}>
                         {reward.name} ({reward.points_required} pts)
