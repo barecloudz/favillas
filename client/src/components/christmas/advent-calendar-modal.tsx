@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Gift, Lock, Check, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
+import { useLottie } from 'lottie-react';
+import giftRewardAnimation from '@/assets/animations/gift-reward.json';
 
 interface AdventCalendarModalProps {
   open: boolean;
@@ -95,6 +97,16 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [isOpening, setIsOpening] = useState(false);
+  const [showRewardAnimation, setShowRewardAnimation] = useState(false);
+  const [showRewardReveal, setShowRewardReveal] = useState(false);
+  const [revealedReward, setRevealedReward] = useState<{ name: string; description?: string } | null>(null);
+
+  // Lottie animation hook
+  const lottieOptions = {
+    animationData: giftRewardAnimation,
+    loop: false,
+  };
+  const { View: LottieView } = useLottie(lottieOptions);
 
   const { data: adventData, isLoading } = useQuery({
     queryKey: ['/api/advent-calendar'],
@@ -203,17 +215,33 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
     claimMutation.mutate(day);
   };
 
-  const handlePresentClick = (day: number, canClaim: boolean) => {
-    if (!canClaim || isOpening || claimMutation.isPending) return;
+  const handlePresentClick = (day: number, canClaim: boolean, rewardName?: string, rewardDescription?: string) => {
+    if (!canClaim || isOpening || claimMutation.isPending || showRewardAnimation) return;
 
-    // Start opening animation
-    setIsOpening(true);
+    // Store the reward info for reveal
+    setRevealedReward({ name: rewardName || 'Your Reward!', description: rewardDescription });
 
-    // After animation, claim the reward
+    // Start the Lottie animation overlay
+    setShowRewardAnimation(true);
+    setShowRewardReveal(false);
+
+    // After animation plays, show the reward reveal
     setTimeout(() => {
-      handleClaim(day);
-      setIsOpening(false);
-    }, 1500); // Animation duration
+      setShowRewardReveal(true);
+    }, 2500); // Lottie animation is ~3.3s, show reward at 2.5s
+  };
+
+  const handleClaimAfterAnimation = (day: number) => {
+    handleClaim(day);
+    setShowRewardAnimation(false);
+    setShowRewardReveal(false);
+    setRevealedReward(null);
+  };
+
+  const handleCloseAnimation = () => {
+    setShowRewardAnimation(false);
+    setShowRewardReveal(false);
+    setRevealedReward(null);
   };
 
   if (!adventData || !adventData.enabled) {
@@ -322,7 +350,7 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
               <div className="scale-150 my-8">
                 <Present
                   day={currentDay.day}
-                  onClick={() => handlePresentClick(currentDay.day, currentDay.canClaim)}
+                  onClick={() => handlePresentClick(currentDay.day, currentDay.canClaim, currentDay.rewardName, currentDay.rewardDescription)}
                   disabled={!currentDay.canClaim}
                   claimed={currentDay.isClaimed}
                   isOpening={isOpening}
@@ -430,6 +458,52 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
         </DialogContent>
       </Dialog>
 
+      {/* Reward Animation Overlay */}
+      {showRewardAnimation && (
+        <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center">
+          <div className="relative flex flex-col items-center justify-center">
+            {/* Lottie Animation */}
+            <div
+              className={`transition-opacity duration-500 ${showRewardReveal ? 'opacity-0' : 'opacity-100'}`}
+              style={{ width: 300, height: 300 }}
+            >
+              {LottieView}
+            </div>
+
+            {/* Reward Reveal */}
+            {showRewardReveal && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500">
+                <div className="bg-gradient-to-br from-red-500 to-red-700 rounded-2xl p-8 shadow-2xl text-center max-w-sm mx-4">
+                  <div className="text-6xl mb-4">🎁</div>
+                  <h3 className="text-2xl font-bold text-white mb-2">You Won!</h3>
+                  <p className="text-xl font-semibold text-yellow-200 mb-2">
+                    {revealedReward?.name}
+                  </p>
+                  {revealedReward?.description && (
+                    <p className="text-sm text-white/80 mb-4">{revealedReward.description}</p>
+                  )}
+                  <div className="space-y-2 mt-6">
+                    <Button
+                      onClick={() => handleClaimAfterAnimation(currentDay.day)}
+                      disabled={claimMutation.isPending}
+                      className="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold"
+                      size="lg"
+                    >
+                      {claimMutation.isPending ? 'Claiming...' : 'Claim Reward!'}
+                    </Button>
+                    <button
+                      onClick={handleCloseAnimation}
+                      className="text-white/70 hover:text-white text-sm underline"
+                    >
+                      Maybe later
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 };
