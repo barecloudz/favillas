@@ -7,16 +7,38 @@ import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useLottie } from 'lottie-react';
 import giftRewardAnimation from '@/assets/animations/gift-reward.json';
+import christmasTreeAnimation from '@/assets/animations/christmas-tree.json';
 
 interface AdventCalendarModalProps {
   open: boolean;
   onClose: () => void;
 }
 
+// Christmas tree decoration component
+const ChristmasTree: React.FC = () => {
+  const { View } = useLottie({
+    animationData: christmasTreeAnimation,
+    loop: true,
+    autoplay: true,
+  });
+  return <>{View}</>;
+};
+
 // Separate component for the gift opening animation - this ensures it remounts and plays fresh each time
 const GiftOpeningAnimation: React.FC = () => {
+  // Clone and remove text layers from animation (100 Points text)
+  const modifiedAnimation = React.useMemo(() => {
+    const data = JSON.parse(JSON.stringify(giftRewardAnimation));
+
+    // Remove text layers entirely (ty 5 = text layer)
+    if (data.layers) {
+      data.layers = data.layers.filter((layer: any) => layer.ty !== 5);
+    }
+    return data;
+  }, []);
+
   const { View } = useLottie({
-    animationData: giftRewardAnimation,
+    animationData: modifiedAnimation,
     loop: false,
     autoplay: true,
   });
@@ -259,9 +281,9 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
         >
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-center flex items-center justify-center gap-2">
-              <Gift className="w-6 h-6 text-red-500" />
-              🎄 Christmas Presents 🎄
-              <Gift className="w-6 h-6 text-red-500" />
+              <div className="w-12 h-12"><ChristmasTree /></div>
+              Christmas Presents
+              <div className="w-12 h-12"><ChristmasTree /></div>
             </DialogTitle>
             <p className="text-center text-gray-600">
               Open it to receive rewards!
