@@ -1,5 +1,5 @@
 import { Switch, Route, useLocation } from "wouter";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -64,6 +64,8 @@ import LoginModalWrapper from "@/components/auth/login-modal-wrapper";
 import { UpdateBanner } from "@/components/update-banner";
 import SnowFall from "@/components/animations/SnowFall";
 import { useAnimations } from "@/hooks/use-animations";
+import { ChristmasCountdownButton } from "@/components/christmas/christmas-countdown-button";
+import { AdventCalendarModal } from "@/components/christmas/advent-calendar-modal";
 
 // Pages that should NOT show the main header (standalone full-screen pages)
 const STANDALONE_PAGES = ['/kitchen'];
@@ -141,6 +143,7 @@ function AppContent() {
   const [location] = useLocation();
   const isStandalonePage = STANDALONE_PAGES.includes(location);
   const { snowEnabled } = useAnimations();
+  const [adventCalendarOpen, setAdventCalendarOpen] = useState(false);
 
   // Don't show snow on menu page
   const showSnow = snowEnabled && location !== '/menu';
@@ -154,6 +157,20 @@ function AppContent() {
       <LoginModalWrapper />
       {/* Christmas Snow - controlled by admin (not on menu page) */}
       {showSnow && <SnowFall />}
+
+      {/* Desktop Christmas Countdown Button (bottom right corner) */}
+      {!isStandalonePage && (
+        <>
+          <div className="hidden lg:block">
+            <ChristmasCountdownButton onClick={() => setAdventCalendarOpen(true)} />
+          </div>
+          <AdventCalendarModal
+            open={adventCalendarOpen}
+            onClose={() => setAdventCalendarOpen(false)}
+          />
+        </>
+      )}
+
       <Router />
     </>
   );

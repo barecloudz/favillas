@@ -4,14 +4,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import { Loader2, Gift, Calendar, Trash2, Users } from 'lucide-react';
+import { Loader2, Gift, Calendar, Trash2, Users, Plus } from 'lucide-react';
+import { ImageUpload } from '@/components/ui/image-upload';
 
 export const ChristmasTab = () => {
   const { toast } = useToast();
   const [editingDay, setEditingDay] = useState<number | null>(null);
+  const [showRewardForm, setShowRewardForm] = useState(false);
+  const [rewardForm, setRewardForm] = useState({
+    name: '',
+    description: '',
+    points_cost: '0',
+    voucher_code: '',
+    image_url: '',
+  });
 
   // Fetch animation settings (to get advent calendar toggle)
   const { data: animations = [] } = useQuery({
@@ -114,6 +125,41 @@ export const ChristmasTab = () => {
     },
   });
 
+  // Create advent-only reward
+  const createRewardMutation = useMutation({
+    mutationFn: async (rewardData: any) => {
+      const response = await apiRequest('POST', '/api/admin/rewards', {
+        ...rewardData,
+        is_advent_only: true,
+        is_active: true,
+      });
+      if (!response.ok) throw new Error('Failed to create reward');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/advent-calendar'] });
+      setShowRewardForm(false);
+      setRewardForm({
+        name: '',
+        description: '',
+        points_cost: '0',
+        voucher_code: '',
+        image_url: '',
+      });
+      toast({
+        title: 'Success',
+        description: 'Advent reward created successfully',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create reward',
+        variant: 'destructive',
+      });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -176,6 +222,113 @@ export const ChristmasTab = () => {
               <p className="text-sm text-green-900">
                 ✅ <strong>Active:</strong> Advent calendar is visible to customers
               </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Create Advent-Only Rewards */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5 text-green-500" />
+            Create Advent Rewards
+          </CardTitle>
+          <CardDescription>
+            Create rewards that only appear in the advent calendar (hidden from regular rewards page)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!showRewardForm ? (
+            <Button
+              onClick={() => setShowRewardForm(true)}
+              className="w-full bg-green-600 hover:bg-green-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create New Advent Reward
+            </Button>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Reward Name</Label>
+                  <Input
+                    value={rewardForm.name}
+                    onChange={(e) => setRewardForm({ ...rewardForm, name: e.target.value })}
+                    placeholder="e.g., Free Large Pizza"
+                  />
+                </div>
+                <div>
+                  <Label>Voucher Code</Label>
+                  <Input
+                    value={rewardForm.voucher_code}
+                    onChange={(e) => setRewardForm({ ...rewardForm, voucher_code: e.target.value })}
+                    placeholder="e.g., XMAS15"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label>Description</Label>
+                <Textarea
+                  value={rewardForm.description}
+                  onChange={(e) => setRewardForm({ ...rewardForm, description: e.target.value })}
+                  placeholder="Describe the reward..."
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label>Points Cost (use 0 for free)</Label>
+                <Input
+                  type="number"
+                  value={rewardForm.points_cost}
+                  onChange={(e) => setRewardForm({ ...rewardForm, points_cost: e.target.value })}
+                  min="0"
+                />
+              </div>
+
+              <div>
+                <Label>Reward Image</Label>
+                <ImageUpload
+                  value={rewardForm.image_url}
+                  onChange={(url) => setRewardForm({ ...rewardForm, image_url: url })}
+                  label="Upload reward image"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    createRewardMutation.mutate({
+                      name: rewardForm.name,
+                      description: rewardForm.description,
+                      points_cost: parseInt(rewardForm.points_cost) || 0,
+                      voucher_code: rewardForm.voucher_code,
+                      image_url: rewardForm.image_url,
+                    });
+                  }}
+                  disabled={!rewardForm.name || !rewardForm.voucher_code || createRewardMutation.isPending}
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                >
+                  {createRewardMutation.isPending ? 'Creating...' : 'Create Reward'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowRewardForm(false);
+                    setRewardForm({
+                      name: '',
+                      description: '',
+                      points_cost: '0',
+                      voucher_code: '',
+                      image_url: '',
+                    });
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

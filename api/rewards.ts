@@ -54,9 +54,10 @@ export const handler: Handler = async (event, context) => {
     const sql = getDB();
 
     if (event.httpMethod === 'GET') {
-      // Get all rewards (for admin dashboard, show everything)
+      // Get rewards, excluding advent-only rewards from public view
       const rewards = await sql`
         SELECT * FROM rewards
+        WHERE (is_advent_only IS NULL OR is_advent_only = false)
         ORDER BY created_at DESC
       `;
 
