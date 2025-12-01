@@ -19,7 +19,7 @@ export const ChristmasTab = () => {
   const [rewardForm, setRewardForm] = useState({
     name: '',
     description: '',
-    points_cost: '0',
+    pointsRequired: '0',
     voucher_code: '',
     image_url: '',
   });
@@ -142,7 +142,7 @@ export const ChristmasTab = () => {
       setRewardForm({
         name: '',
         description: '',
-        points_cost: '0',
+        pointsRequired: '0',
         voucher_code: '',
         image_url: '',
       });
@@ -282,8 +282,8 @@ export const ChristmasTab = () => {
                 <Label>Points Cost (use 0 for free)</Label>
                 <Input
                   type="number"
-                  value={rewardForm.points_cost}
-                  onChange={(e) => setRewardForm({ ...rewardForm, points_cost: e.target.value })}
+                  value={rewardForm.pointsRequired}
+                  onChange={(e) => setRewardForm({ ...rewardForm, pointsRequired: e.target.value })}
                   min="0"
                 />
               </div>
@@ -303,7 +303,7 @@ export const ChristmasTab = () => {
                     createRewardMutation.mutate({
                       name: rewardForm.name,
                       description: rewardForm.description,
-                      points_cost: parseInt(rewardForm.points_cost) || 0,
+                      pointsRequired: parseInt(rewardForm.pointsRequired) || 0,
                       voucher_code: rewardForm.voucher_code,
                       image_url: rewardForm.image_url,
                     });
@@ -320,7 +320,7 @@ export const ChristmasTab = () => {
                     setRewardForm({
                       name: '',
                       description: '',
-                      points_cost: '0',
+                      pointsRequired: '0',
                       voucher_code: '',
                       image_url: '',
                     });
@@ -435,7 +435,7 @@ export const ChristmasTab = () => {
                   <SelectContent>
                     {calendarData?.rewards?.map((reward: any) => (
                       <SelectItem key={reward.id} value={reward.id.toString()}>
-                        {reward.name} ({reward.points_cost} pts)
+                        {reward.name} ({reward.points_required} pts)
                       </SelectItem>
                     ))}
                   </SelectContent>

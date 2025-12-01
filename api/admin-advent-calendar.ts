@@ -58,7 +58,7 @@ export const handler: Handler = async (event, context) => {
           ac.is_active,
           r.name as reward_name,
           r.description as reward_description,
-          r.points_cost,
+          r.points_required,
           r.image_url as reward_image
         FROM advent_calendar ac
         LEFT JOIN rewards r ON r.id = ac.reward_id
@@ -68,7 +68,7 @@ export const handler: Handler = async (event, context) => {
 
       // Also fetch all available rewards (for dropdown)
       const rewards = await sql`
-        SELECT id, name, description, points_cost, image_url
+        SELECT id, name, description, points_required, image_url
         FROM rewards
         WHERE is_active = true
         ORDER BY name ASC
