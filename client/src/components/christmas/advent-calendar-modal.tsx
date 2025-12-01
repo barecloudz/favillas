@@ -13,7 +13,7 @@ interface AdventCalendarModalProps {
   onClose: () => void;
 }
 
-// Animated present component using SVG giftboxes
+// Animated present component using Lottie gift animation
 const Present: React.FC<{ day: number; onClick: () => void; disabled: boolean; claimed: boolean; isOpening?: boolean }> = ({
   day,
   onClick,
@@ -21,16 +21,13 @@ const Present: React.FC<{ day: number; onClick: () => void; disabled: boolean; c
   claimed,
   isOpening = false
 }) => {
-  // Cycle through 9 giftbox variations (3 columns x 3 rows)
-  const giftVariation = ((day - 1) % 9);
-  const col = giftVariation % 3;
-  const row = Math.floor(giftVariation / 3);
-
-  // SVG viewBox is 0 0 76306 89187, boxes are in 3x3 grid
-  const boxWidth = 76306 / 3;
-  const boxHeight = 89187 / 3;
-  const viewBoxX = col * boxWidth;
-  const viewBoxY = row * boxHeight;
+  // Use Lottie for the gift display - show first frame only (paused)
+  const { View: GiftView } = useLottie({
+    animationData: giftRewardAnimation,
+    loop: false,
+    autoplay: false, // Don't auto-play, just show the gift
+    initialSegment: [0, 1], // Show only the first frame (closed gift)
+  });
 
   return (
     <div
@@ -39,50 +36,30 @@ const Present: React.FC<{ day: number; onClick: () => void; disabled: boolean; c
         disabled || claimed ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'
       }`}
       style={
-        isOpening
-          ? {
-              animation: 'presentOpening 1.5s ease-in-out forwards',
-            }
-          : !disabled && !claimed
+        !disabled && !claimed
           ? {
               animation: 'presentShake 4s ease-in-out infinite',
             }
           : {}
       }
     >
-      {/* SVG Present box */}
-      <div className="relative w-20 h-20">
-        <svg
-          width="80"
-          height="80"
-          viewBox={`${viewBoxX} ${viewBoxY} ${boxWidth} ${boxHeight}`}
-          className={`w-full h-full ${claimed ? 'opacity-60 grayscale' : ''}`}
-          style={{
-            filter: claimed ? 'grayscale(100%)' : 'none',
-          }}
-        >
-          <image
-            href="/images/giftboxes.svg"
-            width="76306"
-            height="89187"
-            x="0"
-            y="0"
-          />
-        </svg>
+      {/* Lottie Gift */}
+      <div className={`relative w-20 h-20 ${claimed ? 'grayscale' : ''}`}>
+        {GiftView}
 
         {/* Day number badge */}
-        <div className="absolute top-0 right-0 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg border-2 border-white">
+        <div className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold shadow-lg border-2 border-white z-10">
           {day}
         </div>
 
         {/* Status icon */}
         {claimed && (
-          <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1 shadow-md">
+          <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1 shadow-md z-10">
             <Check className="w-3 h-3 text-white" />
           </div>
         )}
         {disabled && !claimed && (
-          <div className="absolute -bottom-1 -right-1 bg-gray-500 rounded-full p-1 shadow-md">
+          <div className="absolute -bottom-1 -right-1 bg-gray-500 rounded-full p-1 shadow-md z-10">
             <Lock className="w-3 h-3 text-white" />
           </div>
         )}
