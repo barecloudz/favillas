@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Gift, Lock, Check, Calendar as CalendarIcon, X } from 'lucide-react';
+import { Gift, Lock, Check, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient } from '@/lib/queryClient';
 
@@ -79,7 +79,9 @@ const Present: React.FC<{ day: number; onClick: () => void; disabled: boolean; c
 
 export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, onClose }) => {
   const { toast } = useToast();
-  const [selectedDay, setSelectedDay] = useState<any>(null);
+  const [currentDayIndex, setCurrentDayIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
   const { data: adventData, isLoading } = useQuery({
     queryKey: ['/api/advent-calendar'],
@@ -132,34 +134,70 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
     },
   });
 
-  const handleDayClick = (dayData: any) => {
-    // Check if day is marked as closed
-    if (dayData.isClosed) {
-      toast({
-        title: "We're Closed Today",
-        description: "Come back tomorrow for your reward!",
-        variant: 'default',
-      });
-      return;
-    }
-
-    // Check if user is logged in
-    if (!adventData?.isAuthenticated) {
-      toast({
-        title: 'Login Required',
-        description: 'You must be logged in to receive Christmas rewards',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setSelectedDay(dayData);
+  // Get current day in EST
+  const getCurrentDayEST = () => {
+    const now = new Date();
+    const estOffset = -5; // EST is UTC-5
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const estTime = new Date(utc + (3600000 * estOffset));
+    return estTime.getMonth() === 11 ? estTime.getDate() : 0; // Return 0 if not December
   };
 
-  const handleClaim = () => {
-    if (selectedDay) {
-      claimMutation.mutate(selectedDay.day);
+  const todayEST = getCurrentDayEST();
+
+  // Set initial day to today when modal opens
+  useEffect(() => {
+    if (open && todayEST > 0 && todayEST <= 25) {
+      setCurrentDayIndex(todayEST - 1);
     }
+  }, [open, todayEST]);
+
+  // Swipe handlers
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe && currentDayIndex < 24) {
+      setCurrentDayIndex(currentDayIndex + 1);
+    }
+    if (isRightSwipe && currentDayIndex > 0) {
+      setCurrentDayIndex(currentDayIndex - 1);
+    }
+  };
+
+  const handlePrevDay = () => {
+    if (currentDayIndex > 0) {
+      setCurrentDayIndex(currentDayIndex - 1);
+    }
+  };
+
+  const handleNextDay = () => {
+    if (currentDayIndex < 24) {
+      setCurrentDayIndex(currentDayIndex + 1);
+    }
+  };
+
+  const handleGoToToday = () => {
+    if (todayEST > 0 && todayEST <= 25) {
+      setCurrentDayIndex(todayEST - 1);
+    }
+  };
+
+  const handleClaim = (day: number) => {
+    claimMutation.mutate(day);
   };
 
   if (!adventData || !adventData.enabled) {
@@ -182,11 +220,19 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
     };
   });
 
+  const currentDay = allDays[currentDayIndex];
+  const showGoToToday = Math.abs(currentDayIndex - (todayEST - 1)) >= 2 && todayEST > 0;
+
   return (
     <>
       {/* Main calendar modal */}
-      <Dialog open={open && !selectedDay} onOpenChange={(isOpen) => !isOpen && onClose()}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+        <DialogContent
+          className="max-w-2xl"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-center flex items-center justify-center gap-2">
               <Gift className="w-6 h-6 text-red-500" />
@@ -226,90 +272,147 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
             )}
           </DialogHeader>
 
-          {/* Calendar grid */}
-          <div className="grid grid-cols-5 gap-4 p-4">
-            {allDays.map((dayData) => (
-              <div key={dayData.day} className="flex flex-col items-center gap-2">
-                <Present
-                  day={dayData.day}
-                  onClick={() => handleDayClick(dayData)}
-                  disabled={(!dayData.canClaim && !dayData.isClaimed) || dayData.isClosed}
-                  claimed={dayData.isClaimed}
-                />
-                <div className="text-xs text-center">
-                  {dayData.isClosed && <span className="text-gray-500 font-semibold">Closed</span>}
-                  {!dayData.isClosed && dayData.isClaimed && <span className="text-green-600 font-semibold">Claimed!</span>}
-                  {!dayData.isClosed && dayData.isCurrentDay && !dayData.isClaimed && (
-                    <span className="text-red-600 font-semibold">Today!</span>
-                  )}
-                  {!dayData.isClosed && dayData.isFutureDay && <span className="text-gray-400">Coming</span>}
-                  {!dayData.isClosed && dayData.isPastDay && !dayData.isClaimed && (
-                    <span className="text-gray-500">Expired</span>
-                  )}
-                </div>
+          {/* Present carousel */}
+          <div className="relative py-8 px-4">
+            {/* Navigation arrows */}
+            <button
+              onClick={handlePrevDay}
+              disabled={currentDayIndex === 0}
+              className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white rounded-full p-2 shadow-lg hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="w-6 h-6 text-[#d73a31]" />
+            </button>
+
+            <button
+              onClick={handleNextDay}
+              disabled={currentDayIndex === 24}
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white rounded-full p-2 shadow-lg hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="w-6 h-6 text-[#d73a31]" />
+            </button>
+
+            {/* Current present */}
+            <div className="flex flex-col items-center justify-center space-y-6">
+              <div className="text-center">
+                <h3 className="text-3xl font-bold text-[#d73a31]">December {currentDay.day}</h3>
+                {currentDay.day === todayEST && (
+                  <span className="inline-block mt-2 px-3 py-1 bg-red-100 text-red-700 text-sm font-semibold rounded-full">
+                    Today's Gift!
+                  </span>
+                )}
               </div>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
 
-      {/* Reward detail modal */}
-      <Dialog open={!!selectedDay} onOpenChange={() => setSelectedDay(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-center">December {selectedDay?.day}</DialogTitle>
-          </DialogHeader>
+              {/* Large present */}
+              <div className="scale-150 my-8">
+                <Present
+                  day={currentDay.day}
+                  onClick={() => {}}
+                  disabled={!currentDay.canClaim}
+                  claimed={currentDay.isClaimed}
+                />
+              </div>
 
-          <div className="space-y-4">
-            {selectedDay?.rewardImage && (
-              <img
-                src={selectedDay.rewardImage}
-                alt={selectedDay.rewardName}
-                className="w-full h-48 object-cover rounded-lg"
-              />
-            )}
+              {/* Day indicator */}
+              <div className="text-sm text-gray-500">
+                Day {currentDay.day} of 25
+              </div>
 
-            <div className="text-center">
-              <h3 className="text-xl font-bold text-gray-900">{selectedDay?.rewardName}</h3>
-              {selectedDay?.rewardDescription && (
-                <p className="text-gray-600 mt-2">{selectedDay.rewardDescription}</p>
+              {/* Status and action */}
+              <div className="w-full max-w-md space-y-4">
+                {currentDay.isClosed ? (
+                  <div className="bg-gray-100 border border-gray-300 rounded-lg p-4 text-center">
+                    <Lock className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-700 font-semibold">We're Closed Today</p>
+                    <p className="text-sm text-gray-500">Come back tomorrow!</p>
+                  </div>
+                ) : currentDay.isClaimed ? (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                    <Check className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                    <p className="text-green-800 font-semibold">Already Claimed!</p>
+                    <p className="text-sm text-green-600">Check your vouchers to use this reward</p>
+                  </div>
+                ) : currentDay.canClaim ? (
+                  <>
+                    {currentDay.rewardName && (
+                      <div className="text-center">
+                        <h4 className="text-xl font-bold text-gray-900">{currentDay.rewardName}</h4>
+                        {currentDay.rewardDescription && (
+                          <p className="text-gray-600 mt-2">{currentDay.rewardDescription}</p>
+                        )}
+                      </div>
+                    )}
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                      <p className="text-sm text-orange-800 text-center">
+                        ⚠️ <strong>Use it today!</strong> Expires at 11:59 PM EST
+                      </p>
+                    </div>
+                    {!adventData?.isAuthenticated ? (
+                      <div className="space-y-3">
+                        <p className="text-center text-sm text-gray-600">Log in to claim your reward</p>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => {
+                              onClose();
+                              window.location.href = '/auth?mode=login';
+                            }}
+                            className="flex-1 bg-red-600 hover:bg-red-700"
+                          >
+                            Log In
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              onClose();
+                              window.location.href = '/auth?mode=signup';
+                            }}
+                            variant="outline"
+                            className="flex-1 border-red-600 text-red-600 hover:bg-red-50"
+                          >
+                            Sign Up
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={() => handleClaim(currentDay.day)}
+                        disabled={claimMutation.isPending}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white"
+                        size="lg"
+                      >
+                        {claimMutation.isPending ? 'Unwrapping...' : '🎁 Unwrap & Claim Reward!'}
+                      </Button>
+                    )}
+                  </>
+                ) : currentDay.isFutureDay ? (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                    <Lock className="w-8 h-8 text-blue-400 mx-auto mb-2" />
+                    <p className="text-blue-800 font-semibold">Coming Soon!</p>
+                    <p className="text-sm text-blue-600">Available on December {currentDay.day}</p>
+                  </div>
+                ) : (
+                  <div className="bg-gray-100 border border-gray-300 rounded-lg p-4 text-center">
+                    <Lock className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-700 font-semibold">Expired</p>
+                    <p className="text-sm text-gray-500">This reward is no longer available</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Go to Today button */}
+              {showGoToToday && (
+                <Button
+                  onClick={handleGoToToday}
+                  variant="outline"
+                  className="mt-4"
+                >
+                  <CalendarDays className="w-4 h-4 mr-2" />
+                  Go Back to Today
+                </Button>
               )}
             </div>
-
-            {selectedDay?.canClaim ? (
-              <>
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                  <p className="text-sm text-orange-800 text-center">
-                    ⚠️ <strong>Use it today!</strong> This reward expires at midnight if not claimed.
-                  </p>
-                </div>
-                <Button
-                  onClick={handleClaim}
-                  disabled={claimMutation.isPending}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white"
-                  size="lg"
-                >
-                  {claimMutation.isPending ? 'Unwrapping...' : '🎁 Unwrap & Claim Reward!'}
-                </Button>
-              </>
-            ) : selectedDay?.isClaimed ? (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                <Check className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                <p className="text-green-800 font-semibold">Already Claimed!</p>
-                <p className="text-sm text-green-600">Check your vouchers to use this reward</p>
-              </div>
-            ) : (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-                <Lock className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-600">
-                  {selectedDay?.isFutureDay && 'Available soon!'}
-                  {selectedDay?.isPastDay && 'This reward has expired'}
-                </p>
-              </div>
-            )}
           </div>
         </DialogContent>
       </Dialog>
+
     </>
   );
 };
