@@ -1224,7 +1224,7 @@ export const handler: Handler = async (event, context) => {
             for (const item of validItems) {
               const insertResult = await sql`
                 INSERT INTO order_items (
-                  order_id, menu_item_id, quantity, price, options, special_instructions, half_and_half, created_at
+                  order_id, menu_item_id, quantity, price, options, special_instructions, half_and_half, is_free_item, created_at
                 ) VALUES (
                   ${newOrder.id},
                   ${item.menuItemId},
@@ -1233,6 +1233,7 @@ export const handler: Handler = async (event, context) => {
                   ${item.options ? JSON.stringify(item.options) : null},
                   ${item.specialInstructions || ''},
                   ${item.halfAndHalf ? JSON.stringify(item.halfAndHalf) : null},
+                  ${item.isFreeItem || false},
                   NOW()
                 ) RETURNING *
               `;
@@ -1427,7 +1428,7 @@ export const handler: Handler = async (event, context) => {
                     // Add the free item to order_items with quantity 1 and price 0
                     await sql`
                       INSERT INTO order_items (
-                        order_id, menu_item_id, quantity, price, options, special_instructions, half_and_half, created_at
+                        order_id, menu_item_id, quantity, price, options, special_instructions, half_and_half, is_free_item, created_at
                       ) VALUES (
                         ${newOrder.id},
                         ${voucher.free_item_menu_id},
@@ -1436,6 +1437,7 @@ export const handler: Handler = async (event, context) => {
                         NULL,
                         'Free item from reward: ${voucher.reward_name}',
                         NULL,
+                        true,
                         NOW()
                       )
                     `;
@@ -1941,7 +1943,7 @@ export const handler: Handler = async (event, context) => {
                     month: 'long',
                     day: 'numeric'
                   }),
-                  orderType: orderData.type || 'pickup',
+                  orderType: orderData.orderType || 'pickup',
                   orderStatus: 'Confirmed',
                   estimatedTime: orderData.fulfillmentTime === 'asap' ? '30-40 minutes' :
                                orderData.scheduledTime ? new Date(orderData.scheduledTime).toLocaleTimeString('en-US', {
@@ -1949,7 +1951,7 @@ export const handler: Handler = async (event, context) => {
                                  minute: '2-digit',
                                  hour12: true
                                }) : '30-40 minutes',
-                  deliveryAddress: orderData.type === 'delivery' ? orderData.address : undefined,
+                  deliveryAddress: orderData.orderType === 'delivery' ? orderData.address : undefined,
                   deliveryInstructions: orderData.deliveryInstructions || undefined,
                   paymentMethod: orderData.paymentMethod === 'stripe' ? 'Credit Card' :
                                orderData.paymentMethod === 'cash' ? 'Cash' : 'Credit Card',
@@ -1991,7 +1993,8 @@ export const handler: Handler = async (event, context) => {
                       name: item.name,
                       quantity: item.quantity,
                       price: parseFloat(item.basePrice || item.price || '0').toFixed(2),
-                      modifications: modifications || undefined
+                      modifications: modifications || undefined,
+                      isFreeItem: item.isFreeItem || item.is_free_item || false
                     };
                   }),
                   pointsEarned: pointsAwarded || undefined,
