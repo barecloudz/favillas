@@ -264,6 +264,7 @@ export const handler: Handler = async (event, context) => {
           discount_type,
           min_order_amount,
           points_used,
+          status,
           title,
           description,
           expires_at
@@ -277,6 +278,7 @@ export const handler: Handler = async (event, context) => {
           ${reward.discount_type || 'fixed'},
           ${reward.min_order_amount || 0},
           0,
+          'active',
           ${'🎄 Christmas Present - ' + reward.name},
           ${reward.description},
           ${expirationDate.toISOString()}

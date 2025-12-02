@@ -1353,10 +1353,14 @@ const CheckoutPage = () => {
                                     expiresAt.getMonth() === today.getMonth() &&
                                     expiresAt.getFullYear() === today.getFullYear();
 
+                                  // Check if this is a Christmas reward
+                                  const isChristmasReward = voucher.title?.includes('🎄') || voucher.title?.includes('Christmas');
+
                                   return (
                                     <SelectItem key={voucher.id} value={voucher.id.toString()}>
                                       <div className="flex flex-col py-1">
-                                        <span className="font-medium text-gray-900">
+                                        <span className="font-medium text-gray-900 flex items-center gap-1">
+                                          {isChristmasReward && <Gift className="w-4 h-4 text-red-500" />}
                                           {voucher.title || voucher.voucher_code} - {voucher.savings_text}
                                         </span>
                                         {expiresToday && (
@@ -1390,12 +1394,15 @@ const CheckoutPage = () => {
                                 expiresAt.getMonth() === today.getMonth() &&
                                 expiresAt.getFullYear() === today.getFullYear();
 
+                              // Check if this is a Christmas reward
+                              const isChristmasReward = appliedVoucher.title?.includes('🎄') || appliedVoucher.title?.includes('Christmas');
+
                               return (
                                 <div className="flex items-center gap-2">
-                                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 rounded-lg flex-1 border border-green-300">
+                                  <div className={`p-3 rounded-lg flex-1 border ${isChristmasReward ? 'bg-gradient-to-r from-red-50 to-green-50 border-red-300' : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300'}`}>
                                     <div className="flex items-center justify-between">
-                                      <span className="text-green-700 font-medium">
-                                        🎉 {appliedVoucher.title || appliedVoucher.voucher_code} - {appliedVoucher.savings_text}
+                                      <span className={`font-medium flex items-center gap-1 ${isChristmasReward ? 'text-red-700' : 'text-green-700'}`}>
+                                        {isChristmasReward ? <Gift className="w-4 h-4" /> : '🎉'} {appliedVoucher.title || appliedVoucher.voucher_code} - {appliedVoucher.savings_text}
                                       </span>
                                       <span className="text-green-800 font-bold">
                                         -${appliedVoucher.calculated_discount?.toFixed(2) || appliedVoucher.discount_amount}
