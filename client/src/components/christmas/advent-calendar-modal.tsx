@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Gift, Lock, Check, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
+import { Gift, Lock, Check, ChevronLeft, ChevronRight, CalendarDays, RotateCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useLottie } from 'lottie-react';
@@ -139,6 +139,29 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
       toast({
         title: 'Error',
         description: error.message || 'Failed to claim reward',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: async (day: number) => {
+      const response = await apiRequest('DELETE', '/api/advent-calendar', { day });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/advent-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/vouchers'] });
+
+      toast({
+        title: '🔄 Claim Reset',
+        description: data.message || 'You can now claim this reward again.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to reset claim',
         variant: 'destructive',
       });
     },
@@ -378,6 +401,18 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
                     <p className="text-green-800 font-semibold">Already Claimed!</p>
                     <p className="text-sm text-green-600">Check your vouchers to use this reward</p>
                     <p className="text-xs text-green-500 mt-1">(The vouchers are on the checkout page)</p>
+                    {adventData?.isAdmin && (
+                      <Button
+                        onClick={() => resetMutation.mutate(currentDay.day)}
+                        disabled={resetMutation.isPending}
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 text-orange-600 border-orange-300 hover:bg-orange-50"
+                      >
+                        <RotateCcw className="w-4 h-4 mr-1" />
+                        {resetMutation.isPending ? 'Resetting...' : 'Reset for Testing'}
+                      </Button>
+                    )}
                   </div>
                 ) : currentDay.canClaim ? (
                   <>
@@ -427,6 +462,33 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
                     <Lock className="w-8 h-8 text-blue-400 mx-auto mb-2" />
                     <p className="text-blue-800 font-semibold">Coming Soon!</p>
                     <p className="text-sm text-blue-600">Available on December {currentDay.day}</p>
+                  </div>
+                ) : currentDay.isCurrentDay && !adventData?.isAuthenticated ? (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center space-y-3">
+                    <Lock className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
+                    <p className="text-yellow-800 font-semibold">Locked</p>
+                    <p className="text-sm text-yellow-700">You have to log in to open this present</p>
+                    <div className="flex gap-2 justify-center">
+                      <Button
+                        onClick={() => {
+                          onClose();
+                          window.location.href = '/auth?mode=login';
+                        }}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        Log In
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          onClose();
+                          window.location.href = '/auth?mode=signup';
+                        }}
+                        variant="outline"
+                        className="border-red-600 text-red-600 hover:bg-red-50"
+                      >
+                        Sign Up
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="bg-gray-100 border border-gray-300 rounded-lg p-4 text-center">

@@ -1,6 +1,6 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
-import { authenticateToken, getUserIdentifiers } from './_shared/auth';
+import { authenticateToken, getUserIdentifiers, isAdmin } from './_shared/auth';
 
 let dbConnection: any = null;
 
@@ -23,7 +23,7 @@ function getDB() {
 export const handler: Handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': event.headers.origin || '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json',
@@ -147,7 +147,8 @@ export const handler: Handler = async (event, context) => {
           isDecember: currentMonth === 12,
           currentDay: currentMonth === 12 ? currentDay : null,
           calendar,
-          isAuthenticated: !!authPayload
+          isAuthenticated: !!authPayload,
+          isAdmin: authPayload ? isAdmin(authPayload) : false
         })
       };
     }
@@ -316,6 +317,78 @@ export const handler: Handler = async (event, context) => {
             description: reward.description,
             voucherId: voucher.id
           }
+        })
+      };
+    }
+
+    // DELETE - Reset claim (admin only, for testing)
+    if (event.httpMethod === 'DELETE') {
+      const authPayload = await authenticateToken(event);
+      if (!authPayload) {
+        return {
+          statusCode: 401,
+          headers,
+          body: JSON.stringify({ error: 'Authentication required' })
+        };
+      }
+
+      if (!isAdmin(authPayload)) {
+        return {
+          statusCode: 403,
+          headers,
+          body: JSON.stringify({ error: 'Admin access required to reset claims' })
+        };
+      }
+
+      const { userId, supabaseUserId } = getUserIdentifiers(authPayload);
+      const body = JSON.parse(event.body || '{}');
+      const { day } = body;
+
+      if (!day || day < 1 || day > 25) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Invalid day. Must be between 1 and 25.' })
+        };
+      }
+
+      // Find the claim and its voucher
+      const claim = userId
+        ? await sql`
+            SELECT id, voucher_id FROM advent_claims
+            WHERE user_id = ${userId} AND advent_day = ${day} AND year = ${currentYear}
+          `
+        : await sql`
+            SELECT id, voucher_id FROM advent_claims
+            WHERE supabase_user_id = ${supabaseUserId} AND advent_day = ${day} AND year = ${currentYear}
+          `;
+
+      if (claim.length === 0) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ error: 'No claim found for this day' })
+        };
+      }
+
+      const voucherId = claim[0].voucher_id;
+
+      // Delete the voucher first (foreign key constraint)
+      if (voucherId) {
+        await sql`DELETE FROM user_vouchers WHERE id = ${voucherId}`;
+      }
+
+      // Delete the claim
+      await sql`DELETE FROM advent_claims WHERE id = ${claim[0].id}`;
+
+      console.log(`✅ Admin reset: Day ${day} claim removed for user ${userId || supabaseUserId}`);
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: true,
+          message: `Claim for December ${day} has been reset. You can now claim it again.`
         })
       };
     }
