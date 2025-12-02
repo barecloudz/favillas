@@ -248,6 +248,10 @@ export const handler: Handler = async (event, context) => {
       // Generate voucher code if reward doesn't have one
       const voucherCode = reward.voucher_code || `XMAS${currentYear}-DAY${day}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
+      // Set expiration to 11:59:59 PM EST on the current day
+      // EST is UTC-5, so 11:59:59 PM EST = 4:59:59 AM UTC next day
+      const expirationDate = new Date(Date.UTC(currentYear, 11, day + 1, 4, 59, 59)); // Next day 4:59:59 AM UTC = 11:59:59 PM EST
+
       // Create voucher for user with all required fields
       const [voucher] = await sql`
         INSERT INTO user_vouchers (
@@ -272,9 +276,9 @@ export const handler: Handler = async (event, context) => {
           ${reward.discount_type || 'fixed'},
           ${reward.min_order_amount || 0},
           0,
-          ${reward.name},
+          ${'🎄 Christmas Present - ' + reward.name},
           ${reward.description},
-          ${new Date(currentYear, 11, 26).toISOString()} -- Expires Dec 26
+          ${expirationDate.toISOString()}
         )
         RETURNING id
       `;

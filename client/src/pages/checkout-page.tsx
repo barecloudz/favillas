@@ -1315,53 +1315,85 @@ const CheckoutPage = () => {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="none">No reward</SelectItem>
-                                {availableVouchers.map((voucher: any) => (
-                                  <SelectItem key={voucher.id} value={voucher.id.toString()}>
-                                    <div className="flex flex-col py-1">
-                                      <span className="font-medium text-gray-900">
-                                        {voucher.voucher_code} - {voucher.savings_text}
-                                      </span>
-                                      {voucher.min_order_amount > 0 && (
-                                        <span className="text-xs text-gray-500">
-                                          Min order: ${voucher.min_order_amount}
+                                {availableVouchers.map((voucher: any) => {
+                                  // Check if voucher expires today
+                                  const expiresAt = voucher.expires_at ? new Date(voucher.expires_at) : null;
+                                  const today = new Date();
+                                  const expiresToday = expiresAt &&
+                                    expiresAt.getDate() === today.getDate() &&
+                                    expiresAt.getMonth() === today.getMonth() &&
+                                    expiresAt.getFullYear() === today.getFullYear();
+
+                                  return (
+                                    <SelectItem key={voucher.id} value={voucher.id.toString()}>
+                                      <div className="flex flex-col py-1">
+                                        <span className="font-medium text-gray-900">
+                                          {voucher.title || voucher.voucher_code} - {voucher.savings_text}
                                         </span>
-                                      )}
-                                      {voucher.calculated_discount > 0 && (
-                                        <span className="text-xs text-green-600 font-medium">
-                                          Saves ${voucher.calculated_discount.toFixed(2)} on this order
-                                        </span>
-                                      )}
-                                    </div>
-                                  </SelectItem>
-                                ))}
+                                        {expiresToday && (
+                                          <span className="text-xs text-orange-600 font-semibold">
+                                            ⚠️ Expires today at 11:59 PM!
+                                          </span>
+                                        )}
+                                        {voucher.min_order_amount > 0 && (
+                                          <span className="text-xs text-gray-500">
+                                            Min order: ${voucher.min_order_amount}
+                                          </span>
+                                        )}
+                                        {voucher.calculated_discount > 0 && (
+                                          <span className="text-xs text-green-600 font-medium">
+                                            Saves ${voucher.calculated_discount.toFixed(2)} on this order
+                                          </span>
+                                        )}
+                                      </div>
+                                    </SelectItem>
+                                  );
+                                })}
                               </SelectContent>
                             </Select>
                           ) : (
-                            <div className="flex items-center gap-2">
-                              <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 rounded-lg flex-1 border border-green-300">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-green-700 font-medium">
-                                    🎉 {appliedVoucher.voucher_code} - {appliedVoucher.savings_text}
-                                  </span>
-                                  <span className="text-green-800 font-bold">
-                                    -${appliedVoucher.calculated_discount?.toFixed(2) || appliedVoucher.discount_amount}
-                                  </span>
+                            (() => {
+                              // Check if applied voucher expires today
+                              const expiresAt = appliedVoucher.expires_at ? new Date(appliedVoucher.expires_at) : null;
+                              const today = new Date();
+                              const expiresToday = expiresAt &&
+                                expiresAt.getDate() === today.getDate() &&
+                                expiresAt.getMonth() === today.getMonth() &&
+                                expiresAt.getFullYear() === today.getFullYear();
+
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 rounded-lg flex-1 border border-green-300">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-green-700 font-medium">
+                                        🎉 {appliedVoucher.title || appliedVoucher.voucher_code} - {appliedVoucher.savings_text}
+                                      </span>
+                                      <span className="text-green-800 font-bold">
+                                        -${appliedVoucher.calculated_discount?.toFixed(2) || appliedVoucher.discount_amount}
+                                      </span>
+                                    </div>
+                                    {expiresToday && (
+                                      <span className="text-xs text-orange-600 font-semibold">
+                                        ⚠️ Expires today at 11:59 PM!
+                                      </span>
+                                    )}
+                                    {appliedVoucher.min_order_amount > 0 && (
+                                      <span className="text-xs text-green-600">
+                                        Min order: ${appliedVoucher.min_order_amount}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={removeVoucher}
+                                    className="text-gray-400 hover:text-red-500 hover:bg-red-50"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
                                 </div>
-                                {appliedVoucher.min_order_amount > 0 && (
-                                  <span className="text-xs text-green-600">
-                                    Min order: ${appliedVoucher.min_order_amount}
-                                  </span>
-                                )}
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={removeVoucher}
-                                className="text-gray-400 hover:text-red-500 hover:bg-red-50"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
+                              );
+                            })()
                           )}
                         </>
                       )}
