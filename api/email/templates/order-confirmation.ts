@@ -50,6 +50,7 @@ export function getOrderConfirmationTemplate(data: OrderConfirmationData): strin
   const estimatedTime = formatTimeEST(data.estimatedTime);
   const itemsHtml = data.items.map(item => {
     const isFree = item.isFreeItem || item.price === 0;
+    const lineTotal = (item.price * item.quantity).toFixed(2);
     return `
     <tr>
       <td style="padding: 8px; border-bottom: 1px solid #eee;">
@@ -58,7 +59,7 @@ export function getOrderConfirmationTemplate(data: OrderConfirmationData): strin
       </td>
       <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
       <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right; ${isFree ? 'color: #28a745; font-weight: bold;' : ''}">
-        ${isFree ? '🎁 FREE' : `$${item.price.toFixed(2)}`}
+        ${isFree ? '🎁 FREE' : `$${lineTotal}`}
       </td>
     </tr>
   `;

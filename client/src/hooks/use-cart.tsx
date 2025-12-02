@@ -107,8 +107,11 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     parseInt(String(item.quantity)) > 0
   );
 
-  // Calculate totals only with valid items
+  // Calculate totals only with valid items (excluding free items)
   const total = validItems.reduce((sum, item) => {
+    // Skip free items in total calculation
+    if (item.isFreeItem) return sum;
+
     // Note: item.price already includes base price + option prices when item is added to cart
     // See menu-item-with-choices.tsx line 277: price: calculateTotalPrice()
     const itemPrice = typeof item.price === 'number' ? item.price : parseFloat(item.price);

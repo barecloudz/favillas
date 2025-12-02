@@ -57,6 +57,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const generateOrderConfirmationHTML = (data: OrderEmailData): string => {
   const itemsHTML = data.items.map(item => {
     const isFree = item.isFreeItem || parseFloat(item.price) === 0;
+    const lineTotal = (parseFloat(item.price) * item.quantity).toFixed(2);
     return `
     <div class="order-item">
       <div class="item-details">
@@ -65,7 +66,7 @@ const generateOrderConfirmationHTML = (data: OrderEmailData): string => {
         <div class="item-quantity">Quantity: ${item.quantity}</div>
       </div>
       <div class="item-price" ${isFree ? 'style="color: #28a745;"' : ''}>
-        ${isFree ? '🎁 FREE' : `$${item.price}`}
+        ${isFree ? '🎁 FREE' : `$${lineTotal}`}
       </div>
     </div>
   `;
