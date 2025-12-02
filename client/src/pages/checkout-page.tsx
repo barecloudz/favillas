@@ -817,7 +817,7 @@ const CheckoutPage = () => {
   };
 
   // Handle voucher selection from dropdown
-  const handleVoucherSelect = (voucherId: string) => {
+  const handleVoucherSelect = async (voucherId: string) => {
     setSelectedVoucherId(voucherId);
     setVoucherError("");
 
@@ -831,6 +831,35 @@ const CheckoutPage = () => {
     const selectedVoucher = availableVouchers.find((v: any) => v.id.toString() === voucherId);
     if (selectedVoucher) {
       setAppliedVoucher(selectedVoucher);
+
+      const rewardData = selectedVoucher.reward || selectedVoucher;
+
+      // Check if this is a specific item free reward (has free_item_menu_id)
+      if (rewardData.free_item_menu_id) {
+        // Auto-add the specific item to cart at $0
+        const freeMenuItem = menuItems?.find((item: any) => item.id === rewardData.free_item_menu_id);
+        if (freeMenuItem) {
+          addItem({
+            id: freeMenuItem.id,
+            name: freeMenuItem.name,
+            price: 0,
+            quantity: 1,
+            selectedOptions: {},
+            options: [],
+            specialInstructions: `Free item from reward: ${selectedVoucher.title || rewardData.free_item || freeMenuItem.name}`
+          });
+          toast({
+            title: "🎉 Free Item Added!",
+            description: `${freeMenuItem.name} has been added to your cart for free!`,
+            duration: 6000,
+          });
+        }
+      }
+      // Check if this is a category-based free item (pick from category)
+      else if (rewardData.free_item_category && rewardData.free_item_all_from_category) {
+        setSelectedRewardForFreeItem(selectedVoucher);
+        setShowFreeItemModal(true);
+      }
     }
   };
 
