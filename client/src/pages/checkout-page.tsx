@@ -758,10 +758,11 @@ const CheckoutPage = () => {
 
     // Apply free delivery from voucher if applicable
     if (appliedVoucher && orderType === "delivery") {
-      // Check if this is a free delivery reward
+      // Check if this is a free delivery reward AND minimum order is met
       const rewardData = appliedVoucher.reward || appliedVoucher;
-      if (rewardData.discount_type === 'delivery_fee' ||
-          rewardData.reward_type === 'free_delivery') {
+      const minOrderMet = subtotal >= (appliedVoucher.min_order_amount || 0);
+      if (minOrderMet && (rewardData.discount_type === 'delivery_fee' ||
+          rewardData.reward_type === 'free_delivery')) {
         // Save the original delivery fee amount as the voucher discount
         voucherDiscountAmount = currentDeliveryFee;
         // Waive the delivery fee
@@ -1358,6 +1359,11 @@ const CheckoutPage = () => {
                                   // Check if this is a Christmas reward
                                   const isChristmasReward = voucher.title?.includes('🎄') || voucher.title?.includes('Christmas');
 
+                                  // Calculate how much more is needed to meet minimum
+                                  const minAmount = voucher.min_order_amount || 0;
+                                  const amountNeeded = minAmount > 0 ? Math.max(0, minAmount - total) : 0;
+                                  const meetsMinimum = amountNeeded === 0;
+
                                   return (
                                     <SelectItem key={voucher.id} value={voucher.id.toString()}>
                                       <div className="flex flex-col py-1">
@@ -1370,12 +1376,17 @@ const CheckoutPage = () => {
                                             ⚠️ Expires today at 11:59 PM!
                                           </span>
                                         )}
-                                        {voucher.min_order_amount > 0 && (
-                                          <span className="text-xs text-gray-500">
-                                            Min order: ${voucher.min_order_amount}
+                                        {minAmount > 0 && !meetsMinimum && (
+                                          <span className="text-xs text-amber-600 font-semibold">
+                                            ⚠️ Spend ${amountNeeded.toFixed(2)} more to use (Min: ${minAmount})
                                           </span>
                                         )}
-                                        {voucher.calculated_discount > 0 && (
+                                        {minAmount > 0 && meetsMinimum && (
+                                          <span className="text-xs text-green-600">
+                                            ✓ Min order ${minAmount} met!
+                                          </span>
+                                        )}
+                                        {voucher.calculated_discount > 0 && meetsMinimum && (
                                           <span className="text-xs text-green-600 font-medium">
                                             Saves ${voucher.calculated_discount.toFixed(2)} on this order
                                           </span>
@@ -1399,25 +1410,49 @@ const CheckoutPage = () => {
                               // Check if this is a Christmas reward
                               const isChristmasReward = appliedVoucher.title?.includes('🎄') || appliedVoucher.title?.includes('Christmas');
 
+                              // Calculate how much more is needed to meet minimum
+                              const minAmount = appliedVoucher.min_order_amount || 0;
+                              const amountNeeded = minAmount > 0 ? Math.max(0, minAmount - total) : 0;
+                              const meetsMinimum = amountNeeded === 0;
+
+                              // Determine styling based on whether minimum is met
+                              const cardStyle = !meetsMinimum
+                                ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-400'
+                                : isChristmasReward
+                                  ? 'bg-gradient-to-r from-red-50 to-green-50 border-red-300'
+                                  : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300';
+
                               return (
                                 <div className="flex items-center gap-2">
-                                  <div className={`p-3 rounded-lg flex-1 border ${isChristmasReward ? 'bg-gradient-to-r from-red-50 to-green-50 border-red-300' : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300'}`}>
+                                  <div className={`p-3 rounded-lg flex-1 border ${cardStyle}`}>
                                     <div className="flex items-center justify-between">
-                                      <span className={`font-medium flex items-center gap-1 ${isChristmasReward ? 'text-red-700' : 'text-green-700'}`}>
-                                        {isChristmasReward ? <Gift className="w-4 h-4" /> : '🎉'} {appliedVoucher.title || appliedVoucher.voucher_code} - {appliedVoucher.savings_text}
+                                      <span className={`font-medium flex items-center gap-1 ${!meetsMinimum ? 'text-amber-700' : isChristmasReward ? 'text-red-700' : 'text-green-700'}`}>
+                                        {isChristmasReward ? <Gift className="w-4 h-4" /> : meetsMinimum ? '🎉' : '⚠️'} {appliedVoucher.title || appliedVoucher.voucher_code} - {appliedVoucher.savings_text}
                                       </span>
-                                      <span className="text-green-800 font-bold">
-                                        -${appliedVoucher.calculated_discount?.toFixed(2) || appliedVoucher.discount_amount}
-                                      </span>
+                                      {meetsMinimum && (
+                                        <span className="text-green-800 font-bold">
+                                          -${appliedVoucher.calculated_discount?.toFixed(2) || appliedVoucher.discount_amount}
+                                        </span>
+                                      )}
                                     </div>
+                                    {!meetsMinimum && (
+                                      <div className="mt-2 p-2 bg-amber-100 rounded-md border border-amber-300">
+                                        <span className="text-sm text-amber-800 font-semibold block">
+                                          🛒 Add ${amountNeeded.toFixed(2)} more to use this reward
+                                        </span>
+                                        <span className="text-xs text-amber-700">
+                                          Minimum order: ${minAmount.toFixed(2)} | Your order: ${total.toFixed(2)}
+                                        </span>
+                                      </div>
+                                    )}
                                     {expiresToday && (
-                                      <span className="text-xs text-orange-600 font-semibold">
+                                      <span className="text-xs text-orange-600 font-semibold block mt-1">
                                         ⚠️ Expires today at 11:59 PM!
                                       </span>
                                     )}
-                                    {appliedVoucher.min_order_amount > 0 && (
-                                      <span className="text-xs text-green-600">
-                                        Min order: ${appliedVoucher.min_order_amount}
+                                    {minAmount > 0 && meetsMinimum && (
+                                      <span className="text-xs text-green-600 block mt-1">
+                                        ✓ Min order ${minAmount} met!
                                       </span>
                                     )}
                                   </div>
