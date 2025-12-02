@@ -164,7 +164,20 @@ export const handler: Handler = async (event, context) => {
         };
       }
 
-      const { userId, supabaseUserId } = getUserIdentifiers(authPayload);
+      let { userId, supabaseUserId } = getUserIdentifiers(authPayload);
+
+      // For Supabase users, also look up their linked user_id from users table
+      // This ensures vouchers are created with the correct user_id for unified accounts
+      if (!userId && supabaseUserId) {
+        const dbUser = await sql`
+          SELECT id FROM users WHERE supabase_user_id = ${supabaseUserId} LIMIT 1
+        `;
+        if (dbUser.length > 0) {
+          userId = dbUser[0].id;
+          console.log('✅ Found unified user_id for Supabase user:', userId);
+        }
+      }
+
       const body = JSON.parse(event.body || '{}');
       const { day } = body;
 
@@ -342,7 +355,18 @@ export const handler: Handler = async (event, context) => {
         };
       }
 
-      const { userId, supabaseUserId } = getUserIdentifiers(authPayload);
+      let { userId, supabaseUserId } = getUserIdentifiers(authPayload);
+
+      // For Supabase users, also look up their linked user_id from users table
+      if (!userId && supabaseUserId) {
+        const dbUser = await sql`
+          SELECT id FROM users WHERE supabase_user_id = ${supabaseUserId} LIMIT 1
+        `;
+        if (dbUser.length > 0) {
+          userId = dbUser[0].id;
+        }
+      }
+
       const body = JSON.parse(event.body || '{}');
       const { day } = body;
 
