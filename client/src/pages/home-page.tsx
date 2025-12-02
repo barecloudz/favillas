@@ -1,17 +1,15 @@
-import React, { lazy, Suspense } from "react";
+import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Helmet } from "react-helmet";
 import HeroSection from "@/components/home/hero-section";
 import ChristmasPromoSection from "@/components/home/christmas-promo-section";
 import FeaturedSection from "@/components/home/featured-section";
-
-// Lazy load below-the-fold sections for better mobile performance
-const WhyFavillasSection = lazy(() => import("@/components/home/why-favilias-section"));
-const RewardsSection = lazy(() => import("@/components/home/rewards-section"));
-const LocationSection = lazy(() => import("@/components/home/location-section"));
-const SeoContentSection = lazy(() => import("@/components/home/seo-content-section"));
-const FAQSection = lazy(() => import("@/components/home/faq-section"));
-const Footer = lazy(() => import("@/components/layout/footer"));
+import WhyFavillasSection from "@/components/home/why-favilias-section";
+import RewardsSection from "@/components/home/rewards-section";
+import LocationSection from "@/components/home/location-section";
+import SeoContentSection from "@/components/home/seo-content-section";
+import FAQSection from "@/components/home/faq-section";
+import Footer from "@/components/layout/footer";
 
 const HomePage = () => {
   const { data: featuredItems } = useQuery({
@@ -194,26 +192,23 @@ const HomePage = () => {
         {/* Featured Section */}
         <FeaturedSection menuItems={featuredItems} />
 
-        {/* Lazy loaded sections for better mobile performance */}
-        <Suspense fallback={<div className="py-12" />}>
-          {/* Why Favilla's Section - Competitive advantages */}
-          <WhyFavillasSection />
+        {/* Why Favilla's Section - Competitive advantages */}
+        <WhyFavillasSection />
 
-          {/* SEO Content Section - Rich keyword content for search engines */}
-          <SeoContentSection />
+        {/* SEO Content Section - Rich keyword content for search engines */}
+        <SeoContentSection />
 
-          {/* Rewards Section */}
-          <RewardsSection />
+        {/* Rewards Section */}
+        <RewardsSection />
 
-          {/* Location Section */}
-          <LocationSection />
+        {/* Location Section */}
+        <LocationSection />
 
-          {/* FAQ Section - Optimized for voice search */}
-          <FAQSection />
+        {/* FAQ Section - Optimized for voice search */}
+        <FAQSection />
 
-          {/* Footer */}
-          <Footer />
-        </Suspense>
+        {/* Footer */}
+        <Footer />
       </div>
     </>
   );
