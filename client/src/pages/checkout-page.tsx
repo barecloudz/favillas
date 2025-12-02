@@ -1308,39 +1308,6 @@ const CheckoutPage = () => {
                         </div>
                       ) : (
                         <>
-                          {/* Show free item vouchers that need selection */}
-                          {availableVouchers.some((v: any) => v.reward?.free_item_all_from_category && v.reward?.free_item_category) && (
-                            <div className="space-y-3 mb-4">
-                              <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
-                                <p className="text-sm font-medium text-blue-800 text-center">
-                                  ⚠️ You have free item rewards that need item selection
-                                </p>
-                              </div>
-                              {availableVouchers
-                                .filter((v: any) => v.reward?.free_item_all_from_category && v.reward?.free_item_category)
-                                .map((voucher: any) => (
-                                  <div key={voucher.id} className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border-2 border-blue-200">
-                                    <div className="flex items-center justify-between mb-2">
-                                      <div>
-                                        <p className="font-bold text-gray-900">{voucher.title}</p>
-                                        <p className="text-xs text-gray-600">Choose from: {voucher.reward.free_item_category}</p>
-                                      </div>
-                                    </div>
-                                    <Button
-                                      className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
-                                      onClick={() => {
-                                        setSelectedRewardForFreeItem(voucher);
-                                        setShowFreeItemModal(true);
-                                      }}
-                                    >
-                                      <Pizza className="h-4 w-4 mr-2" />
-                                      🎁 Select Free Item
-                                    </Button>
-                                  </div>
-                                ))}
-                            </div>
-                          )}
-
                           {!appliedVoucher ? (
                             <Select value={selectedVoucherId} onValueChange={handleVoucherSelect}>
                               <SelectTrigger className="w-full border-blue-200 focus:border-blue-400 focus:ring-blue-100">
