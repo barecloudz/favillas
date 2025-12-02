@@ -2118,12 +2118,17 @@ const KitchenPage = () => {
                             // item.price already includes all options/toppings from checkout calculation
                             // Do NOT add option prices again or we'll double-count
                             const totalPrice = parseFloat(item.price) || 0;
+                            const isFreeItem = item.isFreeItem || item.is_free_item || totalPrice === 0;
 
                             return (
                             <div key={item.id} className="border-b pb-2">
                               <div className="flex justify-between font-medium">
                                 <span>{item.quantity}x {item.menuItem?.name || 'Unknown Item'}</span>
-                                <span>${formatPrice(totalPrice)}</span>
+                                {isFreeItem ? (
+                                  <span className="text-green-600 font-bold">🎁 FREE</span>
+                                ) : (
+                                  <span>${formatPrice(totalPrice)}</span>
+                                )}
                               </div>
                               {/* Display detailed choices and addons */}
                               {item.halfAndHalf ? (
@@ -2450,12 +2455,17 @@ const KitchenPage = () => {
                       // item.price already includes all options/toppings from checkout calculation
                       // Do NOT add option prices again or we'll double-count
                       const totalPrice = parseFloat(item.price) || 0;
+                      const isFreeItem = item.isFreeItem || item.is_free_item || totalPrice === 0;
 
                       return (
                       <div key={item.id} className="border-b pb-3 last:border-b-0">
                         <div className="flex justify-between font-medium">
                           <span>{item.quantity}x {item.menuItem?.name || 'Unknown Item'}</span>
-                          <span>${formatPrice(totalPrice)}</span>
+                          {isFreeItem ? (
+                            <span className="text-green-600 font-bold">🎁 FREE</span>
+                          ) : (
+                            <span>${formatPrice(totalPrice)}</span>
+                          )}
                         </div>
                         {/* Display detailed choices and addons */}
                         {item.halfAndHalf ? (

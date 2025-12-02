@@ -28,6 +28,7 @@ interface OrderItem {
   quantity: number;
   price: string;
   modifications?: string;
+  isFreeItem?: boolean;
 }
 
 interface OrderEmailData {
@@ -54,16 +55,21 @@ interface OrderEmailData {
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const generateOrderConfirmationHTML = (data: OrderEmailData): string => {
-  const itemsHTML = data.items.map(item => `
+  const itemsHTML = data.items.map(item => {
+    const isFree = item.isFreeItem || parseFloat(item.price) === 0;
+    return `
     <div class="order-item">
       <div class="item-details">
         <div class="item-name">${item.name}</div>
         ${item.modifications ? `<div class="item-modifications">${item.modifications}</div>` : ''}
         <div class="item-quantity">Quantity: ${item.quantity}</div>
       </div>
-      <div class="item-price">$${item.price}</div>
+      <div class="item-price" ${isFree ? 'style="color: #28a745;"' : ''}>
+        ${isFree ? '🎁 FREE' : `$${item.price}`}
+      </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   // For authenticated users: show points earned
   // For guests: show marketing section encouraging account creation

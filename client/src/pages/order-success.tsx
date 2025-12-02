@@ -509,8 +509,8 @@ const OrderSuccessPage = () => {
     const receipt = `
 Favilla's NY Pizza - Receipt
 Order #${order?.id}
-Date: ${order?.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A'}
-Time: ${order?.createdAt ? new Date(order.createdAt).toLocaleTimeString() : 'N/A'}
+Date: ${order?.createdAt ? parseESTTimestamp(order.createdAt).toLocaleDateString() : 'N/A'}
+Time: ${order?.createdAt ? parseESTTimestamp(order.createdAt).toLocaleTimeString() : 'N/A'}
 
 Customer: ${user?.firstName} ${user?.lastName}
 ${order?.orderType === 'delivery' ? `Address: ${order?.address || user?.address}` : 'Pickup Order'}
@@ -787,7 +787,7 @@ Thank you for choosing Favilla's NY Pizza!
                   <div className="flex items-center space-x-6 mt-4 text-white/90 flex-wrap">
                     <div className="flex items-center">
                       <Calendar className="h-4 w-4 mr-2" />
-                      <span>{order && order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-US', {
+                      <span>{order && order.createdAt ? parseESTTimestamp(order.createdAt).toLocaleDateString('en-US', {
                         month: 'long',
                         day: 'numeric',
                         year: 'numeric'
@@ -799,7 +799,7 @@ Thank you for choosing Favilla's NY Pizza!
                     </div>
                     <div className="flex items-center">
                       <Clock className="h-4 w-4 mr-2" />
-                      <span>{order && order.createdAt ? new Date(order.createdAt).toLocaleTimeString('en-US', {
+                      <span>{order && order.createdAt ? parseESTTimestamp(order.createdAt).toLocaleTimeString('en-US', {
                         hour: 'numeric',
                         minute: '2-digit'
                       }) : new Date().toLocaleTimeString('en-US', {
@@ -1068,7 +1068,7 @@ Thank you for choosing Favilla's NY Pizza!
                       </div>
                       <div className="flex-1">
                         <p className="font-semibold text-gray-900">Order Confirmed</p>
-                        <p className="text-sm text-gray-600">{order.createdAt ? new Date(order.createdAt).toLocaleTimeString() : 'Order confirmed'}</p>
+                        <p className="text-sm text-gray-600">{order.createdAt ? parseESTTimestamp(order.createdAt).toLocaleTimeString() : 'Order confirmed'}</p>
                       </div>
                     </div>
 

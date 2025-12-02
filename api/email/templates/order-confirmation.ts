@@ -3,6 +3,7 @@ interface OrderItem {
   quantity: number;
   price: number;
   customizations?: string[];
+  isFreeItem?: boolean;
 }
 
 interface OrderConfirmationData {
@@ -47,16 +48,21 @@ function formatTimeEST(timeString: string): string {
 export function getOrderConfirmationTemplate(data: OrderConfirmationData): string {
   // Ensure time is in EST format
   const estimatedTime = formatTimeEST(data.estimatedTime);
-  const itemsHtml = data.items.map(item => `
+  const itemsHtml = data.items.map(item => {
+    const isFree = item.isFreeItem || item.price === 0;
+    return `
     <tr>
       <td style="padding: 8px; border-bottom: 1px solid #eee;">
         ${item.name}
         ${item.customizations ? `<br><small style="color: #666;">${item.customizations.join(', ')}</small>` : ''}
       </td>
       <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-      <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">$${item.price.toFixed(2)}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right; ${isFree ? 'color: #28a745; font-weight: bold;' : ''}">
+        ${isFree ? '🎁 FREE' : `$${item.price.toFixed(2)}`}
+      </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 
   return `
 <!DOCTYPE html>

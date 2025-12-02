@@ -183,6 +183,7 @@ export const orderItems = pgTable("order_items", {
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   options: jsonb("options"), // For storing selected size, toppings, etc.
   specialInstructions: text("special_instructions"),
+  isFreeItem: boolean("is_free_item").default(false), // Marks item as a free reward
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
