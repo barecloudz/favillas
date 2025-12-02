@@ -594,6 +594,15 @@ const CheckoutPage = () => {
 
   const availableVouchers = activeVouchersData?.vouchers || [];
 
+  // Fetch menu items for free item selection modal
+  const { data: menuItems = [] } = useQuery({
+    queryKey: ["/api/menu-items"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/menu-items");
+      return response.json();
+    },
+  });
+
   // Update user profile mutation to save contact information
   const updateUserProfileMutation = useMutation({
     mutationFn: async (contactData: { phone?: string; address?: string; city?: string; state?: string; zip_code?: string }) => {
@@ -2042,8 +2051,9 @@ const CheckoutPage = () => {
         <FreeItemSelectionModal
           isOpen={showFreeItemModal}
           onClose={handleFreeItemModalClose}
-          reward={selectedRewardForFreeItem.reward || selectedRewardForFreeItem}
-          onSelectItem={handleFreeItemSelect}
+          onSelect={handleFreeItemSelect}
+          category={selectedRewardForFreeItem.reward?.free_item_category || ""}
+          menuItems={menuItems}
         />
       )}
 

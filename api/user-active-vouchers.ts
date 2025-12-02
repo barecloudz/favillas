@@ -152,6 +152,7 @@ export const handler: Handler = async (event, context) => {
 
     // Get user's active vouchers from user_points_redemptions (redeemed rewards that haven't been used)
     let activeVouchers;
+    let directVouchers: any[] = [];
 
     if (hasUnifiedAccount && unifiedUserId) {
       // UNIFIED: Use user_id for voucher lookup (works for both legacy users and unified Supabase users)
@@ -175,6 +176,26 @@ export const handler: Handler = async (event, context) => {
           AND (upr.expires_at IS NULL OR upr.expires_at > NOW())
         ORDER BY upr.created_at DESC
       `;
+
+      // Also get vouchers from user_vouchers table (advent calendar, direct rewards, etc.)
+      directVouchers = await sql`
+        SELECT
+          uv.*,
+          r.name as reward_name,
+          r.description as reward_description,
+          r.reward_type,
+          r.discount,
+          r.free_item,
+          r.free_item_menu_id,
+          r.free_item_category,
+          r.free_item_all_from_category
+        FROM user_vouchers uv
+        LEFT JOIN rewards r ON uv.reward_id = r.id
+        WHERE uv.user_id = ${unifiedUserId}
+          AND uv.status = 'active'
+          AND (uv.expires_at IS NULL OR uv.expires_at > NOW())
+        ORDER BY uv.created_at DESC
+      `;
     } else if (authPayload.isSupabase) {
       // Fallback: Supabase user without unified account
       console.log('🔍 Using Supabase-only lookup for vouchers');
@@ -196,6 +217,26 @@ export const handler: Handler = async (event, context) => {
           AND upr.is_used = false
           AND (upr.expires_at IS NULL OR upr.expires_at > NOW())
         ORDER BY upr.created_at DESC
+      `;
+
+      // Also get vouchers from user_vouchers table (advent calendar, direct rewards, etc.)
+      directVouchers = await sql`
+        SELECT
+          uv.*,
+          r.name as reward_name,
+          r.description as reward_description,
+          r.reward_type,
+          r.discount,
+          r.free_item,
+          r.free_item_menu_id,
+          r.free_item_category,
+          r.free_item_all_from_category
+        FROM user_vouchers uv
+        LEFT JOIN rewards r ON uv.reward_id = r.id
+        WHERE uv.supabase_user_id = ${authPayload.supabaseUserId}
+          AND uv.status = 'active'
+          AND (uv.expires_at IS NULL OR uv.expires_at > NOW())
+        ORDER BY uv.created_at DESC
       `;
     } else {
       // Legacy user - query using user_id
@@ -219,7 +260,29 @@ export const handler: Handler = async (event, context) => {
           AND (upr.expires_at IS NULL OR upr.expires_at > NOW())
         ORDER BY upr.created_at DESC
       `;
+
+      // Also get vouchers from user_vouchers table (advent calendar, direct rewards, etc.)
+      directVouchers = await sql`
+        SELECT
+          uv.*,
+          r.name as reward_name,
+          r.description as reward_description,
+          r.reward_type,
+          r.discount,
+          r.free_item,
+          r.free_item_menu_id,
+          r.free_item_category,
+          r.free_item_all_from_category
+        FROM user_vouchers uv
+        LEFT JOIN rewards r ON uv.reward_id = r.id
+        WHERE uv.user_id = ${authPayload.userId}
+          AND uv.status = 'active'
+          AND (uv.expires_at IS NULL OR uv.expires_at > NOW())
+        ORDER BY uv.created_at DESC
+      `;
     }
+
+    console.log(`📋 Found ${activeVouchers.length} from redemptions, ${directVouchers.length} from direct vouchers`);
 
     // Get order total from request body if provided (for calculating best voucher)
     const body = event.body ? JSON.parse(event.body) : {};
@@ -253,8 +316,8 @@ export const handler: Handler = async (event, context) => {
       return `${prefix}${suffix}`;
     };
 
-    // Format vouchers for frontend use
-    const formattedVouchers = activeVouchers.map((voucher: any) => {
+    // Format vouchers from user_points_redemptions for frontend use
+    const formattedRedemptions = activeVouchers.map((voucher: any) => {
       const discountValue = calculateDiscount(voucher, orderTotal);
       const minOrderAmount = parseFloat(voucher.min_order_amount || 0);
       const isApplicable = orderTotal >= minOrderAmount; // Applicable if meets min order
@@ -262,6 +325,7 @@ export const handler: Handler = async (event, context) => {
 
       return {
         id: voucher.id,
+        source: 'redemption',
         voucher_code: voucherCode,
         title: voucher.reward_name,
         description: voucher.description,
@@ -305,6 +369,67 @@ export const handler: Handler = async (event, context) => {
           : `$${discountValue} off`
       };
     });
+
+    // Format vouchers from user_vouchers table (advent calendar, direct rewards)
+    const formattedDirectVouchers = directVouchers.map((voucher: any) => {
+      const discountAmount = parseFloat(voucher.discount_amount || 0);
+      const minOrderAmount = parseFloat(voucher.min_order_amount || 0);
+      const isApplicable = orderTotal >= minOrderAmount;
+      const discountType = voucher.discount_type || 'fixed';
+
+      // Calculate the actual discount value based on type
+      let discountValue = 0;
+      if (discountType === 'percentage') {
+        discountValue = (orderTotal * discountAmount) / 100;
+      } else if (discountType === 'fixed') {
+        discountValue = discountAmount;
+      }
+
+      return {
+        id: `uv_${voucher.id}`, // Prefix to avoid ID collision with redemptions
+        source: 'direct_voucher',
+        voucher_code: voucher.voucher_code,
+        title: voucher.title || voucher.reward_name || 'Reward Voucher',
+        description: voucher.description || voucher.reward_description,
+        discount_amount: discountAmount,
+        discount_type: discountType,
+        min_order_amount: minOrderAmount,
+        expires_at: voucher.expires_at,
+        created_at: voucher.created_at,
+        reward_id: voucher.reward_id,
+        reward_type: voucher.reward_type || (discountType === 'percentage' ? 'discount' : 'fixed'),
+        points_spent: voucher.points_used || 0,
+        // Free item specific fields (from reward if exists)
+        free_item: voucher.free_item,
+        free_item_menu_id: voucher.free_item_menu_id,
+        free_item_category: voucher.free_item_category,
+        free_item_all_from_category: voucher.free_item_all_from_category,
+        // Include full reward object if available
+        reward: voucher.reward_id ? {
+          id: voucher.reward_id,
+          name: voucher.reward_name,
+          description: voucher.reward_description,
+          reward_type: voucher.reward_type,
+          discount: voucher.discount,
+          free_item: voucher.free_item,
+          free_item_menu_id: voucher.free_item_menu_id,
+          free_item_category: voucher.free_item_category,
+          free_item_all_from_category: voucher.free_item_all_from_category,
+          min_order_amount: minOrderAmount
+        } : null,
+        // Calculated fields for this order
+        calculated_discount: discountValue,
+        is_applicable: isApplicable,
+        savings_text: discountType === 'percentage'
+          ? `${discountAmount}% off`
+          : discountType === 'delivery_fee'
+          ? 'Free delivery'
+          : `$${discountAmount.toFixed(2)} off`
+      };
+    });
+
+    // Combine both voucher sources
+    const formattedVouchers = [...formattedRedemptions, ...formattedDirectVouchers];
 
     // Sort by best value first (free items, then delivery, then highest discount)
     const sortedVouchers = formattedVouchers.sort((a, b) => {
