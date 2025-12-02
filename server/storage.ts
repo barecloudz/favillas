@@ -937,12 +937,13 @@ export class MemStorage implements IStorage {
   async createOrderItem(orderItem: InsertOrderItem): Promise<OrderItem> {
     const id = this.orderItemIdCounter++;
     const createdAt = new Date();
-    const newOrderItem: OrderItem = { 
-      ...orderItem, 
-      id, 
+    const newOrderItem: OrderItem = {
+      ...orderItem,
+      id,
       createdAt,
       options: orderItem.options ?? {},
-      specialInstructions: orderItem.specialInstructions ?? null
+      specialInstructions: orderItem.specialInstructions ?? null,
+      isFreeItem: orderItem.isFreeItem ?? false
     };
     this.orderItems.set(id, newOrderItem);
     return newOrderItem;
@@ -2157,7 +2158,8 @@ export class DatabaseStorage implements IStorage {
       .values({
         ...orderItem,
         options: orderItem.options ?? {},
-        specialInstructions: orderItem.specialInstructions ?? null
+        specialInstructions: orderItem.specialInstructions ?? null,
+        isFreeItem: orderItem.isFreeItem ?? false
       })
       .returning();
     return newOrderItem;
