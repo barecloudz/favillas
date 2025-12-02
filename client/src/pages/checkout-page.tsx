@@ -252,7 +252,7 @@ const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, cust
 // CheckoutPage component
 const CheckoutPage = () => {
   const { user, refreshUserProfile } = useAuth();
-  const { items, total, tax, clearCart, showLoginModal, addItem } = useCart();
+  const { items, total, tax, clearCart, showLoginModal, addItem, removeItem } = useCart();
   const [location, navigate] = useLocation();
   const { toast } = useToast();
   const { isOrderingPaused, displayMessage } = useVacationMode();
@@ -868,6 +868,21 @@ const CheckoutPage = () => {
 
   // Remove voucher
   const removeVoucher = () => {
+    // Remove any free items from cart that were added by this voucher
+    const freeItems = items.filter(item => item.isFreeItem);
+    freeItems.forEach(freeItem => {
+      removeItem(freeItem);
+    });
+
+    // Show notification if free items were removed
+    if (freeItems.length > 0) {
+      toast({
+        title: "Free item removed",
+        description: "The free item from your reward has been removed from your cart.",
+        variant: "default",
+      });
+    }
+
     setAppliedVoucher(null);
     setSelectedVoucherId("none");
     setVoucherError("");
