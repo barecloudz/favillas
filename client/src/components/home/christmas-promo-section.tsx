@@ -95,7 +95,7 @@ const ChristmasPromoSection: React.FC = () => {
 
       {/* Advent Calendar Modal */}
       <AdventCalendarModal
-        isOpen={showModal}
+        open={showModal}
         onClose={() => setShowModal(false)}
       />
     </section>
