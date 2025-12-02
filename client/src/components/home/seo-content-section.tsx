@@ -33,9 +33,9 @@ const SeoContentSection: React.FC = () => {
               isExpanded ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"
             }`}
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-center mb-8 text-[#d73a31]">
+            <h3 className="text-4xl md:text-5xl font-bold text-center mb-8 text-[#d73a31]">
               Best Pizza Delivery in Asheville, NC - Authentic NY Pizza by the Slice
-            </h2>
+            </h3>
 
           <div className="prose prose-lg max-w-none">
             <h2 className="text-3xl font-bold mb-4 text-gray-900">⭐ Voted Best Pizza Delivery in Asheville - 4.5 Stars from 1,081+ Reviews</h2>
@@ -75,6 +75,7 @@ const SeoContentSection: React.FC = () => {
               <li><strong>Desserts</strong> - Sweet treats to complete your meal</li>
             </ul>
 
+            <h4 className="text-2xl font-bold mb-2 text-gray-900">Pizza Near Me</h4>
             <h2 className="text-3xl font-bold mb-4 text-gray-900">Fast Pizza Delivery & Pickup in Asheville, NC</h2>
             <p className="text-lg text-gray-700 mb-6 leading-relaxed">
               Craving <strong>pizza delivery in Asheville</strong>? Order online for fast, reliable <strong>pizza delivery near me</strong>
