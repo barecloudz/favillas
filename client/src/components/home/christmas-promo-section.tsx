@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLottie } from 'lottie-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Gift } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
+import { AdventCalendarModal } from '@/components/christmas/advent-calendar-modal';
 import christmasTreeAnimation from '@/assets/animations/christmas-tree.json';
 
 const ChristmasTree: React.FC = () => {
@@ -15,6 +18,8 @@ const ChristmasTree: React.FC = () => {
 };
 
 const ChristmasPromoSection: React.FC = () => {
+  const [showModal, setShowModal] = useState(false);
+
   const { data: adventData } = useQuery({
     queryKey: ['/api/advent-calendar'],
     queryFn: async () => {
@@ -73,9 +78,26 @@ const ChristmasPromoSection: React.FC = () => {
             <p className="text-center text-sm text-gray-500 mt-4">
               Sign in or create a free account to participate. Rewards expire at 11:59 PM EST!
             </p>
+
+            {/* Or click here button */}
+            <div className="flex justify-center mt-6">
+              <Button
+                onClick={() => setShowModal(true)}
+                className="bg-gradient-to-r from-red-600 to-green-600 hover:from-red-700 hover:to-green-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transform hover:scale-105 transition-all duration-200"
+              >
+                <Gift className="w-5 h-5 mr-2" />
+                Or click here to open your present!
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Advent Calendar Modal */}
+      <AdventCalendarModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+      />
     </section>
   );
 };
