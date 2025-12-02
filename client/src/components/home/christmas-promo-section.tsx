@@ -76,7 +76,7 @@ const ChristmasPromoSection: React.FC = () => {
 
             {/* Sign in notice */}
             <p className="text-center text-sm text-gray-500 mt-4">
-              Sign in or create a free account to participate. Rewards expire at 11:59 PM EST!
+              Sign in or create a free account to participate. Rewards expire everyday at 11:59 PM EST!
             </p>
 
             {/* Or click here button */}

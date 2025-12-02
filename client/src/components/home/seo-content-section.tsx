@@ -33,9 +33,9 @@ const SeoContentSection: React.FC = () => {
               isExpanded ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"
             }`}
           >
-            <h1 className="text-4xl md:text-5xl font-bold text-center mb-8 text-[#d73a31]">
+            <h2 className="text-4xl md:text-5xl font-bold text-center mb-8 text-[#d73a31]">
               Best Pizza Delivery in Asheville, NC - Authentic NY Pizza by the Slice
-            </h1>
+            </h2>
 
           <div className="prose prose-lg max-w-none">
             <h2 className="text-3xl font-bold mb-4 text-gray-900">⭐ Voted Best Pizza Delivery in Asheville - 4.5 Stars from 1,081+ Reviews</h2>

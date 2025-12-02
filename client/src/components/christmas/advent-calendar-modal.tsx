@@ -377,6 +377,7 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
                     <Check className="w-8 h-8 text-green-600 mx-auto mb-2" />
                     <p className="text-green-800 font-semibold">Already Claimed!</p>
                     <p className="text-sm text-green-600">Check your vouchers to use this reward</p>
+                    <p className="text-xs text-green-500 mt-1">(The vouchers are on the checkout page)</p>
                   </div>
                 ) : currentDay.canClaim ? (
                   <>
