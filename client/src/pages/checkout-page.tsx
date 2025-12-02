@@ -252,7 +252,7 @@ const CheckoutForm = ({ orderId, clientSecret, customerPhone, customerName, cust
 // CheckoutPage component
 const CheckoutPage = () => {
   const { user, refreshUserProfile } = useAuth();
-  const { items, total, tax, clearCart, showLoginModal } = useCart();
+  const { items, total, tax, clearCart, showLoginModal, addItem } = useCart();
   const [location, navigate] = useLocation();
   const { toast } = useToast();
   const { isOrderingPaused, displayMessage } = useVacationMode();

@@ -401,13 +401,22 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
                     <p className="text-green-800 font-semibold">Already Claimed!</p>
                     <p className="text-sm text-green-600">Check your vouchers to use this reward</p>
                     <p className="text-xs text-green-500 mt-1">(The vouchers are on the checkout page)</p>
+                    <Button
+                      onClick={() => {
+                        onClose();
+                        window.location.href = '/menu';
+                      }}
+                      className="mt-3 bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      Order Now
+                    </Button>
                     {adventData?.isAdmin && (
                       <Button
                         onClick={() => resetMutation.mutate(currentDay.day)}
                         disabled={resetMutation.isPending}
                         variant="outline"
                         size="sm"
-                        className="mt-3 text-orange-600 border-orange-300 hover:bg-orange-50"
+                        className="mt-2 text-orange-600 border-orange-300 hover:bg-orange-50"
                       >
                         <RotateCcw className="w-4 h-4 mr-1" />
                         {resetMutation.isPending ? 'Resetting...' : 'Reset for Testing'}
@@ -447,14 +456,9 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
                         </div>
                       </div>
                     ) : (
-                      <Button
-                        onClick={() => handleClaim(currentDay.day)}
-                        disabled={claimMutation.isPending}
-                        className="w-full bg-red-600 hover:bg-red-700 text-white"
-                        size="lg"
-                      >
-                        {claimMutation.isPending ? 'Unwrapping...' : '🎁 Unwrap & Claim Reward!'}
-                      </Button>
+                      <p className="text-center text-lg font-medium text-red-600 italic">
+                        ✨ Click the present above to open! ✨
+                      </p>
                     )}
                   </>
                 ) : currentDay.isFutureDay ? (
