@@ -517,8 +517,8 @@ ${order?.orderType === 'delivery' ? `Address: ${order?.address || user?.address}
 ${order?.phone || order?.userContactInfo?.phone || user?.phone ? `Phone: ${order?.phone || order?.userContactInfo?.phone || user.phone}` : 'Phone: Contact information not provided'}
 
 Items:
-${order?.items?.map((item: any) => 
-  `${item.name} x${item.quantity} - ${formatCurrency(parseFloat(item.price || 0) * item.quantity)}`
+${order?.items?.map((item: any) =>
+  `${item.name} x${item.quantity} - ${item.isFreeItem || parseFloat(item.price || 0) === 0 ? 'FREE (Reward)' : formatCurrency(parseFloat(item.price || 0) * item.quantity)}`
 ).join('\n')}
 
 Subtotal: ${(() => {
@@ -919,9 +919,16 @@ Thank you for choosing Favilla's NY Pizza!
                               </div>
                               <div className="text-right">
                                 <p className="text-sm text-gray-500 mb-1">Qty: {item.quantity}</p>
-                                <p className="text-lg font-bold text-gray-900">
-                                  {formatCurrency(item.price * item.quantity)}
-                                </p>
+                                {item.isFreeItem || parseFloat(item.price) === 0 ? (
+                                  <div className="flex items-center gap-1 justify-end">
+                                    <Gift className="h-4 w-4 text-green-600" />
+                                    <span className="text-lg font-bold text-green-600">FREE</span>
+                                  </div>
+                                ) : (
+                                  <p className="text-lg font-bold text-gray-900">
+                                    {formatCurrency(item.price * item.quantity)}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           ))}

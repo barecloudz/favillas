@@ -1068,9 +1068,9 @@ const CheckoutPage = () => {
       }
     }
     
-    // Create order - filter out any corrupted items
+    // Create order - filter out any corrupted items (note: price can be 0 for free items)
     const orderItems = items
-      .filter(item => item && item.id && item.name && item.price && item.quantity)
+      .filter(item => item && item.id && item.name && item.price !== undefined && item.quantity)
       .map(item => {
         console.log('🔍 CHECKOUT DEBUG - Processing cart item for order:', {
           itemName: item.name,
@@ -1092,6 +1092,7 @@ const CheckoutPage = () => {
           options: item.options || item.selectedOptions || [],
           specialInstructions: item.specialInstructions || "",
           halfAndHalf: item.halfAndHalf || null,  // Include half-and-half data for kitchen display
+          isFreeItem: item.isFreeItem || false,  // Mark free reward items
         };
       });
     
