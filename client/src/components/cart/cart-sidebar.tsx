@@ -546,35 +546,43 @@ const CartSidebar: React.FC = () => {
                       )}
                       
                       <div className="flex items-center mt-2 gap-2">
-                        <div className="flex items-center">
-                          <Button 
-                            size="icon" 
-                            variant="outline" 
-                            className="h-6 w-6 rounded-full"
-                            onClick={() => updateItemQuantity(item, Math.max(1, (item?.quantity || 1) - 1))}
+                        {item?.isFreeItem ? (
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">
+                            🎁 FREE (Qty: 1)
+                          </span>
+                        ) : (
+                          <div className="flex items-center">
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              className="h-6 w-6 rounded-full"
+                              onClick={() => updateItemQuantity(item, Math.max(1, (item?.quantity || 1) - 1))}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="mx-2 text-sm">{item?.quantity || 1}</span>
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              className="h-6 w-6 rounded-full"
+                              onClick={() => updateItemQuantity(item, (item?.quantity || 1) + 1)}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+
+                        {!item?.isFreeItem && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => handleEditItem(item, e)}
+                            className="text-xs px-2 py-1 h-6"
                           >
-                            <Minus className="h-3 w-3" />
+                            <Edit className="h-3 w-3 mr-1" />
+                            Edit
                           </Button>
-                          <span className="mx-2 text-sm">{item?.quantity || 1}</span>
-                          <Button 
-                            size="icon" 
-                            variant="outline" 
-                            className="h-6 w-6 rounded-full"
-                            onClick={() => updateItemQuantity(item, (item?.quantity || 1) + 1)}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </div>
-                        
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={(e) => handleEditItem(item, e)}
-                          className="text-xs px-2 py-1 h-6"
-                        >
-                          <Edit className="h-3 w-3 mr-1" />
-                          Edit
-                        </Button>
+                        )}
                       </div>
                     </div>
                     <div className="ml-2 text-right">

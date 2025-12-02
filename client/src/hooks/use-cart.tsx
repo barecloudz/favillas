@@ -28,6 +28,7 @@ export interface CartItem {
       price: number;
     }>;
   };
+  isFreeItem?: boolean; // Marks item as a free reward - cannot change quantity
 }
 
 // Cart context type
@@ -293,14 +294,24 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   
   // Update item quantity
   const updateItemQuantity = (itemToUpdate: CartItem, quantity: number) => {
-    setItems(prevItems => 
-      prevItems.map(item => 
-        areItemsEqual(item, itemToUpdate) 
-          ? { ...item, quantity } 
+    // Block quantity changes for free items
+    if (itemToUpdate.isFreeItem) {
+      toast({
+        title: "Cannot change quantity",
+        description: "Free reward items are limited to 1 per order",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setItems(prevItems =>
+      prevItems.map(item =>
+        areItemsEqual(item, itemToUpdate)
+          ? { ...item, quantity }
           : item
       )
     );
-    
+
     // Only show toast for significant quantity changes
     if (quantity === 0) {
       toast({

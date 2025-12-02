@@ -846,7 +846,8 @@ const CheckoutPage = () => {
             quantity: 1,
             selectedOptions: {},
             options: [],
-            specialInstructions: `Free item from reward: ${selectedVoucher.title || rewardData.free_item || freeMenuItem.name}`
+            specialInstructions: `Free item from reward: ${selectedVoucher.title || rewardData.free_item || freeMenuItem.name}`,
+            isFreeItem: true
           });
           toast({
             title: "🎉 Free Item Added!",
@@ -881,7 +882,8 @@ const CheckoutPage = () => {
         quantity: 1,
         selectedOptions: {},
         options: [],
-        specialInstructions: `Free item from reward: ${selectedRewardForFreeItem.title || selectedRewardForFreeItem.name}`
+        specialInstructions: `Free item from reward: ${selectedRewardForFreeItem.title || selectedRewardForFreeItem.name}`,
+        isFreeItem: true
       });
 
       toast({
