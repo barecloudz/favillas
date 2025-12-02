@@ -380,14 +380,6 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
                   </div>
                 ) : currentDay.canClaim ? (
                   <>
-                    {currentDay.rewardName && (
-                      <div className="text-center">
-                        <h4 className="text-xl font-bold text-gray-900">{currentDay.rewardName}</h4>
-                        {currentDay.rewardDescription && (
-                          <p className="text-gray-600 mt-2">{currentDay.rewardDescription}</p>
-                        )}
-                      </div>
-                    )}
                     <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                       <p className="text-sm text-orange-800 text-center">
                         ⚠️ <strong>Use it today!</strong> Expires at 11:59 PM EST
