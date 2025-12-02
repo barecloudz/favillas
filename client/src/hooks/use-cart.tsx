@@ -200,10 +200,13 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const existingItemIndex = prevItems.findIndex(item => areItemsEqual(item, normalizedItem));
         
         if (existingItemIndex >= 0) {
-          // Update existing item's quantity
+          // Update existing item's quantity - create new object to ensure React detects change
           const updatedItems = [...prevItems];
-          updatedItems[existingItemIndex].quantity += normalizedItem.quantity;
-          
+          updatedItems[existingItemIndex] = {
+            ...updatedItems[existingItemIndex],
+            quantity: updatedItems[existingItemIndex].quantity + normalizedItem.quantity
+          };
+
           // Only show toast for significant quantity changes
           if (normalizedItem.quantity > 1) {
             toast({
@@ -211,7 +214,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               description: `Updated quantity of ${normalizedItem.name}`,
             });
           }
-          
+
           return updatedItems;
         } else {
           // Add new item
@@ -219,11 +222,11 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             title: "Added to cart",
             description: `${normalizedItem.name} added to your cart`,
           });
-          
+
           return [...prevItems, normalizedItem];
         }
       });
-      
+
       // Clear pending item
       setPendingItem(null);
     }
@@ -270,15 +273,18 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const existingItemIndex = prevItems.findIndex(item => areItemsEqual(item, normalizedItem));
       
       if (existingItemIndex >= 0) {
-        // Update existing item's quantity
+        // Update existing item's quantity - create new object to ensure React detects change
         const updatedItems = [...prevItems];
-        updatedItems[existingItemIndex].quantity += normalizedItem.quantity;
-        
+        updatedItems[existingItemIndex] = {
+          ...updatedItems[existingItemIndex],
+          quantity: updatedItems[existingItemIndex].quantity + normalizedItem.quantity
+        };
+
         toast({
           title: "Cart updated",
           description: `Updated quantity of ${normalizedItem.name}`,
         });
-        
+
         return updatedItems;
       } else {
         // Add new item
