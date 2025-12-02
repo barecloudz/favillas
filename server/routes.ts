@@ -4020,25 +4020,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const transactions = await db
-        .select({
-          id: pointsTransactions.id,
-          userId: pointsTransactions.userId,
-          orderId: pointsTransactions.orderId,
-          type: pointsTransactions.type,
-          points: pointsTransactions.points,
-          description: pointsTransactions.description,
-          orderAmount: pointsTransactions.orderAmount,
-          createdAt: pointsTransactions.createdAt,
-          userName: sql`${users.firstName} || ' ' || ${users.lastName}`,
-          userEmail: users.email,
-        })
-        .from(pointsTransactions)
-        .leftJoin(users, eq(pointsTransactions.userId, users.id))
-        .orderBy(desc(pointsTransactions.createdAt))
-        .limit(500);
+      // Use raw SQL to handle both user_id and supabase_user_id joins
+      const transactions = await db.execute(sql`
+        SELECT
+          pt.id,
+          pt.user_id as "userId",
+          pt.order_id as "orderId",
+          pt.type,
+          pt.points,
+          pt.description,
+          pt.order_amount as "orderAmount",
+          pt.created_at as "createdAt",
+          COALESCE(
+            u.first_name || ' ' || u.last_name,
+            su.first_name || ' ' || su.last_name,
+            'Unknown User'
+          ) as "userName",
+          COALESCE(u.email, su.email) as "userEmail"
+        FROM points_transactions pt
+        LEFT JOIN users u ON pt.user_id = u.id
+        LEFT JOIN users su ON pt.supabase_user_id = su.supabase_user_id
+        ORDER BY pt.created_at DESC
+        LIMIT 500
+      `);
 
-      res.json(transactions);
+      res.json(transactions.rows);
     } catch (error: any) {
       console.error("Error fetching points transactions:", error);
       res.status(500).json({ message: error.message });
@@ -4052,32 +4058,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const vouchers = await db
-        .select({
-          id: userVouchers.id,
-          userId: userVouchers.userId,
-          voucherCode: userVouchers.voucherCode,
-          pointsUsed: userVouchers.pointsUsed,
-          discountAmount: userVouchers.discountAmount,
-          discountType: userVouchers.discountType,
-          status: userVouchers.status,
-          appliedToOrderId: userVouchers.appliedToOrderId,
-          createdAt: userVouchers.createdAt,
-          usedAt: userVouchers.usedAt,
-          expiresAt: userVouchers.expiresAt,
-          title: userVouchers.title,
-          description: userVouchers.description,
-          userName: sql`${users.firstName} || ' ' || ${users.lastName}`,
-          userEmail: users.email,
-          rewardName: rewards.name,
-        })
-        .from(userVouchers)
-        .leftJoin(users, eq(userVouchers.userId, users.id))
-        .leftJoin(rewards, eq(userVouchers.rewardId, rewards.id))
-        .orderBy(desc(userVouchers.createdAt))
-        .limit(500);
+      // Use raw SQL to handle both user_id and supabase_user_id joins
+      const vouchers = await db.execute(sql`
+        SELECT
+          uv.id,
+          uv.user_id as "userId",
+          uv.voucher_code as "voucherCode",
+          uv.points_used as "pointsUsed",
+          uv.discount_amount as "discountAmount",
+          uv.discount_type as "discountType",
+          uv.status,
+          uv.applied_to_order_id as "appliedToOrderId",
+          uv.created_at as "createdAt",
+          uv.used_at as "usedAt",
+          uv.expires_at as "expiresAt",
+          uv.title,
+          uv.description,
+          COALESCE(
+            u.first_name || ' ' || u.last_name,
+            su.first_name || ' ' || su.last_name,
+            'Unknown User'
+          ) as "userName",
+          COALESCE(u.email, su.email) as "userEmail",
+          r.name as "rewardName"
+        FROM user_vouchers uv
+        LEFT JOIN users u ON uv.user_id = u.id
+        LEFT JOIN users su ON uv.supabase_user_id = su.supabase_user_id
+        LEFT JOIN rewards r ON uv.reward_id = r.id
+        ORDER BY uv.created_at DESC
+        LIMIT 500
+      `);
 
-      res.json(vouchers);
+      res.json(vouchers.rows);
     } catch (error: any) {
       console.error("Error fetching voucher usage:", error);
       res.status(500).json({ message: error.message });
