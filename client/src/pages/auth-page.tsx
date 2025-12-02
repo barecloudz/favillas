@@ -32,10 +32,6 @@ const registerSchema = z.object({
   firstName: z.string().min(1, { message: "First name is required" }),
   lastName: z.string().min(1, { message: "Last name is required" }),
   phone: z.string().optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  zipCode: z.string().optional(),
   marketingOptIn: z.boolean().default(true),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match",
@@ -120,10 +116,6 @@ const AuthPage = () => {
       firstName: "",
       lastName: "",
       phone: "",
-      address: "",
-      city: "",
-      state: "",
-      zipCode: "",
       marketingOptIn: true, // Auto-checked for marketing emails
     },
   });
@@ -397,60 +389,6 @@ const AuthPage = () => {
                               </FormItem>
                             )}
                           />
-                          <FormField
-                            control={registerForm.control}
-                            name="address"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Address</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Enter your address" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <FormField
-                              control={registerForm.control}
-                              name="city"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>City</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="City" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={registerForm.control}
-                              name="state"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>State</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="State" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={registerForm.control}
-                              name="zipCode"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Zip Code</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="Zip Code" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
                           <FormField
                             control={registerForm.control}
                             name="marketingOptIn"
