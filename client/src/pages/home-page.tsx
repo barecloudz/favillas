@@ -2,6 +2,7 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Helmet } from "react-helmet";
 import HeroSection from "@/components/home/hero-section";
+import ChristmasPromoSection from "@/components/home/christmas-promo-section";
 import FeaturedSection from "@/components/home/featured-section";
 import WhyFavillasSection from "@/components/home/why-favilias-section";
 import RewardsSection from "@/components/home/rewards-section";
@@ -184,6 +185,9 @@ const HomePage = () => {
       <div className="min-h-screen lg:pt-20 pt-12">
         {/* Hero Section */}
         <HeroSection />
+
+        {/* Christmas Promo Section - Only shows in December */}
+        <ChristmasPromoSection />
 
         {/* Featured Section */}
         <FeaturedSection menuItems={featuredItems} />
