@@ -20,20 +20,34 @@ const ChristmasTree: React.FC = () => {
 const ChristmasPromoSection: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
 
-  const { data: adventData } = useQuery({
+  // Check if it's December client-side for instant rendering
+  const now = new Date();
+  const isDecember = now.getMonth() === 11; // December is month 11 (0-indexed)
+  const currentDay = now.getDate();
+  const clientDaysUntilChristmas = Math.max(0, 25 - currentDay);
+
+  const { data: adventData, isLoading } = useQuery({
     queryKey: ['/api/advent-calendar'],
     queryFn: async () => {
       const response = await apiRequest('GET', '/api/advent-calendar');
       return response.json();
     },
+    // Only fetch if it's December
+    enabled: isDecember,
   });
 
-  // Don't show if advent calendar is not enabled or it's not December
-  if (!adventData?.enabled || !adventData?.isDecember) {
+  // Not December - don't show
+  if (!isDecember) {
     return null;
   }
 
-  const daysUntilChristmas = adventData?.daysUntilChristmas || 0;
+  // API returned and feature is disabled - don't show
+  if (!isLoading && adventData && !adventData.enabled) {
+    return null;
+  }
+
+  // Use API data if available, otherwise use client-side calculation
+  const daysUntilChristmas = adventData?.daysUntilChristmas ?? clientDaysUntilChristmas;
 
   return (
     <section className="py-12 px-4 bg-gradient-to-b from-red-50 to-green-50">
