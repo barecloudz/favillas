@@ -2113,6 +2113,26 @@ const KitchenPage = () => {
                         </div>
                       </CardHeader>
                       <CardContent className="p-4">
+                        {/* Scheduled Order Warning - Must be made 45 min before */}
+                        {((order.fulfillmentTime === 'scheduled' || order.fulfillment_time === 'scheduled') && (order.scheduledTime || order.scheduled_time)) && (() => {
+                          const scheduledTime = new Date(order.scheduledTime || order.scheduled_time);
+                          const makeByTime = new Date(scheduledTime.getTime() - 45 * 60 * 1000);
+                          return (
+                            <div className="mb-4 p-3 bg-orange-100 border-2 border-orange-400 rounded-lg">
+                              <div className="flex items-center gap-2 text-orange-800 font-bold text-base">
+                                <span className="text-xl">⏰</span>
+                                <span>SCHEDULED ORDER</span>
+                              </div>
+                              <p className="text-orange-700 font-semibold mt-1">
+                                Must be made by {makeByTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                              </p>
+                              <p className="text-orange-600 text-sm">
+                                (45 min before {scheduledTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} pickup)
+                              </p>
+                            </div>
+                          );
+                        })()}
+
                         <div className="space-y-3">
                           {order.items.map((item: any) => {
                             // item.price already includes all options/toppings from checkout calculation
@@ -2435,6 +2455,26 @@ const KitchenPage = () => {
                     {selectedOrder.payment_status?.toUpperCase() || 'UNKNOWN'}
                   </Badge>
                 </div>
+
+                {/* Scheduled Order Warning for Modal */}
+                {((selectedOrder.fulfillmentTime === 'scheduled' || selectedOrder.fulfillment_time === 'scheduled') && (selectedOrder.scheduledTime || selectedOrder.scheduled_time)) && (() => {
+                  const scheduledTime = new Date(selectedOrder.scheduledTime || selectedOrder.scheduled_time);
+                  const makeByTime = new Date(scheduledTime.getTime() - 45 * 60 * 1000);
+                  return (
+                    <div className="p-4 bg-orange-100 border-2 border-orange-400 rounded-lg">
+                      <div className="flex items-center gap-2 text-orange-800 font-bold text-lg">
+                        <span className="text-2xl">⏰</span>
+                        <span>SCHEDULED ORDER</span>
+                      </div>
+                      <p className="text-orange-700 font-semibold mt-1 text-lg">
+                        Must be made by {makeByTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                      </p>
+                      <p className="text-orange-600">
+                        (45 min before {scheduledTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} pickup)
+                      </p>
+                    </div>
+                  );
+                })()}
 
                 {/* Customer Info */}
                 <div className="bg-gray-50 p-4 rounded-lg">
