@@ -236,13 +236,14 @@ export const handler: Handler = async (event, context) => {
       }
 
       // Get reward details with all fields needed for voucher
+      // Use COALESCE to check both discount and discount_amount (admin saves to 'discount' column)
       const [reward] = await sql`
         SELECT
           id,
           name,
           description,
           voucher_code,
-          discount_amount,
+          COALESCE(discount, discount_amount, 0) as discount_amount,
           discount_type,
           min_order_amount,
           points_required
