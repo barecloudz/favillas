@@ -399,9 +399,9 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
               </div>
 
               {/* Large present with snowman */}
-              <div className="flex items-center justify-center gap-4 my-8">
-                {/* Snowman to the left */}
-                <div className="w-32 h-32 pointer-events-none">
+              <div className="relative flex items-center justify-center my-8">
+                {/* Snowman to the left - positioned between modal edge and present */}
+                <div className="absolute left-0 w-[384px] h-[384px] pointer-events-none -translate-x-1/4">
                   <HappySnowman />
                 </div>
 
