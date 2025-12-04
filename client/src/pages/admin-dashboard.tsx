@@ -3086,6 +3086,24 @@ const OrdersManagement = ({ orders, cateringData, onUpdateStatus }: any) => {
 const AnalyticsDashboard = ({ analytics, orders }: any) => {
   const [timeRange, setTimeRange] = useState("7d");
   const [selectedMetric, setSelectedMetric] = useState("revenue");
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  // Get available years from orders
+  const availableYears = React.useMemo(() => {
+    if (!orders || orders.length === 0) return [new Date().getFullYear()];
+    const years = new Set<number>();
+    orders.forEach((order: any) => {
+      const date = new Date(order.createdAt || order.created_at);
+      years.add(date.getFullYear());
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [orders]);
 
   // Use real analytics data or fallback to default
   const analyticsData = React.useMemo(() => {
@@ -3115,22 +3133,41 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
 
     // Calculate daily data from orders based on selected time range
     const now = new Date();
-    const daysToShow = timeRange === "1d" ? 1 : timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : timeRange === "90d" ? 90 : 7;
+    let daysToShow: number;
+    let startDate: Date;
+    let endDate: Date;
+
+    if (timeRange === "custom") {
+      // Custom month selection
+      startDate = new Date(selectedYear, selectedMonth, 1);
+      endDate = new Date(selectedYear, selectedMonth + 1, 0); // Last day of month
+      daysToShow = endDate.getDate(); // Number of days in the month
+    } else {
+      daysToShow = timeRange === "1d" ? 1 : timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : timeRange === "90d" ? 90 : 7;
+      endDate = now;
+      startDate = new Date(now);
+      startDate.setDate(startDate.getDate() - daysToShow + 1);
+    }
 
     // console.log('📅 AnalyticsDashboard filtering for:', timeRange, 'showing', daysToShow, 'days');
 
     const dailyData = Array.from({ length: daysToShow }, (_, i) => {
-      const date = new Date(now);
-      date.setDate(date.getDate() - (daysToShow - 1 - i));
+      let date: Date;
+      if (timeRange === "custom") {
+        date = new Date(selectedYear, selectedMonth, i + 1);
+      } else {
+        date = new Date(now);
+        date.setDate(date.getDate() - (daysToShow - 1 - i));
+      }
       const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
       const dayEnd = new Date(dayStart);
       dayEnd.setDate(dayEnd.getDate() + 1);
-      
+
       const dayOrders = orders.filter((order: any) => {
         const orderDate = new Date(order.createdAt);
         return orderDate >= dayStart && orderDate < dayEnd;
       });
-      
+
       const dayRevenue = dayOrders.reduce((sum: number, order: any) => {
         const orderTotal = parseFloat(order.total || order.totalAmount || 0);
         if (isNaN(orderTotal)) return sum; // Skip invalid totals
@@ -3145,13 +3182,22 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
     });
 
     // Filter orders to selected time range
-    const cutoffDate = new Date(now);
-    cutoffDate.setDate(cutoffDate.getDate() - daysToShow);
-
-    const filteredOrders = orders.filter((order: any) => {
-      const orderDate = new Date(order.createdAt || order.created_at);
-      return orderDate >= cutoffDate;
-    });
+    let filteredOrders: any[];
+    if (timeRange === "custom") {
+      const monthStart = new Date(selectedYear, selectedMonth, 1);
+      const monthEnd = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59);
+      filteredOrders = orders.filter((order: any) => {
+        const orderDate = new Date(order.createdAt || order.created_at);
+        return orderDate >= monthStart && orderDate <= monthEnd;
+      });
+    } else {
+      const cutoffDate = new Date(now);
+      cutoffDate.setDate(cutoffDate.getDate() - daysToShow);
+      filteredOrders = orders.filter((order: any) => {
+        const orderDate = new Date(order.createdAt || order.created_at);
+        return orderDate >= cutoffDate;
+      });
+    }
 
     // console.log('📊 Filtered orders:', {
     //   totalOrders: orders.length,
@@ -3284,7 +3330,7 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
       topSellingItems,
       customerInsights
     };
-  }, [analytics, orders, timeRange]);
+  }, [analytics, orders, timeRange, selectedMonth, selectedYear]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
@@ -3358,7 +3404,7 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
           <p className="text-gray-600">Track your business performance and customer insights</p>
         </div>
         
-        <div className="flex space-x-2">
+        <div className="flex space-x-2 items-center">
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger className="w-32">
               <SelectValue />
@@ -3368,18 +3414,57 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
               <SelectItem value="7d">7 Days</SelectItem>
               <SelectItem value="30d">30 Days</SelectItem>
               <SelectItem value="90d">90 Days</SelectItem>
+              <SelectItem value="custom">Custom Month</SelectItem>
             </SelectContent>
           </Select>
-          
+
+          {timeRange === "custom" && (
+            <>
+              <Select value={selectedMonth.toString()} onValueChange={(val) => setSelectedMonth(parseInt(val))}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {months.map((month, index) => (
+                    <SelectItem key={index} value={index.toString()}>{month}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedYear.toString()} onValueChange={(val) => setSelectedYear(parseInt(val))}>
+                <SelectTrigger className="w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableYears.map((year) => (
+                    <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
+
           <Button variant="outline" onClick={() => {
-            const cutoffDate = new Date();
-            cutoffDate.setDate(cutoffDate.getDate() - (timeRange === "1d" ? 1 : timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : timeRange === "90d" ? 90 : 7));
-            const filteredForExport = orders.filter((order: any) => {
-              const orderDate = new Date(order.createdAt || order.created_at);
-              return orderDate >= cutoffDate;
-            });
+            let filteredForExport;
+            if (timeRange === "custom") {
+              // Filter by selected month/year
+              const monthStart = new Date(selectedYear, selectedMonth, 1);
+              const monthEnd = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59);
+              filteredForExport = orders.filter((order: any) => {
+                const orderDate = new Date(order.createdAt || order.created_at);
+                return orderDate >= monthStart && orderDate <= monthEnd;
+              });
+            } else {
+              const cutoffDate = new Date();
+              cutoffDate.setDate(cutoffDate.getDate() - (timeRange === "1d" ? 1 : timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : timeRange === "90d" ? 90 : 7));
+              filteredForExport = orders.filter((order: any) => {
+                const orderDate = new Date(order.createdAt || order.created_at);
+                return orderDate >= cutoffDate;
+              });
+            }
             const exportOrders = filteredForExport.length > 0 ? filteredForExport : orders;
-            handleExportAnalytics(exportOrders, timeRange, analyticsData);
+            const exportLabel = timeRange === "custom" ? `${months[selectedMonth]} ${selectedYear}` : timeRange;
+            handleExportAnalytics(exportOrders, exportLabel, analyticsData);
           }}>
             <Download className="h-4 w-4 mr-2" />
             Export
