@@ -8,6 +8,7 @@ import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useLottie } from 'lottie-react';
 import giftRewardAnimation from '@/assets/animations/gift-reward.json';
 import christmasTreeAnimation from '@/assets/animations/christmas-tree.json';
+import christmasWindChimesAnimation from '@/assets/animations/christmas-wind-chimes.json';
 
 interface AdventCalendarModalProps {
   open: boolean;
@@ -18,6 +19,16 @@ interface AdventCalendarModalProps {
 const ChristmasTree: React.FC = () => {
   const { View } = useLottie({
     animationData: christmasTreeAnimation,
+    loop: true,
+    autoplay: true,
+  });
+  return <>{View}</>;
+};
+
+// Christmas wind chimes decoration component
+const ChristmasWindChimes: React.FC = () => {
+  const { View } = useLottie({
+    animationData: christmasWindChimesAnimation,
     loop: true,
     autoplay: true,
   });
@@ -297,11 +308,16 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
       {/* Main calendar modal */}
       <Dialog open={open && !showRewardAnimation} onOpenChange={(isOpen) => !isOpen && onClose()}>
         <DialogContent
-          className="max-w-2xl"
+          className="max-w-2xl overflow-visible"
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
         >
+          {/* Christmas Wind Chimes - hanging from top right */}
+          <div className="absolute -top-8 -right-4 w-32 h-32 pointer-events-none z-10">
+            <ChristmasWindChimes />
+          </div>
+
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-center flex items-center justify-center gap-2">
               <div className="w-12 h-12"><ChristmasTree /></div>
