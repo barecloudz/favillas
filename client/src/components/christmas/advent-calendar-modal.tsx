@@ -314,7 +314,7 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
           onTouchEnd={onTouchEnd}
         >
           {/* Christmas Wind Chimes - hanging from top right */}
-          <div className="absolute -top-24 -right-12 w-[512px] h-[512px] pointer-events-none z-10">
+          <div className="absolute -top-16 -right-8 w-[384px] h-[384px] pointer-events-none z-10">
             <ChristmasWindChimes />
           </div>
 
