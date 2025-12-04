@@ -17,8 +17,14 @@ import {
   ChevronDown,
   Loader2,
   AlertCircle,
-  HelpCircle
+  HelpCircle,
+  ArrowLeft,
+  Home,
+  ChefHat,
+  LogOut
 } from "lucide-react";
+import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-supabase-auth";
 import { Badge } from "@/components/ui/badge";
 import { Helmet } from "react-helmet";
 
@@ -42,6 +48,8 @@ interface FAQFormData {
 const AdminFAQsPage: React.FC = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+  const { signOut } = useAuth();
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -251,6 +259,47 @@ const AdminFAQsPage: React.FC = () => {
       <Helmet>
         <title>Admin - FAQ Management | Favilla's NY Pizza</title>
       </Helmet>
+
+      {/* Navigation Header */}
+      <div className="bg-white border-b shadow-sm">
+        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+          <Button
+            variant="ghost"
+            onClick={() => setLocation('/admin/dashboard')}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Dashboard
+          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open('/', '_blank')}
+            >
+              <Home className="w-4 h-4 mr-2" />
+              Frontend
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open('/kitchen', '_blank')}
+            >
+              <ChefHat className="w-4 h-4 mr-2" />
+              Kitchen
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => signOut()}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          </div>
+        </div>
+      </div>
 
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-6xl mx-auto">

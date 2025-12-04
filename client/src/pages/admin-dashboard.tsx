@@ -1339,36 +1339,36 @@ const AdminDashboard = () => {
                   <Button variant="ghost" size="sm" className="hidden sm:flex">
                     <Bell className="h-5 w-5" />
                   </Button>
-                  
+
                   <div className="flex items-center space-x-1 md:space-x-2">
-                    <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                      <User className="h-4 w-4 text-gray-600" />
-                    </div>
-                    <div className="hidden lg:block">
-                      <p className="text-sm font-medium">{user?.firstName} {user?.lastName}</p>
-                      <p className="text-xs text-gray-500">{user?.role?.replace('_', ' ').toUpperCase()}</p>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <User className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem onClick={() => window.open('/', '_blank')}>
-                          <Home className="h-4 w-4 mr-2" />
-                          Go to Frontend
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => window.open('/kitchen', '_blank')}>
-                          <ChefHat className="h-4 w-4 mr-2" />
-                          Go to Kitchen
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleLogout} className="text-red-600 border-t mt-1 pt-1">
-                          <LogOut className="h-4 w-4 mr-2" />
-                          Logout
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {/* Direct navigation buttons */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open('/', '_blank')}
+                      className="hidden sm:flex"
+                    >
+                      <Home className="h-4 w-4 mr-2" />
+                      Frontend
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open('/kitchen', '_blank')}
+                      className="hidden sm:flex"
+                    >
+                      <ChefHat className="h-4 w-4 mr-2" />
+                      Kitchen
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleLogout}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <LogOut className="h-4 w-4 mr-1 sm:mr-2" />
+                      <span className="hidden sm:inline">Logout</span>
+                    </Button>
                   </div>
                 </div>
               </div>

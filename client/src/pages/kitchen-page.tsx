@@ -1653,8 +1653,8 @@ const KitchenPage = () => {
                   <div className="space-y-2">
                     <button
                       onClick={() => {
-                        // Defer navigation to next tick to avoid state updates during cleanup
-                        setTimeout(() => navigate('/'), 0);
+                        // Use window.location for reliable navigation
+                        window.location.href = '/';
                       }}
                       className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
                     >
@@ -1666,8 +1666,8 @@ const KitchenPage = () => {
 
                     <button
                       onClick={() => {
-                        // Defer navigation to next tick to avoid state updates during cleanup
-                        setTimeout(() => navigate('/admin/dashboard'), 0);
+                        // Use window.location for reliable navigation
+                        window.location.href = '/admin/dashboard';
                       }}
                       className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-red-100 to-red-200 hover:from-red-200 hover:to-red-300 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
                     >
@@ -1715,11 +1715,8 @@ const KitchenPage = () => {
                       onClick={async () => {
                         try {
                           await apiRequest('POST', '/api/logout', {});
-                          // Defer navigation to next tick to avoid state updates during cleanup
-                          setTimeout(() => {
-                            navigate('/');
-                            window.location.reload();
-                          }, 0);
+                          // Use window.location for reliable navigation
+                          window.location.href = '/';
                         } catch (error) {
                           console.error('Logout failed:', error);
                         }
