@@ -9,6 +9,7 @@ import { useLottie } from 'lottie-react';
 import giftRewardAnimation from '@/assets/animations/gift-reward.json';
 import christmasTreeAnimation from '@/assets/animations/christmas-tree.json';
 import christmasWindChimesAnimation from '@/assets/animations/christmas-wind-chimes.json';
+import happySnowmanAnimation from '@/assets/animations/happy-snowman.json';
 
 interface AdventCalendarModalProps {
   open: boolean;
@@ -29,6 +30,16 @@ const ChristmasTree: React.FC = () => {
 const ChristmasWindChimes: React.FC = () => {
   const { View } = useLottie({
     animationData: christmasWindChimesAnimation,
+    loop: true,
+    autoplay: true,
+  });
+  return <>{View}</>;
+};
+
+// Happy snowman decoration component
+const HappySnowman: React.FC = () => {
+  const { View } = useLottie({
+    animationData: happySnowmanAnimation,
     loop: true,
     autoplay: true,
   });
@@ -387,15 +398,22 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
                 )}
               </div>
 
-              {/* Large present */}
-              <div className="scale-150 my-8">
-                <Present
-                  day={currentDay.day}
-                  onClick={() => handlePresentClick(currentDay.day, currentDay.canClaim, currentDay.rewardName, currentDay.rewardDescription)}
-                  disabled={!currentDay.canClaim}
-                  claimed={currentDay.isClaimed}
-                  isOpening={isOpening}
-                />
+              {/* Large present with snowman */}
+              <div className="flex items-center justify-center gap-4 my-8">
+                {/* Snowman to the left */}
+                <div className="w-32 h-32 pointer-events-none">
+                  <HappySnowman />
+                </div>
+
+                <div className="scale-150">
+                  <Present
+                    day={currentDay.day}
+                    onClick={() => handlePresentClick(currentDay.day, currentDay.canClaim, currentDay.rewardName, currentDay.rewardDescription)}
+                    disabled={!currentDay.canClaim}
+                    claimed={currentDay.isClaimed}
+                    isOpening={isOpening}
+                  />
+                </div>
               </div>
 
               {/* Day indicator */}
