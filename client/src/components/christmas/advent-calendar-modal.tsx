@@ -9,7 +9,6 @@ import { useLottie } from 'lottie-react';
 import giftRewardAnimation from '@/assets/animations/gift-reward.json';
 import christmasTreeAnimation from '@/assets/animations/christmas-tree.json';
 import christmasWindChimesAnimation from '@/assets/animations/christmas-wind-chimes.json';
-import happySnowmanAnimation from '@/assets/animations/happy-snowman.json';
 
 interface AdventCalendarModalProps {
   open: boolean;
@@ -30,16 +29,6 @@ const ChristmasTree: React.FC = () => {
 const ChristmasWindChimes: React.FC = () => {
   const { View } = useLottie({
     animationData: christmasWindChimesAnimation,
-    loop: true,
-    autoplay: true,
-  });
-  return <>{View}</>;
-};
-
-// Happy snowman decoration component
-const HappySnowman: React.FC = () => {
-  const { View } = useLottie({
-    animationData: happySnowmanAnimation,
     loop: true,
     autoplay: true,
   });
@@ -398,13 +387,8 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
                 )}
               </div>
 
-              {/* Large present with snowman */}
-              <div className="relative flex items-center justify-center my-8">
-                {/* Snowman to the left - absolute so it doesn't affect present centering */}
-                <div className="absolute left-4 w-[200px] h-[200px] pointer-events-none z-0">
-                  <HappySnowman />
-                </div>
-
+              {/* Large present */}
+              <div className="flex items-center justify-center my-8">
                 <div className="scale-150">
                   <Present
                     day={currentDay.day}
