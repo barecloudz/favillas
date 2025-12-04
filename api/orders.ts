@@ -2003,7 +2003,10 @@ export const handler: Handler = async (event, context) => {
                   voucherDiscount: enhancedOrder.voucherUsed ?
                     enhancedOrder.voucherUsed.discountAmount?.toString() : undefined,
                   voucherCode: enhancedOrder.voucherUsed ?
-                    enhancedOrder.voucherUsed.code : undefined
+                    enhancedOrder.voucherUsed.code : undefined,
+                  promoDiscount: orderData.orderMetadata?.discount ?
+                    orderData.orderMetadata.discount.toString() : undefined,
+                  promoCode: orderData.promoCode || undefined
                 };
 
                 console.log('📧 Sending order confirmation email (non-blocking)...');

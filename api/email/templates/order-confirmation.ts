@@ -17,6 +17,8 @@ interface OrderConfirmationData {
   estimatedTime: string;
   paymentMethod: string;
   fulfillmentType?: string; // 'pickup' or 'delivery'
+  promoDiscount?: number;
+  voucherDiscount?: number;
 }
 
 // Helper function to ensure time is formatted in EST
@@ -114,6 +116,8 @@ export function getOrderConfirmationTemplate(data: OrderConfirmationData): strin
 
     <div style="text-align: right; border-top: 2px solid #d73a31; padding-top: 10px;">
       <p><strong>Subtotal: $${data.subtotal.toFixed(2)}</strong></p>
+      ${data.promoDiscount && data.promoDiscount > 0 ? `<p style="color: #28a745;"><strong>Promo Discount: -$${data.promoDiscount.toFixed(2)}</strong></p>` : ''}
+      ${data.voucherDiscount && data.voucherDiscount > 0 ? `<p style="color: #28a745;"><strong>Voucher Discount: -$${data.voucherDiscount.toFixed(2)}</strong></p>` : ''}
       <p><strong>Tax: $${data.tax.toFixed(2)}</strong></p>
       <p style="font-size: 18px; color: #d73a31;"><strong>Total: $${data.total.toFixed(2)}</strong></p>
     </div>

@@ -50,6 +50,8 @@ interface OrderEmailData {
   voucherUsed?: boolean;
   voucherDiscount?: string;
   voucherCode?: string;
+  promoDiscount?: string;
+  promoCode?: string;
 }
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -102,9 +104,17 @@ const generateOrderConfirmationHTML = (data: OrderEmailData): string => {
     </div>
   `;
 
-  const voucherRow = data.voucherUsed ? `
+  // Discount rows for promo codes and vouchers
+  const promoRow = data.promoDiscount && parseFloat(data.promoDiscount) > 0 ? `
     <div class="detail-row">
-      <span class="detail-label">Voucher Applied:</span>
+      <span class="detail-label">Promo Discount${data.promoCode ? ` (${data.promoCode})` : ''}:</span>
+      <span class="detail-value" style="color: #28a745;">-$${data.promoDiscount}</span>
+    </div>
+  ` : '';
+
+  const voucherRow = data.voucherUsed || (data.voucherDiscount && parseFloat(data.voucherDiscount) > 0) ? `
+    <div class="detail-row">
+      <span class="detail-label">Voucher Applied${data.voucherCode ? ` (${data.voucherCode})` : ''}:</span>
       <span class="detail-value" style="color: #28a745;">-$${data.voucherDiscount}</span>
     </div>
   ` : '';
@@ -384,6 +394,7 @@ const generateOrderConfirmationHTML = (data: OrderEmailData): string => {
                     <span class="detail-label">Payment Method:</span>
                     <span class="detail-value">${data.paymentMethod}</span>
                 </div>
+                ${promoRow}
                 ${voucherRow}
                 <div class="detail-row">
                     <span class="detail-label">Total:</span>

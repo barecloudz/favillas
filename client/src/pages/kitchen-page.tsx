@@ -789,6 +789,22 @@ const KitchenPage = () => {
         return;
       }
 
+      // Parse discount info from address_data
+      let promoDiscount = 0;
+      let voucherDiscount = 0;
+      try {
+        if (order.addressData && typeof order.addressData === 'object') {
+          promoDiscount = order.addressData.orderBreakdown?.discount || 0;
+          voucherDiscount = order.addressData.orderBreakdown?.voucherDiscount || 0;
+        } else if (order.address_data) {
+          const addressDataObj = typeof order.address_data === 'string'
+            ? JSON.parse(order.address_data)
+            : order.address_data;
+          promoDiscount = addressDataObj?.orderBreakdown?.discount || 0;
+          voucherDiscount = addressDataObj?.orderBreakdown?.voucherDiscount || 0;
+        }
+      } catch (e) {}
+
       // Print directly from browser to thermal printer on local network
       // Using same hardcoded config as auto-print
       const result = await printToThermalPrinter(
@@ -809,7 +825,9 @@ const KitchenPage = () => {
           userId: order.user_id || order.userId,
           pointsEarned: order.pointsEarned || order.points_earned || 0,
           fulfillmentTime: order.fulfillmentTime || order.fulfillment_time,
-          scheduledTime: order.scheduledTime || order.scheduled_time
+          scheduledTime: order.scheduledTime || order.scheduled_time,
+          promoDiscount: promoDiscount,
+          voucherDiscount: voucherDiscount
         },
         {
           ipAddress: '192.168.1.18',
@@ -2273,6 +2291,52 @@ const KitchenPage = () => {
                         )}
                         
                         <Separator className="my-4" />
+
+                        {/* Display discounts if any */}
+                        {(() => {
+                          let orderBreakdown = null;
+                          try {
+                            if (order.addressData && typeof order.addressData === 'object') {
+                              orderBreakdown = order.addressData.orderBreakdown;
+                            } else if (order.address_data) {
+                              const addressDataObj = typeof order.address_data === 'string'
+                                ? JSON.parse(order.address_data)
+                                : order.address_data;
+                              orderBreakdown = addressDataObj?.orderBreakdown;
+                            }
+                          } catch (e) {}
+
+                          const promoDiscount = orderBreakdown?.discount || 0;
+                          const voucherDiscount = orderBreakdown?.voucherDiscount || 0;
+                          const totalDiscount = promoDiscount + voucherDiscount;
+
+                          if (totalDiscount > 0) {
+                            return (
+                              <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                <p className="font-semibold text-green-800 mb-1">💰 Discounts Applied:</p>
+                                {promoDiscount > 0 && (
+                                  <div className="flex justify-between text-green-700">
+                                    <span>Promo Discount:</span>
+                                    <span>-${formatPrice(promoDiscount)}</span>
+                                  </div>
+                                )}
+                                {voucherDiscount > 0 && (
+                                  <div className="flex justify-between text-green-700">
+                                    <span>Voucher Discount:</span>
+                                    <span>-${formatPrice(voucherDiscount)}</span>
+                                  </div>
+                                )}
+                                {promoDiscount > 0 && voucherDiscount > 0 && (
+                                  <div className="flex justify-between text-green-800 font-semibold border-t border-green-200 pt-1 mt-1">
+                                    <span>Total Savings:</span>
+                                    <span>-${formatPrice(totalDiscount)}</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
 
                         <div className="flex justify-between font-medium">
                           <span>Total Paid:</span>

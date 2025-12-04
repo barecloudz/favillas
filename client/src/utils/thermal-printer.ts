@@ -95,6 +95,8 @@ export interface OrderPrintData {
   scheduledTime?: string;
   paymentStatus?: string;
   orderSource?: string;
+  promoDiscount?: number;
+  voucherDiscount?: number;
 }
 
 /**
@@ -289,6 +291,15 @@ function formatCustomerReceipt(order: OrderPrintData): string {
   // Totals
   const subtotal = order.total - (order.tax || 0) - (order.deliveryFee || 0) - (order.serviceFee || 0) - (order.tip || 0);
   receipt += `Subtotal:        $${subtotal.toFixed(2)}\n`;
+
+  // Discounts
+  if (order.promoDiscount && order.promoDiscount > 0) {
+    receipt += `Promo Discount: -$${order.promoDiscount.toFixed(2)}\n`;
+  }
+
+  if (order.voucherDiscount && order.voucherDiscount > 0) {
+    receipt += `Voucher Discount:-$${order.voucherDiscount.toFixed(2)}\n`;
+  }
 
   if (order.deliveryFee && order.deliveryFee > 0) {
     receipt += `Delivery Fee:    $${order.deliveryFee.toFixed(2)}\n`;
