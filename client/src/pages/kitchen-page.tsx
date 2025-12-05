@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Loader2, Printer, Volume2, Columns3, LayoutGrid, User, Home, Settings, LogOut, PauseCircle, PlayCircle, Package, ChevronDown, ChevronRight, AlertTriangle, MoreVertical, Trash2, RefreshCcw, CheckCircle, Pizza, Edit, Plus } from "lucide-react";
+import { Loader2, Printer, Volume2, Columns3, LayoutGrid, User, Home, Settings, LogOut, PauseCircle, PlayCircle, Package, ChevronDown, ChevronRight, AlertTriangle, MoreVertical, Trash2, RefreshCcw, CheckCircle, Pizza, Edit, Plus, Search, Zap } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -117,6 +117,11 @@ const KitchenPage = () => {
   const [showItemManagementModal, setShowItemManagementModal] = useState(false);
   const [expandedItemCategories, setExpandedItemCategories] = useState<Set<string>>(new Set());
   const [expandedChoiceGroups, setExpandedChoiceGroups] = useState<Set<number>>(new Set());
+
+  // Quick Actions State
+  const [showQuickActionsModal, setShowQuickActionsModal] = useState(false);
+  const [quickActionSearch, setQuickActionSearch] = useState('');
+  const [quickActionLoading, setQuickActionLoading] = useState(false);
 
   // Order Status Mode State - automatic mode only (manual mode disabled)
   const [orderStatusMode, setOrderStatusMode] = useState<'manual' | 'automatic'>('automatic');
@@ -1207,6 +1212,70 @@ const KitchenPage = () => {
         description: error.message || 'Failed to update size availability',
         variant: 'destructive'
       });
+    }
+  };
+
+  // Toggle availability for all choice items with matching name
+  const toggleChoiceItemsByName = async (itemName: string, makeUnavailable: boolean) => {
+    try {
+      setQuickActionLoading(true);
+
+      // Find all choice items with this name
+      const matchingItems = (Array.isArray(choiceItems) ? choiceItems : []).filter(
+        (item: any) => item.name.toLowerCase() === itemName.toLowerCase()
+      );
+
+      if (matchingItems.length === 0) {
+        toast({
+          title: 'No items found',
+          description: `No choice items named "${itemName}" were found`,
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      const choiceItemIds = matchingItems.map((item: any) => item.id);
+
+      // Get Supabase session token
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
+      const response = await fetch('/api/admin-choice-item-availability', {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({
+          choiceItemIds,
+          isTemporarilyUnavailable: makeUnavailable,
+          reason: makeUnavailable ? `${itemName} out of stock (bulk update)` : null
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Bulk availability API error:', response.status, errorData);
+        throw new Error(errorData.error || 'Failed to update availability');
+      }
+
+      // Refresh choice items
+      refetchChoiceItems();
+
+      toast({
+        title: makeUnavailable ? `"${itemName}" marked as out of stock` : `"${itemName}" marked as available`,
+        description: `Updated ${matchingItems.length} item${matchingItems.length > 1 ? 's' : ''} across all categories`
+      });
+    } catch (error: any) {
+      console.error('Error toggling bulk availability:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update availability',
+        variant: 'destructive'
+      });
+    } finally {
+      setQuickActionLoading(false);
     }
   };
 
@@ -3192,10 +3261,21 @@ THIS CANNOT BE UNDONE. Are you absolutely sure?`;
         <Dialog open={showItemManagementModal} onOpenChange={setShowItemManagementModal}>
           <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0">
             <DialogHeader className="px-6 pt-6">
-              <DialogTitle className="text-2xl font-bold">Item Management</DialogTitle>
-              <DialogDescription>
-                Mark categories, items, and sizes as out of stock quickly and easily
-              </DialogDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <DialogTitle className="text-2xl font-bold">Item Management</DialogTitle>
+                  <DialogDescription>
+                    Mark categories, items, and sizes as out of stock quickly and easily
+                  </DialogDescription>
+                </div>
+                <Button
+                  onClick={() => setShowQuickActionsModal(true)}
+                  className="bg-orange-500 hover:bg-orange-600 text-white"
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  Quick Actions
+                </Button>
+              </div>
             </DialogHeader>
 
             <div className="flex-1 overflow-y-auto px-6 pb-6">
@@ -3417,6 +3497,130 @@ THIS CANNOT BE UNDONE. Are you absolutely sure?`;
                 variant="outline"
                 className="w-full sm:w-auto"
                 onClick={() => setShowItemManagementModal(false)}
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Quick Actions Modal */}
+        <Dialog open={showQuickActionsModal} onOpenChange={setShowQuickActionsModal}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                <Zap className="h-5 w-5 text-orange-500" />
+                Quick Actions
+              </DialogTitle>
+              <DialogDescription>
+                Quickly toggle availability for toppings across all categories
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              {/* Search input */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search for a topping (e.g., sausage, pepperoni)..."
+                  value={quickActionSearch}
+                  onChange={(e) => setQuickActionSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              {/* Unique toppings list */}
+              <div className="max-h-[300px] overflow-y-auto border rounded-lg">
+                {(() => {
+                  const allChoiceItems = Array.isArray(choiceItems) ? choiceItems : [];
+
+                  // Get unique names with their status
+                  const uniqueNamesMap = new Map<string, { name: string; allUnavailable: boolean; someUnavailable: boolean; count: number }>();
+
+                  allChoiceItems.forEach((item: any) => {
+                    const existing = uniqueNamesMap.get(item.name.toLowerCase());
+                    if (existing) {
+                      existing.count++;
+                      if (item.isTemporarilyUnavailable) {
+                        existing.someUnavailable = true;
+                      } else {
+                        existing.allUnavailable = false;
+                      }
+                    } else {
+                      uniqueNamesMap.set(item.name.toLowerCase(), {
+                        name: item.name,
+                        allUnavailable: item.isTemporarilyUnavailable || false,
+                        someUnavailable: item.isTemporarilyUnavailable || false,
+                        count: 1
+                      });
+                    }
+                  });
+
+                  const uniqueItems = Array.from(uniqueNamesMap.values())
+                    .filter(item =>
+                      quickActionSearch === '' ||
+                      item.name.toLowerCase().includes(quickActionSearch.toLowerCase())
+                    )
+                    .sort((a, b) => a.name.localeCompare(b.name));
+
+                  if (uniqueItems.length === 0) {
+                    return (
+                      <div className="p-4 text-center text-gray-500">
+                        {quickActionSearch ? 'No toppings found matching your search' : 'No toppings available'}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="divide-y">
+                      {uniqueItems.map((item) => (
+                        <div
+                          key={item.name}
+                          className="flex items-center justify-between p-3 hover:bg-gray-50"
+                        >
+                          <div className="flex-1">
+                            <span className="font-medium">{item.name}</span>
+                            <span className="text-xs text-gray-500 ml-2">
+                              ({item.count} {item.count === 1 ? 'instance' : 'instances'})
+                            </span>
+                            {item.allUnavailable && (
+                              <Badge variant="destructive" className="ml-2 text-xs">
+                                Out of Stock
+                              </Badge>
+                            )}
+                            {!item.allUnavailable && item.someUnavailable && (
+                              <Badge variant="outline" className="ml-2 text-xs text-orange-600 border-orange-300">
+                                Partially Out
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={!item.allUnavailable}
+                              onCheckedChange={(checked) => {
+                                toggleChoiceItemsByName(item.name, !checked);
+                              }}
+                              disabled={quickActionLoading}
+                            />
+                            <span className="text-sm font-medium min-w-[90px]">
+                              {item.allUnavailable ? 'Unavailable' : 'Available'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowQuickActionsModal(false);
+                  setQuickActionSearch('');
+                }}
               >
                 Close
               </Button>
