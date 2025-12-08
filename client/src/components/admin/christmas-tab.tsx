@@ -28,6 +28,7 @@ export const ChristmasTab = () => {
     maxDiscountAmount: '',
     freeItem: '',
     minOrderAmount: '',
+    bonusPoints: '',
   });
 
   // Fetch animation settings (to get advent calendar toggle)
@@ -158,6 +159,7 @@ export const ChristmasTab = () => {
         maxDiscountAmount: '',
         freeItem: '',
         minOrderAmount: '',
+        bonusPoints: '',
       });
       toast({
         title: 'Success',
@@ -305,6 +307,7 @@ export const ChristmasTab = () => {
                     <SelectContent>
                       <SelectItem value="discount">Discount</SelectItem>
                       <SelectItem value="free_item">Free Item</SelectItem>
+                      <SelectItem value="bonus_points">⭐ Bonus Points</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -370,6 +373,22 @@ export const ChristmasTab = () => {
                 </div>
               )}
 
+              {rewardForm.rewardType === 'bonus_points' && (
+                <div>
+                  <Label>Bonus Points to Award</Label>
+                  <Input
+                    type="number"
+                    value={rewardForm.bonusPoints}
+                    onChange={(e) => setRewardForm({ ...rewardForm, bonusPoints: e.target.value })}
+                    placeholder="e.g., 50"
+                    min="1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Points will be added directly to the customer's account when claimed
+                  </p>
+                </div>
+              )}
+
               <div>
                 <Label>Minimum Order Amount ($)</Label>
                 <Input
@@ -405,9 +424,10 @@ export const ChristmasTab = () => {
                       maxDiscountAmount: rewardForm.maxDiscountAmount ? parseFloat(rewardForm.maxDiscountAmount) : null,
                       freeItem: rewardForm.freeItem || null,
                       minOrderAmount: rewardForm.minOrderAmount ? parseFloat(rewardForm.minOrderAmount) : null,
+                      bonusPoints: rewardForm.bonusPoints ? parseInt(rewardForm.bonusPoints) : null,
                     });
                   }}
-                  disabled={!rewardForm.name || !rewardForm.voucher_code || createRewardMutation.isPending}
+                  disabled={!rewardForm.name || (rewardForm.rewardType !== 'bonus_points' && !rewardForm.voucher_code) || (rewardForm.rewardType === 'bonus_points' && !rewardForm.bonusPoints) || createRewardMutation.isPending}
                   className="flex-1 bg-green-600 hover:bg-green-700"
                 >
                   {createRewardMutation.isPending ? 'Creating...' : 'Create Reward'}
@@ -428,6 +448,7 @@ export const ChristmasTab = () => {
                       maxDiscountAmount: '',
                       freeItem: '',
                       minOrderAmount: '',
+                      bonusPoints: '',
                     });
                   }}
                 >
