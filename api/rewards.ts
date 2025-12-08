@@ -70,7 +70,7 @@ export const handler: Handler = async (event, context) => {
       };
 
     } else if (event.httpMethod === 'POST') {
-      const { name, description, pointsRequired, rewardType, discount, discountType, maxDiscountAmount, freeItem, freeItemMenuId, freeItemCategory, freeItemAllFromCategory, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
+      const { name, description, pointsRequired, rewardType, discount, discountType, maxDiscountAmount, freeItem, freeItemMenuId, freeItemCategory, freeItemAllFromCategory, minOrderAmount, expiresAt, bonusPoints } = JSON.parse(event.body || '{}');
 
       if (!name || !description) {
         return {
@@ -86,7 +86,7 @@ export const handler: Handler = async (event, context) => {
         INSERT INTO rewards (
           name, description, points_required, reward_type, discount, discount_type, max_discount_amount, free_item,
           free_item_menu_id, free_item_category, free_item_all_from_category,
-          min_order_amount, expires_at, is_active, created_at
+          min_order_amount, expires_at, is_active, created_at, bonus_points
         )
         VALUES (
           ${name},
@@ -103,7 +103,8 @@ export const handler: Handler = async (event, context) => {
           ${minOrderAmount ? parseFloat(minOrderAmount) : null},
           ${expiresAt || null},
           true,
-          NOW()
+          NOW(),
+          ${bonusPoints ? parseInt(bonusPoints) : null}
         )
         RETURNING *
       `;
@@ -127,7 +128,7 @@ export const handler: Handler = async (event, context) => {
         };
       }
 
-      const { name, description, pointsRequired, rewardType, discount, discountType, maxDiscountAmount, freeItem, freeItemMenuId, freeItemCategory, freeItemAllFromCategory, minOrderAmount, expiresAt } = JSON.parse(event.body || '{}');
+      const { name, description, pointsRequired, rewardType, discount, discountType, maxDiscountAmount, freeItem, freeItemMenuId, freeItemCategory, freeItemAllFromCategory, minOrderAmount, expiresAt, bonusPoints } = JSON.parse(event.body || '{}');
 
       // First get the existing reward to preserve values
       const existing = await sql`
@@ -156,6 +157,7 @@ export const handler: Handler = async (event, context) => {
       const updatedFreeItemAllFromCategory = freeItemAllFromCategory !== undefined ? freeItemAllFromCategory : existing[0].free_item_all_from_category;
       const updatedMinOrderAmount = minOrderAmount !== undefined ? (minOrderAmount ? parseFloat(minOrderAmount) : null) : existing[0].min_order_amount;
       const updatedExpiresAt = expiresAt !== undefined ? expiresAt : existing[0].expires_at;
+      const updatedBonusPoints = bonusPoints !== undefined ? (bonusPoints ? parseInt(bonusPoints) : null) : existing[0].bonus_points;
 
       const result = await sql`
         UPDATE rewards
@@ -172,6 +174,7 @@ export const handler: Handler = async (event, context) => {
             free_item_all_from_category = ${updatedFreeItemAllFromCategory},
             min_order_amount = ${updatedMinOrderAmount},
             expires_at = ${updatedExpiresAt},
+            bonus_points = ${updatedBonusPoints},
             updated_at = NOW()
         WHERE id = ${parseInt(rewardId)}
         RETURNING *

@@ -235,7 +235,7 @@ export const handler: Handler = async (event, context) => {
         };
       }
 
-      // Get reward details with all fields needed for voucher
+      // Get reward details with all fields needed for voucher or bonus points
       // Use COALESCE to check both discount and discount_amount (admin saves to 'discount' column)
       const [reward] = await sql`
         SELECT
@@ -246,7 +246,9 @@ export const handler: Handler = async (event, context) => {
           COALESCE(discount, discount_amount, 0) as discount_amount,
           discount_type,
           min_order_amount,
-          points_required
+          points_required,
+          reward_type,
+          bonus_points
         FROM rewards
         WHERE id = ${calendarEntry.reward_id}
         LIMIT 1
@@ -260,6 +262,83 @@ export const handler: Handler = async (event, context) => {
         };
       }
 
+      // Check if this is a bonus_points reward
+      if (reward.reward_type === 'bonus_points' && reward.bonus_points > 0) {
+        // Add points to user's account instead of creating a voucher
+        const pointsToAdd = reward.bonus_points;
+
+        // Get current user points
+        const [currentUser] = userId
+          ? await sql`SELECT rewards FROM users WHERE id = ${userId}`
+          : await sql`SELECT rewards FROM users WHERE supabase_user_id = ${supabaseUserId}`;
+
+        const currentPoints = currentUser?.rewards || 0;
+        const newPoints = currentPoints + pointsToAdd;
+
+        // Update user points
+        if (userId) {
+          await sql`UPDATE users SET rewards = ${newPoints} WHERE id = ${userId}`;
+        } else {
+          await sql`UPDATE users SET rewards = ${newPoints} WHERE supabase_user_id = ${supabaseUserId}`;
+        }
+
+        // Record the points transaction
+        await sql`
+          INSERT INTO points_transactions (
+            user_id,
+            type,
+            points,
+            description,
+            created_at
+          )
+          VALUES (
+            ${userId || null},
+            'bonus',
+            ${pointsToAdd},
+            ${'🎄 Christmas Present - ' + reward.name},
+            NOW()
+          )
+        `;
+
+        // Record the claim (no voucher_id for bonus points)
+        await sql`
+          INSERT INTO advent_claims (
+            user_id,
+            supabase_user_id,
+            advent_day,
+            reward_id,
+            voucher_id,
+            year
+          )
+          VALUES (
+            ${userId || null},
+            ${supabaseUserId || null},
+            ${day},
+            ${reward.id},
+            ${null},
+            ${currentYear}
+          )
+        `;
+
+        console.log(`✅ Advent bonus points claimed: Day ${day}, User: ${userId || supabaseUserId}, Points: ${pointsToAdd}`);
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            success: true,
+            message: `You've claimed ${pointsToAdd} bonus points for December ${day}!`,
+            reward: {
+              name: reward.name,
+              description: reward.description,
+              bonusPoints: pointsToAdd,
+              newTotal: newPoints
+            }
+          })
+        };
+      }
+
+      // For non-bonus-points rewards, create a voucher as before
       // Generate voucher code if reward doesn't have one
       const voucherCode = reward.voucher_code || `XMAS${currentYear}-DAY${day}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 

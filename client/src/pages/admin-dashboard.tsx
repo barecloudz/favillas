@@ -18219,6 +18219,7 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
     freeItemAllFromCategory: false,
     minOrderAmount: "",
     expiresAt: "",
+    bonusPoints: "",
   });
 
   // Fetch menu items for free item selection
@@ -18253,6 +18254,7 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
         freeItemAllFromCategory: reward.free_item_all_from_category || false,
         minOrderAmount: reward.min_order_amount?.toString() || "",
         expiresAt: reward.expires_at ? new Date(reward.expires_at).toISOString().split('T')[0] : "",
+        bonusPoints: reward.bonus_points?.toString() || "",
       });
     } else {
       setFormData({
@@ -18268,6 +18270,7 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
         freeItemAllFromCategory: false,
         minOrderAmount: "",
         expiresAt: "",
+        bonusPoints: "",
       });
     }
   }, [reward, open]);
@@ -18342,13 +18345,31 @@ const RewardDialog = ({ open, onOpenChange, reward, onSubmit, isLoading }: any) 
               <option value="discount">💸 Discount</option>
               <option value="free_item">🍕 Free Item</option>
               <option value="free_delivery">🚚 Free Delivery</option>
+              <option value="bonus_points">⭐ Bonus Points</option>
             </select>
             <p className="text-xs text-gray-500">
               {formData.rewardType === 'discount' && 'Give customers a percentage or fixed amount off their order'}
               {formData.rewardType === 'free_item' && 'Give customers a free menu item of their choice'}
               {formData.rewardType === 'free_delivery' && 'Waive the delivery fee for the customer'}
+              {formData.rewardType === 'bonus_points' && 'Award customers extra reward points (great for advent calendar!)'}
             </p>
           </div>
+
+          {formData.rewardType === 'bonus_points' && (
+            <div className="space-y-2">
+              <Label htmlFor="bonusPoints">Bonus Points to Award</Label>
+              <Input
+                id="bonusPoints"
+                type="number"
+                value={formData.bonusPoints}
+                onChange={(e) => setFormData({ ...formData, bonusPoints: e.target.value })}
+                placeholder="e.g., 50"
+                min="1"
+                required
+              />
+              <p className="text-xs text-gray-500">Number of points to add to the customer's account when they claim this reward</p>
+            </div>
+          )}
 
           {formData.rewardType === 'discount' && (
             <>
