@@ -70,14 +70,14 @@ export const handler: Handler = async (event, context) => {
       };
 
     } else if (event.httpMethod === 'POST') {
-      const { name, description, pointsRequired, rewardType, discount, discountType, maxDiscountAmount, freeItem, freeItemMenuId, freeItemCategory, freeItemAllFromCategory, minOrderAmount, expiresAt, bonusPoints } = JSON.parse(event.body || '{}');
+      const { name, description, pointsRequired, rewardType, discount, discountType, maxDiscountAmount, freeItem, freeItemMenuId, freeItemCategory, freeItemAllFromCategory, minOrderAmount, expiresAt, bonusPoints, is_advent_only, voucher_code, image_url } = JSON.parse(event.body || '{}');
 
-      if (!name || !description) {
+      if (!name) {
         return {
           statusCode: 400,
           headers,
           body: JSON.stringify({
-            message: 'Name and description are required'
+            message: 'Name is required'
           })
         };
       }
@@ -86,11 +86,11 @@ export const handler: Handler = async (event, context) => {
         INSERT INTO rewards (
           name, description, points_required, reward_type, discount, discount_type, max_discount_amount, free_item,
           free_item_menu_id, free_item_category, free_item_all_from_category,
-          min_order_amount, expires_at, is_active, created_at, bonus_points
+          min_order_amount, expires_at, is_active, created_at, bonus_points, is_advent_only, voucher_code, image_url
         )
         VALUES (
           ${name},
-          ${description},
+          ${description || null},
           ${pointsRequired ? parseInt(pointsRequired) : 100},
           ${rewardType || 'discount'},
           ${discount ? parseFloat(discount) : null},
@@ -104,7 +104,10 @@ export const handler: Handler = async (event, context) => {
           ${expiresAt || null},
           true,
           NOW(),
-          ${bonusPoints ? parseInt(bonusPoints) : null}
+          ${bonusPoints ? parseInt(bonusPoints) : null},
+          ${is_advent_only || false},
+          ${voucher_code || null},
+          ${image_url || null}
         )
         RETURNING *
       `;

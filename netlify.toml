@@ -426,17 +426,6 @@
   to = "/.netlify/functions/payment-intent/[id]"
   status = 200
 
-# Admin rewards management endpoint
-[[redirects]]
-  from = "/api/admin/rewards"
-  to = "/.netlify/functions/admin-rewards"
-  status = 200
-
-[[redirects]]
-  from = "/api/admin/rewards/*"
-  to = "/.netlify/functions/admin-rewards"
-  status = 200
-
 # Admin promo codes management endpoint
 [[redirects]]
   from = "/api/admin-promo-codes"

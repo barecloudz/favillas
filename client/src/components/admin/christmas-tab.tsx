@@ -136,7 +136,7 @@ export const ChristmasTab = () => {
   // Create advent-only reward
   const createRewardMutation = useMutation({
     mutationFn: async (rewardData: any) => {
-      const response = await apiRequest('POST', '/api/admin/rewards', {
+      const response = await apiRequest('POST', '/api/rewards', {
         ...rewardData,
         is_advent_only: true,
         is_active: true,
