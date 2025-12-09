@@ -140,6 +140,8 @@ export const AdventCalendarModal: React.FC<AdventCalendarModalProps> = ({ open, 
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/advent-calendar'] });
       queryClient.invalidateQueries({ queryKey: ['/api/user/vouchers'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/profile'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/rewards'] });
 
       toast({
         title: '🎁 Reward Claimed!',
