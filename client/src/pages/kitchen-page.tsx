@@ -2404,7 +2404,39 @@ const KitchenPage = () => {
                           return null;
                         })()}
 
-                        <div className="flex justify-between font-medium">
+                        {/* Order breakdown with fees */}
+                        <div className="space-y-1 text-sm">
+                          {/* Tax */}
+                          {parseFloat(order.tax || 0) > 0 && (
+                            <div className="flex justify-between text-gray-600">
+                              <span>Tax:</span>
+                              <span>${formatPrice(Number(order.tax))}</span>
+                            </div>
+                          )}
+                          {/* Delivery Fee */}
+                          {parseFloat(order.delivery_fee || order.deliveryFee || 0) > 0 && (
+                            <div className="flex justify-between text-gray-600">
+                              <span>Delivery Fee:</span>
+                              <span>${formatPrice(Number(order.delivery_fee || order.deliveryFee))}</span>
+                            </div>
+                          )}
+                          {/* Service Fee */}
+                          {parseFloat(order.service_fee || order.serviceFee || 0) > 0 && (
+                            <div className="flex justify-between text-gray-600">
+                              <span>Service Fee:</span>
+                              <span>${formatPrice(Number(order.service_fee || order.serviceFee))}</span>
+                            </div>
+                          )}
+                          {/* Tip */}
+                          {parseFloat(order.tip || 0) > 0 && (
+                            <div className="flex justify-between text-gray-600">
+                              <span>Tip:</span>
+                              <span>${formatPrice(Number(order.tip))}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex justify-between font-medium mt-2">
                           <span>Total Paid:</span>
                           <span>${formatPrice(Number(order.total))}</span>
                         </div>
@@ -2734,9 +2766,36 @@ const KitchenPage = () => {
                   </div>
                 )}
 
-                {/* Order Total */}
-                <div className="border-t pt-4">
-                  <div className="flex justify-between font-bold text-lg">
+                {/* Order Total with Fee Breakdown */}
+                <div className="border-t pt-4 space-y-2">
+                  {/* Fee Breakdown */}
+                  <div className="space-y-1 text-sm text-gray-600">
+                    {parseFloat(selectedOrder.tax || 0) > 0 && (
+                      <div className="flex justify-between">
+                        <span>Tax:</span>
+                        <span>${formatPrice(Number(selectedOrder.tax))}</span>
+                      </div>
+                    )}
+                    {parseFloat(selectedOrder.delivery_fee || selectedOrder.deliveryFee || 0) > 0 && (
+                      <div className="flex justify-between">
+                        <span>Delivery Fee:</span>
+                        <span>${formatPrice(Number(selectedOrder.delivery_fee || selectedOrder.deliveryFee))}</span>
+                      </div>
+                    )}
+                    {parseFloat(selectedOrder.service_fee || selectedOrder.serviceFee || 0) > 0 && (
+                      <div className="flex justify-between">
+                        <span>Service Fee:</span>
+                        <span>${formatPrice(Number(selectedOrder.service_fee || selectedOrder.serviceFee))}</span>
+                      </div>
+                    )}
+                    {parseFloat(selectedOrder.tip || 0) > 0 && (
+                      <div className="flex justify-between">
+                        <span>Tip:</span>
+                        <span>${formatPrice(Number(selectedOrder.tip))}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex justify-between font-bold text-lg pt-2 border-t">
                     <span>Total Paid:</span>
                     <span>${formatPrice(Number(selectedOrder.total))}</span>
                   </div>

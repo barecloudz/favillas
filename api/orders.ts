@@ -2006,7 +2006,11 @@ export const handler: Handler = async (event, context) => {
                     enhancedOrder.voucherUsed.code : undefined,
                   promoDiscount: orderData.orderMetadata?.discount ?
                     orderData.orderMetadata.discount.toString() : undefined,
-                  promoCode: orderData.promoCode || undefined
+                  promoCode: orderData.promoCode || undefined,
+                  subtotal: finalOrderData.subtotal,
+                  tax: finalOrderData.tax,
+                  deliveryFee: orderData.orderType === 'delivery' ? finalOrderData.deliveryFee : undefined,
+                  serviceFee: orderData.orderMetadata?.serviceFee?.toString() || undefined
                 };
 
                 console.log('📧 Sending order confirmation email (non-blocking)...');

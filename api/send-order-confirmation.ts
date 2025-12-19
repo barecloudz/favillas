@@ -45,6 +45,10 @@ interface OrderEmailData {
   deliveryInstructions?: string;
   paymentMethod: string;
   items: OrderItem[];
+  subtotal?: string;
+  tax?: string;
+  deliveryFee?: string;
+  serviceFee?: string;
   pointsEarned?: number;
   totalPoints?: number;
   voucherUsed?: boolean;
@@ -103,6 +107,38 @@ const generateOrderConfirmationHTML = (data: OrderEmailData): string => {
       </p>
     </div>
   `;
+
+  // Subtotal row
+  const subtotalRow = data.subtotal ? `
+    <div class="detail-row">
+      <span class="detail-label">Subtotal:</span>
+      <span class="detail-value">$${data.subtotal}</span>
+    </div>
+  ` : '';
+
+  // Tax row
+  const taxRow = data.tax && parseFloat(data.tax) > 0 ? `
+    <div class="detail-row">
+      <span class="detail-label">Tax:</span>
+      <span class="detail-value">$${data.tax}</span>
+    </div>
+  ` : '';
+
+  // Delivery fee row
+  const deliveryFeeRow = data.deliveryFee && parseFloat(data.deliveryFee) > 0 ? `
+    <div class="detail-row">
+      <span class="detail-label">Delivery Fee:</span>
+      <span class="detail-value">$${data.deliveryFee}</span>
+    </div>
+  ` : '';
+
+  // Service fee row
+  const serviceFeeRow = data.serviceFee && parseFloat(data.serviceFee) > 0 ? `
+    <div class="detail-row">
+      <span class="detail-label">Service Fee:</span>
+      <span class="detail-value">$${data.serviceFee}</span>
+    </div>
+  ` : '';
 
   // Discount rows for promo codes and vouchers
   const promoRow = data.promoDiscount && parseFloat(data.promoDiscount) > 0 ? `
@@ -394,6 +430,10 @@ const generateOrderConfirmationHTML = (data: OrderEmailData): string => {
                     <span class="detail-label">Payment Method:</span>
                     <span class="detail-value">${data.paymentMethod}</span>
                 </div>
+                ${subtotalRow}
+                ${taxRow}
+                ${deliveryFeeRow}
+                ${serviceFeeRow}
                 ${promoRow}
                 ${voucherRow}
                 <div class="detail-row">
