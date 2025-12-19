@@ -89,71 +89,70 @@ export const handler: Handler = async (event, context) => {
       };
     }
 
-    // Hash password using scrypt (same as admin-login.ts uses for verification)
-    const { scrypt, randomBytes } = await import('crypto');
-    const { promisify } = await import('util');
-    const scryptAsync = promisify(scrypt);
+    // First, create user in Supabase Auth (REQUIRED for /auth login to work)
+    const supabaseUrl = process.env.VITE_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    const salt = randomBytes(16).toString('hex');
-    const hashedBuf = (await scryptAsync(password, salt, 64)) as Buffer;
-    const hashedPassword = `${hashedBuf.toString('hex')}.${salt}`;
+    if (!supabaseUrl || !supabaseServiceKey) {
+      await sql.end();
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: 'Supabase configuration missing' })
+      };
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+
+    const { data: supabaseData, error: supabaseError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      user_metadata: {
+        role: role,
+        first_name: firstName || 'Admin',
+        last_name: lastName || 'User',
+        full_name: `${firstName || 'Admin'} ${lastName || 'User'}`,
+      },
+      email_confirm: true
+    });
+
+    if (supabaseError || !supabaseData.user) {
+      await sql.end();
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({
+          error: 'Failed to create user in authentication system',
+          details: supabaseError?.message || 'Unknown error'
+        })
+      };
+    }
+
+    const supabaseUserId = supabaseData.user.id;
+    console.log('✅ User created in Supabase Auth:', supabaseUserId);
 
     // Determine if user should be admin
     const userIsAdmin = role === 'admin' || role === 'super_admin' || role === 'manager';
 
-    // Create user in local database with hashed password
+    // Now create the user in local database with supabase_user_id linked
     const newUser = await sql`
       INSERT INTO users (
-        username, email, first_name, last_name, password,
+        username, email, first_name, last_name, supabase_user_id,
         role, is_admin, is_active, rewards,
         created_at, updated_at
       ) VALUES (
-        ${email}, ${email}, ${firstName || 'Admin'}, ${lastName || 'User'}, ${hashedPassword},
+        ${email}, ${email}, ${firstName || 'Admin'}, ${lastName || 'User'}, ${supabaseUserId},
         ${role}, ${userIsAdmin}, true, 0,
         NOW(), NOW()
       ) RETURNING id, username, email, first_name, last_name, role, is_admin, created_at
     `;
 
-    console.log('✅ Admin user created in local database:', newUser[0]);
-
-    // Also try to create in Supabase Auth (optional, for future OAuth linking)
-    let supabaseUserId = null;
-    try {
-      const supabaseUrl = process.env.VITE_SUPABASE_URL;
-      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-      if (supabaseUrl && supabaseServiceKey) {
-        const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false
-          }
-        });
-
-        const { data, error } = await supabase.auth.admin.createUser({
-          email,
-          password,
-          user_metadata: {
-            role: role,
-            first_name: firstName || 'Admin',
-            last_name: lastName || 'User',
-            full_name: `${firstName || 'Admin'} ${lastName || 'User'}`,
-          },
-          email_confirm: true
-        });
-
-        if (!error && data.user) {
-          supabaseUserId = data.user.id;
-          // Link Supabase user to local user
-          await sql`UPDATE users SET supabase_user_id = ${supabaseUserId} WHERE id = ${newUser[0].id}`;
-          console.log('✅ Admin user also created in Supabase Auth and linked');
-        } else if (error) {
-          console.warn('⚠️ Could not create Supabase Auth user (login will still work with local auth):', error.message);
-        }
-      }
-    } catch (supabaseError) {
-      console.warn('⚠️ Supabase Auth creation skipped:', supabaseError);
-    }
+    console.log('✅ Admin user created in local database and linked to Supabase:', newUser[0]);
 
     await sql.end();
 
