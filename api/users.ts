@@ -135,9 +135,9 @@ export const handler: Handler = async (event, context) => {
     if (event.httpMethod === 'POST') {
       console.log('➕ Creating new user...');
       const requestData = JSON.parse(event.body || '{}');
-      const { email, firstName, lastName, phone, role, isAdmin, hourlyRate, department } = requestData;
+      const { email, firstName, lastName, phone, role, isAdmin, hourlyRate, department, password } = requestData;
 
-      console.log('📋 User data:', { email, firstName, lastName, phone, role, isAdmin });
+      console.log('📋 User data:', { email, firstName, lastName, phone, role, isAdmin, hasPassword: !!password });
 
       if (!email || !firstName || !lastName) {
         return {
@@ -170,14 +170,27 @@ export const handler: Handler = async (event, context) => {
 
       console.log('👤 Creating user with role:', userRole, 'isAdmin:', userIsAdmin);
 
-      // Create new user record (will be linked to Supabase when they first log in)
+      // Hash password if provided (for admin users who need password login)
+      let hashedPassword = null;
+      if (password && (userIsAdmin || userRole === 'admin' || userRole === 'super_admin')) {
+        const { scrypt, randomBytes } = await import('crypto');
+        const { promisify } = await import('util');
+        const scryptAsync = promisify(scrypt);
+
+        const salt = randomBytes(16).toString('hex');
+        const hashedBuf = (await scryptAsync(password, salt, 64)) as Buffer;
+        hashedPassword = `${hashedBuf.toString('hex')}.${salt}`;
+        console.log('🔐 Password hashed for admin user');
+      }
+
+      // Create new user record
       const newUser = await sql`
         INSERT INTO users (
-          username, email, first_name, last_name, phone,
+          username, email, first_name, last_name, phone, password,
           role, is_admin, is_active, rewards, hourly_rate, department,
           created_at, updated_at
         ) VALUES (
-          ${email}, ${email}, ${firstName}, ${lastName}, ${phone || null},
+          ${email}, ${email}, ${firstName}, ${lastName}, ${phone || null}, ${hashedPassword},
           ${userRole}, ${userIsAdmin}, true, 0, ${hourlyRate || null}, ${department || null},
           NOW(), NOW()
         ) RETURNING id, username, email, first_name, last_name, phone, role, is_admin, hourly_rate, department, created_at
@@ -189,7 +202,7 @@ export const handler: Handler = async (event, context) => {
         statusCode: 201,
         headers,
         body: JSON.stringify({
-          message: `${userRole} user created successfully`,
+          message: `${userRole} user created successfully${hashedPassword ? ' with password' : ''}`,
           user: {
             id: newUser[0].id,
             username: newUser[0].username,
@@ -201,7 +214,7 @@ export const handler: Handler = async (event, context) => {
             isAdmin: newUser[0].is_admin,
             isActive: true,
             createdAt: newUser[0].created_at,
-            userType: 'pending_supabase' // They need to log in with Google to link Supabase
+            userType: hashedPassword ? 'password' : 'pending_supabase'
           }
         })
       };
