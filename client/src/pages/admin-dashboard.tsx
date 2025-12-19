@@ -25,6 +25,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   Loader2,
@@ -1340,36 +1342,56 @@ const AdminDashboard = () => {
                     <Bell className="h-5 w-5" />
                   </Button>
 
-                  <div className="flex items-center space-x-1 md:space-x-2">
-                    {/* Direct navigation buttons */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open('/', '_blank')}
-                      className="hidden sm:flex"
-                    >
-                      <Home className="h-4 w-4 mr-2" />
-                      Frontend
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open('/kitchen', '_blank')}
-                      className="hidden sm:flex"
-                    >
-                      <ChefHat className="h-4 w-4 mr-2" />
-                      Kitchen
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleLogout}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <LogOut className="h-4 w-4 mr-1 sm:mr-2" />
-                      <span className="hidden sm:inline">Logout</span>
-                    </Button>
-                  </div>
+                  {/* Profile Dropdown */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-full bg-red-600 flex items-center justify-center text-white text-sm font-medium">
+                          {user?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || 'A'}
+                        </div>
+                        <span className="hidden sm:inline">{user?.firstName || 'Admin'}</span>
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuLabel className="font-normal">
+                        <div className="flex flex-col space-y-1">
+                          <p className="text-sm font-medium">{user?.firstName} {user?.lastName}</p>
+                          <p className="text-xs text-gray-500">{user?.email}</p>
+                        </div>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => window.open('/', '_blank')}>
+                        <Home className="h-4 w-4 mr-3" />
+                        Frontend
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => window.open('/menu', '_blank')}>
+                        <Pizza className="h-4 w-4 mr-3" />
+                        Menu
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => window.open('/rewards', '_blank')}>
+                        <Gift className="h-4 w-4 mr-3" />
+                        Rewards
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => window.open('/profile', '_blank')}>
+                        <User className="h-4 w-4 mr-3" />
+                        My Account
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => window.open('/kitchen', '_blank')}>
+                        <ChefHat className="h-4 w-4 mr-3" />
+                        Kitchen Display
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={handleLogout}
+                        className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                      >
+                        <LogOut className="h-4 w-4 mr-3" />
+                        Logout
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             </div>
