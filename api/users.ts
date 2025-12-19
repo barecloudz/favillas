@@ -1,5 +1,6 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
+import { createClient } from '@supabase/supabase-js';
 import { authenticateToken, isStaff } from './_shared/auth';
 
 export const handler: Handler = async (event, context) => {
@@ -170,39 +171,77 @@ export const handler: Handler = async (event, context) => {
 
       console.log('👤 Creating user with role:', userRole, 'isAdmin:', userIsAdmin);
 
-      // Hash password if provided (for admin users who need password login)
-      let hashedPassword = null;
-      if (password && (userIsAdmin || userRole === 'admin' || userRole === 'super_admin')) {
-        const { scrypt, randomBytes } = await import('crypto');
-        const { promisify } = await import('util');
-        const scryptAsync = promisify(scrypt);
+      // If password is provided, create user in Supabase Auth first (required for /auth login)
+      let supabaseUserId = null;
+      if (password && (userIsAdmin || userRole === 'admin' || userRole === 'super_admin' || userRole === 'manager')) {
+        const supabaseUrl = process.env.VITE_SUPABASE_URL;
+        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-        const salt = randomBytes(16).toString('hex');
-        const hashedBuf = (await scryptAsync(password, salt, 64)) as Buffer;
-        hashedPassword = `${hashedBuf.toString('hex')}.${salt}`;
-        console.log('🔐 Password hashed for admin user');
+        if (!supabaseUrl || !supabaseServiceKey) {
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ error: 'Supabase configuration missing for admin user creation' })
+          };
+        }
+
+        const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        });
+
+        console.log('🔐 Creating user in Supabase Auth for admin login...');
+
+        const { data: supabaseData, error: supabaseError } = await supabase.auth.admin.createUser({
+          email,
+          password,
+          user_metadata: {
+            role: userRole,
+            first_name: firstName,
+            last_name: lastName,
+            full_name: `${firstName} ${lastName}`,
+          },
+          email_confirm: true
+        });
+
+        if (supabaseError || !supabaseData.user) {
+          console.error('❌ Failed to create Supabase Auth user:', supabaseError);
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({
+              error: 'Failed to create user in authentication system',
+              details: supabaseError?.message || 'Unknown error'
+            })
+          };
+        }
+
+        supabaseUserId = supabaseData.user.id;
+        console.log('✅ User created in Supabase Auth:', supabaseUserId);
       }
 
-      // Create new user record
+      // Create new user record in local database (linked to Supabase if created there)
       const newUser = await sql`
         INSERT INTO users (
-          username, email, first_name, last_name, phone, password,
+          username, email, first_name, last_name, phone, supabase_user_id,
           role, is_admin, is_active, rewards, hourly_rate, department,
           created_at, updated_at
         ) VALUES (
-          ${email}, ${email}, ${firstName}, ${lastName}, ${phone || null}, ${hashedPassword},
+          ${email}, ${email}, ${firstName}, ${lastName}, ${phone || null}, ${supabaseUserId},
           ${userRole}, ${userIsAdmin}, true, 0, ${hourlyRate || null}, ${department || null},
           NOW(), NOW()
-        ) RETURNING id, username, email, first_name, last_name, phone, role, is_admin, hourly_rate, department, created_at
+        ) RETURNING id, username, email, first_name, last_name, phone, role, is_admin, hourly_rate, department, created_at, supabase_user_id
       `;
 
-      console.log('✅ User created successfully:', newUser[0]);
+      console.log('✅ User created successfully in local database:', newUser[0]);
 
       return {
         statusCode: 201,
         headers,
         body: JSON.stringify({
-          message: `${userRole} user created successfully${hashedPassword ? ' with password' : ''}`,
+          message: `${userRole} user created successfully${supabaseUserId ? ' with login credentials' : ''}`,
           user: {
             id: newUser[0].id,
             username: newUser[0].username,
@@ -214,7 +253,8 @@ export const handler: Handler = async (event, context) => {
             isAdmin: newUser[0].is_admin,
             isActive: true,
             createdAt: newUser[0].created_at,
-            userType: hashedPassword ? 'password' : 'pending_supabase'
+            supabaseUserId: supabaseUserId,
+            userType: supabaseUserId ? 'supabase_auth' : 'local_only'
           }
         })
       };
