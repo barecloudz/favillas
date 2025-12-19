@@ -68,7 +68,7 @@ import { ChristmasCountdownButton } from "@/components/christmas/christmas-count
 import { AdventCalendarModal } from "@/components/christmas/advent-calendar-modal";
 
 // Pages that should NOT show the main header (standalone full-screen pages)
-const STANDALONE_PAGES = ['/kitchen'];
+const STANDALONE_PAGES = ['/kitchen', '/admin/dashboard', '/admin/faqs', '/admin/fix-points'];
 
 function ScrollToTop() {
   const [location] = useLocation();

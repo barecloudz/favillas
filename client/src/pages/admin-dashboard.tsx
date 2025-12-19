@@ -1345,51 +1345,93 @@ const AdminDashboard = () => {
                   {/* Profile Dropdown */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-full bg-red-600 flex items-center justify-center text-white text-sm font-medium">
+                      <Button variant="ghost" className="hover:bg-gray-100 flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-full bg-red-600 flex items-center justify-center text-white text-sm font-medium">
                           {user?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || 'A'}
                         </div>
-                        <span className="hidden sm:inline">{user?.firstName || 'Admin'}</span>
+                        <span className="hidden sm:inline font-medium">{user?.firstName || 'Admin'}</span>
                         <ChevronDown className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuLabel className="font-normal">
-                        <div className="flex flex-col space-y-1">
-                          <p className="text-sm font-medium">{user?.firstName} {user?.lastName}</p>
-                          <p className="text-xs text-gray-500">{user?.email}</p>
+                    <DropdownMenuContent align="end" className="w-72 p-3 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 shadow-2xl">
+                      <div className="space-y-2">
+                        {/* User Info Header */}
+                        <div className="flex items-center space-x-3 px-3 py-2 mb-2">
+                          <div className="h-10 w-10 rounded-full bg-red-600 flex items-center justify-center text-white font-medium">
+                            {user?.firstName?.[0]}{user?.lastName?.[0]}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">{user?.firstName} {user?.lastName}</p>
+                            <p className="text-xs text-gray-500">{user?.email}</p>
+                          </div>
                         </div>
-                      </DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => window.open('/', '_blank')}>
-                        <Home className="h-4 w-4 mr-3" />
-                        Frontend
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => window.open('/menu', '_blank')}>
-                        <Pizza className="h-4 w-4 mr-3" />
-                        Menu
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => window.open('/rewards', '_blank')}>
-                        <Gift className="h-4 w-4 mr-3" />
-                        Rewards
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => window.open('/profile', '_blank')}>
-                        <User className="h-4 w-4 mr-3" />
-                        My Account
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => window.open('/kitchen', '_blank')}>
-                        <ChefHat className="h-4 w-4 mr-3" />
-                        Kitchen Display
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={handleLogout}
-                        className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                      >
-                        <LogOut className="h-4 w-4 mr-3" />
-                        Logout
-                      </DropdownMenuItem>
+
+                        <div className="h-px bg-gray-300 my-2"></div>
+
+                        <button
+                          onClick={() => window.open('/', '_blank')}
+                          className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                        >
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                            <Home className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <span className="font-semibold text-gray-900 text-base">Frontend</span>
+                        </button>
+
+                        <button
+                          onClick={() => window.open('/menu', '_blank')}
+                          className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                        >
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                            <Pizza className="h-5 w-5 text-orange-600" />
+                          </div>
+                          <span className="font-semibold text-gray-900 text-base">Menu</span>
+                        </button>
+
+                        <button
+                          onClick={() => window.open('/rewards', '_blank')}
+                          className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                        >
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                            <Gift className="h-5 w-5 text-yellow-600" />
+                          </div>
+                          <span className="font-semibold text-gray-900 text-base">Rewards</span>
+                        </button>
+
+                        <button
+                          onClick={() => window.open('/profile', '_blank')}
+                          className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                        >
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                            <User className="h-5 w-5 text-green-600" />
+                          </div>
+                          <span className="font-semibold text-gray-900 text-base">My Account</span>
+                        </button>
+
+                        <div className="h-px bg-gray-300 my-2"></div>
+
+                        <button
+                          onClick={() => window.open('/kitchen', '_blank')}
+                          className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-orange-100 to-orange-200 hover:from-orange-200 hover:to-orange-300 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                        >
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                            <ChefHat className="h-5 w-5 text-orange-600" />
+                          </div>
+                          <span className="font-semibold text-gray-900 text-base">Kitchen Display</span>
+                        </button>
+
+                        <div className="h-px bg-gray-300 my-2"></div>
+
+                        <button
+                          onClick={handleLogout}
+                          className="w-full flex items-center space-x-3 px-5 py-4 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 hover:from-red-100 hover:to-red-200 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                        >
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm">
+                            <LogOut className="h-5 w-5 text-red-600" />
+                          </div>
+                          <span className="font-semibold text-red-600 text-base">Log Out</span>
+                        </button>
+                      </div>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
