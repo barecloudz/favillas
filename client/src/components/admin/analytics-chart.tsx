@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { createChart, ColorType, IChartApi, ISeriesApi, LineData, AreaData, Time } from 'lightweight-charts';
+import { createChart, ColorType, IChartApi, ISeriesApi, AreaData, Time, AreaSeries, LineSeries } from 'lightweight-charts';
 
 interface ChartDataPoint {
   time: string; // YYYY-MM-DD format
@@ -29,7 +29,7 @@ export function AnalyticsChart({
 }: AnalyticsChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<ISeriesApi<'Area'> | ISeriesApi<'Line'> | null>(null);
+  const seriesRef = useRef<ISeriesApi<typeof AreaSeries> | ISeriesApi<typeof LineSeries> | null>(null);
   const [currentValue, setCurrentValue] = useState<{ time: string; value: number } | null>(null);
 
   useEffect(() => {
@@ -91,11 +91,11 @@ export function AnalyticsChart({
 
     chartRef.current = chart;
 
-    // Create series based on type
-    let series: ISeriesApi<'Area'> | ISeriesApi<'Line'>;
+    // Create series based on type (v5 API)
+    let series: ISeriesApi<typeof AreaSeries> | ISeriesApi<typeof LineSeries>;
 
     if (type === 'area') {
-      series = chart.addAreaSeries({
+      series = chart.addSeries(AreaSeries, {
         lineColor: color,
         topColor: `${color}40`,
         bottomColor: `${color}05`,
@@ -108,7 +108,7 @@ export function AnalyticsChart({
         priceLineVisible: false,
       });
     } else {
-      series = chart.addLineSeries({
+      series = chart.addSeries(LineSeries, {
         color: color,
         lineWidth: 2,
         crosshairMarkerVisible: true,
@@ -141,7 +141,7 @@ export function AnalyticsChart({
       if (param.time && param.seriesData.size > 0) {
         const seriesData = param.seriesData.get(series);
         if (seriesData) {
-          const value = (seriesData as AreaData | LineData).value;
+          const value = (seriesData as AreaData<Time>).value;
           setCurrentValue({
             time: param.time as string,
             value: value,
