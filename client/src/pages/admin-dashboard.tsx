@@ -1243,6 +1243,8 @@ const AdminDashboard = () => {
                   onClick={() => {
                     changeActiveTab(item.href);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
+                    // Close mobile menu when navigating to a tab
+                    setSidebarCollapsed(true);
                   }}
                 >
                   <item.icon className={`h-4 w-4 ${sidebarCollapsed ? 'mx-auto' : 'mr-3'}`} />
@@ -1290,6 +1292,8 @@ const AdminDashboard = () => {
                               changeActiveTab(item.href);
                             }
                             window.scrollTo({ top: 0, behavior: 'smooth' });
+                            // Close mobile menu when navigating to a tab
+                            setSidebarCollapsed(true);
                           }}
                           className={activeTab === item.href ? "bg-red-50 text-red-600" : ""}
                         >
