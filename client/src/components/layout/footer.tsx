@@ -217,7 +217,7 @@ const Footer = () => {
           </div>
           <div className="rounded-xl overflow-hidden shadow-lg max-w-4xl mx-auto">
             <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3246.4088692847584!2d-82.55393492357476!3d35.49529017265052!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x88598d7b7c8a67a3%3A0x3e25f24ba5f8d0!2sFavilla&#39;s%20New%20York%20Pizza!5e0!3m2!1sen!2sus!4v1703097600000!5m2!1sen!2sus"
+              src="https://www.google.com/maps/embed/v1/place?key=AIzaSyCEuRyVGgMgPKyx-GX2uGb4NTB1jx7cGiQ&q=5+Regent+Park+Blvd,Asheville,NC+28806&zoom=15"
               width="100%"
               height="250"
               style={{ border: 0 }}
