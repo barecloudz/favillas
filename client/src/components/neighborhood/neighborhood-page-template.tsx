@@ -20,12 +20,22 @@ const NeighborhoodPageTemplate: React.FC<NeighborhoodPageTemplateProps> = ({ dat
         <meta name="keywords" content={data.keywords.join(", ")} />
         <link rel="canonical" href={`https://favillaspizzeria.com/${data.slug}`} />
 
-        {/* Open Graph Tags */}
+        {/* Open Graph Tags for Facebook/LinkedIn */}
         <meta property="og:title" content={data.title} />
         <meta property="og:description" content={data.metaDescription} />
         <meta property="og:url" content={`https://favillaspizzeria.com/${data.slug}`} />
         <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Favilla's NY Pizza" />
         <meta property="og:image" content="https://favillaspizzeria.com/images/hero-bg.jpg" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:locale" content="en_US" />
+
+        {/* Twitter Card Tags */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={data.title} />
+        <meta name="twitter:description" content={data.metaDescription} />
+        <meta name="twitter:image" content="https://favillaspizzeria.com/images/hero-bg.jpg" />
 
         {/* Enhanced Local Business Schema */}
         <script type="application/ld+json">

@@ -71,8 +71,12 @@ const Header = () => {
     return null;
   }
 
-  // Show bottom navigation for main pages on mobile (excluding admin dashboard)
-  if (["/", "/menu", "/catering", "/checkout", "/kitchen", "/orders", "/rewards", "/employee/clock", "/profile"].includes(location)) {
+  // Show full header for all pages except standalone pages (admin, kitchen display)
+  // This includes home, menu, neighborhood pages, etc.
+  const standalonePages = ["/kitchen", "/admin/dashboard", "/admin/faqs", "/admin/fix-points"];
+  const isStandalonePage = standalonePages.some(page => location.startsWith(page));
+
+  if (!isStandalonePage) {
     return (
       <>
         {/* Desktop Header */}
