@@ -217,7 +217,7 @@ const Footer = () => {
           </div>
           <div className="rounded-xl overflow-hidden shadow-lg max-w-4xl mx-auto">
             <iframe
-              src="https://www.google.com/maps/embed/v1/place?key=AIzaSyCEuRyVGgMgPKyx-GX2uGb4NTB1jx7cGiQ&q=5+Regent+Park+Blvd,Asheville,NC+28806&zoom=15"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3247.0!2d-82.5967883!3d35.5793183!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x88598c5f7b8b8b8b%3A0x1234567890abcdef!2s5%20Regent%20Park%20Blvd%2C%20Asheville%2C%20NC%2028806!5e0!3m2!1sen!2sus!4v1703097600000!5m2!1sen!2sus"
               width="100%"
               height="250"
               style={{ border: 0 }}
