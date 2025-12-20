@@ -122,6 +122,7 @@ import { TemplateEditor } from "@/components/admin/template-editor";
 import { RestaurantSettings } from "@/components/admin/restaurant-settings";
 import FrontendCustomization from "@/components/admin/frontend-customization";
 import { TipsReport } from "@/components/admin/tips-report";
+import { AnalyticsChart } from "@/components/admin/analytics-chart";
 
 const AdminDashboard = () => {
   const { user, logoutMutation, isLoading } = useAuth();
@@ -3216,12 +3217,64 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
         return sum + orderTotal;
       }, 0);
 
+      // Format date as YYYY-MM-DD for chart
+      const dateStr = dayStart.toISOString().split('T')[0];
+
       return {
+        date: dateStr,
         orders: dayOrders.length,
         revenue: dayRevenue,
         customers: new Set(dayOrders.map((order: any) => order.userId || order.user_id).filter(Boolean)).size
       };
     });
+
+    // Calculate previous period data for comparison
+    let previousPeriodOrders: any[] = [];
+    if (timeRange !== "custom" && timeRange !== "daterange") {
+      const previousStartDate = new Date(startDate);
+      previousStartDate.setDate(previousStartDate.getDate() - daysToShow);
+      const previousEndDate = new Date(startDate);
+      previousEndDate.setDate(previousEndDate.getDate() - 1);
+
+      previousPeriodOrders = orders.filter((order: any) => {
+        const orderDate = new Date(order.createdAt || order.created_at);
+        return orderDate >= previousStartDate && orderDate <= previousEndDate;
+      });
+    } else if (timeRange === "custom") {
+      // Previous month
+      const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
+      const prevYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
+      const prevMonthStart = new Date(prevYear, prevMonth, 1);
+      const prevMonthEnd = new Date(prevYear, prevMonth + 1, 0, 23, 59, 59);
+
+      previousPeriodOrders = orders.filter((order: any) => {
+        const orderDate = new Date(order.createdAt || order.created_at);
+        return orderDate >= prevMonthStart && orderDate <= prevMonthEnd;
+      });
+    } else if (timeRange === "daterange") {
+      // Same duration before the start date
+      const rangeStart = new Date(customStartDate + 'T00:00:00');
+      const rangeEnd = new Date(customEndDate + 'T23:59:59');
+      const rangeDuration = rangeEnd.getTime() - rangeStart.getTime();
+
+      const prevRangeEnd = new Date(rangeStart);
+      prevRangeEnd.setDate(prevRangeEnd.getDate() - 1);
+      const prevRangeStart = new Date(prevRangeEnd.getTime() - rangeDuration);
+
+      previousPeriodOrders = orders.filter((order: any) => {
+        const orderDate = new Date(order.createdAt || order.created_at);
+        return orderDate >= prevRangeStart && orderDate <= prevRangeEnd;
+      });
+    }
+
+    // Calculate previous period totals
+    const prevRevenue = previousPeriodOrders.reduce((sum: number, order: any) => {
+      const orderTotal = parseFloat(order.total || order.totalAmount || 0);
+      return isNaN(orderTotal) ? sum : sum + orderTotal;
+    }, 0);
+    const prevOrderCount = previousPeriodOrders.length;
+    const prevCustomers = new Set(previousPeriodOrders.map((order: any) => order.userId || order.user_id).filter(Boolean)).size;
+    const prevAvgOrder = prevOrderCount > 0 ? prevRevenue / prevOrderCount : 0;
 
     // Filter orders to selected time range
     let filteredOrders: any[];
@@ -3338,46 +3391,58 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
     const maxCustomers = Math.max(...customersDaily, 1);
     const maxAvgOrder = Math.max(...avgOrderDaily, 1);
 
-    // console.log('📊 AnalyticsDashboard calculated totals:', {
-    //   totalRevenue,
-    //   totalOrders,
-    //   avgOrderValue,
-    //   uniqueCustomers,
-    //   topSellingItemsCount: topSellingItems.length,
-    //   customerInsights
-    // });
+    // Calculate percentage changes vs previous period
+    const calculateChange = (current: number, previous: number) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return Math.round(((current - previous) / previous) * 100);
+    };
+
+    const revenueChange = calculateChange(totalRevenue, prevRevenue);
+    const ordersChange = calculateChange(totalOrders, prevOrderCount);
+    const customersChange = calculateChange(uniqueCustomers, prevCustomers);
+    const avgOrderChange = calculateChange(avgOrderValue, prevAvgOrder);
+
+    // Create chart data with dates
+    const chartData = dailyData.map(d => ({
+      time: d.date,
+      revenue: d.revenue,
+      orders: d.orders,
+      customers: d.customers,
+      avgOrder: d.orders > 0 ? d.revenue / d.orders : 0
+    }));
 
     return {
       revenue: {
         total: totalRevenue,
-        change: 0, // TODO: Calculate change from previous period
-        trend: "up",
+        change: revenueChange,
+        trend: revenueChange >= 0 ? "up" : "down",
         daily: revenueDaily,
         maxValue: maxRevenue
       },
       orders: {
         total: totalOrders,
-        change: 0, // TODO: Calculate change from previous period
-        trend: "up",
+        change: ordersChange,
+        trend: ordersChange >= 0 ? "up" : "down",
         daily: ordersDaily,
         maxValue: maxOrders
       },
       customers: {
         total: uniqueCustomers,
-        change: 0, // TODO: Calculate change from previous period
-        trend: "up",
+        change: customersChange,
+        trend: customersChange >= 0 ? "up" : "down",
         daily: customersDaily,
         maxValue: maxCustomers
       },
       averageOrder: {
         total: avgOrderValue,
-        change: 0, // TODO: Calculate change from previous period
-        trend: "up",
+        change: avgOrderChange,
+        trend: avgOrderChange >= 0 ? "up" : "down",
         daily: avgOrderDaily,
         maxValue: maxAvgOrder
       },
       topSellingItems,
-      customerInsights
+      customerInsights,
+      chartData
     };
   }, [analytics, orders, timeRange, selectedMonth, selectedYear, customStartDate, customEndDate]);
 
@@ -3446,16 +3511,13 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h2>
-          <p className="text-gray-600">Track your business performance and customer insights</p>
-        </div>
-        
-        <div className="flex space-x-2 items-center">
+      {/* Filters - Mobile Responsive */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <p className="text-sm text-gray-600">Track your business performance and customer insights</p>
+
+        <div className="flex flex-wrap gap-2 items-center">
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-36">
+            <SelectTrigger className="w-32 sm:w-36">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -3469,27 +3531,27 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
           </Select>
 
           {timeRange === "daterange" && (
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Input
                 type="date"
                 value={customStartDate}
                 onChange={(e) => setCustomStartDate(e.target.value)}
-                className="w-36"
+                className="w-32 sm:w-36"
               />
-              <span className="text-gray-500">to</span>
+              <span className="text-gray-500 text-sm">to</span>
               <Input
                 type="date"
                 value={customEndDate}
                 onChange={(e) => setCustomEndDate(e.target.value)}
-                className="w-36"
+                className="w-32 sm:w-36"
               />
             </div>
           )}
 
           {timeRange === "custom" && (
-            <>
+            <div className="flex flex-wrap gap-2">
               <Select value={selectedMonth.toString()} onValueChange={(val) => setSelectedMonth(parseInt(val))}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-28 sm:w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -3500,7 +3562,7 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
               </Select>
 
               <Select value={selectedYear.toString()} onValueChange={(val) => setSelectedYear(parseInt(val))}>
-                <SelectTrigger className="w-24">
+                <SelectTrigger className="w-20 sm:w-24">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -3509,7 +3571,7 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
                   ))}
                 </SelectContent>
               </Select>
-            </>
+            </div>
           )}
 
           <Button variant="outline" onClick={() => {
@@ -3632,65 +3694,33 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
 
       {/* Charts and Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Chart */}
+        {/* Revenue Chart - TradingView Style */}
         <Card>
-          <CardHeader>
-            <CardTitle>Revenue Trend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 flex items-end justify-between space-x-2">
-              {analyticsData.revenue.daily.map((value, index) => {
-                const height = analyticsData.revenue.maxValue > 0 ? (value / analyticsData.revenue.maxValue) * 100 : 0;
-                return (
-                  <div key={index} className="flex-1 bg-blue-100 rounded-t relative group" style={{ height: `${Math.max(height, 2)}%` }}>
-                    <div className="bg-blue-600 h-full rounded-t"></div>
-                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                      ${value.toFixed(0)}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex justify-between text-xs text-gray-500 mt-2">
-              <span>Mon</span>
-              <span>Tue</span>
-              <span>Wed</span>
-              <span>Thu</span>
-              <span>Fri</span>
-              <span>Sat</span>
-              <span>Sun</span>
-            </div>
+          <CardContent className="pt-6">
+            <AnalyticsChart
+              data={analyticsData.chartData?.map((d: any) => ({ time: d.time, value: d.revenue })) || []}
+              title="Revenue Trend"
+              color="#2563eb"
+              height={280}
+              type="area"
+              valuePrefix="$"
+              formatValue={(v) => `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            />
           </CardContent>
         </Card>
 
-        {/* Orders Chart */}
+        {/* Orders Chart - TradingView Style */}
         <Card>
-          <CardHeader>
-            <CardTitle>Orders Trend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 flex items-end justify-between space-x-2">
-              {analyticsData.orders.daily.map((value, index) => {
-                const height = analyticsData.orders.maxValue > 0 ? (value / analyticsData.orders.maxValue) * 100 : 0;
-                return (
-                  <div key={index} className="flex-1 bg-green-100 rounded-t relative group" style={{ height: `${Math.max(height, 2)}%` }}>
-                    <div className="bg-green-600 h-full rounded-t"></div>
-                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                      {value} orders
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex justify-between text-xs text-gray-500 mt-2">
-              <span>Mon</span>
-              <span>Tue</span>
-              <span>Wed</span>
-              <span>Thu</span>
-              <span>Fri</span>
-              <span>Sat</span>
-              <span>Sun</span>
-            </div>
+          <CardContent className="pt-6">
+            <AnalyticsChart
+              data={analyticsData.chartData?.map((d: any) => ({ time: d.time, value: d.orders })) || []}
+              title="Orders Trend"
+              color="#16a34a"
+              height={280}
+              type="area"
+              valueSuffix=" orders"
+              formatValue={(v) => `${Math.round(v)} orders`}
+            />
           </CardContent>
         </Card>
       </div>
@@ -5148,24 +5178,21 @@ const MenuEditor = ({ menuItems }: any) => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Menu Editor</h2>
-          <p className="text-gray-600">Manage your menu items, categories, and pricing</p>
-        </div>
-        <div className="flex space-x-2">
-          <Button variant="outline" onClick={() => setIsCategoryManagerOpen(true)}>
-            <Grid className="h-4 w-4 mr-2" />
-            Manage Categories
+      {/* Header - Mobile Responsive */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <p className="text-sm text-gray-600">Manage your menu items, categories, and pricing</p>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => setIsCategoryManagerOpen(true)}>
+            <Grid className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Manage </span>Categories
           </Button>
-          <Button variant="outline" onClick={() => setIsSizeManagerOpen(true)}>
-            <Package className="h-4 w-4 mr-2" />
-            Size Availability
+          <Button variant="outline" size="sm" onClick={() => setIsSizeManagerOpen(true)}>
+            <Package className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Size </span>Availability
           </Button>
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Menu Item
+          <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+            Add Item
           </Button>
         </div>
       </div>
@@ -6316,13 +6343,10 @@ const QRCodeManagement = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">QR Code Management</h2>
-          <p className="text-gray-600">Generate and manage QR codes for table ordering</p>
-        </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
+      {/* Header - Mobile Responsive */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <p className="text-sm text-gray-600">Generate and manage QR codes for table ordering</p>
+        <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Create QR Code
         </Button>
@@ -6572,15 +6596,10 @@ const SmartLinks = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Smart Links for Social & Google</h2>
-          <p className="text-gray-600">Create embeddable ordering links for your social media and business profiles</p>
-        </div>
-      </div>
+      <p className="text-sm text-gray-600">Create embeddable ordering links for your social media and business profiles</p>
 
       {/* Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -6767,12 +6786,9 @@ const OrderScheduling = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Order Scheduling ("Order for Later")</h2>
-          <p className="text-gray-600">Allow customers to choose fulfillment time for pickup or delivery</p>
-        </div>
-        <Button onClick={handleSaveSettings}>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <p className="text-sm text-gray-600">Allow customers to choose fulfillment time for pickup or delivery</p>
+        <Button size="sm" onClick={handleSaveSettings}>
           Save Settings
         </Button>
       </div>
@@ -7066,12 +7082,9 @@ const TableReservations = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Table Reservations & Pre-ordering</h2>
-          <p className="text-gray-600">Integrate booking with ordering features for complete restaurant management</p>
-        </div>
-        <Button onClick={handleSaveSettings}>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <p className="text-sm text-gray-600">Integrate booking with ordering features for complete restaurant management</p>
+        <Button size="sm" onClick={handleSaveSettings}>
           Save Settings
         </Button>
       </div>
@@ -7426,18 +7439,15 @@ const OutOfStockManagement = ({ menuItems }: any) => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Out of Stock Management</h2>
-          <p className="text-gray-600">Manage item availability and track out-of-stock items</p>
-        </div>
-        <div className="flex items-center space-x-2 text-sm text-gray-500">
+      {/* Header - Mobile Responsive */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <p className="text-sm text-gray-600">Manage item availability and track out-of-stock items</p>
+        <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
           <span className="flex items-center">
             <div className="w-3 h-3 bg-red-500 rounded-full mr-1"></div>
             {unavailableItems.length} Out of Stock
           </span>
-          <span className="flex items-center ml-4">
+          <span className="flex items-center">
             <div className="w-3 h-3 bg-green-500 rounded-full mr-1"></div>
             {availableItems.length} Available
           </span>
@@ -7996,13 +8006,10 @@ const PrinterManagement = ({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Printer Management</h2>
-          <p className="text-gray-600">Manage your Epson thermal printers for receipts and kitchen tickets</p>
-        </div>
-        <Button onClick={handleAddPrinter}>
+      {/* Header - Mobile Responsive */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <p className="text-sm text-gray-600">Manage your Epson thermal printers for receipts and kitchen tickets</p>
+        <Button size="sm" onClick={handleAddPrinter}>
           <Plus className="h-4 w-4 mr-2" />
           Add Printer
         </Button>
@@ -8613,13 +8620,10 @@ const SettingsPanel = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">System Settings</h2>
-          <p className="text-gray-600">Configure operational settings, notifications, and system preferences</p>
-        </div>
-        <Button onClick={handleSave}>
+      {/* Header - Mobile Responsive */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <p className="text-sm text-gray-600">Configure operational settings, notifications, and system preferences</p>
+        <Button size="sm" onClick={handleSave}>
           <Save className="h-4 w-4 mr-2" />
           Save Changes
         </Button>
@@ -12520,20 +12524,17 @@ const PromoCodesManagement = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Promo Code Management</h2>
-          <p className="text-gray-600">Create and manage promotional codes for customer discounts</p>
-        </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
+      {/* Header - Mobile Responsive */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <p className="text-sm text-gray-600">Create and manage promotional codes for customer discounts</p>
+        <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Create Promo Code
         </Button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -14480,13 +14481,10 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header - Mobile Responsive */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Email Marketing</h2>
-          <p className="text-gray-600 text-sm sm:text-base">Create and manage email campaigns for your customers</p>
-        </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)} className="w-full sm:w-auto">
+        <p className="text-sm text-gray-600">Create and manage email campaigns for your customers</p>
+        <Button size="sm" onClick={() => setIsCreateDialogOpen(true)} className="w-full sm:w-auto">
           <Mail className="h-4 w-4 mr-2" />
           Create Campaign
         </Button>
@@ -14766,11 +14764,14 @@ const EmailCampaignsTab = ({ users }: { users: any[] }) => {
 
 // SMS Marketing Tab
 const SMSMarketingTab = ({ users }: { users: any[] }) => {
+  const { toast } = useToast();
   const [isSending, setIsSending] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [viewingCampaign, setViewingCampaign] = useState(null);
+  const [viewingCampaign, setViewingCampaign] = useState<any>(null);
   const [isViewingCampaign, setIsViewingCampaign] = useState(false);
+  const [isCreatingCampaign, setIsCreatingCampaign] = useState(false);
+  const [campaigns, setCampaigns] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     subject: "",
@@ -14836,7 +14837,10 @@ const SMSMarketingTab = ({ users }: { users: any[] }) => {
           content: "",
           audienceType: "all",
           ctaText: "",
-          ctaUrl: ""
+          ctaUrl: "",
+          template: "default",
+          headerImage: "",
+          accentColor: "#d73a31"
         });
         setIsCreatingCampaign(false);
       } else {
