@@ -208,7 +208,27 @@ const Footer = () => {
             </ul>
           </div>
         </div>
-        
+
+        {/* Map Section - SEO for "pizza asheville" */}
+        <div className="mt-12 pt-8 border-t border-gray-800">
+          <div className="text-center mb-6">
+            <h3 className="text-xl font-bold text-[#f2c94c] mb-2">FIND US</h3>
+            <p className="text-gray-400 text-sm">Best Pizza in Asheville, NC</p>
+          </div>
+          <div className="rounded-xl overflow-hidden shadow-lg max-w-4xl mx-auto">
+            <iframe
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3246.4088692847584!2d-82.55393492357476!3d35.49529017265052!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x88598d7b7c8a67a3%3A0x3e25f24ba5f8d0!2sFavilla&#39;s%20New%20York%20Pizza!5e0!3m2!1sen!2sus!4v1703097600000!5m2!1sen!2sus"
+              width="100%"
+              height="250"
+              style={{ border: 0 }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              title="Favilla's NY Pizza Location - Best Pizza in Asheville"
+            />
+          </div>
+        </div>
+
         {/* Copyright */}
         <div className="border-t border-gray-800 mt-12 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center text-center md:text-left mb-4">
