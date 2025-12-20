@@ -3111,6 +3111,16 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
+  // Custom date range state
+  const [customStartDate, setCustomStartDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
+  const [customEndDate, setCustomEndDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
+
   const months = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
@@ -3164,6 +3174,13 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
       startDate = new Date(selectedYear, selectedMonth, 1);
       endDate = new Date(selectedYear, selectedMonth + 1, 0); // Last day of month
       daysToShow = endDate.getDate(); // Number of days in the month
+    } else if (timeRange === "daterange") {
+      // Custom date range selection
+      startDate = new Date(customStartDate + 'T00:00:00');
+      endDate = new Date(customEndDate + 'T23:59:59');
+      // Calculate days between dates
+      const timeDiff = endDate.getTime() - startDate.getTime();
+      daysToShow = Math.max(1, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1);
     } else {
       daysToShow = timeRange === "1d" ? 1 : timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : timeRange === "90d" ? 90 : 7;
       endDate = now;
@@ -3177,6 +3194,9 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
       let date: Date;
       if (timeRange === "custom") {
         date = new Date(selectedYear, selectedMonth, i + 1);
+      } else if (timeRange === "daterange") {
+        date = new Date(customStartDate + 'T00:00:00');
+        date.setDate(date.getDate() + i);
       } else {
         date = new Date(now);
         date.setDate(date.getDate() - (daysToShow - 1 - i));
@@ -3211,6 +3231,13 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
       filteredOrders = orders.filter((order: any) => {
         const orderDate = new Date(order.createdAt || order.created_at);
         return orderDate >= monthStart && orderDate <= monthEnd;
+      });
+    } else if (timeRange === "daterange") {
+      const rangeStart = new Date(customStartDate + 'T00:00:00');
+      const rangeEnd = new Date(customEndDate + 'T23:59:59');
+      filteredOrders = orders.filter((order: any) => {
+        const orderDate = new Date(order.createdAt || order.created_at);
+        return orderDate >= rangeStart && orderDate <= rangeEnd;
       });
     } else {
       const cutoffDate = new Date(now);
@@ -3352,7 +3379,7 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
       topSellingItems,
       customerInsights
     };
-  }, [analytics, orders, timeRange, selectedMonth, selectedYear]);
+  }, [analytics, orders, timeRange, selectedMonth, selectedYear, customStartDate, customEndDate]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
@@ -3428,7 +3455,7 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
         
         <div className="flex space-x-2 items-center">
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-36">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -3436,9 +3463,28 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
               <SelectItem value="7d">7 Days</SelectItem>
               <SelectItem value="30d">30 Days</SelectItem>
               <SelectItem value="90d">90 Days</SelectItem>
-              <SelectItem value="custom">Custom Month</SelectItem>
+              <SelectItem value="daterange">Date Range</SelectItem>
+              <SelectItem value="custom">By Month</SelectItem>
             </SelectContent>
           </Select>
+
+          {timeRange === "daterange" && (
+            <div className="flex items-center space-x-2">
+              <Input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="w-36"
+              />
+              <span className="text-gray-500">to</span>
+              <Input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="w-36"
+              />
+            </div>
+          )}
 
           {timeRange === "custom" && (
             <>
@@ -3468,6 +3514,7 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
 
           <Button variant="outline" onClick={() => {
             let filteredForExport;
+            let exportLabel;
             if (timeRange === "custom") {
               // Filter by selected month/year
               const monthStart = new Date(selectedYear, selectedMonth, 1);
@@ -3476,6 +3523,16 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
                 const orderDate = new Date(order.createdAt || order.created_at);
                 return orderDate >= monthStart && orderDate <= monthEnd;
               });
+              exportLabel = `${months[selectedMonth]} ${selectedYear}`;
+            } else if (timeRange === "daterange") {
+              // Filter by custom date range
+              const rangeStart = new Date(customStartDate + 'T00:00:00');
+              const rangeEnd = new Date(customEndDate + 'T23:59:59');
+              filteredForExport = orders.filter((order: any) => {
+                const orderDate = new Date(order.createdAt || order.created_at);
+                return orderDate >= rangeStart && orderDate <= rangeEnd;
+              });
+              exportLabel = `${customStartDate} to ${customEndDate}`;
             } else {
               const cutoffDate = new Date();
               cutoffDate.setDate(cutoffDate.getDate() - (timeRange === "1d" ? 1 : timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : timeRange === "90d" ? 90 : 7));
@@ -3483,9 +3540,9 @@ const AnalyticsDashboard = ({ analytics, orders }: any) => {
                 const orderDate = new Date(order.createdAt || order.created_at);
                 return orderDate >= cutoffDate;
               });
+              exportLabel = timeRange;
             }
             const exportOrders = filteredForExport.length > 0 ? filteredForExport : orders;
-            const exportLabel = timeRange === "custom" ? `${months[selectedMonth]} ${selectedYear}` : timeRange;
             handleExportAnalytics(exportOrders, exportLabel, analyticsData);
           }}>
             <Download className="h-4 w-4 mr-2" />
