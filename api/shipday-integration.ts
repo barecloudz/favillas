@@ -196,7 +196,8 @@ export async function createShipDayOrder(orderId: number): Promise<{ success: bo
     // Create Ship Day payload with all required fields
     const shipdayPayload: any = {
       // Order Items with choices as strings (NO PRICES in addOns)
-      orderItems: formattedItems,
+      // Note: ShipDay API uses "orderItem" (singular) not "orderItems"
+      orderItem: formattedItems,
 
       // Financial fields
       tip: tipAmount,  // Tip amount (singular per common usage)
