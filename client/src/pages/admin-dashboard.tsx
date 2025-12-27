@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Helmet } from "react-helmet";
+import { jsPDF } from "jspdf";
 import { DeliverySettings } from "@/components/admin/delivery-settings";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -78,6 +79,7 @@ import {
   Image,
   Layers,
   Utensils,
+  UtensilsCrossed,
   Grid,
   List,
   PieChart,
@@ -1172,7 +1174,7 @@ const AdminDashboard = () => {
       icon: Zap,
       items: [
         { name: "API Management", icon: Code, href: "api" },
-        { name: "POS Integration", icon: Database, href: "pos-integration" },
+        { name: "Genius POS", icon: Database, href: "pos-integration" },
         { name: "Third-party Apps", icon: Layers, href: "integrations" },
         { name: "Webhooks", icon: Zap, href: "webhooks" },
       ]
@@ -2922,67 +2924,325 @@ const OrdersManagement = ({ orders, cateringData, onUpdateStatus }: any) => {
         </CardContent>
       </Card>
 
-      {/* Order Detail Dialog */}
+      {/* Order Detail Dialog - Receipt Style */}
       <Dialog open={isOrderDetailOpen} onOpenChange={setIsOrderDetailOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Order #{selectedOrder?.id} Details</DialogTitle>
-          </DialogHeader>
-          
+        <DialogContent className="max-w-md p-0 overflow-hidden">
           {selectedOrder && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-medium">Customer Information</h4>
-                  <p className="text-sm text-gray-600">{selectedOrder.customerName}</p>
-                  <p className="text-sm text-gray-600">{selectedOrder.customerEmail}</p>
-                  <p className="text-sm text-gray-600">{selectedOrder.customerPhone}</p>
+            <>
+              {/* Receipt Paper Style */}
+              <div id="receipt-content" className="bg-white p-6 font-mono text-sm">
+                {/* Header */}
+                <div className="text-center border-b-2 border-dashed border-gray-300 pb-4 mb-4">
+                  <h1 className="text-xl font-bold tracking-wide">FAVILLA'S NY PIZZA</h1>
+                  <p className="text-xs text-gray-600 mt-1">5 Regent Park Blvd</p>
+                  <p className="text-xs text-gray-600">Asheville, NC 28806</p>
+                  <p className="text-xs text-gray-600">(828) 225-2885</p>
                 </div>
-                <div>
-                  <h4 className="font-medium">Order Information</h4>
-                  <p className="text-sm text-gray-600">Status: {selectedOrder.status}</p>
-                  <p className="text-sm text-gray-600">Created: {new Date(selectedOrder.createdAt).toLocaleString()}</p>
-                  <p className="text-sm text-gray-600">Total: {formatCurrency(selectedOrder.total)}</p>
+
+                {/* Order Info */}
+                <div className="border-b border-dashed border-gray-300 pb-3 mb-3">
+                  <div className="flex justify-between">
+                    <span className="font-bold">Order #:</span>
+                    <span>{selectedOrder.id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Date:</span>
+                    <span>{new Date(selectedOrder.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Time:</span>
+                    <span>{new Date(selectedOrder.createdAt).toLocaleTimeString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Type:</span>
+                    <span className="uppercase">{selectedOrder.orderType || 'Pickup'}</span>
+                  </div>
                 </div>
-              </div>
-              
-              <div>
-                <h4 className="font-medium mb-2">Order Items</h4>
-                <div className="space-y-2">
-                  {selectedOrder.items?.map((item: any, index: number) => (
-                    <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                      <div>
-                        <p className="font-medium">{item?.name || 'Unknown Item'}</p>
-                        {item.notes && <p className="text-sm text-gray-600">{item.notes}</p>}
+
+                {/* Customer Info */}
+                <div className="border-b border-dashed border-gray-300 pb-3 mb-3">
+                  <p className="font-bold mb-1">Customer:</p>
+                  <p>{selectedOrder.customerName || 'Guest'}</p>
+                  {selectedOrder.customerPhone && <p>{selectedOrder.customerPhone}</p>}
+                  {selectedOrder.deliveryAddress && (
+                    <p className="text-xs mt-1">{selectedOrder.deliveryAddress}</p>
+                  )}
+                </div>
+
+                {/* Items */}
+                <div className="border-b border-dashed border-gray-300 pb-3 mb-3">
+                  <p className="font-bold mb-2 text-center">ORDER ITEMS</p>
+                  <div className="space-y-2">
+                    {selectedOrder.items?.map((item: any, index: number) => (
+                      <div key={index}>
+                        <div className="flex justify-between">
+                          <span className="flex-1">
+                            {item.quantity}x {item?.name || 'Item'}
+                          </span>
+                          <span className="ml-2">{formatCurrency(parseFloat(item.price || 0) * (item.quantity || 1))}</span>
+                        </div>
+                        {item.options && (
+                          <div className="text-xs text-gray-500 ml-4">
+                            {typeof item.options === 'string'
+                              ? JSON.parse(item.options).map((opt: any, i: number) => (
+                                  <div key={i}>+ {opt.itemName || opt.name}</div>
+                                ))
+                              : Array.isArray(item.options) && item.options.map((opt: any, i: number) => (
+                                  <div key={i}>+ {opt.itemName || opt.name}</div>
+                                ))
+                            }
+                          </div>
+                        )}
+                        {item.notes && (
+                          <p className="text-xs text-gray-500 ml-4 italic">Note: {item.notes}</p>
+                        )}
                       </div>
-                      <div className="text-right">
-                        <p className="font-medium">{formatCurrency(parseFloat(item.price || 0))}</p>
-                        <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
-                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Totals */}
+                <div className="space-y-1 mb-4">
+                  <div className="flex justify-between">
+                    <span>Subtotal:</span>
+                    <span>{formatCurrency(parseFloat(selectedOrder.subtotal || selectedOrder.total || 0))}</span>
+                  </div>
+                  {selectedOrder.tax && parseFloat(selectedOrder.tax) > 0 && (
+                    <div className="flex justify-between">
+                      <span>Tax:</span>
+                      <span>{formatCurrency(parseFloat(selectedOrder.tax))}</span>
                     </div>
-                  ))}
+                  )}
+                  {selectedOrder.deliveryFee && parseFloat(selectedOrder.deliveryFee) > 0 && (
+                    <div className="flex justify-between">
+                      <span>Delivery Fee:</span>
+                      <span>{formatCurrency(parseFloat(selectedOrder.deliveryFee))}</span>
+                    </div>
+                  )}
+                  {selectedOrder.tip && parseFloat(selectedOrder.tip) > 0 && (
+                    <div className="flex justify-between">
+                      <span>Tip:</span>
+                      <span>{formatCurrency(parseFloat(selectedOrder.tip))}</span>
+                    </div>
+                  )}
+                  {selectedOrder.discount && parseFloat(selectedOrder.discount) > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Discount:</span>
+                      <span>-{formatCurrency(parseFloat(selectedOrder.discount))}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold text-lg border-t border-gray-300 pt-2 mt-2">
+                    <span>TOTAL:</span>
+                    <span>{formatCurrency(parseFloat(selectedOrder.total || 0))}</span>
+                  </div>
+                </div>
+
+                {/* Payment Info */}
+                <div className="border-t border-dashed border-gray-300 pt-3 mb-4">
+                  <div className="flex justify-between text-xs">
+                    <span>Payment:</span>
+                    <span className="uppercase">{selectedOrder.paymentMethod || 'Card'}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span>Status:</span>
+                    <span className="uppercase">{selectedOrder.paymentStatus || selectedOrder.status}</span>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="text-center border-t-2 border-dashed border-gray-300 pt-4">
+                  <p className="font-bold">Thank You!</p>
+                  <p className="text-xs text-gray-500 mt-1">Family-owned since 1969</p>
+                  <p className="text-xs text-gray-500">www.favillaspizzeria.com</p>
                 </div>
               </div>
-              
-              {selectedOrder.deliveryAddress && (
-                <div>
-                  <h4 className="font-medium">Delivery Address</h4>
-                  <p className="text-sm text-gray-600">{selectedOrder.deliveryAddress}</p>
-                </div>
-              )}
-              
-              <div className="flex justify-end space-x-2">
+
+              {/* Action Buttons */}
+              <div className="flex justify-between p-4 bg-gray-50 border-t">
                 <Button variant="outline" onClick={() => setIsOrderDetailOpen(false)}>
                   Close
                 </Button>
-                <Button onClick={() => {
-                  // Handle print receipt
-                  setIsOrderDetailOpen(false);
-                }}>
-                  Print Receipt
+                <Button
+                  onClick={() => {
+                    // Generate PDF
+                    const doc = new jsPDF({
+                      orientation: 'portrait',
+                      unit: 'mm',
+                      format: [80, 200] // Receipt paper width
+                    });
+
+                    const order = selectedOrder;
+                    let y = 10;
+                    const lineHeight = 5;
+                    const leftMargin = 5;
+                    const rightMargin = 75;
+
+                    // Header
+                    doc.setFontSize(12);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text("FAVILLA'S NY PIZZA", 40, y, { align: 'center' });
+                    y += lineHeight;
+
+                    doc.setFontSize(8);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text("5 Regent Park Blvd", 40, y, { align: 'center' });
+                    y += lineHeight - 1;
+                    doc.text("Asheville, NC 28806", 40, y, { align: 'center' });
+                    y += lineHeight - 1;
+                    doc.text("(828) 225-2885", 40, y, { align: 'center' });
+                    y += lineHeight + 2;
+
+                    // Dashed line
+                    doc.setLineDashPattern([1, 1], 0);
+                    doc.line(leftMargin, y, rightMargin, y);
+                    y += lineHeight;
+
+                    // Order info
+                    doc.setFontSize(9);
+                    doc.text(`Order #: ${order.id}`, leftMargin, y);
+                    y += lineHeight;
+                    doc.text(`Date: ${new Date(order.createdAt).toLocaleDateString()}`, leftMargin, y);
+                    y += lineHeight;
+                    doc.text(`Time: ${new Date(order.createdAt).toLocaleTimeString()}`, leftMargin, y);
+                    y += lineHeight;
+                    doc.text(`Type: ${(order.orderType || 'Pickup').toUpperCase()}`, leftMargin, y);
+                    y += lineHeight + 2;
+
+                    // Dashed line
+                    doc.line(leftMargin, y, rightMargin, y);
+                    y += lineHeight;
+
+                    // Customer
+                    doc.setFont('helvetica', 'bold');
+                    doc.text("Customer:", leftMargin, y);
+                    y += lineHeight;
+                    doc.setFont('helvetica', 'normal');
+                    doc.text(order.customerName || 'Guest', leftMargin, y);
+                    y += lineHeight;
+                    if (order.customerPhone) {
+                      doc.text(order.customerPhone, leftMargin, y);
+                      y += lineHeight;
+                    }
+                    if (order.deliveryAddress) {
+                      const addressLines = doc.splitTextToSize(order.deliveryAddress, 70);
+                      addressLines.forEach((line: string) => {
+                        doc.text(line, leftMargin, y);
+                        y += lineHeight - 1;
+                      });
+                    }
+                    y += 2;
+
+                    // Dashed line
+                    doc.line(leftMargin, y, rightMargin, y);
+                    y += lineHeight;
+
+                    // Items header
+                    doc.setFont('helvetica', 'bold');
+                    doc.text("ORDER ITEMS", 40, y, { align: 'center' });
+                    y += lineHeight + 2;
+                    doc.setFont('helvetica', 'normal');
+
+                    // Items
+                    order.items?.forEach((item: any) => {
+                      const itemTotal = parseFloat(item.price || 0) * (item.quantity || 1);
+                      const itemText = `${item.quantity}x ${item?.name || 'Item'}`;
+                      doc.text(itemText, leftMargin, y);
+                      doc.text(formatCurrency(itemTotal), rightMargin, y, { align: 'right' });
+                      y += lineHeight;
+
+                      // Options
+                      if (item.options) {
+                        try {
+                          const options = typeof item.options === 'string' ? JSON.parse(item.options) : item.options;
+                          if (Array.isArray(options)) {
+                            options.forEach((opt: any) => {
+                              doc.setFontSize(7);
+                              doc.text(`  + ${opt.itemName || opt.name || opt}`, leftMargin, y);
+                              y += lineHeight - 1;
+                              doc.setFontSize(9);
+                            });
+                          }
+                        } catch (e) {}
+                      }
+                    });
+                    y += 2;
+
+                    // Dashed line
+                    doc.line(leftMargin, y, rightMargin, y);
+                    y += lineHeight;
+
+                    // Totals
+                    doc.text("Subtotal:", leftMargin, y);
+                    doc.text(formatCurrency(parseFloat(order.subtotal || order.total || 0)), rightMargin, y, { align: 'right' });
+                    y += lineHeight;
+
+                    if (order.tax && parseFloat(order.tax) > 0) {
+                      doc.text("Tax:", leftMargin, y);
+                      doc.text(formatCurrency(parseFloat(order.tax)), rightMargin, y, { align: 'right' });
+                      y += lineHeight;
+                    }
+
+                    if (order.deliveryFee && parseFloat(order.deliveryFee) > 0) {
+                      doc.text("Delivery Fee:", leftMargin, y);
+                      doc.text(formatCurrency(parseFloat(order.deliveryFee)), rightMargin, y, { align: 'right' });
+                      y += lineHeight;
+                    }
+
+                    if (order.tip && parseFloat(order.tip) > 0) {
+                      doc.text("Tip:", leftMargin, y);
+                      doc.text(formatCurrency(parseFloat(order.tip)), rightMargin, y, { align: 'right' });
+                      y += lineHeight;
+                    }
+
+                    if (order.discount && parseFloat(order.discount) > 0) {
+                      doc.text("Discount:", leftMargin, y);
+                      doc.text(`-${formatCurrency(parseFloat(order.discount))}`, rightMargin, y, { align: 'right' });
+                      y += lineHeight;
+                    }
+
+                    // Total
+                    y += 2;
+                    doc.line(leftMargin, y, rightMargin, y);
+                    y += lineHeight;
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text("TOTAL:", leftMargin, y);
+                    doc.text(formatCurrency(parseFloat(order.total || 0)), rightMargin, y, { align: 'right' });
+                    y += lineHeight + 2;
+
+                    // Payment info
+                    doc.setFontSize(8);
+                    doc.setFont('helvetica', 'normal');
+                    doc.line(leftMargin, y, rightMargin, y);
+                    y += lineHeight;
+                    doc.text(`Payment: ${(order.paymentMethod || 'Card').toUpperCase()}`, leftMargin, y);
+                    y += lineHeight - 1;
+                    doc.text(`Status: ${(order.paymentStatus || order.status || '').toUpperCase()}`, leftMargin, y);
+                    y += lineHeight + 2;
+
+                    // Footer
+                    doc.line(leftMargin, y, rightMargin, y);
+                    y += lineHeight;
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text("Thank You!", 40, y, { align: 'center' });
+                    y += lineHeight;
+                    doc.setFontSize(7);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text("Family-owned since 1969", 40, y, { align: 'center' });
+                    y += lineHeight - 1;
+                    doc.text("www.favillaspizzeria.com", 40, y, { align: 'center' });
+
+                    // Save PDF
+                    doc.save(`Favillas-Order-${order.id}.pdf`);
+                  }}
+                  className="bg-[#d73a31] hover:bg-[#b52d26]"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download PDF
                 </Button>
               </div>
-            </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
@@ -15982,168 +16242,176 @@ const APIManagementTab = () => {
 
 // POS Integration Tab
 const POSIntegrationTab = () => {
-  const [integrations, setIntegrations] = useState([
-    {
-      id: 1,
-      name: "Square POS",
-      status: "connected",
-      lastSync: "2024-01-15T10:30:00Z",
-      ordersSynced: 150,
-      menuItemsSynced: 45
-    },
-    {
-      id: 2,
-      name: "Toast POS",
-      status: "disconnected",
-      lastSync: null,
-      ordersSynced: 0,
-      menuItemsSynced: 0
-    }
-  ]);
-
-  const availablePOS = [
-    { name: "Square", logo: "🟫", description: "Popular cloud-based POS system" },
-    { name: "Toast", logo: "🍞", description: "Restaurant-focused POS solution" },
-    { name: "Clover", logo: "🍀", description: "All-in-one business management" },
-    { name: "Shopify POS", logo: "🛍️", description: "E-commerce integrated POS" }
-  ];
+  const [geniusStatus, setGeniusStatus] = useState<"disconnected" | "connecting" | "connected">("disconnected");
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">POS Integration</h3>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Integration
-        </Button>
       </div>
 
-      {/* Integration Status */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">1</div>
-            <div className="text-sm text-gray-500">Connected Systems</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">150</div>
-            <div className="text-sm text-gray-500">Orders Synced Today</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">98.5%</div>
-            <div className="text-sm text-gray-500">Sync Success Rate</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Connected Integrations */}
+      {/* Genius POS Integration */}
       <Card>
         <CardHeader>
-          <CardTitle>Connected POS Systems</CardTitle>
+          <div className="flex items-center space-x-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center">
+              <span className="text-white font-bold text-xl">G</span>
+            </div>
+            <div>
+              <CardTitle className="text-xl">Genius POS</CardTitle>
+              <CardDescription>by Global Payments</CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {integrations.map((integration) => (
-              <div key={integration.id} className="border rounded-lg p-4">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-3">
-                      <h4 className="font-medium">{integration.name}</h4>
-                      <Badge variant={integration.status === "connected" ? "default" : "secondary"}>
-                        {integration.status}
-                      </Badge>
-                    </div>
-                    {integration.status === "connected" && (
-                      <div className="text-sm text-gray-500">
-                        Last sync: {new Date(integration.lastSync!).toLocaleString()} • 
-                        {integration.ordersSynced} orders • {integration.menuItemsSynced} menu items
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex space-x-2">
-                    {integration.status === "connected" ? (
-                      <>
-                        <Button variant="outline" size="sm">Sync Now</Button>
-                        <Button variant="outline" size="sm">Configure</Button>
-                        <Button variant="outline" size="sm">Disconnect</Button>
-                      </>
-                    ) : (
-                      <Button size="sm">Connect</Button>
-                    )}
-                  </div>
+        <CardContent className="space-y-6">
+          {/* Connection Status */}
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <div className={`w-3 h-3 rounded-full ${geniusStatus === "connected" ? "bg-green-500" : geniusStatus === "connecting" ? "bg-yellow-500 animate-pulse" : "bg-gray-400"}`} />
+              <span className="font-medium">
+                {geniusStatus === "connected" ? "Connected" : geniusStatus === "connecting" ? "Connecting..." : "Not Connected"}
+              </span>
+            </div>
+            {geniusStatus === "connected" ? (
+              <Button variant="outline" size="sm" onClick={() => setGeniusStatus("disconnected")}>
+                Disconnect
+              </Button>
+            ) : (
+              <Button size="sm" onClick={() => setGeniusStatus("connecting")} disabled={geniusStatus === "connecting"}>
+                {geniusStatus === "connecting" ? "Connecting..." : "Connect"}
+              </Button>
+            )}
+          </div>
+
+          {/* Features Overview */}
+          <div>
+            <h4 className="font-medium mb-3">Available Features</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                <RefreshCw className="h-5 w-5 text-blue-600" />
+                <div>
+                  <p className="font-medium text-sm">Loyalty Points Sync</p>
+                  <p className="text-xs text-gray-500">Sync points between POS and app</p>
                 </div>
               </div>
-            ))}
+              <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                <Users className="h-5 w-5 text-blue-600" />
+                <div>
+                  <p className="font-medium text-sm">Customer Profile Sync</p>
+                  <p className="text-xs text-gray-500">Single customer view across systems</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                <ShoppingCart className="h-5 w-5 text-blue-600" />
+                <div>
+                  <p className="font-medium text-sm">Online Order Integration</p>
+                  <p className="text-xs text-gray-500">Send orders directly to kitchen</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                <UtensilsCrossed className="h-5 w-5 text-blue-600" />
+                <div>
+                  <p className="font-medium text-sm">Menu Synchronization</p>
+                  <p className="text-xs text-gray-500">Keep menu items and prices in sync</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                <Gift className="h-5 w-5 text-blue-600" />
+                <div>
+                  <p className="font-medium text-sm">Gift Card Integration</p>
+                  <p className="text-xs text-gray-500">Issue and redeem gift cards</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                <BarChart3 className="h-5 w-5 text-blue-600" />
+                <div>
+                  <p className="font-medium text-sm">Unified Reporting</p>
+                  <p className="text-xs text-gray-500">Combined analytics dashboard</p>
+                </div>
+              </div>
+            </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Available POS Systems */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Available POS Systems</CardTitle>
-          <CardDescription>Connect with popular POS systems</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {availablePOS.map((pos) => (
-              <div key={pos.name} className="border rounded-lg p-4 flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="text-2xl">{pos.logo}</div>
+          {/* Setup Instructions */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 className="font-medium text-blue-900 mb-2">Setup Instructions</h4>
+            <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+              <li>Contact Global Payments to get your API credentials</li>
+              <li>Enter your Merchant ID and API Key in the configuration below</li>
+              <li>Click "Connect" to establish the integration</li>
+              <li>Configure sync settings based on your needs</li>
+            </ol>
+          </div>
+
+          {/* Configuration (shown when disconnected) */}
+          {geniusStatus !== "connected" && (
+            <div className="space-y-4">
+              <h4 className="font-medium">Configuration</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="merchant-id">Merchant ID</Label>
+                  <Input id="merchant-id" placeholder="Enter your Merchant ID" className="mt-1" />
+                </div>
+                <div>
+                  <Label htmlFor="api-key">API Key</Label>
+                  <Input id="api-key" type="password" placeholder="Enter your API Key" className="mt-1" />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="location-id">Location ID (optional)</Label>
+                <Input id="location-id" placeholder="Enter location ID for multi-location setup" className="mt-1" />
+              </div>
+            </div>
+          )}
+
+          {/* Sync Settings (shown when connected) */}
+          {geniusStatus === "connected" && (
+            <div className="space-y-4">
+              <h4 className="font-medium">Sync Settings</h4>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="font-medium">{pos.name}</h4>
-                    <p className="text-sm text-gray-500">{pos.description}</p>
+                    <Label htmlFor="sync-loyalty">Sync Loyalty Points</Label>
+                    <p className="text-xs text-gray-500">Sync points when customers earn/redeem at POS</p>
                   </div>
+                  <Switch id="sync-loyalty" defaultChecked />
                 </div>
-                <Button variant="outline" size="sm">
-                  Connect
-                </Button>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="sync-customers">Sync Customer Profiles</Label>
+                    <p className="text-xs text-gray-500">Keep customer data in sync</p>
+                  </div>
+                  <Switch id="sync-customers" defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="sync-orders-pos">Send Online Orders to POS</Label>
+                    <p className="text-xs text-gray-500">Send app orders directly to kitchen display</p>
+                  </div>
+                  <Switch id="sync-orders-pos" defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="sync-menu-pos">Sync Menu from POS</Label>
+                    <p className="text-xs text-gray-500">Pull menu updates from Genius POS</p>
+                  </div>
+                  <Switch id="sync-menu-pos" />
+                </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+          )}
 
-      {/* Sync Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Sync Settings</CardTitle>
-          <CardDescription>Configure how data syncs between systems</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="auto-sync">Automatic Sync</Label>
-                <p className="text-sm text-gray-500">Sync data automatically every 5 minutes</p>
-              </div>
-              <Switch id="auto-sync" defaultChecked />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="sync-orders">Sync Orders</Label>
-                <p className="text-sm text-gray-500">Sync new orders to POS system</p>
-              </div>
-              <Switch id="sync-orders" defaultChecked />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="sync-menu">Sync Menu Items</Label>
-                <p className="text-sm text-gray-500">Keep menu items in sync</p>
-              </div>
-              <Switch id="sync-menu" defaultChecked />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="sync-inventory">Sync Inventory</Label>
-                <p className="text-sm text-gray-500">Update inventory levels</p>
-              </div>
-              <Switch id="sync-inventory" />
-            </div>
+          {/* Learn More */}
+          <div className="pt-4 border-t">
+            <a
+              href="https://developer.globalpayments.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-600 hover:underline flex items-center"
+            >
+              Learn more about Genius POS integration
+              <ExternalLink className="h-3 w-3 ml-1" />
+            </a>
           </div>
         </CardContent>
       </Card>

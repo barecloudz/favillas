@@ -83,6 +83,7 @@
     "iconv-lite": "^0.7.0",
     "input-otp": "^1.4.2",
     "jsonwebtoken": "^9.0.2",
+    "jspdf": "^3.0.4",
     "lightweight-charts": "^5.1.0",
     "lottie-react": "^2.4.0",
     "lucide-react": "^0.453.0",
