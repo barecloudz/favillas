@@ -3030,18 +3030,30 @@ const OrdersManagement = ({ orders, cateringData, onUpdateStatus }: any) => {
                       <span>{formatCurrency(parseFloat(selectedOrder.tax))}</span>
                     </div>
                   )}
-                  {selectedOrder.deliveryFee && parseFloat(selectedOrder.deliveryFee) > 0 && (
-                    <div className="flex justify-between">
-                      <span>Delivery Fee:</span>
-                      <span>{formatCurrency(parseFloat(selectedOrder.deliveryFee))}</span>
-                    </div>
-                  )}
-                  {selectedOrder.serviceFee && parseFloat(selectedOrder.serviceFee) > 0 && (
-                    <div className="flex justify-between">
-                      <span>Service Fee:</span>
-                      <span>{formatCurrency(parseFloat(selectedOrder.serviceFee))}</span>
-                    </div>
-                  )}
+                  {(() => {
+                    const deliveryFeeVal = selectedOrder.deliveryFee || selectedOrder.delivery_fee;
+                    if (deliveryFeeVal && parseFloat(deliveryFeeVal) > 0) {
+                      return (
+                        <div className="flex justify-between">
+                          <span>Delivery Fee:</span>
+                          <span>{formatCurrency(parseFloat(deliveryFeeVal))}</span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                  {(() => {
+                    const serviceFeeVal = selectedOrder.serviceFee || selectedOrder.service_fee;
+                    if (serviceFeeVal && parseFloat(serviceFeeVal) > 0) {
+                      return (
+                        <div className="flex justify-between">
+                          <span>Service Fee:</span>
+                          <span>{formatCurrency(parseFloat(serviceFeeVal))}</span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                   {selectedOrder.tip && parseFloat(selectedOrder.tip) > 0 && (
                     <div className="flex justify-between">
                       <span>Tip:</span>
@@ -3050,8 +3062,9 @@ const OrdersManagement = ({ orders, cateringData, onUpdateStatus }: any) => {
                   )}
                   {(() => {
                     try {
-                      const addressData = selectedOrder.addressData ?
-                        (typeof selectedOrder.addressData === 'string' ? JSON.parse(selectedOrder.addressData) : selectedOrder.addressData) : null;
+                      const addrData = selectedOrder.addressData || selectedOrder.address_data;
+                      const addressData = addrData ?
+                        (typeof addrData === 'string' ? JSON.parse(addrData) : addrData) : null;
                       const cardFee = addressData?.orderBreakdown?.cardProcessingFee;
                       if (cardFee && parseFloat(cardFee) > 0) {
                         return (
@@ -3230,15 +3243,19 @@ const OrdersManagement = ({ orders, cateringData, onUpdateStatus }: any) => {
                       y += lineHeight;
                     }
 
-                    if (order.deliveryFee && parseFloat(order.deliveryFee) > 0) {
+                    // Delivery fee - check both camelCase and snake_case
+                    const deliveryFeeVal = order.deliveryFee || order.delivery_fee;
+                    if (deliveryFeeVal && parseFloat(deliveryFeeVal) > 0) {
                       doc.text("Delivery Fee:", leftMargin, y);
-                      doc.text(formatCurrency(parseFloat(order.deliveryFee)), rightMargin, y, { align: 'right' });
+                      doc.text(formatCurrency(parseFloat(deliveryFeeVal)), rightMargin, y, { align: 'right' });
                       y += lineHeight;
                     }
 
-                    if (order.serviceFee && parseFloat(order.serviceFee) > 0) {
+                    // Service fee - check both camelCase and snake_case
+                    const serviceFeeVal = order.serviceFee || order.service_fee;
+                    if (serviceFeeVal && parseFloat(serviceFeeVal) > 0) {
                       doc.text("Service Fee:", leftMargin, y);
-                      doc.text(formatCurrency(parseFloat(order.serviceFee)), rightMargin, y, { align: 'right' });
+                      doc.text(formatCurrency(parseFloat(serviceFeeVal)), rightMargin, y, { align: 'right' });
                       y += lineHeight;
                     }
 
@@ -3248,10 +3265,11 @@ const OrdersManagement = ({ orders, cateringData, onUpdateStatus }: any) => {
                       y += lineHeight;
                     }
 
-                    // Card processing fee from address_data
+                    // Card processing fee from address_data - check both camelCase and snake_case
                     try {
-                      const addressData = order.addressData ?
-                        (typeof order.addressData === 'string' ? JSON.parse(order.addressData) : order.addressData) : null;
+                      const addrData = order.addressData || order.address_data;
+                      const addressData = addrData ?
+                        (typeof addrData === 'string' ? JSON.parse(addrData) : addrData) : null;
                       const cardFee = addressData?.orderBreakdown?.cardProcessingFee;
                       if (cardFee && parseFloat(cardFee) > 0) {
                         doc.text("Card Processing Fee:", leftMargin, y);
