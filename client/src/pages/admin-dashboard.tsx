@@ -87,6 +87,8 @@ import {
   Home,
   Menu,
   ShoppingBag,
+  Car,
+  Truck,
   User,
   LogOut,
   Copy,
@@ -2802,7 +2804,16 @@ const OrdersManagement = ({ orders, cateringData, onUpdateStatus }: any) => {
               <tbody>
                 {filteredOrders.map((order: any) => (
                   <tr key={order.id} className="border-b hover:bg-gray-50">
-                    <td className="py-3 px-4 font-medium">#{order.id}</td>
+                    <td className="py-3 px-4 font-medium">
+                      <div className="flex items-center gap-2">
+                        {order.orderType === 'delivery' ? (
+                          <Truck className="h-4 w-4 text-blue-600" title="Delivery" />
+                        ) : (
+                          <ShoppingBag className="h-4 w-4 text-green-600" title="Pickup" />
+                        )}
+                        #{order.id}
+                      </div>
+                    </td>
                     <td className="py-3 px-4">
                       <div>
                         <p className="font-medium">{order.customerName || "Guest"}</p>
@@ -2953,9 +2964,15 @@ const OrdersManagement = ({ orders, cateringData, onUpdateStatus }: any) => {
                     <span>Time:</span>
                     <span>{new Date(selectedOrder.createdAt).toLocaleTimeString()}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span>Type:</span>
-                    <span className="uppercase">{selectedOrder.orderType || 'Pickup'}</span>
+                    <span className="uppercase flex items-center gap-1">
+                      {selectedOrder.orderType === 'delivery' ? (
+                        <><Truck className="h-4 w-4" /> DELIVERY</>
+                      ) : (
+                        <><ShoppingBag className="h-4 w-4" /> PICKUP</>
+                      )}
+                    </span>
                   </div>
                 </div>
 
@@ -3031,6 +3048,22 @@ const OrdersManagement = ({ orders, cateringData, onUpdateStatus }: any) => {
                       <span>{formatCurrency(parseFloat(selectedOrder.tip))}</span>
                     </div>
                   )}
+                  {(() => {
+                    try {
+                      const addressData = selectedOrder.addressData ?
+                        (typeof selectedOrder.addressData === 'string' ? JSON.parse(selectedOrder.addressData) : selectedOrder.addressData) : null;
+                      const cardFee = addressData?.orderBreakdown?.cardProcessingFee;
+                      if (cardFee && parseFloat(cardFee) > 0) {
+                        return (
+                          <div className="flex justify-between">
+                            <span>Card Processing Fee:</span>
+                            <span>{formatCurrency(parseFloat(cardFee))}</span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    } catch { return null; }
+                  })()}
                   {selectedOrder.discount && parseFloat(selectedOrder.discount) > 0 && (
                     <div className="flex justify-between text-green-600">
                       <span>Discount:</span>
@@ -3111,7 +3144,10 @@ const OrdersManagement = ({ orders, cateringData, onUpdateStatus }: any) => {
                     y += lineHeight;
                     doc.text(`Time: ${new Date(order.createdAt).toLocaleTimeString()}`, leftMargin, y);
                     y += lineHeight;
-                    doc.text(`Type: ${(order.orderType || 'Pickup').toUpperCase()}`, leftMargin, y);
+                    const orderTypeLabel = order.orderType === 'delivery' ? '*** DELIVERY ***' : '*** PICKUP ***';
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(orderTypeLabel, 40, y, { align: 'center' });
+                    doc.setFont('helvetica', 'normal');
                     y += lineHeight + 2;
 
                     // Dashed line
@@ -3211,6 +3247,18 @@ const OrdersManagement = ({ orders, cateringData, onUpdateStatus }: any) => {
                       doc.text(formatCurrency(parseFloat(order.tip)), rightMargin, y, { align: 'right' });
                       y += lineHeight;
                     }
+
+                    // Card processing fee from address_data
+                    try {
+                      const addressData = order.addressData ?
+                        (typeof order.addressData === 'string' ? JSON.parse(order.addressData) : order.addressData) : null;
+                      const cardFee = addressData?.orderBreakdown?.cardProcessingFee;
+                      if (cardFee && parseFloat(cardFee) > 0) {
+                        doc.text("Card Processing Fee:", leftMargin, y);
+                        doc.text(formatCurrency(parseFloat(cardFee)), rightMargin, y, { align: 'right' });
+                        y += lineHeight;
+                      }
+                    } catch (e) {}
 
                     if (order.discount && parseFloat(order.discount) > 0) {
                       doc.text("Discount:", leftMargin, y);
