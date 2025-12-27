@@ -3156,14 +3156,20 @@ const OrdersManagement = ({ orders, cateringData, onUpdateStatus }: any) => {
                       doc.text(formatCurrency(itemTotal), rightMargin, y, { align: 'right' });
                       y += lineHeight;
 
-                      // Options
+                      // Options with prices
                       if (item.options) {
                         try {
                           const options = typeof item.options === 'string' ? JSON.parse(item.options) : item.options;
                           if (Array.isArray(options)) {
                             options.forEach((opt: any) => {
                               doc.setFontSize(7);
-                              doc.text(`  + ${opt.itemName || opt.name || opt}`, leftMargin, y);
+                              const optName = opt.itemName || opt.name || opt;
+                              const optPrice = opt.price ? parseFloat(opt.price) : 0;
+                              const optGroup = opt.groupName ? `${opt.groupName}: ` : '';
+                              doc.text(`  + ${optGroup}${optName}`, leftMargin, y);
+                              if (optPrice > 0) {
+                                doc.text(`+${formatCurrency(optPrice)}`, rightMargin, y, { align: 'right' });
+                              }
                               y += lineHeight - 1;
                               doc.setFontSize(9);
                             });
