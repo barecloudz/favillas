@@ -2926,11 +2926,11 @@ const OrdersManagement = ({ orders, cateringData, onUpdateStatus }: any) => {
 
       {/* Order Detail Dialog - Receipt Style */}
       <Dialog open={isOrderDetailOpen} onOpenChange={setIsOrderDetailOpen}>
-        <DialogContent className="max-w-md p-0 overflow-hidden">
+        <DialogContent className="max-w-md p-0 max-h-[90vh] flex flex-col">
           {selectedOrder && (
             <>
-              {/* Receipt Paper Style */}
-              <div id="receipt-content" className="bg-white p-6 font-mono text-sm">
+              {/* Receipt Paper Style - Scrollable */}
+              <div id="receipt-content" className="bg-white p-6 font-mono text-sm overflow-y-auto flex-1">
                 {/* Header */}
                 <div className="text-center border-b-2 border-dashed border-gray-300 pb-4 mb-4">
                   <h1 className="text-xl font-bold tracking-wide">FAVILLA'S NY PIZZA</h1>
@@ -3017,6 +3017,12 @@ const OrdersManagement = ({ orders, cateringData, onUpdateStatus }: any) => {
                     <div className="flex justify-between">
                       <span>Delivery Fee:</span>
                       <span>{formatCurrency(parseFloat(selectedOrder.deliveryFee))}</span>
+                    </div>
+                  )}
+                  {selectedOrder.serviceFee && parseFloat(selectedOrder.serviceFee) > 0 && (
+                    <div className="flex justify-between">
+                      <span>Service Fee:</span>
+                      <span>{formatCurrency(parseFloat(selectedOrder.serviceFee))}</span>
                     </div>
                   )}
                   {selectedOrder.tip && parseFloat(selectedOrder.tip) > 0 && (
@@ -3185,6 +3191,12 @@ const OrdersManagement = ({ orders, cateringData, onUpdateStatus }: any) => {
                     if (order.deliveryFee && parseFloat(order.deliveryFee) > 0) {
                       doc.text("Delivery Fee:", leftMargin, y);
                       doc.text(formatCurrency(parseFloat(order.deliveryFee)), rightMargin, y, { align: 'right' });
+                      y += lineHeight;
+                    }
+
+                    if (order.serviceFee && parseFloat(order.serviceFee) > 0) {
+                      doc.text("Service Fee:", leftMargin, y);
+                      doc.text(formatCurrency(parseFloat(order.serviceFee)), rightMargin, y, { align: 'right' });
                       y += lineHeight;
                     }
 
