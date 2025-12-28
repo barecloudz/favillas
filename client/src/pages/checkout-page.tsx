@@ -341,8 +341,9 @@ const CheckoutPage = () => {
 
     } catch (error: any) {
       console.error('❌ Delivery fee calculation error:', error);
-      setDeliveryError('Unable to calculate delivery fee. Using standard rate.');
-      setDeliveryFee(3.99); // Fallback to default
+      // Block the order when we can't verify the delivery distance
+      setDeliveryError('Unable to verify delivery address. Please select your address from the dropdown suggestions or try again.');
+      setDeliveryFee(0); // Don't allow checkout without verified address
       setDeliveryZoneInfo(null);
     } finally {
       setDeliveryCalculating(false);
@@ -382,7 +383,7 @@ const CheckoutPage = () => {
   const [contactInfoLoaded, setContactInfoLoaded] = useState(false);
 
   // Delivery fee calculation state
-  const [deliveryFee, setDeliveryFee] = useState(3.99); // Default fallback
+  const [deliveryFee, setDeliveryFee] = useState(0); // No fee until address validated
   const [deliveryCalculating, setDeliveryCalculating] = useState(false);
   const [deliveryError, setDeliveryError] = useState("");
   const [deliveryZoneInfo, setDeliveryZoneInfo] = useState<any>(null);
@@ -1020,7 +1021,17 @@ const CheckoutPage = () => {
       });
       return;
     }
-    
+
+    // Require verified delivery address with calculated fee
+    if (orderType === "delivery" && !deliveryZoneInfo) {
+      toast({
+        title: "Address Not Verified",
+        description: "Please select your address from the dropdown suggestions to verify delivery availability.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Validate fulfillment time (skip for admin users who can test at any time)
     if (fulfillmentTime === "asap" && !isStoreOpen() && !user?.isAdmin) {
       toast({

@@ -1631,7 +1631,63 @@ const CateringManagement = ({ cateringData }: any) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedInquiry, setSelectedInquiry] = useState<any>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [cateringTab, setCateringTab] = useState<"inquiries" | "menu">("inquiries");
+  const [menuCategories, setMenuCategories] = useState<any[]>([]);
+  const [menuLoading, setMenuLoading] = useState(false);
   const { toast } = useToast();
+
+  // Fetch catering menu categories
+  const fetchCateringMenu = async () => {
+    setMenuLoading(true);
+    try {
+      const response = await fetch('/api/admin/catering-menu', {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setMenuCategories(data.categories || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch catering menu:', error);
+    } finally {
+      setMenuLoading(false);
+    }
+  };
+
+  // Toggle category enabled status
+  const toggleCategoryEnabled = async (categoryId: number, isEnabled: boolean) => {
+    try {
+      const response = await fetch('/api/admin/catering-menu', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id: categoryId, is_enabled: isEnabled })
+      });
+
+      if (response.ok) {
+        toast({
+          title: isEnabled ? "Category enabled" : "Category disabled",
+          description: `Category has been ${isEnabled ? 'enabled' : 'disabled'} successfully.`
+        });
+        fetchCateringMenu();
+      } else {
+        throw new Error('Failed to update category');
+      }
+    } catch (error) {
+      toast({
+        title: "Update failed",
+        description: "Failed to update category status",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Load menu when tab changes to menu
+  React.useEffect(() => {
+    if (cateringTab === 'menu' && menuCategories.length === 0) {
+      fetchCateringMenu();
+    }
+  }, [cateringTab]);
 
   const updateCateringStatus = async (inquiryId: number, newStatus: string) => {
     try {
@@ -1699,6 +1755,96 @@ const CateringManagement = ({ cateringData }: any) => {
 
   return (
     <div className="space-y-6">
+      {/* Tab Navigation */}
+      <div className="flex gap-2 border-b pb-4">
+        <Button
+          variant={cateringTab === "inquiries" ? "default" : "outline"}
+          onClick={() => setCateringTab("inquiries")}
+          className={cateringTab === "inquiries" ? "bg-[#d73a31] hover:bg-[#c73128]" : ""}
+        >
+          <Users className="h-4 w-4 mr-2" />
+          Inquiries
+          {(cateringData?.counts?.pending || 0) > 0 && (
+            <Badge className="ml-2 bg-red-500 text-white text-xs">{cateringData.counts.pending}</Badge>
+          )}
+        </Button>
+        <Button
+          variant={cateringTab === "menu" ? "default" : "outline"}
+          onClick={() => setCateringTab("menu")}
+          className={cateringTab === "menu" ? "bg-[#d73a31] hover:bg-[#c73128]" : ""}
+        >
+          <Menu className="h-4 w-4 mr-2" />
+          Menu Categories
+        </Button>
+      </div>
+
+      {/* Menu Management Tab */}
+      {cateringTab === "menu" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Catering Menu Categories</CardTitle>
+            <CardDescription>
+              Enable or disable menu categories that appear in the catering options
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {menuLoading ? (
+              <div className="text-center py-8 text-gray-500">Loading menu categories...</div>
+            ) : menuCategories.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No menu categories found.</p>
+                <p className="text-sm mt-2">Run the SQL migration to add catering menu data.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {menuCategories.map((category: any) => (
+                  <div
+                    key={category.id}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      category.is_enabled
+                        ? 'border-green-200 bg-green-50'
+                        : 'border-gray-200 bg-gray-50 opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <h3 className="font-semibold text-lg">{category.category_name}</h3>
+                        <Badge className={category.is_enabled ? 'bg-green-500' : 'bg-gray-400'}>
+                          {category.is_enabled ? 'Enabled' : 'Disabled'}
+                        </Badge>
+                      </div>
+                      <Button
+                        variant={category.is_enabled ? "destructive" : "default"}
+                        size="sm"
+                        onClick={() => toggleCategoryEnabled(category.id, !category.is_enabled)}
+                        className={!category.is_enabled ? "bg-green-600 hover:bg-green-700" : ""}
+                      >
+                        {category.is_enabled ? 'Disable' : 'Enable'}
+                      </Button>
+                    </div>
+
+                    {/* Items in category */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {(category.items || []).map((item: any, idx: number) => (
+                        <div key={idx} className="text-sm bg-white p-2 rounded border flex justify-between">
+                          <span>{item.item}</span>
+                          <span className="text-gray-500">
+                            {item.half_tray ? `$${item.half_tray}` : '-'} / {item.full_tray ? `$${item.full_tray}` : '-'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Inquiries Tab */}
+      {cateringTab === "inquiries" && (
+        <>
       {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -2069,6 +2215,8 @@ const CateringManagement = ({ cateringData }: any) => {
           )}
         </DialogContent>
       </Dialog>
+        </>
+      )}
     </div>
   );
 };

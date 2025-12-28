@@ -134,6 +134,60 @@ const KitchenPage = () => {
   const [refundAmount, setRefundAmount] = useState('');
   const [refundReason, setRefundReason] = useState('');
 
+  // Catering Inquiries State
+  const [cateringInquiries, setCateringInquiries] = useState<any[]>([]);
+  const [cateringLoading, setCateringLoading] = useState(false);
+
+  // Fetch catering inquiries
+  const fetchCateringInquiries = useCallback(async () => {
+    setCateringLoading(true);
+    try {
+      const response = await fetch('/api/admin/catering-inquiries', {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCateringInquiries(data.inquiries?.filter((i: any) => i.status === 'pending') || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch catering inquiries:', error);
+    } finally {
+      setCateringLoading(false);
+    }
+  }, []);
+
+  // Mark catering inquiry as responded
+  const markCateringResponded = async (inquiryId: number) => {
+    try {
+      const response = await fetch('/api/admin/catering-inquiries', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id: inquiryId, status: 'contacted' })
+      });
+      if (response.ok) {
+        toast({
+          title: "Marked as responded",
+          description: "Catering inquiry has been marked as contacted."
+        });
+        fetchCateringInquiries();
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update catering inquiry",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Load catering inquiries when tab is selected
+  useEffect(() => {
+    if (activeTab === 'catering') {
+      fetchCateringInquiries();
+    }
+  }, [activeTab, fetchCateringInquiries]);
+
   // Switch to appropriate tab when mode changes
   useEffect(() => {
     if (orderStatusMode === 'automatic' && (activeTab === 'pending' || activeTab === 'cooking' || activeTab === 'completed' || activeTab === 'picked_up' || activeTab === 'cancelled')) {
@@ -2045,9 +2099,9 @@ const KitchenPage = () => {
           ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 md:mb-8">
-              <TabsList className="w-full sm:w-auto overflow-x-auto flex-wrap sm:flex-nowrap text-xs sm:text-sm bg-white shadow-lg border-2 border-gray-200 p-1">
+              <TabsList className="w-full sm:w-auto overflow-x-auto flex-wrap sm:flex-nowrap text-xs sm:text-sm bg-gray-100 shadow-lg border-2 border-gray-300 p-1.5 rounded-lg gap-1">
                 {orderStatusMode === 'automatic' && (
-                  <TabsTrigger value="today" className="px-2 md:px-3">
+                  <TabsTrigger value="today" className="px-3 md:px-4 py-2 rounded-md font-semibold transition-all duration-200 data-[state=active]:bg-red-600 data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-gray-200 data-[state=active]:hover:bg-red-700">
                     <span className="hidden sm:inline">Today's Orders</span>
                     <span className="sm:hidden">Today</span>
                     {orders?.filter((o: any) => {
@@ -2077,7 +2131,7 @@ const KitchenPage = () => {
                 )}
                 {orderStatusMode === 'manual' && (
                   <>
-                    <TabsTrigger value="pending" className="relative px-2 md:px-3">
+                    <TabsTrigger value="pending" className="relative px-3 md:px-4 py-2 rounded-md font-semibold transition-all duration-200 data-[state=active]:bg-red-600 data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-gray-200 data-[state=active]:hover:bg-red-700">
                       <span className="hidden sm:inline">Ready to Start</span>
                       <span className="sm:hidden">Ready</span>
                       {orders?.filter((o: any) => {
@@ -2090,24 +2144,24 @@ const KitchenPage = () => {
                         }).length}</Badge>
                       )}
                     </TabsTrigger>
-                    <TabsTrigger value="cooking" className="px-2 md:px-3">
+                    <TabsTrigger value="cooking" className="px-3 md:px-4 py-2 rounded-md font-semibold transition-all duration-200 data-[state=active]:bg-red-600 data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-gray-200 data-[state=active]:hover:bg-red-700">
                       Cooking
                       {orders?.filter((o: any) => o.status === "cooking").length > 0 && (
                         <Badge className="ml-1 sm:ml-2 bg-yellow-500 text-xs">{orders.filter((o: any) => o.status === "cooking").length}</Badge>
                       )}
                     </TabsTrigger>
-                    <TabsTrigger value="completed" className="px-2 md:px-3">
+                    <TabsTrigger value="completed" className="px-3 md:px-4 py-2 rounded-md font-semibold transition-all duration-200 data-[state=active]:bg-red-600 data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-gray-200 data-[state=active]:hover:bg-red-700">
                       <span className="hidden sm:inline">Ready for Pickup</span>
                       <span className="sm:hidden">Ready</span>
                     </TabsTrigger>
-                    <TabsTrigger value="picked_up" className="px-2 md:px-3">
+                    <TabsTrigger value="picked_up" className="px-3 md:px-4 py-2 rounded-md font-semibold transition-all duration-200 data-[state=active]:bg-red-600 data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-gray-200 data-[state=active]:hover:bg-red-700">
                       <span className="hidden sm:inline">Picked Up</span>
                       <span className="sm:hidden">Done</span>
                       {orders?.filter((o: any) => o.status === 'picked_up').length > 0 && (
                         <Badge className="ml-1 sm:ml-2 bg-gray-500 text-xs">{orders.filter((o: any) => o.status === 'picked_up').length}</Badge>
                       )}
                     </TabsTrigger>
-                    <TabsTrigger value="cancelled" className="px-2 md:px-3">
+                    <TabsTrigger value="cancelled" className="px-3 md:px-4 py-2 rounded-md font-semibold transition-all duration-200 data-[state=active]:bg-red-600 data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-gray-200 data-[state=active]:hover:bg-red-700">
                       Cancelled
                       {orders?.filter((o: any) => o.status === 'cancelled').length > 0 && (
                         <Badge className="ml-1 sm:ml-2 bg-red-500 text-xs">{orders.filter((o: any) => o.status === 'cancelled').length}</Badge>
@@ -2115,7 +2169,7 @@ const KitchenPage = () => {
                     </TabsTrigger>
                   </>
                 )}
-                <TabsTrigger value="scheduled" className="px-2 md:px-3">
+                <TabsTrigger value="scheduled" className="px-3 md:px-4 py-2 rounded-md font-semibold transition-all duration-200 data-[state=active]:bg-red-600 data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-gray-200 data-[state=active]:hover:bg-red-700">
                   <span className="hidden sm:inline">Scheduled Later</span>
                   <span className="sm:hidden">Scheduled</span>
                   {orders?.filter((o: any) => {
@@ -2132,7 +2186,13 @@ const KitchenPage = () => {
                     }).length}</Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="all" className="px-2 md:px-3">All</TabsTrigger>
+                <TabsTrigger value="all" className="px-3 md:px-4 py-2 rounded-md font-semibold transition-all duration-200 data-[state=active]:bg-red-600 data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-gray-200 data-[state=active]:hover:bg-red-700">All</TabsTrigger>
+                <TabsTrigger value="catering" className="px-3 md:px-4 py-2 rounded-md font-semibold transition-all duration-200 data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-gray-200 data-[state=active]:hover:bg-purple-700">
+                  Catering
+                  {cateringInquiries.length > 0 && (
+                    <Badge className="ml-1 sm:ml-2 bg-purple-500 text-xs">{cateringInquiries.length}</Badge>
+                  )}
+                </TabsTrigger>
               </TabsList>
 
               <Button
@@ -2145,6 +2205,70 @@ const KitchenPage = () => {
               </Button>
             </div>
             
+            {/* Catering Tab Content */}
+            {activeTab === 'catering' && (
+              <div className="mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <span className="text-2xl">🍕</span>
+                      New Catering Inquiries
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {cateringLoading ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                        Loading catering inquiries...
+                      </div>
+                    ) : cateringInquiries.length === 0 ? (
+                      <div className="text-center py-12 bg-gradient-to-br from-white to-gray-50 rounded-xl border-2 border-gray-200">
+                        <div className="text-6xl mb-4 opacity-50">✅</div>
+                        <p className="text-xl font-bold text-gray-700 mb-2">All Caught Up!</p>
+                        <p className="text-gray-500">No new catering inquiries at the moment</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {cateringInquiries.map((inquiry: any) => (
+                          <div key={inquiry.id} className="flex items-center justify-between p-4 bg-purple-50 border-2 border-purple-200 rounded-lg">
+                            <div className="flex-1">
+                              <p className="font-bold text-lg text-gray-900">{inquiry.full_name}</p>
+                              <p className="text-sm text-gray-600">
+                                {inquiry.event_type?.replace('_', ' ')} • {inquiry.guest_count} guests
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Submitted: {new Date(inquiry.created_at).toLocaleString()}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate('/admin/dashboard')}
+                                className="bg-white"
+                              >
+                                View Details
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => markCateringResponded(inquiry.id)}
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Responded
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Orders Tab Content */}
+            {activeTab !== 'catering' && (
             <TabsContent value={activeTab} className="mt-0">
               {filteredOrders.length === 0 ? (
                 <div className="text-center py-20 bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl border-2 border-gray-200">
@@ -2586,6 +2710,7 @@ const KitchenPage = () => {
                 </div>
               )}
             </TabsContent>
+            )}
           </Tabs>
           )}
         </main>

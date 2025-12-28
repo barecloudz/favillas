@@ -4,6 +4,7 @@ import { Helmet } from "react-helmet";
 import HeroSection from "@/components/home/hero-section";
 import ChristmasPromoSection from "@/components/home/christmas-promo-section";
 import FeaturedSection from "@/components/home/featured-section";
+import CateringSection from "@/components/home/catering-section";
 import WhyFavillasSection from "@/components/home/why-favilias-section";
 import RewardsSection from "@/components/home/rewards-section";
 import LocationSection from "@/components/home/location-section";
@@ -191,6 +192,9 @@ const HomePage = () => {
 
         {/* Featured Section */}
         <FeaturedSection menuItems={featuredItems} />
+
+        {/* Catering Section */}
+        <CateringSection />
 
         {/* Why Favilla's Section - Competitive advantages */}
         <WhyFavillasSection />

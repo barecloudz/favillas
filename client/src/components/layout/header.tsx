@@ -16,6 +16,7 @@ import {
   BarChart3,
   Star,
   Clock,
+  UtensilsCrossed,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -326,8 +327,15 @@ const Header = () => {
               </div>
             </Link>
 
-            {/* Christmas Countdown Button */}
-            <ChristmasCountdownButton onClick={() => setAdventCalendarOpen(true)} />
+            {/* Catering Button */}
+            <Link href="/catering">
+              <div className={`flex flex-col items-center space-y-1 transition-colors ${
+                location === "/catering" ? "text-[#d73a31]" : "text-gray-600 hover:text-[#d73a31]"
+              }`}>
+                <UtensilsCrossed className="h-6 w-6" />
+                <span className="text-xs font-semibold">Catering</span>
+              </div>
+            </Link>
 
             <div
               className={`flex flex-col items-center space-y-1 relative transition-colors cursor-pointer ${
@@ -441,6 +449,19 @@ const Header = () => {
                 <div className="flex-1 text-left">
                   <h3 className="font-semibold text-gray-900">Rewards</h3>
                   <p className="text-sm text-gray-500">View your points and rewards</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleNavigate("/catering")}
+                className="flex items-center space-x-4 p-4 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-50">
+                  <UtensilsCrossed className="h-6 w-6 text-red-600" />
+                </div>
+                <div className="flex-1 text-left">
+                  <h3 className="font-semibold text-gray-900">Catering</h3>
+                  <p className="text-sm text-gray-500">Order catering for your event</p>
                 </div>
               </button>
 

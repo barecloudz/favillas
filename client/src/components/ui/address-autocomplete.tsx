@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { MapPin, Loader2 } from "lucide-react";
 
 interface AddressFormProps {
   value: string;
@@ -22,204 +23,230 @@ interface AddressFormProps {
   error?: string;
 }
 
+// Extend Window interface for Google Maps callback
+declare global {
+  interface Window {
+    initGooglePlaces?: () => void;
+    google?: typeof google;
+  }
+}
+
 const AddressForm = ({
   value,
   onChange,
   onAddressSelect,
-  placeholder = "Enter your address",
+  placeholder = "Start typing your address...",
   label = "Address",
   required = false,
   className,
   error
 }: AddressFormProps) => {
-  const [street, setStreet] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [zipCode, setZipCode] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isGoogleLoaded, setIsGoogleLoaded] = useState(false);
+  const [inputValue, setInputValue] = useState(value || "");
 
-  // Parse incoming address value and populate individual fields - only on initial load
-  const [hasInitialized, setHasInitialized] = useState(false);
-
+  // Load Google Maps Places API
   useEffect(() => {
-    // Only parse the incoming value if we haven't initialized yet, or if it's a significant change
-    if (value && value.trim() && !hasInitialized) {
-      console.log('🏠 AddressForm: Initial parsing of incoming address:', value);
-
-      // Simple address parsing - assumes format: "street, city, state, zipcode"
-      const parts = value.split(',').map(part => part.trim());
-
-      if (parts.length >= 4) {
-        // Full format: "123 Main St, New York, NY, 12345"
-        setStreet(parts[0] || '');
-        setCity(parts[1] || '');
-        setState(parts[2] || '');
-        setZipCode(parts[3] || '');
-        console.log('✅ AddressForm: Parsed 4-part address:', {
-          street: parts[0],
-          city: parts[1],
-          state: parts[2],
-          zipCode: parts[3]
-        });
-      } else if (parts.length === 3) {
-        // Format: "New York, NY, 12345" (city, state, zip)
-        setStreet('');
-        setCity(parts[0] || '');
-        setState(parts[1] || '');
-        setZipCode(parts[2] || '');
-        console.log('✅ AddressForm: Parsed 3-part address (no street):', {
-          city: parts[0],
-          state: parts[1],
-          zipCode: parts[2]
-        });
-      } else {
-        // Fallback: put entire value in street field
-        setStreet(value);
-        setCity('');
-        setState('');
-        setZipCode('');
-        console.log('⚠️ AddressForm: Using fallback - putting full address in street field');
+    const loadGooglePlaces = () => {
+      // Check if already loaded
+      if (window.google && window.google.maps && window.google.maps.places) {
+        setIsGoogleLoaded(true);
+        setIsLoading(false);
+        return;
       }
-      setHasInitialized(true);
-    } else if (!value || !value.trim()) {
-      // Clear fields if no value and reset initialization flag
-      setStreet('');
-      setCity('');
-      setState('');
-      setZipCode('');
-      setHasInitialized(false);
-    }
-  }, [value, hasInitialized]);
 
-  const handleAddressChange = (field: string, newValue: string) => {
-    let updatedStreet = street;
-    let updatedCity = city;
-    let updatedState = state;
-    let updatedZipCode = zipCode;
+      // Check if script is already being loaded
+      if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+        // Wait for it to load
+        const checkLoaded = setInterval(() => {
+          if (window.google && window.google.maps && window.google.maps.places) {
+            setIsGoogleLoaded(true);
+            setIsLoading(false);
+            clearInterval(checkLoaded);
+          }
+        }, 100);
+        return;
+      }
 
-    switch (field) {
-      case 'street':
-        setStreet(newValue);
-        updatedStreet = newValue;
-        break;
-      case 'city':
-        setCity(newValue);
-        updatedCity = newValue;
-        break;
-      case 'state':
-        setState(newValue);
-        updatedState = newValue;
-        break;
-      case 'zipCode':
-        setZipCode(newValue);
-        updatedZipCode = newValue;
-        break;
-    }
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      if (!apiKey) {
+        console.error('Google Maps API key not found');
+        setIsLoading(false);
+        return;
+      }
 
-    // Build full address using updated values
-    const fullAddress = [updatedStreet, updatedCity, updatedState, updatedZipCode]
-      .filter(part => part.trim())
-      .join(', ');
+      // Create callback
+      const callbackName = 'initGooglePlaces_' + Date.now();
+      (window as any)[callbackName] = () => {
+        setIsGoogleLoaded(true);
+        setIsLoading(false);
+        delete (window as any)[callbackName];
+      };
 
-    onChange(fullAddress);
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=${callbackName}`;
+      script.async = true;
+      script.defer = true;
+      script.onerror = () => {
+        console.error('Failed to load Google Maps API');
+        setIsLoading(false);
+        delete (window as any)[callbackName];
+      };
+      document.head.appendChild(script);
+    };
 
-    // If we have all required fields, call onAddressSelect
-    if (updatedStreet && updatedCity && updatedState && updatedZipCode && onAddressSelect) {
-      onAddressSelect({
-        fullAddress,
-        street: updatedStreet.trim(),
-        city: updatedCity.trim(),
-        state: updatedState.trim(),
-        zipCode: updatedZipCode.trim()
+    loadGooglePlaces();
+  }, []);
+
+  // Initialize autocomplete when Google is loaded and input is ready
+  useEffect(() => {
+    if (!isGoogleLoaded || !inputRef.current || autocompleteRef.current) return;
+
+    try {
+      const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
+        componentRestrictions: { country: 'us' },
+        types: ['address'],
+        fields: ['address_components', 'formatted_address', 'geometry']
       });
+
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+
+        if (!place.address_components) {
+          console.warn('No address components returned');
+          return;
+        }
+
+        // Parse address components
+        let street = '';
+        let city = '';
+        let state = '';
+        let zipCode = '';
+        let streetNumber = '';
+        let route = '';
+
+        place.address_components.forEach((component) => {
+          const types = component.types;
+
+          if (types.includes('street_number')) {
+            streetNumber = component.long_name;
+          }
+          if (types.includes('route')) {
+            route = component.long_name;
+          }
+          if (types.includes('locality')) {
+            city = component.long_name;
+          }
+          if (types.includes('administrative_area_level_1')) {
+            state = component.short_name;
+          }
+          if (types.includes('postal_code')) {
+            zipCode = component.long_name;
+          }
+        });
+
+        street = streetNumber ? `${streetNumber} ${route}` : route;
+        const fullAddress = place.formatted_address || `${street}, ${city}, ${state} ${zipCode}`;
+
+        // Update input value
+        setInputValue(fullAddress);
+        onChange(fullAddress);
+
+        // Call onAddressSelect with parsed address
+        if (onAddressSelect) {
+          onAddressSelect({
+            fullAddress,
+            street,
+            city,
+            state,
+            zipCode,
+            latitude: place.geometry?.location?.lat(),
+            longitude: place.geometry?.location?.lng()
+          });
+        }
+      });
+
+      autocompleteRef.current = autocomplete;
+    } catch (err) {
+      console.error('Error initializing Google Places Autocomplete:', err);
     }
+  }, [isGoogleLoaded, onChange, onAddressSelect]);
+
+  // Sync external value changes
+  useEffect(() => {
+    if (value !== inputValue) {
+      setInputValue(value || "");
+    }
+  }, [value]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setInputValue(newValue);
+    onChange(newValue);
   };
 
+  // Handle manual entry - parse and call onAddressSelect when user stops typing
+  const handleBlur = useCallback(() => {
+    if (!inputValue || !onAddressSelect) return;
+
+    // Only trigger if there's no autocomplete selection (no lat/lng in current selection)
+    // This handles manual entry fallback
+    const parts = inputValue.split(',').map(p => p.trim());
+    if (parts.length >= 3) {
+      onAddressSelect({
+        fullAddress: inputValue,
+        street: parts[0] || '',
+        city: parts[1] || '',
+        state: parts[2]?.split(' ')[0] || '',
+        zipCode: parts[2]?.split(' ')[1] || parts[3] || ''
+      });
+    }
+  }, [inputValue, onAddressSelect]);
+
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn("space-y-2", className)}>
       {label && (
         <Label className="block">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </Label>
       )}
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Street Address */}
-        <div className="md:col-span-2">
-          <Label htmlFor="street-address" className="text-sm font-medium">
-            Street Address *
-          </Label>
-          <Input
-            id="street-address"
-            type="text"
-            placeholder="123 Main Street"
-            value={street}
-            onChange={(e) => handleAddressChange('street', e.target.value)}
-            className={cn(
-              "mt-1",
-              error && "border-red-500 focus:border-red-500"
-            )}
-            required={required}
-          />
-        </div>
 
-        {/* City */}
-        <div>
-          <Label htmlFor="city" className="text-sm font-medium">
-            City *
-          </Label>
-          <Input
-            id="city"
-            type="text"
-            placeholder="New York"
-            value={city}
-            onChange={(e) => handleAddressChange('city', e.target.value)}
-            className={cn(
-              "mt-1",
-              error && "border-red-500 focus:border-red-500"
-            )}
-            required={required}
-          />
-        </div>
-
-        {/* State */}
-        <div>
-          <Label htmlFor="state" className="text-sm font-medium">
-            State *
-          </Label>
-          <Input
-            id="state"
-            type="text"
-            placeholder="NY"
-            value={state}
-            onChange={(e) => handleAddressChange('state', e.target.value)}
-            className={cn(
-              "mt-1",
-              error && "border-red-500 focus:border-red-500"
-            )}
-            required={required}
-          />
-        </div>
-
-        {/* ZIP Code */}
-        <div>
-          <Label htmlFor="zip-code" className="text-sm font-medium">
-            ZIP Code *
-          </Label>
-          <Input
-            id="zip-code"
-            type="text"
-            placeholder="10001"
-            value={zipCode}
-            onChange={(e) => handleAddressChange('zipCode', e.target.value)}
-            className={cn(
-              "mt-1",
-              error && "border-red-500 focus:border-red-500"
-            )}
-            required={required}
-          />
-        </div>
+      <div className="relative">
+        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Input
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={handleInputChange}
+          onBlur={handleBlur}
+          placeholder={isLoading ? "Loading address search..." : placeholder}
+          disabled={isLoading}
+          className={cn(
+            "pl-10 pr-10",
+            error && "border-red-500 focus:border-red-500"
+          )}
+          required={required}
+          autoComplete="off"
+        />
+        {isLoading && (
+          <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 animate-spin" />
+        )}
       </div>
+
+      {!isLoading && isGoogleLoaded && (
+        <p className="text-xs text-gray-500">
+          Start typing and select your address from the suggestions
+        </p>
+      )}
+
+      {!isLoading && !isGoogleLoaded && (
+        <p className="text-xs text-yellow-600">
+          Address suggestions unavailable. Please enter your full address manually.
+        </p>
+      )}
 
       {error && (
         <p className="text-sm text-red-500">{error}</p>

@@ -20,7 +20,8 @@ import {
   Phone,
   Mail,
   Check,
-  Star
+  Star,
+  Package
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -36,6 +37,8 @@ interface CateringFormData {
   specialDeliveryInstructions?: string;
   guestCount: string;
   customGuestCount?: number;
+  viewPackages: string;
+  selectedPackage?: string;
   menuStyle: string;
   dietaryRestrictions: string[];
   budgetRange: string;
@@ -57,6 +60,7 @@ const CateringPage = () => {
     eventType: "",
     serviceType: "",
     guestCount: "",
+    viewPackages: "",
     menuStyle: "",
     dietaryRestrictions: [],
     budgetRange: "",
@@ -69,7 +73,7 @@ const CateringPage = () => {
     bestTimeToCall: "",
   });
 
-  const totalSteps = 5;
+  const totalSteps = 6;
   const progressPercentage = (currentStep / totalSteps) * 100;
 
   const eventTypeOptions = [
@@ -191,6 +195,10 @@ const CateringPage = () => {
             <div className="text-center mb-8">
               <h1 className="text-4xl font-bold text-gray-900 mb-2">Catering Services</h1>
               <p className="text-xl text-gray-600">Let us make your next event delicious!</p>
+              <div className="mt-4 inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-full text-sm font-medium">
+                <Clock className="w-4 h-4" />
+                Please submit catering orders at least 24 hours in advance
+              </div>
             </div>
 
             {/* Progress Bar */}
@@ -433,8 +441,121 @@ const CateringPage = () => {
               </Card>
             )}
 
-            {/* Card 4: Additional Details */}
+            {/* Card 4: View Packages */}
             {currentStep === 4 && (
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="text-center text-2xl text-gray-900 flex items-center justify-center gap-2">
+                    <Package className="w-6 h-6 text-[#d73a31]" />
+                    Would you like to view our catering packages?
+                  </CardTitle>
+                  <p className="text-center text-gray-600 mt-2">
+                    Based on serving {formData.guestCount === '200+' ? `${formData.customGuestCount || '200+'}` : formData.guestCount} people
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <button
+                      onClick={() => updateFormData('viewPackages', 'yes')}
+                      className={`p-6 rounded-lg border-2 transition-all hover:shadow-md ${
+                        formData.viewPackages === 'yes'
+                          ? 'border-[#d73a31] bg-red-50 shadow-md'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="text-4xl mb-3">📦</div>
+                        <h3 className="font-semibold text-lg mb-2">Yes, show me packages</h3>
+                        <p className="text-gray-600 text-sm">View our pre-designed catering packages with recommended items for your group size</p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => updateFormData('viewPackages', 'no')}
+                      className={`p-6 rounded-lg border-2 transition-all hover:shadow-md ${
+                        formData.viewPackages === 'no'
+                          ? 'border-[#d73a31] bg-red-50 shadow-md'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="text-4xl mb-3">✏️</div>
+                        <h3 className="font-semibold text-lg mb-2">No, I'll customize my order</h3>
+                        <p className="text-gray-600 text-sm">Skip packages and tell us exactly what you need</p>
+                      </div>
+                    </button>
+                  </div>
+
+                  {formData.viewPackages === 'yes' && (
+                    <div className="mt-8">
+                      <h4 className="font-semibold text-lg mb-4 text-center">Select a Package</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <button
+                          onClick={() => updateFormData('selectedPackage', 'basic')}
+                          className={`p-5 rounded-lg border-2 transition-all hover:shadow-md ${
+                            formData.selectedPackage === 'basic'
+                              ? 'border-[#d73a31] bg-red-50 shadow-md'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="text-center">
+                            <Badge className="bg-gray-500 mb-2">Basic</Badge>
+                            <h3 className="font-semibold mb-1">Pizza Party</h3>
+                            <p className="text-gray-600 text-xs">Pizzas, salad & drinks</p>
+                          </div>
+                        </button>
+
+                        <button
+                          onClick={() => updateFormData('selectedPackage', 'standard')}
+                          className={`p-5 rounded-lg border-2 transition-all hover:shadow-md ${
+                            formData.selectedPackage === 'standard'
+                              ? 'border-[#d73a31] bg-red-50 shadow-md'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="text-center">
+                            <Badge className="bg-blue-500 mb-2">Popular</Badge>
+                            <h3 className="font-semibold mb-1">Italian Feast</h3>
+                            <p className="text-gray-600 text-xs">Pizzas, appetizers, salads & dessert</p>
+                          </div>
+                        </button>
+
+                        <button
+                          onClick={() => updateFormData('selectedPackage', 'premium')}
+                          className={`p-5 rounded-lg border-2 transition-all hover:shadow-md ${
+                            formData.selectedPackage === 'premium'
+                              ? 'border-[#d73a31] bg-red-50 shadow-md'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="text-center">
+                            <Badge className="bg-yellow-500 mb-2">Premium</Badge>
+                            <h3 className="font-semibold mb-1">Full Service</h3>
+                            <p className="text-gray-600 text-xs">Complete catering with all the extras</p>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between mt-8">
+                    <Button variant="outline" onClick={handleBack}>
+                      <ChevronLeft className="mr-2 w-4 h-4" /> Back
+                    </Button>
+                    <Button
+                      onClick={handleNext}
+                      disabled={!formData.viewPackages || (formData.viewPackages === 'yes' && !formData.selectedPackage)}
+                      className="px-8 bg-[#d73a31] hover:bg-[#c73128]"
+                    >
+                      Next <ChevronRight className="ml-2 w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Card 5: Additional Details */}
+            {currentStep === 5 && (
               <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle className="text-center text-2xl text-gray-900 flex items-center justify-center gap-2">
@@ -554,8 +675,8 @@ const CateringPage = () => {
               </Card>
             )}
 
-            {/* Card 5: Contact Information */}
-            {currentStep === 5 && (
+            {/* Card 6: Contact Information */}
+            {currentStep === 6 && (
               <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle className="text-center text-2xl text-gray-900 flex items-center justify-center gap-2">
@@ -644,6 +765,11 @@ const CateringPage = () => {
                       <div>
                         <strong>Menu Style:</strong> {formData.menuStyle}
                       </div>
+                      {formData.selectedPackage && (
+                        <div>
+                          <strong>Package:</strong> {formData.selectedPackage === 'basic' ? 'Pizza Party' : formData.selectedPackage === 'standard' ? 'Italian Feast' : 'Full Service'}
+                        </div>
+                      )}
                       {formData.eventDate && (
                         <div>
                           <strong>Event Date:</strong> {new Date(formData.eventDate).toLocaleDateString()}
