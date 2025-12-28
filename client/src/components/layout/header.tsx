@@ -36,12 +36,31 @@ const Header = () => {
   const { user, signOut } = useAuth();
   const { items, toggleCart } = useCart();
   const { companyName, logoUrl } = useBranding();
-  
+
   const cartItemCount = items.reduce((total, item) => total + item.quantity, 0);
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileProfileMenuOpen, setMobileProfileMenuOpen] = useState(false);
   const [adventCalendarOpen, setAdventCalendarOpen] = useState(false);
+  const [cateringButtonEnabled, setCateringButtonEnabled] = useState(true);
+
+  // Fetch catering button visibility setting
+  useEffect(() => {
+    const fetchCateringSetting = async () => {
+      try {
+        const response = await fetch('/api/catering-settings');
+        if (response.ok) {
+          const data = await response.json();
+          setCateringButtonEnabled(data.catering_button_enabled !== false);
+        }
+      } catch (error) {
+        console.error('Failed to fetch catering settings:', error);
+        // Default to enabled on error
+        setCateringButtonEnabled(true);
+      }
+    };
+    fetchCateringSetting();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -327,15 +346,17 @@ const Header = () => {
               </div>
             </Link>
 
-            {/* Catering Button */}
-            <Link href="/catering">
-              <div className={`flex flex-col items-center space-y-1 transition-colors ${
-                location === "/catering" ? "text-[#d73a31]" : "text-gray-600 hover:text-[#d73a31]"
-              }`}>
-                <UtensilsCrossed className="h-6 w-6" />
-                <span className="text-xs font-semibold">Catering</span>
-              </div>
-            </Link>
+            {/* Catering Button - conditionally shown based on admin setting */}
+            {cateringButtonEnabled && (
+              <Link href="/catering">
+                <div className={`flex flex-col items-center space-y-1 transition-colors ${
+                  location === "/catering" ? "text-[#d73a31]" : "text-gray-600 hover:text-[#d73a31]"
+                }`}>
+                  <UtensilsCrossed className="h-6 w-6" />
+                  <span className="text-xs font-semibold">Catering</span>
+                </div>
+              </Link>
+            )}
 
             <div
               className={`flex flex-col items-center space-y-1 relative transition-colors cursor-pointer ${

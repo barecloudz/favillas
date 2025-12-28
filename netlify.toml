@@ -330,6 +330,24 @@
   to = "/.netlify/functions/admin-catering-inquiries"
   status = 200
 
+# Admin catering menu endpoint
+[[redirects]]
+  from = "/api/admin/catering-menu"
+  to = "/.netlify/functions/admin-catering-menu"
+  status = 200
+
+# Admin catering packages endpoint
+[[redirects]]
+  from = "/api/admin/catering-packages"
+  to = "/.netlify/functions/admin-catering-packages"
+  status = 200
+
+# Catering settings endpoint (for enabling/disabling catering button)
+[[redirects]]
+  from = "/api/catering-settings"
+  to = "/.netlify/functions/catering-settings"
+  status = 200
+
 # Printer test connection endpoint (must be BEFORE generic printer/config/*)
 [[redirects]]
   from = "/api/printer/config/*/test-connection"

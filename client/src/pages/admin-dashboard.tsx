@@ -1637,7 +1637,62 @@ const CateringManagement = ({ cateringData }: any) => {
   const [packages, setPackages] = useState<any[]>([]);
   const [packagesLoading, setPackagesLoading] = useState(false);
   const [editingPackage, setEditingPackage] = useState<any>(null);
+  const [cateringButtonEnabled, setCateringButtonEnabled] = useState(true);
+  const [cateringSettingsLoading, setCateringSettingsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Fetch catering button setting
+  const fetchCateringSetting = async () => {
+    try {
+      const response = await fetch('/api/catering-settings', {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCateringButtonEnabled(data.catering_button_enabled !== false);
+      }
+    } catch (error) {
+      console.error('Failed to fetch catering settings:', error);
+    }
+  };
+
+  // Toggle catering button visibility
+  const toggleCateringButton = async (enabled: boolean) => {
+    setCateringSettingsLoading(true);
+    try {
+      const response = await fetch('/api/catering-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ catering_button_enabled: enabled })
+      });
+
+      if (response.ok) {
+        setCateringButtonEnabled(enabled);
+        toast({
+          title: enabled ? "Catering button enabled" : "Catering button disabled",
+          description: enabled
+            ? "Catering button is now visible in mobile navigation"
+            : "Catering button has been hidden from mobile navigation"
+        });
+      } else {
+        throw new Error('Failed to update setting');
+      }
+    } catch (error) {
+      toast({
+        title: "Update failed",
+        description: "Failed to update catering button visibility",
+        variant: "destructive"
+      });
+    } finally {
+      setCateringSettingsLoading(false);
+    }
+  };
+
+  // Load catering settings on mount
+  React.useEffect(() => {
+    fetchCateringSetting();
+  }, []);
 
   // Fetch catering menu categories
   const fetchCateringMenu = async () => {
@@ -1836,8 +1891,39 @@ const CateringManagement = ({ cateringData }: any) => {
 
   return (
     <div className="space-y-6">
+      {/* Catering Settings Card */}
+      <Card className="border-2 border-purple-200 bg-purple-50">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Settings className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Mobile Catering Button</h3>
+                <p className="text-sm text-gray-600">
+                  {cateringButtonEnabled
+                    ? "Catering button is visible in mobile bottom navigation"
+                    : "Catering button is hidden from mobile bottom navigation"}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={`text-sm font-medium ${cateringButtonEnabled ? 'text-green-600' : 'text-gray-500'}`}>
+                {cateringButtonEnabled ? 'Enabled' : 'Disabled'}
+              </span>
+              <Switch
+                checked={cateringButtonEnabled}
+                onCheckedChange={toggleCateringButton}
+                disabled={cateringSettingsLoading}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Tab Navigation */}
-      <div className="flex gap-2 border-b pb-4">
+      <div className="flex gap-2 border-b pb-4 flex-wrap">
         <Button
           variant={cateringTab === "inquiries" ? "default" : "outline"}
           onClick={() => setCateringTab("inquiries")}

@@ -78,12 +78,11 @@ const CateringPage = () => {
   const progressPercentage = (currentStep / totalSteps) * 100;
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to top of card when step changes
+  // Scroll to top of card when step changes - uses scroll-mt-20 for proper offset
   useEffect(() => {
     if (cardRef.current) {
-      const yOffset = -20; // Small offset from top
-      const y = cardRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
-      window.scrollTo({ top: y, behavior: 'smooth' });
+      // Use scrollIntoView which respects scroll-margin-top CSS property
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [currentStep]);
 
@@ -225,7 +224,7 @@ const CateringPage = () => {
 
         {/* Main Content */}
         <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto" ref={cardRef}>
+          <div className="max-w-4xl mx-auto scroll-mt-16" ref={cardRef}>
 
             {/* Card 1: Event Type Selection */}
             {currentStep === 1 && (
