@@ -1631,9 +1631,12 @@ const CateringManagement = ({ cateringData }: any) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedInquiry, setSelectedInquiry] = useState<any>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [cateringTab, setCateringTab] = useState<"inquiries" | "menu">("inquiries");
+  const [cateringTab, setCateringTab] = useState<"inquiries" | "menu" | "packages">("inquiries");
   const [menuCategories, setMenuCategories] = useState<any[]>([]);
   const [menuLoading, setMenuLoading] = useState(false);
+  const [packages, setPackages] = useState<any[]>([]);
+  const [packagesLoading, setPackagesLoading] = useState(false);
+  const [editingPackage, setEditingPackage] = useState<any>(null);
   const { toast } = useToast();
 
   // Fetch catering menu categories
@@ -1651,6 +1654,24 @@ const CateringManagement = ({ cateringData }: any) => {
       console.error('Failed to fetch catering menu:', error);
     } finally {
       setMenuLoading(false);
+    }
+  };
+
+  // Fetch catering packages
+  const fetchPackages = async () => {
+    setPackagesLoading(true);
+    try {
+      const response = await fetch('/api/admin/catering-packages', {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setPackages(data.packages || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch packages:', error);
+    } finally {
+      setPackagesLoading(false);
     }
   };
 
@@ -1682,10 +1703,70 @@ const CateringManagement = ({ cateringData }: any) => {
     }
   };
 
-  // Load menu when tab changes to menu
+  // Toggle package enabled status
+  const togglePackageEnabled = async (packageId: number, isEnabled: boolean) => {
+    try {
+      const response = await fetch('/api/admin/catering-packages', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id: packageId, is_enabled: isEnabled })
+      });
+
+      if (response.ok) {
+        toast({
+          title: isEnabled ? "Package enabled" : "Package disabled",
+          description: `Package has been ${isEnabled ? 'enabled' : 'disabled'} successfully.`
+        });
+        fetchPackages();
+      } else {
+        throw new Error('Failed to update package');
+      }
+    } catch (error) {
+      toast({
+        title: "Update failed",
+        description: "Failed to update package status",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Update package details
+  const updatePackage = async (packageData: any) => {
+    try {
+      const response = await fetch('/api/admin/catering-packages', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(packageData)
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Package updated",
+          description: "Package has been updated successfully."
+        });
+        fetchPackages();
+        setEditingPackage(null);
+      } else {
+        throw new Error('Failed to update package');
+      }
+    } catch (error) {
+      toast({
+        title: "Update failed",
+        description: "Failed to update package",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Load data when tab changes
   React.useEffect(() => {
     if (cateringTab === 'menu' && menuCategories.length === 0) {
       fetchCateringMenu();
+    }
+    if (cateringTab === 'packages' && packages.length === 0) {
+      fetchPackages();
     }
   }, [cateringTab]);
 
@@ -1776,6 +1857,14 @@ const CateringManagement = ({ cateringData }: any) => {
           <Menu className="h-4 w-4 mr-2" />
           Menu Categories
         </Button>
+        <Button
+          variant={cateringTab === "packages" ? "default" : "outline"}
+          onClick={() => setCateringTab("packages")}
+          className={cateringTab === "packages" ? "bg-[#d73a31] hover:bg-[#c73128]" : ""}
+        >
+          <Package className="h-4 w-4 mr-2" />
+          Packages
+        </Button>
       </div>
 
       {/* Menu Management Tab */}
@@ -1840,6 +1929,188 @@ const CateringManagement = ({ cateringData }: any) => {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Packages Management Tab */}
+      {cateringTab === "packages" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Catering Packages</CardTitle>
+            <CardDescription>
+              Manage catering packages, pricing, and included items
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {packagesLoading ? (
+              <div className="text-center py-8 text-gray-500">Loading packages...</div>
+            ) : packages.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No packages found.</p>
+                <p className="text-sm mt-2">Run the SQL migration to add catering packages.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {packages.map((pkg: any) => (
+                  <div
+                    key={pkg.id}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      pkg.is_enabled
+                        ? 'border-green-200 bg-green-50'
+                        : 'border-gray-200 bg-gray-50 opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <Badge className={`bg-${pkg.badge_color || 'gray'}-500`}>
+                          {pkg.badge_text || 'Package'}
+                        </Badge>
+                        <h3 className="font-semibold text-lg">{pkg.package_name}</h3>
+                        <Badge className={pkg.is_enabled ? 'bg-green-500' : 'bg-gray-400'}>
+                          {pkg.is_enabled ? 'Enabled' : 'Disabled'}
+                        </Badge>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditingPackage(pkg)}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant={pkg.is_enabled ? "destructive" : "default"}
+                          size="sm"
+                          onClick={() => togglePackageEnabled(pkg.id, !pkg.is_enabled)}
+                          className={!pkg.is_enabled ? "bg-green-600 hover:bg-green-700" : ""}
+                        >
+                          {pkg.is_enabled ? 'Disable' : 'Enable'}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <p className="text-gray-600 mb-3">{pkg.description}</p>
+
+                    {/* Pricing by guest count */}
+                    {pkg.pricing && Object.keys(pkg.pricing).length > 0 && (
+                      <div className="mb-3">
+                        <h4 className="font-medium text-sm text-gray-700 mb-2">Pricing by Party Size:</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(pkg.pricing).map(([size, price]: [string, any]) => (
+                            <div key={size} className="bg-white px-3 py-1 rounded border text-sm">
+                              <span className="font-medium">{size}:</span> ${price}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Included items */}
+                    {pkg.items && pkg.items.length > 0 && (
+                      <div>
+                        <h4 className="font-medium text-sm text-gray-700 mb-2">Included Items:</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+                          {pkg.items.map((item: string, idx: number) => (
+                            <div key={idx} className="text-sm text-gray-600 flex items-start gap-1">
+                              <span className="text-green-500">✓</span>
+                              {item}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Package Edit Dialog */}
+      {editingPackage && (
+        <Dialog open={!!editingPackage} onOpenChange={() => setEditingPackage(null)}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Package: {editingPackage.package_name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Package Name</Label>
+                <Input
+                  value={editingPackage.package_name}
+                  onChange={(e) => setEditingPackage({...editingPackage, package_name: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label>Description</Label>
+                <Textarea
+                  value={editingPackage.description || ''}
+                  onChange={(e) => setEditingPackage({...editingPackage, description: e.target.value})}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Badge Text</Label>
+                  <Input
+                    value={editingPackage.badge_text || ''}
+                    onChange={(e) => setEditingPackage({...editingPackage, badge_text: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label>Badge Color</Label>
+                  <Select
+                    value={editingPackage.badge_color || 'gray'}
+                    onValueChange={(value) => setEditingPackage({...editingPackage, badge_color: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gray">Gray</SelectItem>
+                      <SelectItem value="blue">Blue</SelectItem>
+                      <SelectItem value="green">Green</SelectItem>
+                      <SelectItem value="yellow">Yellow</SelectItem>
+                      <SelectItem value="red">Red</SelectItem>
+                      <SelectItem value="purple">Purple</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label>Pricing (JSON format)</Label>
+                <Textarea
+                  value={JSON.stringify(editingPackage.pricing || {}, null, 2)}
+                  onChange={(e) => {
+                    try {
+                      const pricing = JSON.parse(e.target.value);
+                      setEditingPackage({...editingPackage, pricing});
+                    } catch {}
+                  }}
+                  className="font-mono text-sm"
+                  rows={5}
+                />
+                <p className="text-xs text-gray-500 mt-1">Format: {`{"10-25": 150, "26-50": 275, ...}`}</p>
+              </div>
+              <div>
+                <Label>Included Items (one per line)</Label>
+                <Textarea
+                  value={(editingPackage.items || []).join('\n')}
+                  onChange={(e) => setEditingPackage({...editingPackage, items: e.target.value.split('\n').filter(Boolean)})}
+                  rows={6}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setEditingPackage(null)}>
+                  Cancel
+                </Button>
+                <Button onClick={() => updatePackage(editingPackage)} className="bg-[#d73a31] hover:bg-[#c73128]">
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Inquiries Tab */}

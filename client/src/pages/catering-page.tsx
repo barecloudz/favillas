@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Helmet } from "react-helmet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
   Phone,
   Mail,
   Check,
+  CheckCircle,
   Star,
   Package
 } from "lucide-react";
@@ -75,6 +76,16 @@ const CateringPage = () => {
 
   const totalSteps = 6;
   const progressPercentage = (currentStep / totalSteps) * 100;
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to top of card when step changes
+  useEffect(() => {
+    if (cardRef.current) {
+      const yOffset = -20; // Small offset from top
+      const y = cardRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  }, [currentStep]);
 
   const eventTypeOptions = [
     { id: "corporate", label: "Corporate Meeting/Lunch", icon: "💼" },
@@ -214,7 +225,7 @@ const CateringPage = () => {
 
         {/* Main Content */}
         <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-4xl mx-auto" ref={cardRef}>
 
             {/* Card 1: Event Type Selection */}
             {currentStep === 1 && (
@@ -442,7 +453,7 @@ const CateringPage = () => {
             )}
 
             {/* Card 4: View Packages */}
-            {currentStep === 4 && (
+            {currentStep === 4 && !formData.viewPackages && (
               <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle className="text-center text-2xl text-gray-900 flex items-center justify-center gap-2">
@@ -457,11 +468,7 @@ const CateringPage = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <button
                       onClick={() => updateFormData('viewPackages', 'yes')}
-                      className={`p-6 rounded-lg border-2 transition-all hover:shadow-md ${
-                        formData.viewPackages === 'yes'
-                          ? 'border-[#d73a31] bg-red-50 shadow-md'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                      className="p-6 rounded-lg border-2 transition-all hover:shadow-md border-gray-200 hover:border-[#d73a31] hover:bg-red-50"
                     >
                       <div className="text-center">
                         <div className="text-4xl mb-3">📦</div>
@@ -471,12 +478,11 @@ const CateringPage = () => {
                     </button>
 
                     <button
-                      onClick={() => updateFormData('viewPackages', 'no')}
-                      className={`p-6 rounded-lg border-2 transition-all hover:shadow-md ${
-                        formData.viewPackages === 'no'
-                          ? 'border-[#d73a31] bg-red-50 shadow-md'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                      onClick={() => {
+                        updateFormData('viewPackages', 'no');
+                        setTimeout(() => setCurrentStep(5), 300);
+                      }}
+                      className="p-6 rounded-lg border-2 transition-all hover:shadow-md border-gray-200 hover:border-gray-400"
                     >
                       <div className="text-center">
                         <div className="text-4xl mb-3">✏️</div>
@@ -486,72 +492,279 @@ const CateringPage = () => {
                     </button>
                   </div>
 
-                  {formData.viewPackages === 'yes' && (
-                    <div className="mt-8">
-                      <h4 className="font-semibold text-lg mb-4 text-center">Select a Package</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <button
-                          onClick={() => updateFormData('selectedPackage', 'basic')}
-                          className={`p-5 rounded-lg border-2 transition-all hover:shadow-md ${
-                            formData.selectedPackage === 'basic'
-                              ? 'border-[#d73a31] bg-red-50 shadow-md'
-                              : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          <div className="text-center">
-                            <Badge className="bg-gray-500 mb-2">Basic</Badge>
-                            <h3 className="font-semibold mb-1">Pizza Party</h3>
-                            <p className="text-gray-600 text-xs">Pizzas, salad & drinks</p>
-                          </div>
-                        </button>
-
-                        <button
-                          onClick={() => updateFormData('selectedPackage', 'standard')}
-                          className={`p-5 rounded-lg border-2 transition-all hover:shadow-md ${
-                            formData.selectedPackage === 'standard'
-                              ? 'border-[#d73a31] bg-red-50 shadow-md'
-                              : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          <div className="text-center">
-                            <Badge className="bg-blue-500 mb-2">Popular</Badge>
-                            <h3 className="font-semibold mb-1">Italian Feast</h3>
-                            <p className="text-gray-600 text-xs">Pizzas, appetizers, salads & dessert</p>
-                          </div>
-                        </button>
-
-                        <button
-                          onClick={() => updateFormData('selectedPackage', 'premium')}
-                          className={`p-5 rounded-lg border-2 transition-all hover:shadow-md ${
-                            formData.selectedPackage === 'premium'
-                              ? 'border-[#d73a31] bg-red-50 shadow-md'
-                              : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          <div className="text-center">
-                            <Badge className="bg-yellow-500 mb-2">Premium</Badge>
-                            <h3 className="font-semibold mb-1">Full Service</h3>
-                            <p className="text-gray-600 text-xs">Complete catering with all the extras</p>
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between mt-8">
+                  <div className="flex justify-start mt-8">
                     <Button variant="outline" onClick={handleBack}>
                       <ChevronLeft className="mr-2 w-4 h-4" /> Back
-                    </Button>
-                    <Button
-                      onClick={handleNext}
-                      disabled={!formData.viewPackages || (formData.viewPackages === 'yes' && !formData.selectedPackage)}
-                      className="px-8 bg-[#d73a31] hover:bg-[#c73128]"
-                    >
-                      Next <ChevronRight className="ml-2 w-4 h-4" />
                     </Button>
                   </div>
                 </CardContent>
               </Card>
+            )}
+
+            {/* Card 4b: Package Selection Screen */}
+            {currentStep === 4 && formData.viewPackages === 'yes' && (
+              <div className="space-y-6">
+                {/* Package Header */}
+                <div className="text-center mb-6">
+                  <h2 className="text-3xl font-bold text-gray-900 mb-2">Choose Your Catering Package</h2>
+                  <p className="text-gray-600">
+                    Perfect for {formData.guestCount === '200+' ? `${formData.customGuestCount || '200+'}` : formData.guestCount} guests
+                  </p>
+                </div>
+
+                {/* Pizza Party Package */}
+                <Card className={`shadow-lg border-2 transition-all cursor-pointer ${
+                  formData.selectedPackage === 'pizza_party'
+                    ? 'border-[#d73a31] ring-2 ring-[#d73a31] ring-opacity-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`} onClick={() => updateFormData('selectedPackage', 'pizza_party')}>
+                  <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <Badge className="bg-gray-600 mb-2">Basic</Badge>
+                        <CardTitle className="text-2xl">Pizza Party Package</CardTitle>
+                        <p className="text-gray-600 mt-1">Classic pizza party favorites</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-500">Starting at</p>
+                        <p className="text-3xl font-bold text-[#d73a31]">
+                          ${formData.guestCount === '10-25' ? '150' :
+                            formData.guestCount === '26-50' ? '275' :
+                            formData.guestCount === '51-100' ? '500' :
+                            formData.guestCount === '101-200' ? '950' : '1,800'}
+                        </p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                          <span>🍕</span> What's Included:
+                        </h4>
+                        <ul className="space-y-1 text-sm text-gray-700">
+                          <li>• Assorted NY Style Pizzas (Cheese, Pepperoni, Specialty)</li>
+                          <li>• Garden Salad (Half Tray)</li>
+                          <li>• French Fries (Half Tray)</li>
+                          <li>• Plates, napkins & utensils</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                          <span>📋</span> Serving Size:
+                        </h4>
+                        <ul className="space-y-1 text-sm text-gray-700">
+                          <li>• 10-25 guests: 4 Large Pizzas</li>
+                          <li>• 26-50 guests: 8 Large Pizzas</li>
+                          <li>• 51-100 guests: 15 Large Pizzas</li>
+                          <li>• 100+ guests: Custom quantity</li>
+                        </ul>
+                      </div>
+                    </div>
+                    {formData.selectedPackage === 'pizza_party' && (
+                      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
+                        <CheckCircle className="w-5 h-5 text-green-600 inline mr-2" />
+                        <span className="text-green-700 font-medium">Package Selected</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Italian Feast Package */}
+                <Card className={`shadow-lg border-2 transition-all cursor-pointer ${
+                  formData.selectedPackage === 'italian_feast'
+                    ? 'border-[#d73a31] ring-2 ring-[#d73a31] ring-opacity-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`} onClick={() => updateFormData('selectedPackage', 'italian_feast')}>
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <Badge className="bg-blue-600 mb-2">Most Popular</Badge>
+                        <CardTitle className="text-2xl">Italian Feast Package</CardTitle>
+                        <p className="text-gray-600 mt-1">A complete Italian dining experience</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-500">Starting at</p>
+                        <p className="text-3xl font-bold text-[#d73a31]">
+                          ${formData.guestCount === '10-25' ? '295' :
+                            formData.guestCount === '26-50' ? '525' :
+                            formData.guestCount === '51-100' ? '975' :
+                            formData.guestCount === '101-200' ? '1,850' : '3,500'}
+                        </p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                          <span>🍝</span> What's Included:
+                        </h4>
+                        <ul className="space-y-1 text-sm text-gray-700">
+                          <li>• Assorted NY Style Pizzas</li>
+                          <li>• Choice of Pasta (Baked Ziti, Alla Vodka, or Primavera)</li>
+                          <li>• Wings or Mozzarella Sticks</li>
+                          <li>• Caesar Salad & Garden Salad</li>
+                          <li>• Garlic Knots</li>
+                          <li>• Plates, napkins & utensils</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                          <span>⭐</span> Popular Add-ons:
+                        </h4>
+                        <ul className="space-y-1 text-sm text-gray-700">
+                          <li>• Fried Calamari (+$75-115)</li>
+                          <li>• Meatballs (+$70-115)</li>
+                          <li>• Chicken Parmigiana (+$75-130)</li>
+                          <li>• Antipasto Salad (+$75-115)</li>
+                        </ul>
+                      </div>
+                    </div>
+                    {formData.selectedPackage === 'italian_feast' && (
+                      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
+                        <CheckCircle className="w-5 h-5 text-green-600 inline mr-2" />
+                        <span className="text-green-700 font-medium">Package Selected</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Premium Full Service Package */}
+                <Card className={`shadow-lg border-2 transition-all cursor-pointer ${
+                  formData.selectedPackage === 'full_service'
+                    ? 'border-[#d73a31] ring-2 ring-[#d73a31] ring-opacity-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`} onClick={() => updateFormData('selectedPackage', 'full_service')}>
+                  <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-100">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <Badge className="bg-yellow-600 mb-2">Premium</Badge>
+                        <CardTitle className="text-2xl">Full Service Package</CardTitle>
+                        <p className="text-gray-600 mt-1">The ultimate catering experience</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-500">Starting at</p>
+                        <p className="text-3xl font-bold text-[#d73a31]">
+                          ${formData.guestCount === '10-25' ? '495' :
+                            formData.guestCount === '26-50' ? '895' :
+                            formData.guestCount === '51-100' ? '1,650' :
+                            formData.guestCount === '101-200' ? '3,100' : '5,800'}
+                        </p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                          <span>👨‍🍳</span> What's Included:
+                        </h4>
+                        <ul className="space-y-1 text-sm text-gray-700">
+                          <li>• Assorted NY Style Pizzas</li>
+                          <li>• Two Pasta Selections</li>
+                          <li>• Chicken Parmigiana or Marsala</li>
+                          <li>• Eggplant Parmigiana</li>
+                          <li>• Wings & Fried Calamari</li>
+                          <li>• Meatballs</li>
+                          <li>• Caesar, Garden & Antipasto Salads</li>
+                          <li>• Garlic Knots & Bread</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                          <span>✨</span> Premium Extras:
+                        </h4>
+                        <ul className="space-y-1 text-sm text-gray-700">
+                          <li>• Sausage & Peppers</li>
+                          <li>• Eggplant Rollatini</li>
+                          <li>• Dessert Tray</li>
+                          <li>• Premium plates & serving ware</li>
+                          <li>• Dedicated catering coordinator</li>
+                        </ul>
+                      </div>
+                    </div>
+                    {formData.selectedPackage === 'full_service' && (
+                      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
+                        <CheckCircle className="w-5 h-5 text-green-600 inline mr-2" />
+                        <span className="text-green-700 font-medium">Package Selected</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Custom Package Option */}
+                <Card className={`shadow-lg border-2 transition-all cursor-pointer ${
+                  formData.selectedPackage === 'custom'
+                    ? 'border-[#d73a31] ring-2 ring-[#d73a31] ring-opacity-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`} onClick={() => updateFormData('selectedPackage', 'custom')}>
+                  <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <Badge className="bg-purple-600 mb-2">Flexible</Badge>
+                        <CardTitle className="text-2xl">Build Your Own Package</CardTitle>
+                        <p className="text-gray-600 mt-1">Mix and match from our full catering menu</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-500">Price varies</p>
+                        <p className="text-2xl font-bold text-[#d73a31]">Custom Quote</p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-4">
+                    <p className="text-gray-700 mb-3">
+                      Want something specific? Choose exactly what you need from our full catering menu:
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
+                      <div className="bg-white p-2 rounded border text-center">
+                        <span className="block text-lg mb-1">🍗</span>
+                        Appetizers
+                      </div>
+                      <div className="bg-white p-2 rounded border text-center">
+                        <span className="block text-lg mb-1">🍝</span>
+                        Pasta
+                      </div>
+                      <div className="bg-white p-2 rounded border text-center">
+                        <span className="block text-lg mb-1">🍗</span>
+                        Chicken
+                      </div>
+                      <div className="bg-white p-2 rounded border text-center">
+                        <span className="block text-lg mb-1">🍆</span>
+                        Eggplant
+                      </div>
+                      <div className="bg-white p-2 rounded border text-center">
+                        <span className="block text-lg mb-1">🥗</span>
+                        Salads
+                      </div>
+                    </div>
+                    {formData.selectedPackage === 'custom' && (
+                      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
+                        <CheckCircle className="w-5 h-5 text-green-600 inline mr-2" />
+                        <span className="text-green-700 font-medium">We'll help you customize!</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Navigation */}
+                <div className="flex justify-between mt-6">
+                  <Button variant="outline" onClick={() => updateFormData('viewPackages', '')}>
+                    <ChevronLeft className="mr-2 w-4 h-4" /> Back
+                  </Button>
+                  <Button
+                    onClick={handleNext}
+                    disabled={!formData.selectedPackage}
+                    className="px-8 bg-[#d73a31] hover:bg-[#c73128]"
+                  >
+                    Continue with {formData.selectedPackage === 'pizza_party' ? 'Pizza Party' :
+                      formData.selectedPackage === 'italian_feast' ? 'Italian Feast' :
+                      formData.selectedPackage === 'full_service' ? 'Full Service' :
+                      formData.selectedPackage === 'custom' ? 'Custom' : 'Package'}
+                    <ChevronRight className="ml-2 w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
             )}
 
             {/* Card 5: Additional Details */}
@@ -767,7 +980,7 @@ const CateringPage = () => {
                       </div>
                       {formData.selectedPackage && (
                         <div>
-                          <strong>Package:</strong> {formData.selectedPackage === 'basic' ? 'Pizza Party' : formData.selectedPackage === 'standard' ? 'Italian Feast' : 'Full Service'}
+                          <strong>Package:</strong> {formData.selectedPackage === 'pizza_party' ? 'Pizza Party' : formData.selectedPackage === 'italian_feast' ? 'Italian Feast' : formData.selectedPackage === 'full_service' ? 'Full Service' : formData.selectedPackage === 'custom' ? 'Custom Package' : formData.selectedPackage}
                         </div>
                       )}
                       {formData.eventDate && (
