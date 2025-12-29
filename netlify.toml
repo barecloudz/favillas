@@ -348,6 +348,12 @@
   to = "/.netlify/functions/catering-settings"
   status = 200
 
+# Delivery availability endpoint (for enabling/disabling delivery)
+[[redirects]]
+  from = "/api/delivery-availability"
+  to = "/.netlify/functions/delivery-availability"
+  status = 200
+
 # Printer test connection endpoint (must be BEFORE generic printer/config/*)
 [[redirects]]
   from = "/api/printer/config/*/test-connection"

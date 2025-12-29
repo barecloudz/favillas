@@ -40,6 +40,41 @@ export function DeliverySettings() {
   const [showSettings, setShowSettings] = useState(false);
   const [migrationStatus, setMigrationStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const [migrationError, setMigrationError] = useState<string>('');
+  const [deliveryEnabled, setDeliveryEnabled] = useState(true);
+  const [deliveryToggleLoading, setDeliveryToggleLoading] = useState(false);
+
+  // Fetch delivery enabled status
+  useEffect(() => {
+    const fetchDeliveryStatus = async () => {
+      try {
+        const response = await fetch('/api/delivery-availability');
+        if (response.ok) {
+          const data = await response.json();
+          setDeliveryEnabled(data.delivery_enabled !== false);
+        }
+      } catch (error) {
+        console.error('Failed to fetch delivery status:', error);
+      }
+    };
+    fetchDeliveryStatus();
+  }, []);
+
+  // Toggle delivery availability
+  const toggleDeliveryEnabled = async (enabled: boolean) => {
+    setDeliveryToggleLoading(true);
+    try {
+      const response = await apiRequest('PUT', '/api/delivery-availability', {
+        delivery_enabled: enabled
+      });
+      if (response.ok) {
+        setDeliveryEnabled(enabled);
+      }
+    } catch (error) {
+      console.error('Failed to toggle delivery:', error);
+    } finally {
+      setDeliveryToggleLoading(false);
+    }
+  };
 
   // Fetch delivery zones and settings
   const { data: deliveryData, isLoading, error } = useQuery<DeliveryData>({
@@ -235,18 +270,45 @@ export function DeliverySettings() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Delivery Management</h2>
-        <div className="space-x-2">
+      {/* Delivery Availability Toggle */}
+      <div className={`p-4 rounded-lg border-2 ${deliveryEnabled ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h3 className="font-semibold text-lg flex items-center gap-2">
+              {deliveryEnabled ? '🚗 Delivery is Available' : '⛔ Delivery is Disabled'}
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              {deliveryEnabled
+                ? 'Customers can place delivery orders'
+                : 'A red banner will appear on the menu page and delivery will be grayed out at checkout'}
+            </p>
+          </div>
+          <button
+            onClick={() => toggleDeliveryEnabled(!deliveryEnabled)}
+            disabled={deliveryToggleLoading}
+            className={`w-full sm:w-auto px-6 py-2 rounded-lg font-semibold transition-all ${
+              deliveryEnabled
+                ? 'bg-red-500 hover:bg-red-600 text-white'
+                : 'bg-green-500 hover:bg-green-600 text-white'
+            } disabled:opacity-50`}
+          >
+            {deliveryToggleLoading ? 'Updating...' : deliveryEnabled ? 'Disable Delivery' : 'Enable Delivery'}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+        <h2 className="text-xl sm:text-2xl font-bold">Delivery Management</h2>
+        <div className="flex flex-col sm:flex-row gap-2">
           <button
             onClick={() => setShowSettings(!showSettings)}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm sm:text-base"
           >
             Delivery Settings
           </button>
           <button
             onClick={() => setShowAddZone(!showAddZone)}
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 text-sm sm:text-base"
           >
             Add Delivery Zone
           </button>
@@ -539,10 +601,12 @@ export function DeliverySettings() {
 
       {/* Delivery Zones List */}
       <div className="bg-white rounded-lg shadow-md">
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold">Delivery Zones</h3>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* Desktop Table View */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -603,18 +667,60 @@ export function DeliverySettings() {
               ))}
             </tbody>
           </table>
-          {zones.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              No delivery zones configured. Add one to get started!
-            </div>
-          )}
         </div>
+
+        {/* Mobile Card View */}
+        <div className="sm:hidden divide-y divide-gray-200">
+          {zones.map((zone) => (
+            <div key={zone.id} className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-gray-900">{zone.name}</h4>
+                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                  zone.isActive
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {zone.isActive ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Max Radius:</span>
+                <span className="font-medium">{zone.maxRadius} miles</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Delivery Fee:</span>
+                <span className="font-medium">${zone.deliveryFee}</span>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setEditingZone(zone)}
+                  className="flex-1 bg-indigo-50 text-indigo-600 py-2 rounded font-medium hover:bg-indigo-100"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => deleteZoneMutation.mutate(zone.id)}
+                  className="flex-1 bg-red-50 text-red-600 py-2 rounded font-medium hover:bg-red-100"
+                  disabled={deleteZoneMutation.isPending}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {zones.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            No delivery zones configured. Add one to get started!
+          </div>
+        )}
       </div>
 
       {/* Edit Zone Modal */}
       {editingZone && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 px-4">
+          <div className="relative top-10 sm:top-20 mx-auto p-4 sm:p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
             <h3 className="text-lg font-semibold mb-4">Edit Delivery Zone</h3>
             <form onSubmit={handleUpdateZone} className="space-y-4">
               <div>

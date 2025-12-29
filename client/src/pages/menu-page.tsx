@@ -38,6 +38,19 @@ const MenuPage = () => {
   const { isOrderingPaused, displayMessage } = useVacationMode();
   const { isPastCutoff, canPlaceAsapOrders, cutoffMessage, storeStatus } = useStoreStatus();
 
+  // Check if delivery is available
+  const { data: deliveryAvailability } = useQuery({
+    queryKey: ['delivery-availability'],
+    queryFn: async () => {
+      const response = await fetch('/api/delivery-availability');
+      if (response.ok) {
+        return await response.json();
+      }
+      return { delivery_enabled: true };
+    }
+  });
+  const isDeliveryDisabled = deliveryAvailability?.delivery_enabled === false;
+
   const formatPrice = (price: string | number) => {
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
     if (isNaN(numPrice) || numPrice === null || numPrice === undefined) {
@@ -602,6 +615,19 @@ const MenuPage = () => {
                 <p className="text-sm font-medium bg-yellow-600 bg-opacity-50 px-2 py-1 rounded inline-block">
                   💡 You can still schedule an order for when we open{storeStatus?.nextOpenTime ? ` at ${storeStatus.nextOpenTime}` : ''}!
                 </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delivery Unavailable Banner */}
+        {isDeliveryDisabled && (
+          <div className="bg-red-500 border-b-4 border-red-600 px-4 sm:px-6 lg:px-8 py-3">
+            <div className="max-w-7xl mx-auto flex items-center gap-3 text-white">
+              <AlertCircle className="h-5 w-5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-semibold">Delivery is currently unavailable. We are working to restore this.</p>
+                <p className="text-sm opacity-90">Pickup orders are still available!</p>
               </div>
             </div>
           </div>

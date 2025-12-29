@@ -257,6 +257,19 @@ const CheckoutPage = () => {
   const { toast } = useToast();
   const { isOrderingPaused, displayMessage } = useVacationMode();
 
+  // Check if delivery is available
+  const { data: deliveryAvailability } = useQuery({
+    queryKey: ['delivery-availability'],
+    queryFn: async () => {
+      const response = await fetch('/api/delivery-availability');
+      if (response.ok) {
+        return await response.json();
+      }
+      return { delivery_enabled: true };
+    }
+  });
+  const isDeliveryDisabled = deliveryAvailability?.delivery_enabled === false;
+
   // OPTIMIZATION: Preload Stripe immediately on page load
   // This ensures Stripe is ready when user clicks "Continue to Payment"
   useEffect(() => {
@@ -1650,9 +1663,11 @@ const CheckoutPage = () => {
                             <RadioGroupItem value="pickup" id="pickup" />
                             <Label htmlFor="pickup">Pickup</Label>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="delivery" id="delivery" />
-                            <Label htmlFor="delivery">Delivery</Label>
+                          <div className={`flex items-center space-x-2 ${isDeliveryDisabled ? 'opacity-50' : ''}`}>
+                            <RadioGroupItem value="delivery" id="delivery" disabled={isDeliveryDisabled} />
+                            <Label htmlFor="delivery" className={isDeliveryDisabled ? 'cursor-not-allowed' : ''}>
+                              Delivery {isDeliveryDisabled && '(Unavailable)'}
+                            </Label>
                           </div>
                         </RadioGroup>
                         {/* Mobile: App-style buttons */}
@@ -1671,15 +1686,18 @@ const CheckoutPage = () => {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setOrderType("delivery")}
+                            onClick={() => !isDeliveryDisabled && setOrderType("delivery")}
+                            disabled={isDeliveryDisabled}
                             className={`p-4 rounded-xl border-2 font-semibold text-center transition-all ${
-                              orderType === "delivery"
-                                ? "bg-[#d73a31] border-[#d73a31] text-white shadow-lg scale-105"
-                                : "bg-white border-gray-300 text-gray-700 hover:border-gray-400"
+                              isDeliveryDisabled
+                                ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
+                                : orderType === "delivery"
+                                  ? "bg-[#d73a31] border-[#d73a31] text-white shadow-lg scale-105"
+                                  : "bg-white border-gray-300 text-gray-700 hover:border-gray-400"
                             }`}
                           >
-                            <div className="text-2xl mb-1">🚗</div>
-                            Delivery
+                            <div className="text-2xl mb-1">{isDeliveryDisabled ? '🚫' : '🚗'}</div>
+                            {isDeliveryDisabled ? 'Unavailable' : 'Delivery'}
                           </button>
                         </div>
                       </div>
