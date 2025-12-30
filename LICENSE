@@ -1,21 +1,202 @@
-MIT License
+PROPRIETARY SOFTWARE LICENSE AGREEMENT
+SOFTWARE AS A SERVICE (SaaS) AGREEMENT
 
-Copyright (c) 2021 Supabase, Inc. and contributors
+Copyright (c) 2024-2025 Nardoni Digital LLC. All Rights Reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+================================================================================
+                        PROPRIETARY AND CONFIDENTIAL
+================================================================================
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+This Software as a Service Agreement ("Agreement") is entered into between:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+LICENSOR:
+  Nardoni Digital LLC
+  (hereinafter referred to as "Nardoni Digital" or "Licensor")
+
+LICENSEE:
+  FAMNYPIZZA LLC, doing business as Favilla's NY Pizza
+  (hereinafter referred to as "Licensee" or "Client")
+
+================================================================================
+                           TERMS AND CONDITIONS
+================================================================================
+
+1. GRANT OF LICENSE
+-------------------
+Subject to the terms of this Agreement and the payment of all applicable
+subscription fees, Nardoni Digital hereby grants to Licensee a limited,
+non-exclusive, non-transferable, revocable license to access and use the
+Pizza Spin Rewards software application and related services ("Software")
+solely for Licensee's internal business operations.
+
+2. SUBSCRIPTION AND PAYMENT
+---------------------------
+a) This license is contingent upon Licensee maintaining an active paid
+   subscription with Nardoni Digital.
+
+b) The Software is provided on a subscription basis. Access to the Software
+   will be suspended or terminated if subscription payments are not current.
+
+c) Subscription fees, payment terms, and billing cycles are as specified in
+   the separate Service Agreement between the parties.
+
+3. RESTRICTIONS
+---------------
+Licensee SHALL NOT:
+
+a) Copy, modify, adapt, translate, reverse engineer, decompile, disassemble,
+   or create derivative works based on the Software;
+
+b) Sublicense, lease, rent, loan, distribute, or otherwise transfer the
+   Software or any rights therein to any third party;
+
+c) Remove, alter, or obscure any proprietary notices, labels, or marks on
+   the Software;
+
+d) Use the Software to provide services to third parties (service bureau use);
+
+e) Access or use the Software in any manner that could damage, disable,
+   overburden, or impair any Nardoni Digital server or network;
+
+f) Attempt to gain unauthorized access to any portion of the Software or
+   any other systems or networks connected to the Software;
+
+g) Use the Software for any unlawful purpose or in violation of any
+   applicable laws or regulations.
+
+4. INTELLECTUAL PROPERTY
+------------------------
+a) The Software, including but not limited to all source code, object code,
+   algorithms, data structures, designs, interfaces, documentation, and any
+   modifications or enhancements thereto, is and shall remain the sole and
+   exclusive property of Nardoni Digital.
+
+b) This Agreement does not convey to Licensee any ownership interest in or
+   to the Software, but only a limited right of use revocable in accordance
+   with the terms of this Agreement.
+
+c) All intellectual property rights, including patents, copyrights, trade
+   secrets, and trademarks, in and to the Software are owned exclusively
+   by Nardoni Digital.
+
+5. DATA OWNERSHIP AND PRIVACY
+-----------------------------
+a) Licensee retains all ownership rights to the business data entered into
+   or generated through the use of the Software ("Client Data").
+
+b) Nardoni Digital shall maintain the confidentiality of Client Data and
+   shall not access, use, or disclose Client Data except as necessary to
+   provide the services or as required by law.
+
+c) Upon termination of this Agreement, Licensee may request export of
+   Client Data within thirty (30) days, after which Nardoni Digital may
+   delete such data.
+
+6. CONFIDENTIALITY
+------------------
+a) The Software, its source code, architecture, and technical specifications
+   constitute Confidential Information of Nardoni Digital.
+
+b) Licensee agrees to maintain the confidentiality of such information and
+   not to disclose it to any third party without prior written consent.
+
+7. SUPPORT AND MAINTENANCE
+--------------------------
+a) Nardoni Digital shall provide technical support and maintenance services
+   as specified in the applicable Service Agreement.
+
+b) Updates, upgrades, and new features may be provided at Nardoni Digital's
+   discretion and may be subject to additional fees.
+
+8. WARRANTY DISCLAIMER
+----------------------
+THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+
+NARDONI DIGITAL DOES NOT WARRANT THAT THE SOFTWARE WILL BE UNINTERRUPTED,
+ERROR-FREE, OR COMPLETELY SECURE.
+
+9. LIMITATION OF LIABILITY
+--------------------------
+IN NO EVENT SHALL NARDONI DIGITAL BE LIABLE FOR ANY INDIRECT, INCIDENTAL,
+SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING WITHOUT LIMITATION,
+LOSS OF PROFITS, DATA, USE, GOODWILL, OR OTHER INTANGIBLE LOSSES, RESULTING
+FROM:
+
+a) USE OR INABILITY TO USE THE SOFTWARE;
+b) UNAUTHORIZED ACCESS TO OR ALTERATION OF DATA;
+c) ANY THIRD-PARTY CONDUCT ON THE SOFTWARE;
+d) ANY OTHER MATTER RELATING TO THE SOFTWARE.
+
+NARDONI DIGITAL'S TOTAL LIABILITY SHALL NOT EXCEED THE AMOUNTS PAID BY
+LICENSEE IN THE TWELVE (12) MONTHS PRECEDING THE CLAIM.
+
+10. TERM AND TERMINATION
+------------------------
+a) This Agreement is effective as of the date of first use and continues
+   for as long as Licensee maintains an active subscription.
+
+b) Nardoni Digital may terminate this Agreement immediately upon written
+   notice if Licensee:
+   - Fails to pay subscription fees when due;
+   - Breaches any material term of this Agreement;
+   - Becomes insolvent or files for bankruptcy.
+
+c) Upon termination:
+   - All rights granted hereunder shall immediately cease;
+   - Licensee must immediately discontinue use of the Software;
+   - Licensee must destroy all copies of any Software materials in its
+     possession.
+
+11. INDEMNIFICATION
+-------------------
+Licensee agrees to indemnify, defend, and hold harmless Nardoni Digital and
+its officers, directors, employees, and agents from any claims, damages,
+losses, or expenses (including reasonable attorneys' fees) arising from:
+
+a) Licensee's use of the Software;
+b) Licensee's violation of this Agreement;
+c) Licensee's violation of any applicable law or regulation.
+
+12. GOVERNING LAW
+-----------------
+This Agreement shall be governed by and construed in accordance with the
+laws of the State of New Jersey, without regard to its conflict of law
+principles. Any disputes arising under this Agreement shall be resolved
+in the state or federal courts located in New Jersey.
+
+13. ENTIRE AGREEMENT
+--------------------
+This Agreement, together with any Service Agreement and related schedules,
+constitutes the entire agreement between the parties concerning the subject
+matter hereof and supersedes all prior agreements, understandings,
+negotiations, and discussions, whether oral or written.
+
+14. AMENDMENTS
+--------------
+This Agreement may only be amended by a written instrument signed by both
+parties.
+
+15. SEVERABILITY
+----------------
+If any provision of this Agreement is held to be invalid or unenforceable,
+the remaining provisions shall continue in full force and effect.
+
+16. NO WAIVER
+-------------
+The failure of either party to enforce any right or provision of this
+Agreement shall not constitute a waiver of such right or provision.
+
+================================================================================
+
+BY USING THIS SOFTWARE, LICENSEE ACKNOWLEDGES THAT THEY HAVE READ THIS
+AGREEMENT, UNDERSTAND IT, AND AGREE TO BE BOUND BY ITS TERMS AND CONDITIONS.
+
+================================================================================
+
+For licensing inquiries, contact:
+Nardoni Digital LLC
+
+Effective Date: December 2024
+Last Updated: December 30, 2025
