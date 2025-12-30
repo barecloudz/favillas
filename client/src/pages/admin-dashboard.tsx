@@ -1644,9 +1644,7 @@ const CateringManagement = ({ cateringData }: any) => {
   // Fetch catering button setting
   const fetchCateringSetting = async () => {
     try {
-      const response = await fetch('/api/catering-settings', {
-        credentials: 'include'
-      });
+      const response = await apiRequest('GET', '/api/catering-settings');
       if (response.ok) {
         const data = await response.json();
         setCateringButtonEnabled(data.catering_button_enabled !== false);
@@ -1660,11 +1658,8 @@ const CateringManagement = ({ cateringData }: any) => {
   const toggleCateringButton = async (enabled: boolean) => {
     setCateringSettingsLoading(true);
     try {
-      const response = await fetch('/api/catering-settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ catering_button_enabled: enabled })
+      const response = await apiRequest('PUT', '/api/catering-settings', {
+        catering_button_enabled: enabled
       });
 
       if (response.ok) {
@@ -1698,9 +1693,7 @@ const CateringManagement = ({ cateringData }: any) => {
   const fetchCateringMenu = async () => {
     setMenuLoading(true);
     try {
-      const response = await fetch('/api/admin/catering-menu', {
-        credentials: 'include'
-      });
+      const response = await apiRequest('GET', '/api/admin/catering-menu');
       if (response.ok) {
         const data = await response.json();
         setMenuCategories(data.categories || []);
@@ -1716,9 +1709,7 @@ const CateringManagement = ({ cateringData }: any) => {
   const fetchPackages = async () => {
     setPackagesLoading(true);
     try {
-      const response = await fetch('/api/admin/catering-packages', {
-        credentials: 'include'
-      });
+      const response = await apiRequest('GET', '/api/admin/catering-packages');
       if (response.ok) {
         const data = await response.json();
         setPackages(data.packages || []);
@@ -1733,11 +1724,9 @@ const CateringManagement = ({ cateringData }: any) => {
   // Toggle category enabled status
   const toggleCategoryEnabled = async (categoryId: number, isEnabled: boolean) => {
     try {
-      const response = await fetch('/api/admin/catering-menu', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ id: categoryId, is_enabled: isEnabled })
+      const response = await apiRequest('PATCH', '/api/admin/catering-menu', {
+        id: categoryId,
+        is_enabled: isEnabled
       });
 
       if (response.ok) {
@@ -1761,11 +1750,9 @@ const CateringManagement = ({ cateringData }: any) => {
   // Toggle package enabled status
   const togglePackageEnabled = async (packageId: number, isEnabled: boolean) => {
     try {
-      const response = await fetch('/api/admin/catering-packages', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ id: packageId, is_enabled: isEnabled })
+      const response = await apiRequest('PATCH', '/api/admin/catering-packages', {
+        id: packageId,
+        is_enabled: isEnabled
       });
 
       if (response.ok) {
@@ -1789,12 +1776,7 @@ const CateringManagement = ({ cateringData }: any) => {
   // Update package details
   const updatePackage = async (packageData: any) => {
     try {
-      const response = await fetch('/api/admin/catering-packages', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(packageData)
-      });
+      const response = await apiRequest('PUT', '/api/admin/catering-packages', packageData);
 
       if (response.ok) {
         toast({
@@ -1894,9 +1876,9 @@ const CateringManagement = ({ cateringData }: any) => {
       {/* Catering Settings Card */}
       <Card className="border-2 border-purple-200 bg-purple-50">
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
+              <div className="p-2 bg-purple-100 rounded-lg flex-shrink-0">
                 <Settings className="h-5 w-5 text-purple-600" />
               </div>
               <div>
@@ -1908,7 +1890,7 @@ const CateringManagement = ({ cateringData }: any) => {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between sm:justify-end gap-3 pl-11 sm:pl-0">
               <span className={`text-sm font-medium ${cateringButtonEnabled ? 'text-green-600' : 'text-gray-500'}`}>
                 {cateringButtonEnabled ? 'Enabled' : 'Disabled'}
               </span>
@@ -1981,8 +1963,8 @@ const CateringManagement = ({ cateringData }: any) => {
                         : 'border-gray-200 bg-gray-50 opacity-60'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                      <div className="flex flex-wrap items-center gap-2">
                         <h3 className="font-semibold text-lg">{category.category_name}</h3>
                         <Badge className={category.is_enabled ? 'bg-green-500' : 'bg-gray-400'}>
                           {category.is_enabled ? 'Enabled' : 'Disabled'}
@@ -1992,7 +1974,7 @@ const CateringManagement = ({ cateringData }: any) => {
                         variant={category.is_enabled ? "destructive" : "default"}
                         size="sm"
                         onClick={() => toggleCategoryEnabled(category.id, !category.is_enabled)}
-                        className={!category.is_enabled ? "bg-green-600 hover:bg-green-700" : ""}
+                        className={`w-full sm:w-auto ${!category.is_enabled ? "bg-green-600 hover:bg-green-700" : ""}`}
                       >
                         {category.is_enabled ? 'Disable' : 'Enable'}
                       </Button>
@@ -2045,8 +2027,8 @@ const CateringManagement = ({ cateringData }: any) => {
                         : 'border-gray-200 bg-gray-50 opacity-60'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Badge className={`bg-${pkg.badge_color || 'gray'}-500`}>
                           {pkg.badge_text || 'Package'}
                         </Badge>
@@ -2060,6 +2042,7 @@ const CateringManagement = ({ cateringData }: any) => {
                           variant="outline"
                           size="sm"
                           onClick={() => setEditingPackage(pkg)}
+                          className="flex-1 sm:flex-none"
                         >
                           <Edit className="h-4 w-4 mr-1" />
                           Edit
@@ -2068,7 +2051,7 @@ const CateringManagement = ({ cateringData }: any) => {
                           variant={pkg.is_enabled ? "destructive" : "default"}
                           size="sm"
                           onClick={() => togglePackageEnabled(pkg.id, !pkg.is_enabled)}
-                          className={!pkg.is_enabled ? "bg-green-600 hover:bg-green-700" : ""}
+                          className={`flex-1 sm:flex-none ${!pkg.is_enabled ? "bg-green-600 hover:bg-green-700" : ""}`}
                         >
                           {pkg.is_enabled ? 'Disable' : 'Enable'}
                         </Button>
