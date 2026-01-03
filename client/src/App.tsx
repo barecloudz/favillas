@@ -1,3 +1,4 @@
+// Deploy trigger: 2026-01-02
 import { Switch, Route, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { queryClient } from "./lib/queryClient";
