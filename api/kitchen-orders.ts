@@ -6,12 +6,12 @@ let dbConnection: any = null;
 
 function getDB() {
   if (dbConnection) return dbConnection;
-  
+
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     throw new Error('DATABASE_URL environment variable is required');
   }
-  
+
   dbConnection = postgres(databaseUrl, {
     max: 1,
     idle_timeout: 20,
@@ -19,7 +19,7 @@ function getDB() {
     prepare: false,
     keep_alive: false,
   });
-  
+
   return dbConnection;
 }
 
@@ -61,8 +61,10 @@ export const handler: Handler = async (event, context) => {
 
   try {
     const sql = getDB();
-    
-    // Get active kitchen orders with customer names (pending, cooking, completed)
+
+    // OPTIMIZED: Get all data in 3 queries instead of N+1
+
+    // Query 1: Get active kitchen orders with customer names
     const kitchenOrders = await sql`
       SELECT
         o.*,
@@ -74,96 +76,118 @@ export const handler: Handler = async (event, context) => {
         AND o.payment_status != 'pending_payment_link'
       ORDER BY o.created_at ASC
     `;
-    
+
     console.log(`[API] Fetching active orders... Found ${kitchenOrders.length} orders`);
-    
-    // Get order items for each order with menu item details
-    const ordersWithItems = await Promise.all(
-      kitchenOrders.map(async (order) => {
-        const items = await sql`
-          SELECT
-            oi.*,
-            mi.name as menu_item_name,
-            mi.description as menu_item_description,
-            mi.base_price as menu_item_price,
-            mi.image_url as menu_item_image_url,
-            mi.category as menu_item_category
-          FROM order_items oi
-          LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
-          WHERE oi.order_id = ${order.id}
-        `;
 
-        // Transform the data to match expected frontend structure
-        const transformedItems = items.map(item => {
-          // Parse options if they're a JSON string
-          let parsedOptions = item.options;
-          if (typeof item.options === 'string' && item.options) {
-            try {
-              parsedOptions = JSON.parse(item.options);
-            } catch (e) {
-              console.error(`Failed to parse options for item ${item.id}:`, e);
-              parsedOptions = null;
-            }
-          }
+    if (kitchenOrders.length === 0) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify([])
+      };
+    }
 
-          // Parse half_and_half if it's a JSON string
-          let parsedHalfAndHalf = item.half_and_half;
-          if (typeof item.half_and_half === 'string' && item.half_and_half) {
-            try {
-              parsedHalfAndHalf = JSON.parse(item.half_and_half);
-            } catch (e) {
-              console.error(`Failed to parse half_and_half for item ${item.id}:`, e);
-              parsedHalfAndHalf = null;
-            }
-          }
+    // Get all order IDs for batch queries
+    const orderIds = kitchenOrders.map(o => o.id);
 
-          return {
-            ...item,
-            options: parsedOptions,
-            halfAndHalf: parsedHalfAndHalf,  // Add parsed half-and-half data
-            menuItem: item.menu_item_name ? {
-              name: item.menu_item_name,
-              description: item.menu_item_description,
-              price: item.menu_item_price,
-              imageUrl: item.menu_item_image_url,
-              category: item.menu_item_category
-            } : null
-          };
-        });
+    // Query 2: Get ALL order items for all orders in one query
+    const allItems = await sql`
+      SELECT
+        oi.*,
+        mi.name as menu_item_name,
+        mi.description as menu_item_description,
+        mi.base_price as menu_item_price,
+        mi.image_url as menu_item_image_url,
+        mi.category as menu_item_category
+      FROM order_items oi
+      LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+      WHERE oi.order_id = ANY(${orderIds})
+    `;
 
-        // Get points earned for this order
-        let pointsEarned = 0;
-        if (order.user_id || order.supabase_user_id) {
-          const pointsQuery = order.user_id
-            ? await sql`SELECT points FROM points_transactions WHERE order_id = ${order.id} AND user_id = ${order.user_id} AND type = 'earned'`
-            : await sql`SELECT points FROM points_transactions WHERE order_id = ${order.id} AND supabase_user_id = ${order.supabase_user_id} AND type = 'earned'`;
+    // Query 3: Get ALL points transactions for all orders in one query
+    const allPoints = await sql`
+      SELECT order_id, user_id, supabase_user_id, points
+      FROM points_transactions
+      WHERE order_id = ANY(${orderIds}) AND type = 'earned'
+    `;
 
-          if (pointsQuery.length > 0) {
-            pointsEarned = parseInt(pointsQuery[0].points);
+    // Group items by order_id
+    const itemsByOrderId: Record<number, any[]> = {};
+    for (const item of allItems) {
+      if (!itemsByOrderId[item.order_id]) {
+        itemsByOrderId[item.order_id] = [];
+      }
+      itemsByOrderId[item.order_id].push(item);
+    }
+
+    // Group points by order_id
+    const pointsByOrderId: Record<number, number> = {};
+    for (const pt of allPoints) {
+      pointsByOrderId[pt.order_id] = parseInt(pt.points);
+    }
+
+    // Build the response
+    const ordersWithItems = kitchenOrders.map((order) => {
+      const items = itemsByOrderId[order.id] || [];
+
+      // Transform the data to match expected frontend structure
+      const transformedItems = items.map(item => {
+        // Parse options if they're a JSON string
+        let parsedOptions = item.options;
+        if (typeof item.options === 'string' && item.options) {
+          try {
+            parsedOptions = JSON.parse(item.options);
+          } catch (e) {
+            console.error(`Failed to parse options for item ${item.id}:`, e);
+            parsedOptions = null;
           }
         }
 
-        // Extract first name from customer_name field or use first_name from user profile
-        let displayName = 'Guest';
-        if (order.customer_name) {
-          // Extract first word/name from customer_name (handles both "John Doe" and "John")
-          displayName = order.customer_name.trim().split(/\s+/)[0];
-        } else if (order.first_name) {
-          // Fallback to first_name from user profile
-          displayName = order.first_name;
+        // Parse half_and_half if it's a JSON string
+        let parsedHalfAndHalf = item.half_and_half;
+        if (typeof item.half_and_half === 'string' && item.half_and_half) {
+          try {
+            parsedHalfAndHalf = JSON.parse(item.half_and_half);
+          } catch (e) {
+            console.error(`Failed to parse half_and_half for item ${item.id}:`, e);
+            parsedHalfAndHalf = null;
+          }
         }
 
         return {
-          ...order,
-          items: transformedItems,
-          pointsEarned: pointsEarned,
-          customerName: displayName,
-          // Transform snake_case to camelCase for frontend
-          fulfillmentTime: order.fulfillment_time,
-          scheduledTime: order.scheduled_time
+          ...item,
+          options: parsedOptions,
+          halfAndHalf: parsedHalfAndHalf,
+          menuItem: item.menu_item_name ? {
+            name: item.menu_item_name,
+            description: item.menu_item_description,
+            price: item.menu_item_price,
+            imageUrl: item.menu_item_image_url,
+            category: item.menu_item_category
+          } : null
         };
-      })
-    );
+      });
+
+      // Get points earned for this order from our pre-fetched data
+      const pointsEarned = pointsByOrderId[order.id] || 0;
+
+      // Extract first name from customer_name field or use first_name from user profile
+      let displayName = 'Guest';
+      if (order.customer_name) {
+        displayName = order.customer_name.trim().split(/\s+/)[0];
+      } else if (order.first_name) {
+        displayName = order.first_name;
+      }
+
+      return {
+        ...order,
+        items: transformedItems,
+        pointsEarned: pointsEarned,
+        customerName: displayName,
+        fulfillmentTime: order.fulfillment_time,
+        scheduledTime: order.scheduled_time
+      };
+    });
 
     return {
       statusCode: 200,
@@ -175,7 +199,7 @@ export const handler: Handler = async (event, context) => {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         message: 'Failed to fetch kitchen orders',
         error: error instanceof Error ? error.message : 'Unknown error'
       })
