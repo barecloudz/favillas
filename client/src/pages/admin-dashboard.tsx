@@ -20152,7 +20152,7 @@ const PlanLicenseTab = () => {
                 <li>After <strong>14 days</strong> of non-payment, this application will be <strong className="text-red-600">automatically disabled</strong> without further notice.</li>
                 <li>All access to the software and related services will be immediately suspended.</li>
                 <li>To restore service, all outstanding balances must be paid in full.</li>
-                <li>Nardoni Digital LLC reserves the right to delete client data 30 days after termination.</li>
+                <li>Client data remains on the Licensee's own database and is the sole responsibility of the Licensee.</li>
               </ul>
             </div>
           </div>
