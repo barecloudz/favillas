@@ -20211,6 +20211,7 @@ const PlanLicenseTab = () => {
             <p>By using this software, you acknowledge that you have read, understood, and agree to be bound by these terms.</p>
             <p className="mt-2">License Effective Date: December 2024 | Last Updated: December 30, 2025</p>
             <p className="mt-2">For licensing inquiries, contact: <strong>Nardoni Digital LLC</strong></p>
+            <p className="mt-4 text-gray-600 font-medium">You may cancel your subscription at any time by contacting your account representative.</p>
           </div>
         </CardContent>
       </Card>
