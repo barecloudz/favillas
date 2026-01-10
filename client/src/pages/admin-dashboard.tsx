@@ -20120,7 +20120,7 @@ const PlanLicenseTab = () => {
                 </div>
                 <div>
                   <span className="text-gray-600 block text-sm">Licensee (Client):</span>
-                  <span className="font-semibold">FAMNYPIZZA LLC</span>
+                  <span className="font-semibold">FAVILLASNCNYPIZZA LLC</span>
                   <span className="text-gray-500 block text-sm">d/b/a Favilla's NY Pizza</span>
                 </div>
                 <div>
