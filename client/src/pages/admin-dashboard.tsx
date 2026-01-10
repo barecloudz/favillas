@@ -955,7 +955,7 @@ const AdminDashboard = () => {
       "customers", "users", "reviews",
       "employee-schedules", "payroll", "tip-settings",
       "api", "pos-integration", "integrations", "webhooks",
-      "restaurant-info", "system-settings", "backup", "help"
+      "restaurant-info", "system-settings", "backup", "help", "plan"
     ];
     const allValidTabs = [...primaryTabsHrefs, ...categoryTabsHrefs];
     
@@ -1189,6 +1189,7 @@ const AdminDashboard = () => {
         { name: "System Settings", icon: Settings, href: "system-settings" },
         { name: "Backup & Export", icon: Download, href: "backup" },
         { name: "Help & Support", icon: HelpCircle, href: "help" },
+        { name: "Plan & License", icon: FileText, href: "plan" },
       ]
     }
   ];
@@ -1617,6 +1618,10 @@ const AdminDashboard = () => {
               <Suspense fallback={<div>Loading System Settings...</div>}>
                 <SettingsPanel />
               </Suspense>
+            )}
+
+            {activeTab === "plan" && (
+              <PlanLicenseTab />
             )}
           </main>
         </div>
@@ -20061,5 +20066,155 @@ const ExperimentalFeaturesSection = () => {
   );
 };
 
+// Plan & License Tab Component
+const PlanLicenseTab = () => {
+  return (
+    <div className="space-y-6">
+      {/* License Header */}
+      <Card className="border-2 border-[#d73a31]">
+        <CardHeader className="bg-gradient-to-r from-[#d73a31] to-[#b82e27] text-white rounded-t-lg">
+          <CardTitle className="flex items-center gap-3 text-2xl">
+            <FileText className="w-7 h-7" />
+            Software License Agreement
+          </CardTitle>
+          <CardDescription className="text-gray-100">
+            Your subscription plan and licensing information
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Plan Details */}
+            <div className="space-y-4">
+              <h3 className="font-bold text-lg text-gray-800 border-b pb-2">Plan Details</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">License Type:</span>
+                  <span className="font-semibold">Proprietary SaaS License</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Billing Cycle:</span>
+                  <span className="font-semibold">Weekly</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Subscription Fee:</span>
+                  <span className="font-bold text-xl text-[#d73a31]">$350.00 / week</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Status:</span>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                    <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                    Active
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Parties */}
+            <div className="space-y-4">
+              <h3 className="font-bold text-lg text-gray-800 border-b pb-2">Agreement Parties</h3>
+              <div className="space-y-3">
+                <div>
+                  <span className="text-gray-600 block text-sm">Licensor (Provider):</span>
+                  <span className="font-semibold">Nardoni Digital LLC</span>
+                </div>
+                <div>
+                  <span className="text-gray-600 block text-sm">Licensee (Client):</span>
+                  <span className="font-semibold">FAMNYPIZZA LLC</span>
+                  <span className="text-gray-500 block text-sm">d/b/a Favilla's NY Pizza</span>
+                </div>
+                <div>
+                  <span className="text-gray-600 block text-sm">Governing Law:</span>
+                  <span className="font-semibold">State of North Carolina</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Payment Terms Warning */}
+      <Card className="border-2 border-amber-400 bg-amber-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-amber-800">
+            <AlertCircle className="w-6 h-6" />
+            Payment Terms & Conditions
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4 text-amber-900">
+            <p className="font-semibold text-lg">
+              Subscription fees are due weekly. Failure to maintain an active subscription will result in service termination.
+            </p>
+            <div className="bg-white border border-amber-300 rounded-lg p-4">
+              <h4 className="font-bold text-red-700 mb-2">Non-Payment Policy:</h4>
+              <ul className="list-disc list-inside space-y-2 text-gray-700">
+                <li>After <strong>14 days</strong> of non-payment, this application will be <strong className="text-red-600">automatically disabled</strong> without further notice.</li>
+                <li>All access to the software and related services will be immediately suspended.</li>
+                <li>To restore service, all outstanding balances must be paid in full.</li>
+                <li>Nardoni Digital LLC reserves the right to delete client data 30 days after termination.</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Legal Terms */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="w-5 h-5 text-blue-600" />
+            Legal Terms & Protections
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4 text-sm text-gray-700">
+            <div className="bg-gray-50 border rounded-lg p-4">
+              <h4 className="font-bold text-gray-900 mb-3">Intellectual Property Rights</h4>
+              <p>
+                This software, including all source code, designs, algorithms, and documentation, is the sole and
+                exclusive property of Nardoni Digital LLC. This license grants only a limited, non-exclusive,
+                non-transferable right to access and use the software for internal business operations.
+              </p>
+            </div>
+
+            <div className="bg-gray-50 border rounded-lg p-4">
+              <h4 className="font-bold text-gray-900 mb-3">Restrictions</h4>
+              <p>The Licensee shall NOT:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Copy, modify, reverse engineer, or create derivative works</li>
+                <li>Sublicense, lease, rent, or distribute the software to third parties</li>
+                <li>Remove or alter any proprietary notices or marks</li>
+                <li>Use the software to provide services to third parties</li>
+              </ul>
+            </div>
+
+            <div className="bg-gray-50 border rounded-lg p-4">
+              <h4 className="font-bold text-gray-900 mb-3">Limitation of Liability</h4>
+              <p>
+                The software is provided "AS IS" without warranty of any kind. Nardoni Digital LLC shall not be
+                liable for any indirect, incidental, special, consequential, or punitive damages. Total liability
+                shall not exceed amounts paid by the Licensee in the twelve (12) months preceding any claim.
+              </p>
+            </div>
+
+            <div className="bg-gray-50 border rounded-lg p-4">
+              <h4 className="font-bold text-gray-900 mb-3">Dispute Resolution</h4>
+              <p>
+                Any disputes arising under this agreement shall be resolved in the state or federal courts
+                located in North Carolina, governed by North Carolina law.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 pt-4 border-t text-center text-gray-500 text-xs">
+            <p>By using this software, you acknowledge that you have read, understood, and agree to be bound by these terms.</p>
+            <p className="mt-2">License Effective Date: December 2024 | Last Updated: December 30, 2025</p>
+            <p className="mt-2">For licensing inquiries, contact: <strong>Nardoni Digital LLC</strong></p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
 export default AdminDashboard;
