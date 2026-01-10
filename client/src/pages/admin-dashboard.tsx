@@ -59,6 +59,7 @@ import {
   CheckCircle,
   TrendingUp,
   AlertTriangle,
+  AlertCircle,
   Upload,
   Link,
   Share2,
