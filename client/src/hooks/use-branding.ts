@@ -27,7 +27,7 @@ export function useBranding() {
   const { data: settingsData, isLoading } = useQuery({
     queryKey: ['/api/admin/system-settings', 'branding'],
     queryFn: async () => {
-      const response = await apiRequest('GET', '/api/admin/system-settings?category=branding', {});
+      const response = await apiRequest('GET', '/api/admin/system-settings?category=branding');
       return await response.json();
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

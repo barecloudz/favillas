@@ -51,9 +51,7 @@ const OrdersPage = () => {
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["/api/orders"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/orders", null, {
-        credentials: "include"
-      });
+      const response = await apiRequest("GET", "/api/orders");
       return response.json();
     },
     enabled: !!user,

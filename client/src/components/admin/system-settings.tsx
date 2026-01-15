@@ -75,7 +75,7 @@ export function SystemSettings() {
   const { data: settingsData, isLoading } = useQuery({
     queryKey: ['/api/admin/system-settings'],
     queryFn: async () => {
-      const response = await apiRequest('GET', '/api/admin/system-settings', {});
+      const response = await apiRequest('GET', '/api/admin/system-settings');
       return await response.json();
     }
   });

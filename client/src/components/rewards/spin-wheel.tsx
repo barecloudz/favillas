@@ -28,7 +28,7 @@ const SpinWheel: React.FC = () => {
   const { data: spinWheelConfig, isLoading } = useQuery({
     queryKey: ["/api/spin-wheel/config"],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/spin-wheel/config", {});
+      const res = await apiRequest("GET", "/api/spin-wheel/config");
       return await res.json();
     },
     // Fallback to default config if API not available

@@ -8654,7 +8654,7 @@ const PrinterManagement = ({
   const { data: printers = [], isLoading, refetch } = useQuery({
     queryKey: ['/api/printer/config'],
     queryFn: async () => {
-      const response = await apiRequest('GET', '/api/printer/config', {});
+      const response = await apiRequest('GET', '/api/printer/config');
       if (!response.ok) {
         throw new Error('Failed to fetch printers');
       }
@@ -13854,7 +13854,7 @@ const TipSettingsTab = () => {
   const { data: tipSettings, isLoading: settingsLoading } = useQuery({
     queryKey: ["/api/admin/tip-settings"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/admin/tip-settings", {});
+      const response = await apiRequest("GET", "/api/admin/tip-settings");
       return await response.json();
     },
   });
@@ -13885,7 +13885,7 @@ const TipSettingsTab = () => {
   const { data: tipDistributions } = useQuery({
     queryKey: ["/api/admin/tip-distributions"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/admin/tip-distributions", {});
+      const response = await apiRequest("GET", "/api/admin/tip-distributions");
       return await response.json();
     },
   });
