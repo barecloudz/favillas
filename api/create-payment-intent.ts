@@ -2,6 +2,7 @@ import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
 import Stripe from 'stripe';
 import { authenticateToken } from './utils/auth';
+import { checkStoreStatus, StoreHoursData } from './utils/store-hours-utils';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
@@ -72,6 +73,69 @@ export const handler: Handler = async (event, context) => {
           message: 'Missing required field: amount'
         })
       };
+    }
+
+    // CRITICAL: Check store hours BEFORE processing payment for ASAP orders
+    // This prevents the race condition where payment goes through but order creation fails
+    if (orderData && orderData.fulfillmentTime !== 'scheduled') {
+      console.log('🕐 Checking store hours before payment processing...');
+
+      try {
+        const sql = getDB();
+        const storeHoursData = await sql`
+          SELECT day_of_week, day_name, is_open, open_time, close_time,
+                 is_break_time, break_start_time, break_end_time
+          FROM store_hours
+          ORDER BY day_of_week
+        `;
+
+        if (storeHoursData.length > 0) {
+          const storeHours: StoreHoursData[] = storeHoursData.map((row: any) => ({
+            dayOfWeek: row.day_of_week,
+            dayName: row.day_name,
+            isOpen: row.is_open,
+            openTime: row.open_time,
+            closeTime: row.close_time,
+            isBreakTime: row.is_break_time || false,
+            breakStartTime: row.break_start_time,
+            breakEndTime: row.break_end_time
+          }));
+
+          const storeStatus = checkStoreStatus(storeHours);
+
+          console.log('🕐 Store status check:', {
+            isOpen: storeStatus.isOpen,
+            isPastCutoff: storeStatus.isPastCutoff,
+            message: storeStatus.message,
+            currentTime: storeStatus.currentTime
+          });
+
+          if (!storeStatus.isOpen || storeStatus.isPastCutoff) {
+            console.log('❌ Store is closed - rejecting payment before processing');
+            return {
+              statusCode: 503,
+              headers,
+              body: JSON.stringify({
+                error: 'store_closed',
+                message: storeStatus.message || 'ASAP orders are not available at this time. Please try scheduling your order for later.',
+                storeStatus: {
+                  isOpen: storeStatus.isOpen,
+                  isPastCutoff: storeStatus.isPastCutoff,
+                  currentTime: storeStatus.currentTime
+                }
+              })
+            };
+          }
+
+          console.log('✅ Store is open - proceeding with payment');
+        }
+      } catch (storeHoursError) {
+        console.error('⚠️ Error checking store hours:', storeHoursError);
+        // Continue with payment if store hours check fails - don't block legitimate orders
+        // The order creation step will perform another check as a safety net
+      }
+    } else if (orderData && orderData.fulfillmentTime === 'scheduled') {
+      console.log('📅 Scheduled order - bypassing store hours check for payment');
     }
 
     // SECURITY: Validate payment amount server-side

@@ -636,8 +636,24 @@ const CheckoutPage = () => {
   // Create payment intent mutation
   const createPaymentIntentMutation = useMutation({
     mutationFn: async (data: { amount: number; orderId?: number | null; orderData?: any }) => {
-      const res = await apiRequest("POST", "/api/create-payment-intent", data);
-      return await res.json();
+      const res = await fetch("/api/create-payment-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+
+      const responseData = await res.json();
+
+      // Handle store closed error specially
+      if (!res.ok) {
+        if (responseData.error === 'store_closed') {
+          throw new Error(responseData.message || 'The store is currently closed. Please try again during business hours or schedule your order for later.');
+        }
+        throw new Error(responseData.message || responseData.error || 'Failed to initialize payment');
+      }
+
+      return responseData;
     },
     onSuccess: (data) => {
       console.log('✅ Payment intent created successfully');
@@ -657,7 +673,7 @@ const CheckoutPage = () => {
     },
     onError: (error: Error) => {
       toast({
-        title: "Payment initialization failed",
+        title: "Unable to Process Order",
         description: error.message,
         variant: "destructive",
       });

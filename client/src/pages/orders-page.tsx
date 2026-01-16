@@ -48,13 +48,18 @@ const OrdersPage = () => {
   useWebSocket();
 
   // Fetch user's orders
-  const { data: orders = [], isLoading } = useQuery({
+  const { data: orders = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ["/api/orders"],
     queryFn: async () => {
+      console.log('📦 Fetching orders...');
       const response = await apiRequest("GET", "/api/orders");
-      return response.json();
+      const data = await response.json();
+      console.log('📦 Orders fetched:', data?.length || 0, 'orders');
+      return data;
     },
     enabled: !!user,
+    retry: 2,
+    staleTime: 30000, // 30 seconds
   });
 
   // Listen for real-time order status updates
@@ -388,6 +393,19 @@ Thank you for choosing Favilla's NY Pizza!
               <Loader2 className="h-8 w-8 animate-spin text-red-600 mx-auto mb-4" />
               <p className="text-gray-600">Loading your orders...</p>
             </div>
+          ) : isError ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Unable to load orders</h3>
+                <p className="text-gray-600 mb-6">
+                  {error?.message || "There was a problem loading your orders. Please try again."}
+                </p>
+                <Button onClick={() => refetch()} className="bg-[#d73a31] hover:bg-[#c73128]">
+                  Try Again
+                </Button>
+              </CardContent>
+            </Card>
           ) : filteredOrders.length === 0 ? (
             <Card>
               <CardContent className="p-12 text-center">
