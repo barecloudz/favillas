@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './use-supabase-auth';
 import { supabase } from '@/lib/supabase';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 interface AdminWebSocketMessage {
   type: string;
@@ -29,6 +30,7 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
   const maxReconnectAttempts = 3;
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastCheckedOrderRef = useRef<string | null>(null);
+  const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
 
   // Store callbacks in refs to avoid recreating connect/disconnect on every render
   const optionsRef = useRef(options);
@@ -261,107 +263,100 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
     }
   }, []); // No dependencies - uses optionsRef.current
 
-  // Polling-based notifications for production (Netlify)
-  const startPollingNotifications = useCallback(() => {
-    const checkForNewOrders = async () => {
-      try {
-        // console.log('🔍 Polling for new orders...');
+  // Supabase Broadcast-based notifications for production (Netlify)
+  // This replaces expensive HTTP polling that was causing ~2TB/month egress
+  // Uses Broadcast (not postgres_changes) so it doesn't require database replication
+  const startRealtimeNotifications = useCallback(() => {
+    console.log('🔌 Starting Supabase Broadcast notifications...');
 
-        // Get the current auth session (same method as other API calls)
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-        // console.log('🔑 Auth token available:', !!token);
+    // Use a fixed channel name so all clients listen on the same channel
+    const channel = supabase
+      .channel('kitchen-orders')
+      .on(
+        'broadcast',
+        { event: 'new-order' },
+        (payload) => {
+          const newOrder = payload.payload as any;
+          console.log('🆕 New order received via Supabase Broadcast:', newOrder);
 
-        if (!token) {
-          console.warn('⚠️ No auth token available - skipping polling');
-          return;
-        }
+          console.log('🔔 NEW ORDER DETECTED via Broadcast!');
 
-        const response = await fetch('/api/orders?limit=5', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+          // Play notification sound
+          console.log('🔊 Playing notification sound...');
+          playNotificationSound();
+
+          // Invalidate all order-related queries to refresh the UI
+          queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/kitchen/orders'] });
+          console.log('🔄 Invalidated order queries to refresh UI');
+
+          // Call callback if provided
+          if (optionsRef.current.onNewOrder) {
+            console.log('🖨️ Calling onNewOrder callback for auto-print...');
+            optionsRef.current.onNewOrder(newOrder);
           }
-        });
-
-        if (response.ok) {
-          const orders = await response.json();
-          // console.log('📊 Polling response:', { ordersCount: orders.length, orders: orders.map(o => ({ id: o.id, created_at: o.created_at, status: o.status, payment_status: o.payment_status })) });
-
-          // Filter for confirmed orders only (exclude pending orders that haven't been paid)
-          const confirmedOrders = orders.filter((order: any) =>
-            order.status !== 'pending' ||
-            order.payment_status === 'succeeded' ||
-            order.payment_status === 'test_order_admin_bypass'
-          );
-
-          // console.log('✅ Confirmed orders:', confirmedOrders.length, 'of', orders.length, 'total orders');
-
-          if (confirmedOrders.length > 0) {
-            const latestOrder = confirmedOrders[0];
-            const latestOrderId = latestOrder.id;
-
-            // console.log('🆔 Latest confirmed order ID:', latestOrderId, 'Last checked:', lastCheckedOrderRef.current);
-
-            // On first run, just store the latest confirmed order ID without notification
-            if (lastCheckedOrderRef.current === null) {
-              lastCheckedOrderRef.current = latestOrderId;
-              // console.log('📝 Initial setup - storing latest confirmed order ID:', latestOrderId);
-              return;
-            }
-
-            // Check if this is a new confirmed order
-            if (lastCheckedOrderRef.current !== latestOrderId) {
-              console.log('🔔 NEW CONFIRMED ORDER DETECTED via polling!');
-              console.log('📦 Order details:', latestOrder);
-              console.log('💳 Payment status:', latestOrder.payment_status);
-
-              // Play notification sound
-              console.log('🔊 Playing notification sound...');
-              playNotificationSound();
-
-              // Invalidate all order-related queries to refresh the UI
-              queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
-              queryClient.invalidateQueries({ queryKey: ['/api/kitchen/orders'] });
-              console.log('🔄 Invalidated order queries to refresh UI');
-
-              // Call callback if provided
-              if (optionsRef.current.onNewOrder) {
-                console.log('🖨️ Calling onNewOrder callback for auto-print...');
-                optionsRef.current.onNewOrder(latestOrder);
-              } else {
-                console.warn('⚠️ No onNewOrder callback provided!');
-              }
-
-              // Update the last checked order
-              lastCheckedOrderRef.current = latestOrderId;
-            } else {
-              // console.log('✅ No new confirmed orders since last check');
-            }
-          } else {
-            // console.log('📭 No orders found');
-          }
-        } else {
-          console.error('❌ Failed to fetch orders:', response.status, response.statusText);
         }
-      } catch (error) {
-        console.error('💥 Polling error:', error);
-        // HTTP2 errors are common on Safari/iOS - they're usually transient
-        // The next poll in 5 seconds will retry
-      }
-    };
+      )
+      .on(
+        'broadcast',
+        { event: 'order-confirmed' },
+        (payload) => {
+          const confirmedOrder = payload.payload as any;
+          console.log('🔔 ORDER CONFIRMED via Broadcast!', confirmedOrder);
 
-    // Start polling every 5 seconds for responsive notifications
-    pollingIntervalRef.current = setInterval(checkForNewOrders, 5000);
+          // Play notification sound
+          playNotificationSound();
 
-    // Check immediately
-    checkForNewOrders();
-  }, [playNotificationSound, queryClient]); // Use ref for onNewOrder instead of dependency
+          // Invalidate queries
+          queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/kitchen/orders'] });
 
-  const stopPollingNotifications = useCallback(() => {
+          // Call callback if provided
+          if (optionsRef.current.onNewOrder) {
+            optionsRef.current.onNewOrder(confirmedOrder);
+          }
+        }
+      )
+      .on(
+        'broadcast',
+        { event: 'order-updated' },
+        (payload) => {
+          const updatedOrder = payload.payload as any;
+          console.log('🔄 Order updated via Broadcast:', updatedOrder);
+
+          // Invalidate queries on order updates for UI refresh
+          queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/kitchen/orders'] });
+
+          // Call order update callback if provided
+          if (optionsRef.current.onOrderUpdate) {
+            optionsRef.current.onOrderUpdate(updatedOrder);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Admin Supabase Broadcast status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Successfully subscribed to order broadcasts on channel: kitchen-orders');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Failed to subscribe to order broadcasts');
+        }
+      });
+
+    realtimeChannelRef.current = channel;
+  }, [playNotificationSound, queryClient]);
+
+  const stopRealtimeNotifications = useCallback(() => {
+    // Clean up old polling interval if it exists
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
+    }
+    // Clean up Supabase Realtime channel
+    if (realtimeChannelRef.current) {
+      console.log('🔌 Cleaning up Supabase Realtime subscription...');
+      supabase.removeChannel(realtimeChannelRef.current);
+      realtimeChannelRef.current = null;
     }
   }, []);
 
@@ -384,9 +379,10 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
     if (isNetlifyProduction) {
       console.log('📡 Admin WebSocket disabled in production (Netlify deployment)');
 
-      // Start polling for new orders (handles both sounds AND auto-print via onNewOrder callback)
-      console.log('🔄 Starting polling-based notifications for production...');
-      startPollingNotifications();
+      // Start Supabase Realtime for new orders (handles both sounds AND auto-print via onNewOrder callback)
+      // This replaces expensive HTTP polling that was causing ~2TB/month egress
+      console.log('🔄 Starting Supabase Realtime notifications for production...');
+      startRealtimeNotifications();
       return;
     }
 
@@ -470,7 +466,7 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
         reconnectTimeoutRef.current = null;
       }
     }
-  }, [user?.id, playNotificationSound]); // Use optionsRef instead of options dependencies
+  }, [user?.id, playNotificationSound, startRealtimeNotifications]); // Use optionsRef instead of options dependencies
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -483,12 +479,12 @@ export const useAdminWebSocket = (options: AdminWebSocketHookOptions = {}) => {
       wsRef.current = null;
     }
 
-    // Stop polling notifications
-    stopPollingNotifications();
+    // Stop realtime notifications
+    stopRealtimeNotifications();
 
     // Reset reconnection attempts when manually disconnecting
     reconnectAttemptsRef.current = 0;
-  }, [stopPollingNotifications]);
+  }, [stopRealtimeNotifications]);
 
   useEffect(() => {
     if (user?.id) {

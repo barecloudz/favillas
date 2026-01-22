@@ -1,11 +1,40 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
 import Stripe from 'stripe';
+import { createClient } from '@supabase/supabase-js';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2023-10-16',
 });
+
+// Supabase client for broadcasting order notifications
+// This replaces expensive polling that was causing ~2TB/month egress
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+async function broadcastOrderConfirmed(order: any) {
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.warn('⚠️ Supabase credentials not available for broadcast');
+    return;
+  }
+
+  try {
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const channel = supabase.channel('kitchen-orders');
+
+    await channel.send({
+      type: 'broadcast',
+      event: 'order-confirmed',
+      payload: order
+    });
+
+    console.log('📡 Broadcasted order confirmed to kitchen-orders channel:', order.id);
+    await supabase.removeChannel(channel);
+  } catch (error) {
+    console.error('❌ Failed to broadcast order confirmed:', error);
+  }
+}
 
 // Database connection
 let dbConnection: any = null;
@@ -108,6 +137,12 @@ export const handler: Handler = async (event, context) => {
 
         const order = updatedOrders[0];
         console.log(`✅ Order #${orderId} payment status updated to completed`);
+
+        // Broadcast to kitchen displays that order is confirmed
+        // Don't await - let it run in background
+        broadcastOrderConfirmed(order).catch(err => {
+          console.error('❌ Broadcast error (non-fatal):', err);
+        });
 
       } else if (orderDataString) {
         // New flow: Create order from stored order data

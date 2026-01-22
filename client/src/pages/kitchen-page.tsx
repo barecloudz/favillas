@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminWebSocket } from "@/hooks/use-admin-websocket";
+import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
 import { Helmet } from "react-helmet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -522,6 +523,13 @@ const KitchenPage = () => {
   // Use admin websocket with notification sound settings
   const { playTestSound, sendMessage } = useAdminWebSocket(websocketOptions);
 
+  // Subscribe to real-time order updates via Supabase Realtime
+  // This replaces expensive polling with push-based updates (saves ~$150/month)
+  useOrdersRealtime({
+    enabled: !!user,
+    onNewOrder: handleNewOrder,
+  });
+
   const formatPrice = (price: string | number) => {
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
     if (isNaN(numPrice) || numPrice === null || numPrice === undefined) {
@@ -532,9 +540,10 @@ const KitchenPage = () => {
 
 
   // Query for active orders
+  // Note: No refetchInterval - we use Supabase Realtime for push-based updates
+  // This eliminates expensive polling that was causing ~2TB/month egress
   const { data: orders, isLoading, error } = useQuery({
     queryKey: ["/api/kitchen/orders"],
-    refetchInterval: 5000, // Refetch every 5 seconds (optimized from 2s to reduce database egress)
     enabled: !!user, // Only fetch when user is authenticated
   });
 

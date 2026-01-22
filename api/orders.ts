@@ -1,8 +1,67 @@
 import { Handler } from '@netlify/functions';
 import postgres from 'postgres';
 import jwt from 'jsonwebtoken';
+import { createClient } from '@supabase/supabase-js';
 import { authenticateToken as authenticateTokenFromUtils } from './utils/auth';
 import { checkStoreStatus } from './utils/store-hours-utils';
+
+// Supabase client for broadcasting order notifications
+// This replaces expensive polling that was causing ~2TB/month egress
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+async function broadcastNewOrder(order: any) {
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.warn('⚠️ Supabase credentials not available for broadcast');
+    return;
+  }
+
+  try {
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const channel = supabase.channel('kitchen-orders');
+
+    await channel.send({
+      type: 'broadcast',
+      event: 'new-order',
+      payload: order
+    });
+
+    console.log('📡 Broadcasted new order to kitchen-orders channel:', order.id);
+
+    // Clean up the channel
+    await supabase.removeChannel(channel);
+  } catch (error) {
+    console.error('❌ Failed to broadcast new order:', error);
+    // Don't throw - broadcast failure shouldn't fail the order
+  }
+}
+
+async function broadcastOrderConfirmed(order: any) {
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.warn('⚠️ Supabase credentials not available for broadcast');
+    return;
+  }
+
+  try {
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const channel = supabase.channel('kitchen-orders');
+
+    await channel.send({
+      type: 'broadcast',
+      event: 'order-confirmed',
+      payload: order
+    });
+
+    console.log('📡 Broadcasted order confirmed to kitchen-orders channel:', order.id);
+
+    // Clean up the channel
+    await supabase.removeChannel(channel);
+  } catch (error) {
+    console.error('❌ Failed to broadcast order confirmed:', error);
+  }
+}
 
 let dbConnection: any = null;
 
@@ -2059,6 +2118,24 @@ export const handler: Handler = async (event, context) => {
           }
 
         console.log('✅ Orders API: Order creation completed successfully');
+
+        // Broadcast to kitchen displays via Supabase Realtime
+        // This replaces expensive polling that was causing ~2TB/month egress
+        // Only broadcast if order is already confirmed (paid or test order)
+        const isConfirmedOrder =
+          enhancedOrder.status !== 'pending' ||
+          enhancedOrder.payment_status === 'succeeded' ||
+          enhancedOrder.payment_status === 'test_order_admin_bypass';
+
+        if (isConfirmedOrder) {
+          console.log('📡 Orders API: Broadcasting confirmed order to kitchen...');
+          // Don't await - let it run in background to not slow down response
+          broadcastNewOrder(enhancedOrder).catch(err => {
+            console.error('❌ Broadcast error (non-fatal):', err);
+          });
+        } else {
+          console.log('⏳ Orders API: Order pending payment - will broadcast on confirmation');
+        }
 
         return {
           statusCode: 201,
