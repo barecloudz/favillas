@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ShoppingCart, Plus, Minus } from "lucide-react";
+import { ORDERING_DISABLED } from "@/components/warning-banner";
 
 // Primary choice groups that set the base price or are required selections
 // NOTE: Only include groups where the selection REPLACES the base price (like sizes)
@@ -676,10 +677,10 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
                 <Button
                   className="bg-[#d73a31] hover:bg-[#c73128] text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
                   onClick={(event) => setTriggerElement(event.currentTarget)}
-                  disabled={isOrderingPaused}
+                  disabled={isOrderingPaused || ORDERING_DISABLED}
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" />
-                  {isOrderingPaused ? 'Unavailable' : 'See Options'}
+                  {(isOrderingPaused || ORDERING_DISABLED) ? 'Unavailable' : 'See Options'}
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white to-gray-50">
@@ -1190,10 +1191,10 @@ const MenuItemWithChoices: React.FC<MenuItemProps> = ({
             <Button
               className="bg-[#d73a31] hover:bg-[#c73128] text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
               onClick={handleSimpleAddToCart}
-              disabled={isOrderingPaused}
+              disabled={isOrderingPaused || ORDERING_DISABLED}
             >
               <ShoppingCart className="h-4 w-4 mr-2" />
-              {isOrderingPaused ? 'Unavailable' : 'Add to Cart'}
+              {(isOrderingPaused || ORDERING_DISABLED) ? 'Unavailable' : 'Add to Cart'}
             </Button>
           )}
         </div>

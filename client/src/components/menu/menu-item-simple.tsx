@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart } from "lucide-react";
+import { ORDERING_DISABLED } from "@/components/warning-banner";
 
 interface MenuItemProps {
   item: {
@@ -85,11 +86,12 @@ const MenuItemSimple: React.FC<MenuItemProps> = ({ item }) => {
           </div>
 
           <Button
-            className="bg-[#d73a31] hover:bg-[#c73128] text-white"
+            className="bg-[#d73a31] hover:bg-[#c73128] text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
             onClick={handleAddToCart}
+            disabled={ORDERING_DISABLED}
           >
             <ShoppingCart className="h-4 w-4 mr-2" />
-            Add to Cart
+            {ORDERING_DISABLED ? "Unavailable" : "Add to Cart"}
           </Button>
         </div>
       </CardContent>
