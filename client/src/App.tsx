@@ -63,6 +63,7 @@ import CartSidebar from "@/components/cart/cart-sidebar";
 import Header from "@/components/layout/header";
 import LoginModalWrapper from "@/components/auth/login-modal-wrapper";
 import { UpdateBanner } from "@/components/update-banner";
+import { WarningBanner } from "@/components/warning-banner";
 import SnowFall from "@/components/animations/SnowFall";
 import { useAnimations } from "@/hooks/use-animations";
 import { ChristmasCountdownButton } from "@/components/christmas/christmas-countdown-button";
@@ -153,6 +154,7 @@ function AppContent() {
     <>
       <Toaster />
       <UpdateBanner />
+      <WarningBanner />
       {!isStandalonePage && <Header />}
       {!isStandalonePage && <CartSidebar />}
       <LoginModalWrapper />
